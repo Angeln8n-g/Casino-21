@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { supabase } from './supabase';
 
-const SOCKET_URL = 'http://localhost:4000'; // Asegúrate de que coincida con el puerto de tu servidor
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
 
 class SocketService {
   private socket: Socket | null = null;

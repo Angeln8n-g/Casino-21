@@ -12,12 +12,17 @@ import { supabase } from './supabase';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001")
+  .split(",")
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST"] }));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"], // Soportar ambos puertos comunes de dev
+    origin: allowedOrigins,
     methods: ["GET", "POST"]
   }
 });
