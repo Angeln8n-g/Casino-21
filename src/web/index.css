@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0f172a] text-white min-h-screen m-0 p-0 font-sans overflow-hidden;
+  }
+}
+
+/* Custom Animations */
+@keyframes deal-card {
+  0% {
+    transform: translate(0, -300px) scale(0) rotate(180deg);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-deal {
+  animation: deal-card 0.5s ease-out forwards;
+}
+
+/* Strobe light effect */
+@keyframes strobe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+  75% { opacity: 0.95; }
+}
+
+.animate-strobe {
+  animation: strobe 4s infinite alternate;
+}
