@@ -14,7 +14,6 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.59.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
