@@ -27,6 +27,11 @@ const io = new Server(httpServer, {
   }
 });
 
+function extractUserIdFromTokenPayload(payload: any): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  return payload.sub || payload.user_id || payload.id || null;
+}
+
 // Middleware de Autenticación para Socket.io
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
@@ -39,6 +44,7 @@ io.use((socket, next) => {
     // Verificar token JWT de Supabase
     const decoded = jwt.verify(token, process.env.JWT_SECRET || '');
     (socket as any).user = decoded;
+    (socket as any).userId = extractUserIdFromTokenPayload(decoded);
     next();
   } catch (err: any) {
     console.error('Error verificando token:', err.message);
@@ -53,7 +59,11 @@ io.use((socket, next) => {
     // o simplemente usando un ID genérico si falla la verificación.
     try {
       const decodedUnverified = jwt.decode(token);
-      (socket as any).user = decodedUnverified || { sub: `guest-${Math.random().toString(36).substring(2, 8)}` };
+      const normalizedDecoded = (decodedUnverified && typeof decodedUnverified === 'object')
+        ? decodedUnverified
+        : { sub: `guest-${Math.random().toString(36).substring(2, 8)}` };
+      (socket as any).user = normalizedDecoded;
+      (socket as any).userId = extractUserIdFromTokenPayload(normalizedDecoded);
       console.warn('Conexión aceptada sin verificación estricta de firma JWT');
       next();
     } catch (e) {
@@ -75,7 +85,7 @@ const rooms: Record<string, {
 const TURN_TIME_LIMIT_MS = 30000; // 30 segundos
 
 io.on('connection', (socket) => {
-  const userId = (socket as any).user?.sub; // El 'sub' del JWT es el UUID del usuario
+  const userId = (socket as any).userId || (socket as any).user?.sub;
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
 
   // 1. Crear Sala
@@ -108,6 +118,7 @@ io.on('connection', (socket) => {
     if (existingPlayer) {
       existingPlayer.socketId = socket.id; // Actualizar el socket ID
       socket.join(roomId);
+      socket.emit('room_joined', { roomId, playerId: existingPlayer.userId });
       
       // Enviar el estado actual de la sala o del juego al jugador que se reconecta
       if (room.state) {

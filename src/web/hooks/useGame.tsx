@@ -30,36 +30,55 @@ export function GameProvider({ children }: { children: ReactNode }) {
   React.useEffect(() => {
     let mounted = true;
     let currentSocket: any = null;
+    let retryTimer: any = null;
+
+    const bindSocketEvents = (socket: any) => {
+      socket.off('action_error');
+      socket.off('timer_update');
+      socket.off('player_disconnected');
+      socket.off('player_reconnected');
+      socket.off('room_joined');
+      socket.off('room_created');
+      socket.off('game_state_update');
+
+      socket.on('action_error', (msg: string) => {
+        setError(msg);
+      });
+      
+      socket.on('timer_update', ({ remaining }: { remaining: number }) => {
+        setTimeRemaining(remaining);
+      });
+
+      socket.on('player_disconnected', ({ message }: { message: string }) => {
+        setDisconnectionMessage(message);
+      });
+      socket.on('player_reconnected', () => {
+        setDisconnectionMessage(null);
+      });
+
+      socket.on('room_joined', ({ playerId }: { playerId: string }) => {
+        setLocalPlayerId(playerId);
+      });
+
+      socket.on('room_created', ({ playerId }: { playerId: string }) => {
+        setLocalPlayerId(playerId);
+      });
+
+      socket.on('game_state_update', (state: GameState) => {
+        setGameState(state);
+      });
+    };
 
     const setupSocket = async () => {
       try {
         currentSocket = await socketService.connect();
         if (mounted && currentSocket) {
-          currentSocket.on('action_error', (msg: string) => {
-            setError(msg);
-          });
-          
-          currentSocket.on('timer_update', ({ remaining }: { remaining: number }) => {
-            setTimeRemaining(remaining);
-          });
-
-          currentSocket.on('player_disconnected', ({ message }: { message: string }) => {
-            setDisconnectionMessage(message);
-          });
-          currentSocket.on('player_reconnected', () => {
-            setDisconnectionMessage(null); // Limpiar mensaje de desconexión si vuelve
-          });
-
-          currentSocket.on('room_joined', ({ playerId }: { playerId: string }) => {
-            setLocalPlayerId(playerId);
-          });
-
-          currentSocket.on('game_state_update', (state: GameState) => {
-            setGameState(state);
-          });
+          bindSocketEvents(currentSocket);
         }
       } catch (err) {
-        console.error("Error setting up socket in useGame:", err);
+        if (mounted) {
+          retryTimer = setTimeout(setupSocket, 1500);
+        }
       }
     };
 
@@ -67,12 +86,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
       if (currentSocket) {
         currentSocket.off('action_error');
         currentSocket.off('timer_update');
         currentSocket.off('player_disconnected');
         currentSocket.off('player_reconnected');
         currentSocket.off('room_joined');
+        currentSocket.off('room_created');
         currentSocket.off('game_state_update');
       }
     };
