@@ -75,39 +75,39 @@ export function ActionPanel({
   };
 
   return (
-    <div className="h-20 flex items-center justify-center gap-4 bg-black/40 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-white/20">
-      <span className="text-sm font-bold text-gray-300 mr-4 drop-shadow">Acciones:</span>
+    <div className="min-h-16 sm:h-20 flex flex-wrap items-center justify-center gap-2 sm:gap-4 bg-black/40 backdrop-blur-md p-3 sm:p-4 rounded-3xl shadow-2xl border border-white/20">
+      <span className="text-xs sm:text-sm font-bold text-gray-300 sm:mr-4 drop-shadow w-full sm:w-auto text-center sm:text-left">Acciones:</span>
       
       {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
         <>
-          <button onClick={handleColocar} className="btn bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
+          <button onClick={handleColocar} className="btn bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10">
             Colocar
           </button>
-          <button onClick={handleCantar} className="btn bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
+          <button onClick={handleCantar} className="btn bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10">
             Cantar As
           </button>
         </>
       ) : (
         <>
-          <button onClick={handleLlevar} className="btn bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
+          <button onClick={handleLlevar} className="btn bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10">
             Llevar
           </button>
           {selectedBoardCardIds.size > 0 && selectedFormationIds.size === 0 && (
             <>
-              <button onClick={handleFormar} className="btn bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10 text-black">
+              <button onClick={handleFormar} className="btn bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-black">
                 Formar
               </button>
-              <button onClick={handleFormarPar} className="btn bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10 text-white">
+              <button onClick={handleFormarPar} className="btn bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white">
                 Formar Par
               </button>
             </>
           )}
           {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
             <>
-              <button onClick={handleFormarPar} className="btn bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10 text-white">
+              <button onClick={handleFormarPar} className="btn bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white">
                 Formar Par
               </button>
-              <button onClick={handleAumentarFormacion} className="btn bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
+              <button onClick={handleAumentarFormacion} className="btn bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg hover:scale-105 border border-white/10">
                 Aumentar
               </button>
             </>
@@ -115,7 +115,7 @@ export function ActionPanel({
         </>
       )}
 
-      <button onClick={onClearSelection} className="btn bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold transition-all shadow-lg border border-white/20 ml-auto">
+      <button onClick={onClearSelection} className="btn bg-white/10 hover:bg-white/20 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all shadow-lg border border-white/20 ml-auto">
         Cancelar
       </button>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
@@ -27,6 +27,14 @@ export function GameScreen() {
   } | null>(null);
 
   const sensors = useSensors(
+    // Touch first to ensure reliable behavior on iOS Safari
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 8,
+      },
+    }),
+    // Pointer as a general fallback (mouse + modern touch)
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
@@ -328,10 +336,10 @@ export function GameScreen() {
   
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
-        <div className="flex flex-col h-full max-w-6xl mx-auto p-4 gap-4 relative z-10 pointer-events-auto">
+      <div className="min-h-dvh w-full overflow-x-hidden pointer-events-none">
+        <div className="flex flex-col min-h-dvh max-w-6xl mx-auto p-3 sm:p-4 gap-3 sm:gap-4 relative z-10 pointer-events-auto">
           {/* Top Header */}
-        <header className="flex flex-col gap-4 bg-black/30 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-2xl relative">
+        <header className="flex flex-col gap-3 sm:gap-4 bg-black/30 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-white/10 shadow-2xl relative">
           
           {/* Disconnection Warning */}
           {disconnectionMessage && (
@@ -355,28 +363,28 @@ export function GameScreen() {
             </div>
           )}
 
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm">Casino 21</h1>
-              <p className="text-sm text-gray-300 mt-1 font-medium">Ronda: {gameState.roundCount}</p>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="order-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm">Casino 21</h1>
+              <p className="text-xs sm:text-sm text-gray-300 mt-1 font-medium">Ronda: {gameState.roundCount}</p>
               <button 
                 onClick={() => {
                   localStorage.removeItem('casino21_roomId');
                   window.location.reload();
                 }}
-                className="mt-2 text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-500/30 transition cursor-pointer"
+                className="mt-2 text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-500/30 transition cursor-pointer w-max"
               >
                 Abandonar Partida
               </button>
             </div>
-            <div className="flex gap-4">
+            <div className="order-3 md:order-2 flex flex-wrap gap-2 sm:gap-4">
               {gameState.players.map((p, i) => (
-                <div key={p.id} className={`text-center px-6 py-2 rounded-2xl border transition-all ${i === gameState.currentTurnPlayerIndex ? 'bg-blue-600/80 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)] scale-110 z-10' : 'bg-black/40 border-white/10 opacity-70'}`}>
+                <div key={p.id} className={`text-center px-4 sm:px-6 py-2 rounded-2xl border transition-all ${i === gameState.currentTurnPlayerIndex ? 'bg-blue-600/80 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)] scale-105 sm:scale-110 z-10' : 'bg-black/40 border-white/10 opacity-70'}`}>
                   <div className="font-bold text-white">{p.name} {p.id === localPlayerId ? '(Tú)' : ''}</div>
-                  <div className={`text-xs font-black uppercase mt-1 ${i === gameState.currentTurnPlayerIndex ? 'text-white' : 'text-gray-400'}`}>
+                  <div className={`text-[10px] sm:text-xs font-black uppercase mt-1 ${i === gameState.currentTurnPlayerIndex ? 'text-white' : 'text-gray-400'}`}>
                     {i === gameState.currentTurnPlayerIndex ? 'TU TURNO' : 'Esperando...'}
                   </div>
-                  <div className="text-xs text-yellow-400 mt-1 font-bold">Recogidas: {p.collectedCards.length}</div>
+                  <div className="text-[10px] sm:text-xs text-yellow-400 mt-1 font-bold">Recogidas: {p.collectedCards.length}</div>
                   
                   {/* Timer display for current turn */}
                   {i === gameState.currentTurnPlayerIndex && (
@@ -390,14 +398,14 @@ export function GameScreen() {
                 </div>
               ))}
             </div>
-            <div className="text-right bg-black/40 px-6 py-2 rounded-2xl border border-white/10">
-              <p className="text-sm text-gray-300">Cartas en Mazo</p>
-              <p className="text-3xl font-bold text-white">{gameState.deck.cards.length}</p>
+            <div className="order-2 md:order-3 text-right bg-black/40 px-4 sm:px-6 py-2 rounded-2xl border border-white/10">
+              <p className="text-xs sm:text-sm text-gray-300">Cartas en Mazo</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">{gameState.deck.cards.length}</p>
             </div>
           </div>
 
           {/* Progress Bars */}
-          <div className="flex gap-4 w-full">
+          <div className="flex gap-2 sm:gap-4 w-full">
             {getEntities().map(entity => {
               const progress = Math.min((entity.score / 21) * 100, 100);
               return (
@@ -406,9 +414,9 @@ export function GameScreen() {
                     <span>{(entity as any).name || `Equipo ${entity.id}`}</span>
                     <span>{entity.score} / 21 pts</span>
                   </div>
-                  <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div className="w-full bg-gray-700 rounded-full h-2 sm:h-3 overflow-hidden">
                     <div 
-                      className="bg-green-500 h-3 transition-all duration-1000 ease-in-out" 
+                      className="bg-green-500 h-2 sm:h-3 transition-all duration-1000 ease-in-out" 
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
@@ -430,7 +438,7 @@ export function GameScreen() {
           
           {/* Indicador visual de turno grande */}
           {!isCurrentTurn && (
-            <div className="absolute top-4 bg-black/60 px-6 py-2 rounded-full border border-white/10 text-gray-300 font-bold tracking-widest z-0 pointer-events-none animate-pulse">
+            <div className="absolute top-4 bg-black/60 px-4 sm:px-6 py-2 rounded-full border border-white/10 text-gray-300 font-bold tracking-widest z-0 pointer-events-none animate-pulse">
               ESPERANDO AL OPONENTE...
             </div>
           )}
@@ -457,10 +465,10 @@ export function GameScreen() {
         </div>
 
         {/* Player Hand */}
-        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-6 rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-6 relative overflow-hidden transition-all duration-300`}>
+        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-4 sm:p-6 rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-4 sm:gap-6 relative overflow-hidden transition-all duration-300`}>
           {!isCurrentTurn && (
             <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
-              <span className="text-gray-300 font-black tracking-widest text-lg animate-pulse">ESPERANDO TURNO...</span>
+              <span className="text-gray-300 font-black tracking-widest text-sm sm:text-lg animate-pulse">ESPERANDO TURNO...</span>
             </div>
           )}
           <HandView 

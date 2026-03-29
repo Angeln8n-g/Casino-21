@@ -37,7 +37,7 @@ export default function App() {
   return (
     <AuthProvider>
       <GameProvider>
-        <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black">
+        <div className="relative min-h-dvh w-full overflow-x-hidden text-white bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black">
           {/* Decorative ambient background */}
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 pointer-events-none mix-blend-screen"></div>
           <AppContent />

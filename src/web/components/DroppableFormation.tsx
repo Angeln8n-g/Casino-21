@@ -38,11 +38,14 @@ export function DroppableFormation({ formation, selected, onClick }: DroppableFo
         Valor: {formation.value}
       </div>
       <div className="flex gap-2 relative">
-        {formation.cards.map((card, i) => (
-          <div key={card.id} style={{ marginLeft: i > 0 ? '-2.5rem' : '0' }} className="hover:-translate-y-2 transition-transform shadow-lg">
-            <CardView card={card} />
-          </div>
-        ))}
+        {formation.cards.map((card, i) => {
+          const overlapClass = i > 0 ? '-ml-6 sm:-ml-10' : '';
+          return (
+            <div key={card.id} className={`${overlapClass} hover:-translate-y-2 transition-transform shadow-lg`}>
+              <CardView card={card} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -25,28 +25,28 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
   return (
     <div 
       ref={setNodeRef}
-      className={`relative flex flex-col items-center justify-center gap-6 p-10 w-full max-w-5xl min-h-[400px] rounded-[4rem] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-700 via-green-800 to-green-950 shadow-[0_30px_60px_rgba(0,0,0,0.6),inset_0_10px_30px_rgba(0,0,0,0.8)] border-[16px] border-[#2A1810] ring-8 ring-black/50 transition-colors ${isOver ? 'brightness-110' : ''}`}
+      className={`relative flex flex-col items-center justify-center gap-4 sm:gap-6 p-4 sm:p-8 md:p-10 w-full max-w-5xl min-h-64 sm:min-h-80 md:min-h-[400px] rounded-[2.5rem] sm:rounded-[3rem] md:rounded-[4rem] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-700 via-green-800 to-green-950 shadow-[0_30px_60px_rgba(0,0,0,0.6),inset_0_10px_30px_rgba(0,0,0,0.8)] border-8 sm:border-12 md:border-[16px] border-[#2A1810] ring-4 sm:ring-6 md:ring-8 ring-black/50 transition-colors ${isOver ? 'brightness-110' : ''}`}
     >
       
       {/* Detalles de la mesa de casino (borde interior y logo) */}
-      <div className="absolute inset-4 border border-yellow-500/20 rounded-[2.5rem] pointer-events-none"></div>
-      <div className="absolute inset-8 border-2 border-yellow-500/10 rounded-[2rem] pointer-events-none"></div>
+      <div className="absolute inset-3 sm:inset-4 border border-yellow-500/20 rounded-[2rem] sm:rounded-[2.5rem] pointer-events-none"></div>
+      <div className="absolute inset-6 sm:inset-8 border-2 border-yellow-500/10 rounded-[1.5rem] sm:rounded-[2rem] pointer-events-none"></div>
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-[3rem]">
-        <span className="text-6xl md:text-8xl font-black text-yellow-500/10 tracking-[0.2em] uppercase transform -rotate-12 select-none">
+        <span className="text-4xl sm:text-6xl md:text-8xl font-black text-yellow-500/10 tracking-[0.2em] uppercase transform -rotate-12 select-none">
           Casino 21
         </span>
       </div>
 
       <div className="relative z-10 flex flex-col items-center w-full h-full">
         {board.cards.length === 0 && board.formations.length === 0 && board.cantedCards.length === 0 && (
-          <div className="text-yellow-500/30 text-3xl font-bold mt-16 uppercase tracking-widest drop-shadow-md">Mesa Vacía</div>
+          <div className="text-yellow-500/30 text-2xl sm:text-3xl font-bold mt-8 sm:mt-16 uppercase tracking-widest drop-shadow-md">Mesa Vacía</div>
         )}
 
         {/* Cartas Sueltas */}
         {board.cards.length > 0 && (
           <div className="mb-6 w-full text-center">
-            <h3 className="text-xl font-bold mb-4 text-yellow-400 drop-shadow-md tracking-wider uppercase text-sm">Cartas Sueltas</h3>
-            <div className="flex flex-wrap gap-4 justify-center min-h-[160px]">
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4 text-yellow-400 drop-shadow-md tracking-wider uppercase text-sm">Cartas Sueltas</h3>
+            <div className="flex flex-wrap gap-2 sm:gap-4 justify-center min-h-[140px] sm:min-h-[160px]">
               {board.cards.map(card => (
                 <DroppableBoardCard 
                   key={card.id} 
@@ -61,7 +61,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Formaciones */}
         {board.formations.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-8 mt-4 border-t border-yellow-500/20 pt-6 w-full relative">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mt-4 border-t border-yellow-500/20 pt-6 w-full relative">
             <div className="absolute -top-3 bg-green-800 px-4 text-yellow-500/50 text-xs font-bold tracking-widest uppercase">Formaciones</div>
             {board.formations.map(form => (
               <DroppableFormation 
@@ -76,7 +76,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Cartas Cantadas */}
         {board.cantedCards.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-6 mt-4 border-t border-yellow-500/20 pt-6 w-full relative">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-6 mt-4 border-t border-yellow-500/20 pt-6 w-full relative">
             <div className="absolute -top-3 bg-green-800 px-4 text-yellow-500/50 text-xs font-bold tracking-widest uppercase">Cartas Cantadas</div>
             {board.cantedCards.map(canted => (
               <div key={canted.card.id} className="relative group">
