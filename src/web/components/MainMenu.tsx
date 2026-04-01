@@ -5,7 +5,7 @@ import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
 
 export function MainMenu() {
-  const { setGameState, setLocalPlayerId } = useGame();
+  const { setGameState, setLocalPlayerId, pendingInvitationRoom, clearPendingInvitationRoom } = useGame();
   const { profile, signOut } = useAuth();
   
   const [playerName, setPlayerName] = useState(profile?.username || 'Jugador');
@@ -22,6 +22,22 @@ export function MainMenu() {
       setPlayerName(profile.username);
     }
   }, [profile]);
+
+  // Auto-join cuando el sender recibe que su invitación fue aceptada
+  useEffect(() => {
+    if (!pendingInvitationRoom || !playerName) return;
+    const doJoin = async () => {
+      try {
+        const socket = await socketService.connect();
+        socket.emit('join_room', { roomId: pendingInvitationRoom, playerName });
+        localStorage.setItem('casino21_roomId', pendingInvitationRoom);
+        clearPendingInvitationRoom();
+      } catch (e) {
+        console.error('Error joining invited room:', e);
+      }
+    };
+    doJoin();
+  }, [pendingInvitationRoom, playerName, clearPendingInvitationRoom]);
 
   useEffect(() => {
     let mounted = true;
@@ -148,22 +164,23 @@ export function MainMenu() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-transparent relative z-10">
-      <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 flex items-center gap-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-transparent relative z-10 px-4 pt-4 pb-8">
+      {/* Profile info inline — visible on sm+ since nav bar handles it on mobile */}
+      <div className="hidden sm:flex absolute top-16 right-4 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 items-center gap-3">
         <div className="text-right">
-          <div className="text-white font-bold">{profile?.username || 'Jugador'}</div>
-          <div className="text-yellow-400 text-sm font-black">ELO: {profile?.elo || 1000}</div>
+          <div className="text-white font-bold text-sm">{profile?.username || 'Jugador'}</div>
+          <div className="text-yellow-400 text-xs font-black">ELO: {profile?.elo || 1000}</div>
         </div>
-        <button 
+        <button
           onClick={signOut}
-          className="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors border border-red-500/30"
+          className="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-red-500/30"
         >
           Salir
         </button>
       </div>
 
-      <div className="bg-black/40 backdrop-blur-md p-10 rounded-3xl border border-white/10 max-w-md w-full shadow-2xl">
-        <h1 className="text-6xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 mb-10 drop-shadow-lg">
+      <div className="bg-black/40 backdrop-blur-md p-6 sm:p-10 rounded-3xl border border-white/10 max-w-md w-full shadow-2xl">
+        <h1 className="text-4xl sm:text-6xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 mb-6 sm:mb-10 drop-shadow-lg">
           CASINO 21
         </h1>
         

@@ -215,11 +215,11 @@ export function GameScreen() {
 
   if (gameState.phase === 'scoring') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-green-900">
-        <h1 className="text-4xl font-bold mb-6 text-yellow-400">Resumen de la Ronda</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 sm:p-8 bg-green-900">
+        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-6 text-yellow-400">Resumen de la Ronda</h1>
         
         {/* Progress Bars in Scoring */}
-        <div className="flex gap-4 w-full max-w-4xl mb-8">
+        <div className="flex gap-3 sm:gap-4 w-full max-w-4xl mb-6 sm:mb-8">
           {getEntities().map(entity => {
             const progress = Math.min((entity.score / 21) * 100, 100);
             return (
@@ -239,7 +239,7 @@ export function GameScreen() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-8 w-full max-w-4xl mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full max-w-4xl mb-8">
           {gameState.lastScoreBreakdown?.map(b => {
             const entity = gameState.players.find(p => p.id === b.id) || gameState.teams.find(t => t.id === b.id);
             return (
@@ -274,17 +274,17 @@ export function GameScreen() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-transparent relative z-10">
         <div className="bg-black/60 backdrop-blur-md p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
-          <h1 className="text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg">
-            ¡PARTIDA TERMINADA!
+          <h1 className="text-4xl sm:text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg">
+            PARTIDA TERMINADA
           </h1>
           
-          <h2 className="text-3xl font-bold mb-10 text-white">
+          <h2 className="text-xl sm:text-3xl font-bold mb-6 sm:mb-10 text-white">
             {gameState.winnerId 
               ? `Ganador: ${gameState.players.find(p => p.id === gameState.winnerId)?.name || gameState.winnerId}`
               : '¡EMPATE!'}
           </h2>
 
-          <div className="grid grid-cols-2 gap-8 w-full mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full mb-10">
             {gameState.players.map(p => (
               <div key={p.id} className={`p-6 rounded-2xl border ${p.id === gameState.winnerId ? 'bg-yellow-900/20 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'bg-white/5 border-white/10'}`}>
                 <h3 className="text-2xl font-bold mb-4 text-white flex items-center justify-center gap-2">
@@ -465,7 +465,7 @@ export function GameScreen() {
         </div>
 
         {/* Player Hand */}
-        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-4 sm:p-6 rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-4 sm:gap-6 relative overflow-hidden transition-all duration-300`}>
+        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-4 sm:p-6 rounded-3xl border safe-bottom ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-4 sm:gap-6 relative overflow-hidden transition-all duration-300`}>
           {!isCurrentTurn && (
             <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
               <span className="text-gray-300 font-black tracking-widest text-sm sm:text-lg animate-pulse">ESPERANDO TURNO...</span>

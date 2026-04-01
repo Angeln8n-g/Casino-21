@@ -15,6 +15,8 @@ interface GameContextType {
   continueToNextRound: () => void;
   timeRemaining: number;
   disconnectionMessage: string | null;
+  pendingInvitationRoom: string | null;
+  clearPendingInvitationRoom: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(30000);
   const [disconnectionMessage, setDisconnectionMessage] = useState<string | null>(null);
+  const [pendingInvitationRoom, setPendingInvitationRoom] = useState<string | null>(null);
 
   // Escuchar eventos del servidor
   React.useEffect(() => {
@@ -40,6 +43,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('room_joined');
       socket.off('room_created');
       socket.off('game_state_update');
+      socket.off('game_invitation_accepted');
 
       socket.on('action_error', (msg: string) => {
         setError(msg);
@@ -66,6 +70,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       socket.on('game_state_update', (state: GameState) => {
         setGameState(state);
+      });
+
+      // Cuando el sender recibe que su invitación fue aceptada, se une a la sala creada
+      socket.on('game_invitation_accepted', ({ roomId }: { roomId: string }) => {
+        setPendingInvitationRoom(roomId);
       });
     };
 
@@ -97,6 +106,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('room_joined');
         currentSocket.off('room_created');
         currentSocket.off('game_state_update');
+        currentSocket.off('game_invitation_accepted');
       }
     };
   }, []);
@@ -120,6 +130,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, []);
 
+  const clearPendingInvitationRoom = useCallback(() => {
+    setPendingInvitationRoom(null);
+  }, []);
+
   const continueToNextRound = useCallback(() => {
     const socket = socketService.getSocket();
     socket.emit('continue_round');
@@ -137,7 +151,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         clearError, 
         continueToNextRound,
         timeRemaining,
-        disconnectionMessage
+        disconnectionMessage,
+        pendingInvitationRoom,
+        clearPendingInvitationRoom,
       }}
     >
       {children}

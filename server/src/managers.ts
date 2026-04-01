@@ -1,0 +1,19 @@
+import { ChatManager } from './application/chat-manager';
+import { FriendsManager } from './application/friends-manager';
+import { TournamentManager } from './application/tournament-manager';
+import { NotificationManager } from './application/notification-manager';
+import { StatsManager } from './application/stats-manager';
+import { AchievementsManager } from './application/achievements-manager';
+import { RewardsManager } from './application/rewards-manager';
+import { LeagueManager } from './application/league-manager';
+import { ModerationManager } from './application/moderation-manager';
+
+export const chatManager = new ChatManager();
+export const friendsManager = new FriendsManager();
+export const tournamentManager = new TournamentManager();
+export const notificationManager = new NotificationManager();
+export const statsManager = new StatsManager();
+export const achievementsManager = new AchievementsManager();
+export const rewardsManager = new RewardsManager();
+export const leagueManager = new LeagueManager();
+export const moderationManager = new ModerationManager();

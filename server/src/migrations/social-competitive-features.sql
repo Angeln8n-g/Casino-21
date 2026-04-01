@@ -1,0 +1,6 @@
+-- Este archivo es un alias de la migración consolidada.
+-- La fuente de verdad está en: /database-migration-social.sql
+-- Ejecutar ese archivo en Supabase SQL Editor.
+--
+-- Razón: las dos migraciones anteriores tenían conflictos de nombres de columnas
+-- con el código TypeScript. La migración consolidada los resuelve.

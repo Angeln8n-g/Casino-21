@@ -71,3 +71,26 @@ CREATE POLICY "Matches are viewable by everyone."
 -- El backend usa la Service Role Key, que ignora las políticas de RLS automáticamente.
 -- Por lo tanto, no necesitamos políticas explícitas de INSERT/UPDATE para usuarios normales, 
 -- asegurando que los clientes no puedan falsificar resultados de partidas.
+
+-- ============================================
+-- 4. TOURNAMENT MATCHES TABLE
+-- ============================================
+CREATE TABLE tournament_matches (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tournament_id UUID REFERENCES tournaments(id) ON DELETE CASCADE,
+  round_number INTEGER NOT NULL,
+  player1_id UUID REFERENCES profiles(id),
+  player2_id UUID REFERENCES profiles(id),
+  winner_id UUID REFERENCES profiles(id),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'no_show')),
+  room_id VARCHAR(50),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- Indexes for tournament_matches
+CREATE INDEX idx_tournament_matches_tournament ON tournament_matches(tournament_id);
+CREATE INDEX idx_tournament_matches_round ON tournament_matches(tournament_id, round_number);
+CREATE INDEX idx_tournament_matches_player1 ON tournament_matches(player1_id);
+CREATE INDEX idx_tournament_matches_player2 ON tournament_matches(player2_id);
+CREATE INDEX idx_tournament_matches_status ON tournament_matches(status);
