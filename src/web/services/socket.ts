@@ -6,40 +6,47 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
 class SocketService {
   private socket: Socket | null = null;
 
-  async connect() {
-    if (!this.socket || !this.socket.connected) {
-      // Obtener el token JWT de Supabase
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+  async connect(signal?: AbortSignal) {
+    if (this.socket?.connected) return this.socket;
 
-      if (!token) {
-        console.error("No se encontró token JWT. El usuario debe iniciar sesión.");
-        throw new Error("No autenticado");
-      }
-
-      // Si ya hay un socket pero está desconectado, lo limpiamos
-      if (this.socket) {
-        this.socket.disconnect();
-      }
-
-      return new Promise<Socket>((resolve, reject) => {
-        this.socket = io(SOCKET_URL, {
-          auth: {
-            token
-          }
-        });
-
-        this.socket.on('connect', () => {
-          resolve(this.socket!);
-        });
-
-        this.socket.on('connect_error', (err) => {
-          console.error("Error conectando el socket:", err.message);
-          reject(err);
-        });
-      });
+    // Si ya hay un socket pero está desconectado, lo limpiamos
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
-    return this.socket;
+
+    // Obtener el token JWT de Supabase
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+
+    if (!token) {
+      throw new Error("No autenticado");
+    }
+
+    // Si el caller ya canceló (componente desmontado), no conectar
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+    return new Promise<Socket>((resolve, reject) => {
+      const onAbort = () => {
+        this.socket?.disconnect();
+        this.socket = null;
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+
+      this.socket = io(SOCKET_URL, { auth: { token } });
+
+      this.socket.on('connect', () => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve(this.socket!);
+      });
+
+      this.socket.on('connect_error', (err) => {
+        signal?.removeEventListener('abort', onAbort);
+        console.error("Error conectando el socket:", err.message);
+        reject(err);
+      });
+    });
   }
 
   getSocket() {

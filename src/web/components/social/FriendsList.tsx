@@ -94,6 +94,8 @@ function FriendRow({ friend, onRemove, onInvite, onChat }: {
   onInvite: (id: string) => void;
   onChat?: (friend: Friend) => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+
   return (
     <div className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/5 group">
       <div className="flex items-center gap-2">
@@ -101,27 +103,47 @@ function FriendRow({ friend, onRemove, onInvite, onChat }: {
         <span className="text-white text-sm font-medium">{friend.username}</span>
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => onChat?.(friend)}
-          className="text-xs bg-blue-600/60 hover:bg-blue-500 text-white px-2 py-1 rounded-lg"
-          title="Chat"
-        >
-          <MessageSquare size={12} />
-        </button>
-        {friend.status === 'online' && (
-          <button
-            onClick={() => onInvite(friend.id)}
-            className="text-xs bg-yellow-600/80 hover:bg-yellow-500 text-white px-2 py-1 rounded-lg"
-          >
-            Invitar
-          </button>
+        {!confirming ? (
+          <>
+            <button
+              onClick={() => onChat?.(friend)}
+              className="text-xs bg-blue-600/60 hover:bg-blue-500 text-white px-2 py-1 rounded-lg"
+              title="Chat"
+            >
+              <MessageSquare size={12} />
+            </button>
+            {friend.status === 'online' && (
+              <button
+                onClick={() => onInvite(friend.id)}
+                className="text-xs bg-yellow-600/80 hover:bg-yellow-500 text-white px-2 py-1 rounded-lg"
+              >
+                Invitar
+              </button>
+            )}
+            <button
+              onClick={() => setConfirming(true)}
+              className="text-xs bg-red-600/40 hover:bg-red-600/80 text-red-300 px-2 py-1 rounded-lg"
+            >
+              Eliminar
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-gray-400 self-center">¿Seguro?</span>
+            <button
+              onClick={() => onRemove(friend.id)}
+              className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded-lg font-bold"
+            >
+              Sí
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              className="text-xs bg-white/10 hover:bg-white/20 text-gray-300 px-2 py-1 rounded-lg"
+            >
+              No
+            </button>
+          </>
         )}
-        <button
-          onClick={() => onRemove(friend.id)}
-          className="text-xs bg-red-600/40 hover:bg-red-600/80 text-red-300 px-2 py-1 rounded-lg"
-        >
-          Eliminar
-        </button>
       </div>
     </div>
   );

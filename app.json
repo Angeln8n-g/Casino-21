@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Casino 21",
+    "slug": "casino-21",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "orientation": "portrait",
+    "icon": "./src/mobile/assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./src/mobile/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0f1a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.casino21.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Casino 21 no usa la cámara.",
+        "NSMicrophoneUsageDescription": "Casino 21 no usa el micrófono."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/mobile/assets/adaptive-icon.png",
+        "backgroundColor": "#0f0f1a"
+      },
+      "package": "com.casino21.app",
+      "versionCode": 1,
+      "minSdkVersion": 26,
+      "permissions": []
+    },
+    "web": {
+      "favicon": "./src/mobile/assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-av",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/mobile/assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0f0f1a"
+        }
+      ]
+    ],
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/casino-21-project-id"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "casino-21-project-id"
+      }
+    }
+  }
+}

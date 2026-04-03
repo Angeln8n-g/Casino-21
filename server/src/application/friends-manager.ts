@@ -44,20 +44,22 @@ export class FriendsManager {
         return { success: false, error: 'Has alcanzado el límite máximo de amigos' };
       }
 
-      // Verificar si ya hay solicitud pendiente
+      // Verificar si ya hay solicitud pendiente (en cualquier dirección)
       const { data: existingReq } = await supabase
         .from('friend_requests')
-        .select('id')
-        .eq('sender_id', senderId)
-        .eq('receiver_id', receiverId)
-        .eq('status', 'pending')
+        .select('id, status')
+        .or(`and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`)
         .maybeSingle();
 
-      if (existingReq) return { success: false, error: 'Ya enviaste una solicitud a este jugador' };
+      if (existingReq?.status === 'pending') return { success: false, error: 'Ya hay una solicitud pendiente entre estos jugadores' };
 
+      // Upsert: si existía una fila rechazada/expirada la reutilizamos
       const { data, error } = await supabase
         .from('friend_requests')
-        .insert({ sender_id: senderId, receiver_id: receiverId, status: 'pending' })
+        .upsert(
+          { sender_id: senderId, receiver_id: receiverId, status: 'pending' },
+          { onConflict: 'sender_id,receiver_id' }
+        )
         .select()
         .single();
 

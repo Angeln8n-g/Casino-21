@@ -31,7 +31,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Escuchar eventos del servidor
   React.useEffect(() => {
-    let mounted = true;
     let currentSocket: any = null;
     let retryTimer: any = null;
 
@@ -78,26 +77,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    const setupSocket = async () => {
+    const setupSocket = async (signal: AbortSignal) => {
       try {
-        currentSocket = await socketService.connect();
-        if (mounted && currentSocket) {
+        currentSocket = await socketService.connect(signal);
+        if (!signal.aborted && currentSocket) {
           bindSocketEvents(currentSocket);
         }
-      } catch (err) {
-        if (mounted) {
-          retryTimer = setTimeout(setupSocket, 1500);
-        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        retryTimer = setTimeout(() => setupSocket(signal), 1500);
       }
     };
 
-    setupSocket();
+    const controller = new AbortController();
+    setupSocket(controller.signal);
 
     return () => {
-      mounted = false;
-      if (retryTimer) {
-        clearTimeout(retryTimer);
-      }
+      controller.abort();
+      if (retryTimer) clearTimeout(retryTimer);
       if (currentSocket) {
         currentSocket.off('action_error');
         currentSocket.off('timer_update');

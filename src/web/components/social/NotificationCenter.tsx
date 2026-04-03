@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, MessageSquare, X } from 'lucide-react';
 import { useSocial, Notification, GameInvitation, UnreadDm } from '../../hooks/useSocial';
+import { createPortal } from 'react-dom';
 
 const TYPE_ICONS: Record<string, string> = {
   friend_request: '👤',
@@ -61,39 +62,59 @@ export function NotificationCenter({ onOpenChat }: NotificationCenterProps) {
 
   const totalItems = gameInvitations.length + unreadDms.length + notifications.length;
 
+  const panel = open && (
+    <>
+      {/* Overlay solo en móvil */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40 sm:hidden"
+        onClick={() => setOpen(false)}
+      />
+      {/* Panel: bottom sheet en móvil, dropdown en desktop */}
+      <div className="
+        fixed bottom-0 left-0 right-0 z-50
+        sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80
+        bg-slate-900 border-t border-white/10
+        sm:border sm:border-white/10 sm:rounded-2xl
+        rounded-t-2xl shadow-2xl overflow-hidden
+        max-h-[75vh] sm:max-h-96
+        flex flex-col
+      ">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
+          <h3 className="text-white font-bold text-sm">Notificaciones</h3>
+          <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white p-1">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {totalItems === 0 ? (
+            <p className="text-center text-gray-500 text-sm py-6">Sin notificaciones</p>
+          ) : (
+            <>
+              {gameInvitations.map(inv => (
+                <GameInvitationItem
+                  key={inv.id}
+                  invitation={inv}
+                  onAccept={acceptGameInvitation}
+                  onReject={rejectGameInvitation}
+                />
+              ))}
+              {unreadDms.map(dm => (
+                <DmNotificationItem key={dm.senderId} dm={dm} onOpen={handleOpenChat} />
+              ))}
+              {notifications.map(n => (
+                <NotificationItem key={n.id} notification={n} onDismiss={dismissNotification} />
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="relative" ref={ref}>
       <NotificationBadge onClick={handleOpen} />
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <h3 className="text-white font-bold text-sm">Notificaciones</h3>
-            <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white text-xs">Cerrar</button>
-          </div>
-          <div className="max-h-96 overflow-y-auto">
-            {totalItems === 0 ? (
-              <p className="text-center text-gray-500 text-sm py-6">Sin notificaciones</p>
-            ) : (
-              <>
-                {gameInvitations.map(inv => (
-                  <GameInvitationItem
-                    key={inv.id}
-                    invitation={inv}
-                    onAccept={acceptGameInvitation}
-                    onReject={rejectGameInvitation}
-                  />
-                ))}
-                {unreadDms.map(dm => (
-                  <DmNotificationItem key={dm.senderId} dm={dm} onOpen={handleOpenChat} />
-                ))}
-                {notifications.map(n => (
-                  <NotificationItem key={n.id} notification={n} onDismiss={dismissNotification} />
-                ))}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {typeof document !== 'undefined' ? createPortal(panel, document.body) : panel}
     </div>
   );
 }
@@ -179,7 +200,7 @@ function NotificationItem({ notification, onDismiss }: { notification: Notificat
       </div>
       <button
         onClick={() => onDismiss(notification.id)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400 flex-shrink-0 self-start mt-0.5"
+        className="opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 opacity-100 transition-opacity text-gray-500 hover:text-red-400 flex-shrink-0 self-start mt-0.5"
         title="Eliminar"
       >
         <X size={14} />

@@ -100,6 +100,63 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.emit('room_created', { roomId, playerId: userId });
     console.log(`Sala ${roomId} creada por ${playerName}`);
+
+    // Lobby timeout: notify at 30s, delete at 60s if game hasn't started
+    const WARN_MS = 30_000;
+    const DELETE_MS = 60_000;
+
+    const warnTimer = setTimeout(() => {
+      const room = rooms[roomId];
+      if (room && !room.state) {
+        io.to(roomId).emit('lobby_expiring', {
+          roomId,
+          message: 'La sala se eliminará en 30 segundos si no se completan los jugadores.',
+          secondsLeft: 30,
+        });
+      }
+    }, WARN_MS);
+
+    const deleteTimer = setTimeout(() => {
+      const room = rooms[roomId];
+      if (room && !room.state) {
+        io.to(roomId).emit('lobby_expired', {
+          roomId,
+          message: 'La sala fue eliminada por inactividad.',
+        });
+        delete rooms[roomId];
+        console.log(`Sala ${roomId} eliminada por timeout de lobby`);
+      }
+    }, DELETE_MS);
+
+    // Store timers so we can cancel them if the game starts or room is deleted
+    (rooms[roomId] as any)._lobbyWarnTimer = warnTimer;
+    (rooms[roomId] as any)._lobbyDeleteTimer = deleteTimer;
+  });
+
+  socket.on('delete_room', ({ roomId }: { roomId: string }) => {
+    const room = rooms[roomId];
+    if (!room) { socket.emit('error', 'La sala no existe'); return; }
+    const isOwner = room.players[0]?.userId === userId;
+    if (!isOwner) { socket.emit('error', 'Solo el creador puede eliminar la sala'); return; }
+
+    clearTimeout((room as any)._lobbyWarnTimer);
+    clearTimeout((room as any)._lobbyDeleteTimer);
+    io.to(roomId).emit('room_deleted', { roomId, message: 'El creador eliminó la sala.' });
+    delete rooms[roomId];
+    socket.emit('room_deleted_ok', { roomId });
+    console.log(`Sala ${roomId} eliminada manualmente por ${userId}`);
+  });
+
+  socket.on('get_my_rooms', () => {
+    const myRooms = Object.entries(rooms)
+      .filter(([, room]) => room.players[0]?.userId === userId && !room.state)
+      .map(([roomId, room]) => ({
+        roomId,
+        mode: room.maxPlayers === 2 ? '1v1' : '2v2',
+        players: room.players.length,
+        maxPlayers: room.maxPlayers,
+      }));
+    socket.emit('my_rooms', myRooms);
   });
 
   socket.on('join_room', ({ roomId, playerName }: { roomId: string, playerName: string }) => {
@@ -144,6 +201,10 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('player_joined', { players: room.players.map(p => p.name) });
 
     if (room.players.length === room.maxPlayers) {
+      // Cancel lobby expiry timers — game is starting
+      clearTimeout((room as any)._lobbyWarnTimer);
+      clearTimeout((room as any)._lobbyDeleteTimer);
+
       const playerNames = room.players.map(p => p.name);
       const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
       const result = room.engine.startNewGame(mode, playerNames);

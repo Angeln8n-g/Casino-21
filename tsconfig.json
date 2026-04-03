@@ -11,8 +11,16 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["tests/**/*", "server/**/*"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "tests/**/*",
+    "server/**/*"
+  ],
+  "extends": "expo/tsconfig.base"
 }
