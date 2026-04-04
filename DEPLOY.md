@@ -3,115 +3,229 @@
 ## Requisitos previos
 
 - Node.js 18+
+- Git instalado y repositorio en GitHub/GitLab
 - Cuenta en [expo.dev](https://expo.dev) (gratis)
+- Cuenta en [render.com](https://render.com) (gratis tier disponible)
 - EAS CLI: `npm install -g eas-cli`
-- Para Android: cuenta en [Google Play Console](https://play.google.com/console)
+- Para Android: cuenta en [Google Play Console](https://play.google.com/console) ($25 único)
 - Para iOS: cuenta en [Apple Developer Program](https://developer.apple.com) ($99/año)
 
 ---
 
-## Parte 1 — Preparar el proyecto
+## Parte 1 — Subir el código a GitHub
 
-### 1.1 Configurar variables de entorno de producción
+### 1.1 Crear repositorio
 
-Crea un archivo `.env.production` en la raíz (nunca lo subas a git):
+1. Ve a [github.com/new](https://github.com/new)
+2. Nombre: `casino-21`
+3. Visibilidad: **Private**
+4. No inicialices con README
 
-```env
-EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key-de-produccion
-EXPO_PUBLIC_SOCKET_URL=https://tu-servidor-produccion.com
+### 1.2 Conectar el proyecto local
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/TU_USUARIO/casino-21.git
+git push -u origin main
 ```
 
-### 1.2 Actualizar el servidor Socket.IO para producción
+### 1.3 Asegúrate de que `.gitignore` excluye los secretos
 
-El servidor debe estar desplegado en un host con HTTPS y WebSocket. Opciones recomendadas:
-- **Railway** (más fácil): [railway.app](https://railway.app)
-- **Render**: [render.com](https://render.com)
-- **DigitalOcean App Platform**
-
-En `server/.env` de producción:
-```env
-SUPABASE_URL=https://tu-proyecto.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
-JWT_SECRET=tu-jwt-secret-seguro
-PORT=4000
-CORS_ORIGINS=https://tu-dominio.com
+Verifica que estos archivos estén en `.gitignore`:
 ```
-
-### 1.3 Actualizar app.json
-
-En `app.json`, reemplaza los valores placeholder:
-- `"projectId": "casino-21-project-id"` → el ID real de tu proyecto en expo.dev
-- `"url": "https://u.expo.dev/casino-21-project-id"` → la URL real de updates
+.env
+.env.production
+server/.env
+google-service-account.json
+```
 
 ---
 
-## Parte 2 — Configurar EAS
+## Parte 2 — Deploy del servidor en Render
 
-### 2.1 Login en Expo
+### 2.1 Crear cuenta en Render
+
+1. Ve a [render.com](https://render.com) y regístrate con tu cuenta de GitHub
+2. Haz clic en **"New +"** → **"Web Service"**
+
+### 2.2 Conectar el repositorio
+
+1. Selecciona **"Connect a repository"**
+2. Busca y selecciona `casino-21`
+3. Render detectará automáticamente que es un proyecto Node.js
+
+### 2.3 Configurar el servicio
+
+Completa el formulario con estos valores:
+
+| Campo | Valor |
+|-------|-------|
+| **Name** | `casino-21-server` |
+| **Region** | `Oregon (US West)` o el más cercano a tus usuarios |
+| **Branch** | `main` |
+| **Root Directory** | `server` |
+| **Runtime** | `Node` |
+| **Build Command** | `npm install` |
+| **Start Command** | `npx ts-node src/index.ts` |
+| **Instance Type** | `Free` (para pruebas) o `Starter $7/mes` (producción) |
+
+> ⚠️ El plan Free de Render duerme después de 15 min de inactividad. Para producción real usa **Starter** o superior.
+
+### 2.4 Configurar variables de entorno en Render
+
+En la sección **"Environment"** del servicio, agrega estas variables:
+
+| Key | Value |
+|-----|-------|
+| `SUPABASE_URL` | `https://yarmgboyjjnodjszwiqi.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | tu service role key de Supabase |
+| `JWT_SECRET` | genera uno seguro: `openssl rand -base64 64` |
+| `PORT` | `4000` |
+| `CORS_ORIGINS` | `*` (temporalmente; luego restringe a tu dominio) |
+| `NODE_ENV` | `production` |
+
+### 2.5 Habilitar WebSockets en Render
+
+Render soporta WebSockets automáticamente en todos los planes. No requiere configuración adicional.
+
+### 2.6 Deploy
+
+1. Haz clic en **"Create Web Service"**
+2. Render construirá y desplegará automáticamente
+3. Espera 2-3 minutos hasta ver **"Live"** en verde
+4. Copia la URL del servicio: `https://casino-21-server.onrender.com`
+
+### 2.7 Verificar que el servidor funciona
+
+Abre en el navegador:
+```
+https://casino-21-server.onrender.com
+```
+
+Deberías ver una respuesta (aunque sea un 404 o mensaje de error de Socket.IO — eso confirma que está corriendo).
+
+### 2.8 Deploys automáticos
+
+Cada vez que hagas `git push` a `main`, Render redesplegará automáticamente el servidor.
+
+---
+
+## Parte 3 — Configurar Expo.dev y EAS
+
+### 3.1 Crear cuenta en Expo
+
+1. Ve a [expo.dev](https://expo.dev) y regístrate
+2. Verifica tu email
+
+### 3.2 Login desde la terminal
 
 ```bash
 eas login
 ```
 
-### 2.2 Inicializar el proyecto en EAS
+Ingresa tu email y contraseña de expo.dev.
+
+### 3.3 Inicializar EAS en el proyecto
+
+Desde la raíz del proyecto:
 
 ```bash
 eas init
 ```
 
-Esto actualiza automáticamente el `projectId` en `app.json`.
+Esto:
+- Crea el proyecto en expo.dev
+- Actualiza automáticamente el `projectId` en `app.json`
+- Vincula tu repositorio local con expo.dev
 
-### 2.3 Configurar secretos de build en EAS
+Verifica que `app.json` ahora tenga un UUID real en `extra.eas.projectId`.
 
-Las variables de entorno de producción se configuran en EAS (no en el repo):
+### 3.4 Configurar variables de entorno en EAS
+
+Las variables `EXPO_PUBLIC_*` deben configurarse en EAS para los builds de producción:
 
 ```bash
-eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "https://tu-proyecto.supabase.co"
+eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "https://yarmgboyjjnodjszwiqi.supabase.co"
+
 eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "tu-anon-key"
-eas secret:create --scope project --name EXPO_PUBLIC_SOCKET_URL --value "https://tu-servidor.com"
+
+eas secret:create --scope project --name EXPO_PUBLIC_SOCKET_URL --value "https://casino-21-server.onrender.com"
+```
+
+Verifica que se crearon:
+```bash
+eas secret:list
+```
+
+### 3.5 Actualizar la URL del socket en .env local
+
+Actualiza tu `.env` local para apuntar al servidor de Render:
+
+```env
+EXPO_PUBLIC_SOCKET_URL=https://casino-21-server.onrender.com
 ```
 
 ---
 
-## Parte 3 — Assets de producción
+## Parte 4 — Assets de producción
 
-Antes de hacer el build, reemplaza los assets placeholder con los reales:
+Antes de hacer el build, reemplaza los assets placeholder:
 
-| Archivo | Tamaño requerido | Descripción |
-|---------|-----------------|-------------|
-| `src/mobile/assets/icon.png` | 1024×1024 px | Ícono de la app |
-| `src/mobile/assets/adaptive-icon.png` | 1024×1024 px | Ícono adaptativo Android |
-| `src/mobile/assets/splash.png` | 1284×2778 px | Splash screen |
-| `src/mobile/assets/favicon.png` | 196×196 px | Favicon web |
+| Archivo | Tamaño | Herramienta sugerida |
+|---------|--------|---------------------|
+| `src/mobile/assets/icon.png` | 1024×1024 px | [Canva](https://canva.com), Figma |
+| `src/mobile/assets/adaptive-icon.png` | 1024×1024 px | Mismo diseño, fondo transparente |
+| `src/mobile/assets/splash.png` | 1284×2778 px | Fondo `#0f0f1a` con logo centrado |
+| `src/mobile/assets/favicon.png` | 196×196 px | Versión pequeña del ícono |
 
-Los archivos actuales son placeholders de 1×1 px.
+> Los archivos actuales son PNGs de 1×1 px. El build funcionará pero la app tendrá íconos en blanco.
 
 ---
 
-## Parte 4 — Build para Android
+## Parte 5 — Build para Android
 
-### 4.1 Build de prueba interna (APK)
+### 5.1 Build de prueba (APK descargable)
 
 ```bash
 eas build --profile preview --platform android
 ```
 
-Descarga el APK y pruébalo en dispositivos físicos antes del release.
+- EAS construye en la nube (~10-15 min)
+- Al terminar, te da un link para descargar el APK
+- Instálalo directamente en tu teléfono para probar
 
-### 4.2 Build de producción (AAB para Google Play)
+### 5.2 Build de producción (AAB para Google Play)
 
 ```bash
 eas build --profile production --platform android
 ```
 
-Esto genera un `.aab` (Android App Bundle) listo para subir a Google Play.
+Genera un `.aab` (Android App Bundle) optimizado para Google Play.
 
-### 4.3 Subir a Google Play automáticamente
+### 5.3 Descargar el build
 
-1. Crea una cuenta de servicio en Google Play Console
-2. Descarga el JSON de la cuenta de servicio
-3. Guárdalo como `google-service-account.json` en la raíz del proyecto
+1. Ve a [expo.dev/accounts/TU_USUARIO/projects/casino-21/builds](https://expo.dev)
+2. Descarga el `.aab` cuando el build termine
+
+### 5.4 Subir a Google Play Console
+
+1. Ve a [play.google.com/console](https://play.google.com/console)
+2. Crea una nueva app → **"Crear aplicación"**
+3. Completa la información básica (nombre, idioma, tipo)
+4. Ve a **"Producción"** → **"Versiones"** → **"Crear nueva versión"**
+5. Sube el `.aab` descargado
+6. Completa la descripción, capturas de pantalla y clasificación de contenido
+7. Envía para revisión (tarda 1-3 días)
+
+### 5.5 Subir automáticamente con EAS Submit
+
+Alternativa más rápida:
+
+1. En Google Play Console, ve a **"Configuración"** → **"Acceso a la API"**
+2. Crea una cuenta de servicio y descarga el JSON
+3. Guárdalo como `google-service-account.json` en la raíz
 4. Ejecuta:
 
 ```bash
@@ -120,116 +234,131 @@ eas submit --profile production --platform android
 
 ---
 
-## Parte 5 — Build para iOS
+## Parte 6 — Build para iOS
 
-### 5.1 Configurar credenciales
+### 6.1 Requisitos
+
+- Mac con Xcode instalado, O usar EAS Build en la nube (no necesitas Mac)
+- Cuenta de Apple Developer activa
+
+### 6.2 Configurar credenciales automáticamente
 
 ```bash
 eas credentials
 ```
 
-EAS puede gestionar automáticamente los certificados y provisioning profiles.
+Selecciona **iOS** → EAS gestiona automáticamente:
+- Distribution Certificate
+- Provisioning Profile
 
-### 5.2 Build de producción
+### 6.3 Build de producción
 
 ```bash
 eas build --profile production --platform ios
 ```
 
-### 5.3 Subir a App Store Connect
+### 6.4 Actualizar eas.json con tus datos de Apple
 
-Actualiza `eas.json` con tus datos reales:
 ```json
-"ios": {
-  "appleId": "tu@email.com",
-  "ascAppId": "TU_APP_STORE_CONNECT_APP_ID",
-  "appleTeamId": "TU_TEAM_ID"
+"submit": {
+  "production": {
+    "ios": {
+      "appleId": "tu@email.com",
+      "ascAppId": "TU_APP_ID_EN_APP_STORE_CONNECT",
+      "appleTeamId": "TU_TEAM_ID"
+    }
+  }
 }
 ```
 
-Luego:
+El `ascAppId` lo encuentras en [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → tu app → información general.
+
+### 6.5 Subir a App Store Connect
+
 ```bash
 eas submit --profile production --platform ios
 ```
 
----
-
-## Parte 6 — Deploy del servidor
-
-### 6.1 Deploy en Railway (recomendado)
-
-```bash
-# Instala Railway CLI
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Desde la carpeta server/
-cd server
-railway init
-railway up
-```
-
-Configura las variables de entorno en el dashboard de Railway.
-
-### 6.2 Verificar que el servidor acepta WebSockets
-
-El servidor usa Socket.IO. Asegúrate de que tu hosting soporte WebSockets (Railway y Render sí lo hacen).
+Luego en App Store Connect completa la metadata y envía para revisión (tarda 1-2 días).
 
 ---
 
-## Parte 7 — Updates OTA (Over The Air)
+## Parte 7 — Updates OTA (sin pasar por las tiendas)
 
-Para actualizar la app sin pasar por las tiendas (solo cambios de JS, no nativos):
+Para cambios solo en JavaScript (no en código nativo):
 
 ```bash
+# Publicar update
 eas update --branch production --message "Fix: descripción del cambio"
 ```
 
-Los usuarios recibirán la actualización automáticamente al abrir la app.
+Los usuarios recibirán la actualización automáticamente la próxima vez que abran la app.
+
+> ⚠️ Los updates OTA NO funcionan para cambios que requieren recompilar código nativo (agregar nuevas librerías nativas, cambiar permisos, etc.).
+
+---
+
+## Parte 8 — Monitoreo post-deploy
+
+### 8.1 Logs del servidor en Render
+
+1. Ve a tu servicio en [render.com/dashboard](https://render.com/dashboard)
+2. Haz clic en **"Logs"** para ver logs en tiempo real
+
+### 8.2 Métricas de la app en Expo
+
+1. Ve a [expo.dev](https://expo.dev) → tu proyecto
+2. Sección **"Updates"** muestra cuántos usuarios tienen cada versión
+
+### 8.3 Errores de Supabase
+
+1. Ve a [supabase.com/dashboard](https://supabase.com/dashboard)
+2. Sección **"Logs"** → **"API"** para ver errores de queries
 
 ---
 
 ## Checklist final antes del release
 
-- [ ] Assets reales (icon, splash) en `src/mobile/assets/`
-- [ ] Variables de entorno configuradas en EAS Secrets
-- [ ] Servidor desplegado con HTTPS y WebSocket habilitado
-- [ ] `EXPO_PUBLIC_SOCKET_URL` apunta al servidor de producción
-- [ ] `projectId` en `app.json` actualizado con el ID real de expo.dev
-- [ ] `versionCode` (Android) y `buildNumber` (iOS) incrementados para cada release
-- [ ] Probado en dispositivo físico con el build de `preview`
-- [ ] Supabase RLS policies revisadas para producción
-- [ ] `JWT_SECRET` del servidor es diferente al de desarrollo
+- [ ] Assets reales (icon 1024×1024, splash 1284×2778) en `src/mobile/assets/`
+- [ ] Servidor desplegado en Render y respondiendo en HTTPS
+- [ ] `EXPO_PUBLIC_SOCKET_URL` apunta a `https://casino-21-server.onrender.com`
+- [ ] Variables de entorno configuradas con `eas secret:create`
+- [ ] `projectId` en `app.json` actualizado (después de `eas init`)
+- [ ] `versionCode` en `app.json` incrementado para cada release Android
+- [ ] `buildNumber` en `app.json` incrementado para cada release iOS
+- [ ] Probado en dispositivo físico con build `preview`
+- [ ] Supabase RLS policies activas en producción
+- [ ] `JWT_SECRET` del servidor generado con `openssl rand -base64 64`
+- [ ] `CORS_ORIGINS` en Render restringido al dominio de la app
 
 ---
 
 ## Comandos de referencia rápida
 
 ```bash
-# Desarrollo local
+# ── Desarrollo ──────────────────────────────────────────────
 npx expo start --clear
 
-# Build preview Android (APK para pruebas)
-eas build --profile preview --platform android
+# ── EAS ─────────────────────────────────────────────────────
+eas login
+eas init
+eas secret:list
+eas secret:create --scope project --name CLAVE --value "valor"
 
-# Build producción Android (AAB para Play Store)
-eas build --profile production --platform android
+# ── Builds ──────────────────────────────────────────────────
+eas build --profile preview --platform android      # APK de prueba
+eas build --profile production --platform android   # AAB para Play Store
+eas build --profile production --platform ios       # IPA para App Store
+eas build --profile production --platform all       # Ambas plataformas
 
-# Build producción iOS
-eas build --profile production --platform ios
-
-# Subir a tiendas
+# ── Submit ──────────────────────────────────────────────────
 eas submit --profile production --platform android
 eas submit --profile production --platform ios
 
-# Update OTA
+# ── Updates OTA ─────────────────────────────────────────────
 eas update --branch production --message "descripción"
 
-# Ver builds activos
+# ── Monitoreo ───────────────────────────────────────────────
 eas build:list
-
-# Ver secretos configurados
-eas secret:list
+eas update:list
 ```

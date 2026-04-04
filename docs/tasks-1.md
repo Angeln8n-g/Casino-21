@@ -1,0 +1,353 @@
+# Plan de Implementación: Funcionalidades Sociales y Competitivas
+
+## Overview
+
+Implementación de funcionalidades sociales y competitivas para Casino 21 sobre la arquitectura existente (Node.js + TypeScript + Express + Socket.io + PostgreSQL/Supabase). Se extiende el esquema de base de datos y se añaden nuevos managers, eventos WebSocket y componentes de UI.
+
+## Tasks
+
+- [x] 1. Extender el esquema de base de datos
+  - Crear archivo de migración con todas las tablas nuevas: tournaments, tournament_participants, seasons, season_rankings, chat_messages, friendships, friend_requests, game_invitations, player_stats, elo_history, achievements, player_achievements, titles, player_titles, notifications, player_reports, player_blocks, temporary_bans, rate_limits
+  - Añadir columnas a la tabla profiles: xp, level, active_title_id
+  - Crear todos los índices necesarios para rendimiento
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
+
+- [-] 2. Implementar TournamentManager
+  - [x] 2.1 Crear clase TournamentManager con métodos principales
+    - Implementar createTournament con validación de conteos de jugadores (4, 8, 16, 32)
+    - Implementar generateTournamentCode (6 caracteres alfanuméricos)
+    - Implementar joinTournament con verificación de límite de jugadores
+    - Implementar getTournament y getTournamentBracket
+    - _Requirements: 1.1, 1.2, 1.3_
+  - [ ]* 2.2 Escribir property test para validación de configuración de torneo
+    - **Property 1: Tournament Configuration Validation**
+    - **Validates: Requirements 1.1**
+  - [ ]* 2.3 Escribir property test para unicidad y formato del código de torneo
+    - **Property 2: Tournament Code Uniqueness and Format**
+    - **Validates: Requirements 1.2**
+  - [x] 2.4 Implementar generación de bracket y auto-inicio
+    - Implementar generateBracket para brackets de eliminación simple
+    - Implementar startTournament con lógica de auto-inicio al alcanzar max_players
+    - Validar estructura del bracket (log2(N) rondas)
+    - _Requirements: 1.4, 1.5_
+  - [ ]* 2.5 Escribir property test para auto-inicio de torneo
+    - **Property 3: Tournament Auto-Start**
+    - **Validates: Requirements 1.4**
+  - [ ]* 2.6 Escribir property test para validez de estructura del bracket
+    - **Property 4: Bracket Structure Validity**
+    - **Validates: Requirements 1.5**
+  - [x] 2.7 Implementar registro de resultados y avance de ganadores
+    - Implementar recordMatchResult
+    - Implementar advanceWinner a la siguiente ronda
+    - Implementar completeTournament con distribución de recompensas
+    - _Requirements: 1.6, 1.9, 1.10_
+  - [ ]* 2.8 Escribir property test para avance de ganadores
+    - **Property 5: Winner Advancement**
+    - **Validates: Requirements 1.6**
+  - [x] 2.9 Implementar manejo de no-shows y descalificación
+    - Implementar handleNoShow con timeout de 5 minutos
+    - Auto-avanzar al oponente en caso de no-show
+    - _Requirements: 1.8_
+  - [ ]* 2.10 Escribir property test para descalificación por no-show
+    - **Property 6: No-Show Disqualification**
+    - **Validates: Requirements 1.8**
+  - [ ]* 2.11 Escribir unit tests para TournamentManager
+    - Probar casos borde: 0 jugadores, códigos inválidos, torneos llenos
+    - Probar ciclo de vida completo del torneo
+    - _Requirements: 1.1-1.10_
+
+- [x] 3. Implementar LeagueManager
+  - [x] 3.1 Crear clase LeagueManager con cálculo de divisiones
+  - [x] 3.3 Implementar gestión de temporadas
+  - [x] 3.5 Implementar reset de Elo por temporada
+
+- [x] 4. Implementar ChatManager
+  - [x] 4.1 Crear clase ChatManager con manejo de mensajes
+    - [x] Implementar sendMessage con validación de longitud (1-200 caracteres)
+    - [x] Implementar getMessageHistory con límite de 50 mensajes
+    - [x] Implementar persistencia de mensajes con timestamp
+    - _Requirements: 3.1, 3.2, 3.4, 3.5_
+  - [x] 4.2 Escribir property test para validación de longitud de mensaje
+    - **Property 10: Chat Message Length Validation**
+    - **Validates: Requirements 3.2**
+  - [x] 4.3 Escribir property test para persistencia de mensajes
+    - **Property 11: Chat Message Persistence**
+    - **Validates: Requirements 3.4**
+  - [x] 4.4 Implementar filtrado de contenido y moderación
+    - [x] Implementar filterContent con reemplazo de palabras ofensivas por asteriscos
+    - [x] Implementar reportMessage con marcado para revisión
+    - [x] Implementar mutePlayer
+    - _Requirements: 3.6, 3.7, 3.8, 3.10_
+  - [x] 4.5 Escribir property test para filtrado de contenido ofensivo
+    - **Property 14: Offensive Content Filtering**
+    - **Validates: Requirements 3.10**
+  - [x] 4.6 Escribir property test para marcado de mensajes reportados
+    - **Property 12: Message Report Marking**
+    - **Validates: Requirements 3.7**
+  - [x] 4.7 Implementar rate limiting para chat
+    - [x] Implementar checkRateLimit (10 mensajes por 30 segundos)
+    - [x] Rastrear timestamps de mensajes por jugador
+    - _Requirements: 3.9_
+  - [x] 4.8 Escribir property test para rate limiting de chat
+    - **Property 13: Chat Rate Limiting**
+    - **Validates: Requirements 3.9**
+  - [x] 4.9 Escribir unit tests para ChatManager
+    - [x] Probar mensajes vacíos y mensajes largos
+    - [x] Probar aplicación del rate limit
+    - [x] Probar casos borde del filtrado de contenido
+    - _Requirements: 3.1-3.10_
+
+- [x] 5. Implementar FriendsManager
+  - [x] 5.1 Crear clase FriendsManager con búsqueda y solicitudes
+    - [x] Implementar searchPlayers con query por nombre de usuario
+    - [x] Implementar sendFriendRequest, acceptFriendRequest y rejectFriendRequest
+    - [x] Implementar getPendingRequests
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 5.2 Escribir property test para resultados de búsqueda de jugadores
+    - **Property 15: Player Search Results**
+    - **Validates: Requirements 4.1**
+  - [x] 5.3 Escribir property test para flujo de solicitud a amistad
+    - **Property 16: Friend Request to Friendship Flow**
+    - **Validates: Requirements 4.2, 4.4, 4.5**
+  - [x] 5.4 Implementar gestión de amistades
+    - [x] Implementar removeFriend
+    - [x] Implementar getFriendsList con estado online
+    - [x] Implementar límite de amigos (máximo 100)
+    - _Requirements: 4.5, 4.6, 4.11, 4.12_
+  - [x] 5.5 Escribir property test para límite de amigos
+    - **Property 17: Friend Limit Enforcement**
+    - **Validates: Requirements 4.12**
+  - [x] 5.6 Implementar invitaciones a partidas
+    - [x] Implementar sendGameInvitation
+    - [x] Implementar acceptGameInvitation con creación de sala privada
+    - [x] Implementar rejectGameInvitation
+    - [x] Manejar expiración de invitaciones (5 minutos)
+    - _Requirements: 4.8, 4.9, 4.10_
+  - [x] 5.7 Escribir property test para invitación a sala privada
+    - **Property 18: Game Invitation to Private Room**
+    - **Validates: Requirements 4.10**
+  - [x] 5.8 Escribir unit tests para FriendsManager
+    - [x] Probar solicitudes de amistad duplicadas
+    - [x] Probar creación bidireccional de amistad
+    - [x] Probar expiración de invitaciones
+    - _Requirements: 4.1-4.12_
+
+- [x] 6. Checkpoint - Asegurar que todos los tests pasen
+  - [x] Asegurar que todos los tests pasen, consultar al usuario si surgen dudas.
+
+- [x] 7. Implementar StatsManager
+  - [x] 7.1 Crear clase StatsManager con seguimiento de estadísticas
+  - [x] 7.3 Implementar seguimiento de historial de Elo
+  - [x] 7.4 Implementar historial de partidas y analíticas
+
+- [x] 8. Implementar AchievementsManager
+  - [x] 8.1 Crear clase AchievementsManager con 20+ logros definidos
+  - [x] 8.2 Implementar verificación y otorgamiento de logros
+  - [x] 8.4 Implementar getAchievementProgress
+
+- [x] 9. Implementar RewardsManager
+  - [x] 9.1 Crear clase RewardsManager con sistema de XP y niveles
+  - [x] 9.4 Implementar recompensas de torneos y ligas
+  - [x] 9.7 Implementar sistema de títulos (en AchievementsManager)
+
+- [x] 10. Implementar NotificationManager
+  - [x] 10.1 Crear clase NotificationManager con manejo de notificaciones
+    - Implementar sendNotification con emisión WebSocket
+    - Implementar getNotifications con retención de 24 horas
+    - Implementar markAsRead, markAllAsRead y getUnreadCount
+
+- [ ] 11. Implementar ModerationManager
+  - [ ] 11.1 Crear clase ModerationManager con reportes y bloqueos
+    - Implementar reportPlayer con almacenamiento de evidencia
+    - Implementar blockPlayer, unblockPlayer y getBlockedPlayers
+    - _Requirements: 10.1, 10.2, 10.5_
+  - [ ]* 11.2 Escribir property test para persistencia de reportes
+    - **Property 32: Player Report Persistence**
+    - **Validates: Requirements 10.2**
+  - [ ] 11.3 Implementar baneo automático
+    - Implementar applyTemporaryBan
+    - Auto-banear al recibir 5 reportes en 24 horas
+    - _Requirements: 10.3, 10.4_
+  - [ ]* 11.4 Escribir property test para baneo automático por umbral de reportes
+    - **Property 31: Automatic Ban on Report Threshold**
+    - **Validates: Requirements 10.3**
+  - [ ] 11.5 Implementar rate limiting global y seguridad
+    - Implementar checkRateLimit (100 acciones por minuto)
+    - Implementar validación de entradas contra inyección SQL
+    - Implementar logSuspiciousActivity
+    - _Requirements: 10.6, 10.7, 10.8, 10.9, 10.10_
+  - [ ]* 11.6 Escribir property test para validación de entradas
+    - **Property 33: Input Validation Against Injection**
+    - **Validates: Requirements 10.6**
+  - [ ]* 11.7 Escribir property test para rate limiting global
+    - **Property 34: Global Rate Limiting**
+    - **Validates: Requirements 10.7, 10.8**
+  - [ ]* 11.8 Escribir property test para logging de auditoría
+    - **Property 35: Audit Logging of Suspicious Activity**
+    - **Validates: Requirements 10.10**
+  - [ ]* 11.9 Escribir unit tests para ModerationManager
+    - Probar manejo de reportes
+    - Probar aplicación de baneos
+    - Probar casos borde del rate limit
+    - _Requirements: 10.1-10.10_
+
+- [ ] 12. Checkpoint - Asegurar que todos los tests pasen
+  - Asegurar que todos los tests pasen, consultar al usuario si surgen dudas.
+
+- [x] 13. Implementar eventos WebSocket
+  - [x] 13.1 Añadir eventos WebSocket de torneos (create_tournament, join_tournament, record_match_result)
+  - [x] 13.2 Añadir eventos WebSocket de chat (send_message, get_chat_history, report_message)
+  - [x] 13.3 Añadir eventos WebSocket de amistades (todos los eventos)
+  - [x] 13.4 Añadir eventos WebSocket de notificaciones (get_notifications, mark_read)
+
+- [ ] 14. Implementar capa de persistencia de datos
+  - [ ] 14.1 Crear funciones de acceso a BD para torneos
+    - Crear insertTournament, updateTournament, getTournament
+    - Crear insertTournamentParticipant, getTournamentParticipants
+    - Usar transacciones para actualizaciones del bracket
+    - _Requirements: 9.1, 9.7_
+  - [ ] 14.2 Crear funciones de acceso a BD para ligas
+    - Crear insertSeason, updateSeason, getCurrentSeason
+    - Crear insertSeasonRanking, updateSeasonRanking, getSeasonRankings
+    - _Requirements: 9.6, 9.7_
+  - [ ] 14.3 Crear funciones de acceso a BD para chat
+    - Crear insertChatMessage, getChatMessages
+    - Implementar job de limpieza con retención de 30 días
+    - _Requirements: 9.3, 9.7_
+  - [ ] 14.4 Crear funciones de acceso a BD para amistades
+    - Crear insertFriendship, deleteFriendship, getFriendships
+    - Crear insertFriendRequest, updateFriendRequest, getFriendRequests
+    - Crear insertGameInvitation, updateGameInvitation, getGameInvitations
+    - _Requirements: 9.2, 9.7_
+  - [ ] 14.5 Crear funciones de acceso a BD para estadísticas
+    - Crear insertPlayerStats, updatePlayerStats, getPlayerStats
+    - Crear insertEloHistory, getEloHistory
+    - _Requirements: 9.4, 9.7, 9.9_
+  - [ ] 14.6 Crear funciones de acceso a BD para logros y recompensas
+    - Crear insertAchievement, getAchievements
+    - Crear insertPlayerAchievement, updatePlayerAchievement, getPlayerAchievements
+    - Crear updatePlayerXP, updatePlayerLevel, insertTitle, insertPlayerTitle, getPlayerTitles
+    - _Requirements: 9.5, 9.7_
+  - [ ] 14.7 Crear funciones de acceso a BD para notificaciones y moderación
+    - Crear insertNotification, getNotifications, updateNotification
+    - Crear insertPlayerReport, getPlayerReports
+    - Crear insertPlayerBlock, deletePlayerBlock, getPlayerBlocks
+    - Crear insertTemporaryBan, getActiveBans
+    - Implementar job de limpieza de notificaciones (retención 24 horas)
+    - _Requirements: 9.7_
+  - [ ]* 14.8 Escribir property test para round-trip de persistencia de datos
+    - **Property 30: Data Persistence Round-Trip**
+    - **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6**
+  - [ ]* 14.9 Escribir unit tests para funciones de acceso a BD
+    - Probar manejo de transacciones
+    - Probar recuperación de errores
+    - Probar integridad de datos
+    - _Requirements: 9.1-9.10_
+
+- [ ] 15. Implementar componentes de UI frontend
+  - [ ] 15.1 Crear componentes de UI para torneos
+    - Crear componente TournamentCreation
+    - Crear componente TournamentLobby
+    - Crear componente TournamentBracket con resultados en tiempo real
+    - Conectar eventos WebSocket
+    - _Requirements: 1.1, 1.3, 1.9_
+  - [ ] 15.2 Crear componentes de UI para ligas
+    - Crear componente LeagueLeaderboard (top 100)
+    - Crear componente DivisionBadge
+    - Crear componente SeasonTimer con tiempo restante
+    - Crear componente SeasonHistory
+    - _Requirements: 2.6, 2.7, 2.8, 2.9_
+  - [ ] 15.3 Crear componentes de UI para chat
+    - Crear componente ChatPanel con lista de mensajes (últimos 50)
+    - Crear componente ChatInput con contador de caracteres
+    - Añadir botones de silenciar y reportar
+    - Conectar eventos WebSocket
+    - _Requirements: 3.1, 3.2, 3.5, 3.6, 3.8_
+  - [ ] 15.4 Crear componentes de UI para amistades
+    - Crear componente FriendsList con estado de conexión
+    - Crear componente FriendSearch
+    - Crear componente FriendRequests
+    - Crear componente GameInvitation con opciones aceptar/rechazar
+    - Conectar eventos WebSocket
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 4.8, 4.9_
+  - [ ] 15.5 Crear componentes de UI para estadísticas
+    - Crear componente PlayerStats con todas las métricas
+    - Crear componente EloHistoryChart (últimos 30 días)
+    - Crear componente MatchHistory (últimas 20 partidas)
+    - Crear componente StatsComparison con amigos
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.10_
+  - [ ] 15.6 Crear componentes de UI para logros
+    - Crear componente AchievementsList con categorías
+    - Crear componente AchievementProgress
+    - Crear componente de notificación AchievementUnlock
+    - _Requirements: 6.1, 6.4, 6.5, 6.6, 6.8, 6.10_
+  - [ ] 15.7 Crear componentes de UI para recompensas
+    - Crear componente LevelDisplay con barra de progreso
+    - Crear componente TitleSelector para seleccionar título activo
+    - Crear componente de notificación LevelUp
+    - _Requirements: 7.2, 7.3, 7.6, 7.7, 7.9, 7.10_
+  - [ ] 15.8 Crear componentes de UI para notificaciones
+    - Crear componente NotificationCenter con historial de 24 horas
+    - Crear componente NotificationBadge con contador de no leídas
+    - Crear componente NotificationItem para cada tipo
+    - Conectar eventos WebSocket
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.10_
+
+- [ ] 16. Implementar manejo de errores y jobs en background
+  - [ ] 16.1 Añadir manejo de errores a todos los managers
+    - Implementar formato ErrorResponse con código, mensaje y detalles
+    - Añadir bloques try-catch con códigos de error apropiados
+    - Añadir logging para todos los errores
+    - _Requirements: 9.8_
+  - [ ] 16.2 Implementar degradación graceful
+    - Manejar escenario de chat no disponible
+    - Manejar escenario de servicio de stats caído
+    - Encolar operaciones para reintento cuando los servicios se restauren
+    - _Requirements: 9.8_
+  - [ ] 16.3 Crear jobs en background
+    - Programar job de fin de temporada (cada 30 días)
+    - Programar job de limpieza de mensajes de chat (retención 30 días)
+    - Programar job de limpieza de notificaciones (retención 24 horas)
+    - Programar job de limpieza de invitaciones expiradas
+    - Programar job de registro de historial de Elo (diario)
+    - _Requirements: 2.3, 2.4, 2.5, 5.5, 8.8, 9.3_
+
+- [ ] 17. Integración y conexión de componentes
+  - [ ] 17.1 Conectar todos los managers al servidor WebSocket
+    - Conectar TournamentManager a eventos Socket.io
+    - Conectar ChatManager a eventos Socket.io
+    - Conectar FriendsManager a eventos Socket.io
+    - Conectar NotificationManager a eventos Socket.io
+    - Añadir middleware de autenticación a todos los eventos
+    - _Requirements: 1.1-1.10, 3.1-3.10, 4.1-4.12, 8.1-8.10_
+  - [ ] 17.2 Conectar managers al flujo de fin de partida
+    - Disparar StatsManager al finalizar partida
+    - Disparar AchievementsManager al finalizar partida
+    - Disparar RewardsManager al finalizar partida
+    - Disparar NotificationManager al desbloquear logro y subir de nivel
+    - _Requirements: 5.9, 6.2, 7.1, 7.3, 6.4_
+  - [ ] 17.3 Conectar componentes frontend al backend
+    - Conectar todos los componentes de UI a eventos WebSocket
+    - Añadir estados de carga y manejo de errores en UI
+    - _Requirements: 9.10_
+  - [ ]* 17.4 Escribir integration tests end-to-end
+    - Probar flujo completo de torneo (crear → unirse → jugar → completar)
+    - Probar flujo de solicitud de amistad a partida privada
+    - Probar desbloqueo de logro disparando notificación y XP
+    - Probar fin de temporada disparando reset de Elo y recompensas
+    - Probar mensaje de chat con filtrado y reporte
+    - _Requirements: 1.1-1.10, 2.1-2.9, 3.1-3.10, 4.1-4.12, 5.1-5.10, 6.1-6.10, 7.1-7.10, 8.1-8.10_
+
+- [ ] 18. Checkpoint final - Asegurar que todos los tests pasen
+  - Asegurar que todos los tests pasen, consultar al usuario si surgen dudas.
+
+## Notes
+
+- Las tareas marcadas con `*` son opcionales y pueden omitirse para un MVP más rápido
+- Cada tarea referencia requisitos específicos para trazabilidad
+- Los checkpoints garantizan validación incremental
+- Los property tests validan propiedades de corrección universal del documento de diseño
+- Los unit tests validan ejemplos específicos y casos borde
+- Los integration tests validan flujos end-to-end
+- Todo el código se escribe en TypeScript siguiendo los patrones del codebase existente
+- La librería para property-based testing es fast-check con mínimo 100 iteraciones por test
