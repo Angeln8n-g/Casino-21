@@ -67,8 +67,8 @@ Completa el formulario con estos valores:
 | **Branch** | `main` |
 | **Root Directory** | `server` |
 | **Runtime** | `Node` |
-| **Build Command** | `npm install` |
-| **Start Command** | `npx ts-node src/index.ts` |
+| **Build Command** | `npm install --legacy-peer-deps && npm run build` |
+| **Start Command** | `npm start` |
 | **Instance Type** | `Free` (para pruebas) o `Starter $7/mes` (producción) |
 
 > ⚠️ El plan Free de Render duerme después de 15 min de inactividad. Para producción real usa **Starter** o superior.
