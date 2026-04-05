@@ -67,7 +67,7 @@ Completa el formulario con estos valores:
 | **Branch** | `main` |
 | **Root Directory** | `server` |
 | **Runtime** | `Node` |
-| **Build Command** | `npm install --include=dev && npm run build` |
+| **Build Command** | `npm install && npm run build` |
 | **Start Command** | `npm start` |
 | **Instance Type** | `Free` (para pruebas) o `Starter $7/mes` (producción) |
 
