@@ -82,6 +82,9 @@ io.on('connection', (socket) => {
   connectedPlayers.set(userId, { socketId: socket.id, playerId: userId });
   friendsManager.updateFriendStatus(userId, 'online');
 
+  // Notify this user's friends that they came online
+  notifyFriendPresence(userId, 'online');
+
   // ============================================
   // EVENTOS DE SALA DE JUEGO
   // ============================================
@@ -171,6 +174,7 @@ io.on('connection', (socket) => {
       existingPlayer.socketId = socket.id;
       socket.join(roomId);
       socket.emit('room_joined', { roomId, playerId: existingPlayer.userId });
+      socket.emit('joined_room', { roomId, playerId: existingPlayer.userId }); // alias for mobile client
 
       if (room.state) {
         const safeState = JSON.parse(JSON.stringify(room.state));
@@ -198,6 +202,7 @@ io.on('connection', (socket) => {
     room.players.push({ socketId: socket.id, playerId: userId, name: playerName, userId });
     socket.join(roomId);
     socket.emit('room_joined', { roomId, playerId: userId });
+    socket.emit('joined_room', { roomId, playerId: userId }); // alias for mobile client
     io.to(roomId).emit('player_joined', { players: room.players.map(p => p.name) });
 
     if (room.players.length === room.maxPlayers) {
@@ -504,6 +509,15 @@ io.on('connection', (socket) => {
     socket.emit('friends_list', friends);
   });
 
+  socket.on('get_online_friends', ({ friendIds }: { friendIds: string[] }) => {
+    if (!userId) { socket.emit('error', 'No autenticado'); return; }
+    if (!Array.isArray(friendIds)) { socket.emit('online_friends', { onlineIds: [] }); return; }
+
+    // Return which of the requested friend IDs are currently connected
+    const onlineIds = friendIds.filter(id => connectedPlayers.has(id));
+    socket.emit('online_friends', { onlineIds });
+  });
+
   socket.on('send_game_invitation', async ({ receiverId, tournamentId, roomId }: { receiverId: string, tournamentId?: string, roomId?: string }) => {
     if (!userId) {
       socket.emit('error', 'No autenticado');
@@ -629,6 +643,9 @@ io.on('connection', (socket) => {
     connectedPlayers.delete(userId);
     friendsManager.updateFriendStatus(userId, 'offline');
 
+    // Notify this user's friends that they went offline
+    notifyFriendPresence(userId, 'offline');
+
     const roomId = Object.keys(rooms).find(id => rooms[id]?.players.some(p => p.socketId === socket.id));
     if (roomId) {
       io.to(roomId).emit('player_disconnected', {
@@ -642,6 +659,33 @@ io.on('connection', (socket) => {
 // ============================================
 // HELPERS
 // ============================================
+
+/**
+ * Notify the friends of a user about their online/offline status change.
+ * We look up the user's friendships in memory via connectedPlayers and push
+ * a 'friend_online' or 'friend_offline' event to each connected friend.
+ */
+async function notifyFriendPresence(userId: string, status: 'online' | 'offline') {
+  try {
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('player1_id, player2_id')
+      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`);
+
+    if (!friendships) return;
+
+    const eventName = status === 'online' ? 'friend_online' : 'friend_offline';
+    friendships.forEach((f: any) => {
+      const friendId = f.player1_id === userId ? f.player2_id : f.player1_id;
+      const friendSocket = connectedPlayers.get(friendId);
+      if (friendSocket) {
+        io.to(friendSocket.socketId).emit(eventName, { userId });
+      }
+    });
+  } catch {
+    // Non-critical — presence notifications are best-effort
+  }
+}
 
 function startTurnTimer(roomId: string, room: any) {
   if (room.timerInterval) clearInterval(room.timerInterval);

@@ -1,6 +1,6 @@
 // Feature: react-native-game-migration
 // Requirements: 3.7, 5.7, 7.4, 7.5, 11.4, 11.5, 13.4
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useGame } from '../store/GameContext';
 import { socketService } from '../services/socketService';
+import { authService } from '../services/authService';
 import { Action } from '../../application/action-validator';
 import { Card } from '../../domain/card';
 import { ErrorCode, ScoreBreakdown } from '../../domain/types';
@@ -63,7 +64,52 @@ export function GameScreen(): React.JSX.Element {
   const [selectedBoardCards, setSelectedBoardCards] = useState<Card[]>([]);
   const [showActionModal, setShowActionModal] = useState(false);
 
-  // ── Derived values ──────────────────────────────────────────────────────────
+  // ── Derive localPlayerId from session if not set by socket event ─────────────
+  // This handles the case where the player navigates directly to GameScreen
+  // before the server 'player_id' / 'joined_room' events fire.
+  useEffect(() => {
+    if (localPlayerId || !gameState) return;
+    (async () => {
+      try {
+        const session = await authService.getSession();
+        const userId = session?.user?.id;
+        if (userId) {
+          // Check if the userId matches any player in the current game state
+          const match = gameState.players.find((p) => p.id === userId);
+          if (match) {
+            dispatch({ type: 'SET_LOCAL_PLAYER_ID', payload: userId });
+          }
+        }
+      } catch {
+        // Session not available — localPlayerId will be set via socket event
+      }
+    })();
+  }, [gameState, localPlayerId, dispatch]);
+
+  // ── Listen for socket player_id / joined_room in case GameContext missed it ──
+  useEffect(() => {
+    const handlePlayerId = (data: unknown) => {
+      const payload = data as { playerId?: string } | string;
+      const id = typeof payload === 'string' ? payload : (payload as { playerId?: string })?.playerId;
+      if (id) dispatch({ type: 'SET_LOCAL_PLAYER_ID', payload: id });
+    };
+    const handleJoinedRoom = (data: unknown) => {
+      const payload = data as { playerId?: string; player_id?: string };
+      const id = payload?.playerId ?? payload?.player_id;
+      if (id) dispatch({ type: 'SET_LOCAL_PLAYER_ID', payload: id });
+    };
+    try {
+      socketService.on('player_id', handlePlayerId);
+      socketService.on('joined_room', handleJoinedRoom);
+    } catch { /* socket not connected */ }
+    return () => {
+      try {
+        socketService.off('player_id');
+        socketService.off('joined_room');
+      } catch { /* ignore */ }
+    };
+  }, [dispatch]);
+
 
   const localPlayerIndex = useMemo(() => {
     if (!gameState || !localPlayerId) return -1;

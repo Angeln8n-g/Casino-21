@@ -49,6 +49,30 @@ export function GameProvider({ children }: GameProviderProps): React.JSX.Element
     };
 
     /**
+     * The server emits 'player_id' immediately after a successful join_room
+     * so the client knows which player it is in the game state.
+     */
+    const handlePlayerId = (data: unknown) => {
+      const payload = data as { playerId?: string } | string;
+      const id = typeof payload === 'string' ? payload : payload?.playerId;
+      if (id) {
+        dispatch({ type: 'SET_LOCAL_PLAYER_ID', payload: id });
+      }
+    };
+
+    /**
+     * 'joined_room' is also a good moment to capture our playerId.
+     * Some server implementations send it here instead of / in addition to 'player_id'.
+     */
+    const handleJoinedRoom = (data: unknown) => {
+      const payload = data as { playerId?: string; player_id?: string };
+      const id = payload?.playerId ?? payload?.player_id;
+      if (id) {
+        dispatch({ type: 'SET_LOCAL_PLAYER_ID', payload: id });
+      }
+    };
+
+    /**
      * Register game event listeners on the socket.
      * Called both immediately (if socket is already connected) and
      * whenever the socket (re)connects — so listeners are always active.
@@ -58,19 +82,21 @@ export function GameProvider({ children }: GameProviderProps): React.JSX.Element
         socketService.on('game_state_update', handleGameStateUpdate);
         socketService.on('timer_update', handleTimerUpdate);
         socketService.on('player_disconnected', handlePlayerDisconnected);
+        socketService.on('player_id', handlePlayerId);
+        socketService.on('joined_room', handleJoinedRoom);
       } catch {
-        // Socket not connected yet — will register on next connect event
+        // Socket not connected yet — will register on connect event
       }
     }
 
     // Register immediately in case socket is already connected
     registerListeners();
 
-    // Also re-register whenever the socket connects (handles late connect)
+    // Re-register whenever the socket (re)connects
     try {
       socketService.on('connect', registerListeners);
     } catch {
-      // Socket not available yet — connect listener will be added when socket connects
+      // Socket not available yet
     }
 
     return () => {
@@ -78,6 +104,8 @@ export function GameProvider({ children }: GameProviderProps): React.JSX.Element
         socketService.off('game_state_update');
         socketService.off('timer_update');
         socketService.off('player_disconnected');
+        socketService.off('player_id');
+        socketService.off('joined_room');
         socketService.off('connect');
       } catch {
         // Socket may already be disconnected

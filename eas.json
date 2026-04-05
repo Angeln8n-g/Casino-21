@@ -21,7 +21,12 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "VITE_SUPABASE_URL": "https://yarmgboyjjnodjszwiqi.supabase.co",
+        "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlhcm1nYm95ampub2Rqc3p3aXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMDEwMzgsImV4cCI6MjA5MDU3NzAzOH0.11VscRfNJNpDvoIGyuJLUCGlfi0W3WAz-QJtMiwcp5Q",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://yarmgboyjjnodjszwiqi.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlhcm1nYm95ampub2Rqc3p3aXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMDEwMzgsImV4cCI6MjA5MDU3NzAzOH0.11VscRfNJNpDvoIGyuJLUCGlfi0W3WAz-QJtMiwcp5Q",
+        "EXPO_PUBLIC_SOCKET_URL": "https://casino-21-server.onrender.com"
       },
       "android": {
         "buildType": "apk"
@@ -32,7 +37,12 @@
     },
     "production": {
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "VITE_SUPABASE_URL": "https://yarmgboyjjnodjszwiqi.supabase.co",
+        "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlhcm1nYm95ampub2Rqc3p3aXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMDEwMzgsImV4cCI6MjA5MDU3NzAzOH0.11VscRfNJNpDvoIGyuJLUCGlfi0W3WAz-QJtMiwcp5Q",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://yarmgboyjjnodjszwiqi.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlhcm1nYm95ampub2Rqc3p3aXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMDEwMzgsImV4cCI6MjA5MDU3NzAzOH0.11VscRfNJNpDvoIGyuJLUCGlfi0W3WAz-QJtMiwcp5Q",
+        "EXPO_PUBLIC_SOCKET_URL": "https://casino-21-server.onrender.com"
       },
       "android": {
         "buildType": "app-bundle"

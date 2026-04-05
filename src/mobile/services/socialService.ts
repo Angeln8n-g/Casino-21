@@ -13,6 +13,7 @@ export interface Friend {
 export interface FriendRequest {
   id: string;
   sender_id: string;
+  sender_username: string;
   receiver_id: string;
   status: string;
   created_at: string;
@@ -113,12 +114,29 @@ class SocialServiceImpl {
 
     const { data, error } = await db
       .from('friend_requests')
-      .select('*')
+      .select('id, sender_id, receiver_id, status, created_at')
       .eq('receiver_id', userId)
       .eq('status', 'pending');
 
     if (error) throw new Error(error.message);
-    return data ?? [];
+    if (!data || data.length === 0) return [];
+
+    // Fetch sender usernames from profiles in a single query
+    const senderIds = (data as any[]).map((r: any) => r.sender_id);
+    const { data: profiles } = await db
+      .from('profiles')
+      .select('id, username')
+      .in('id', senderIds);
+
+    const usernameMap: Record<string, string> = {};
+    (profiles ?? []).forEach((p: any) => {
+      usernameMap[p.id] = p.username ?? p.id.slice(0, 8);
+    });
+
+    return (data as any[]).map((r: any) => ({
+      ...r,
+      sender_username: usernameMap[r.sender_id] ?? r.sender_id.slice(0, 8),
+    }));
   }
 
   async sendFriendRequest(userId: string): Promise<void> {
@@ -135,14 +153,42 @@ class SocialServiceImpl {
   }
 
   async acceptFriendRequest(requestId: string): Promise<void> {
+    const userId = await getCurrentUserId();
     const db = getClient();
 
-    const { error } = await db
+    // 1. Fetch the request to get sender_id
+    const { data: request, error: fetchError } = await db
+      .from('friend_requests')
+      .select('id, sender_id, receiver_id')
+      .eq('id', requestId)
+      .single();
+
+    if (fetchError) throw new Error(fetchError.message);
+    if (!request) throw new Error('Solicitud no encontrada');
+
+    // 2. Update request status to accepted
+    const { error: updateError } = await db
       .from('friend_requests')
       .update({ status: 'accepted' })
       .eq('id', requestId);
 
-    if (error) throw new Error(error.message);
+    if (updateError) throw new Error(updateError.message);
+
+    // 3. Create the friendship row (using consistent ordering to avoid duplicates)
+    const player1_id = (request as any).sender_id < userId ? (request as any).sender_id : userId;
+    const player2_id = (request as any).sender_id < userId ? userId : (request as any).sender_id;
+
+    const { error: friendshipError } = await db
+      .from('friendships')
+      .upsert(
+        { player1_id, player2_id },
+        { onConflict: 'player1_id,player2_id', ignoreDuplicates: true },
+      );
+
+    // If upsert is not supported with onConflict (older Supabase), do an insert with ignore
+    if (friendshipError && !friendshipError.message.includes('duplicate')) {
+      throw new Error(friendshipError.message);
+    }
   }
 
   async rejectFriendRequest(requestId: string): Promise<void> {

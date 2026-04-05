@@ -331,9 +331,9 @@ export function SocialScreen(): React.JSX.Element {
               }
               renderItem={({ item }: ListRenderItemInfo<FriendRequest>) => (
                 <View style={styles.requestCard}>
-                  <Avatar name={item.sender_id.slice(0, 6)} size={46} />
+                  <Avatar name={item.sender_username || item.sender_id} size={46} />
                   <View style={styles.requestInfo}>
-                    <Text style={styles.requestName}>{item.sender_id.slice(0, 8)}…</Text>
+                    <Text style={styles.requestName}>{item.sender_username || item.sender_id.slice(0, 8)}</Text>
                     <Text style={styles.requestDate}>{new Date(item.created_at).toLocaleDateString('es-ES')}</Text>
                   </View>
                   <View style={styles.requestActions}>
