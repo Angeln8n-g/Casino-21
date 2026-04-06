@@ -3,19 +3,48 @@ import { useGame } from '../hooks/useGame';
 import { GameMode } from '../../domain/types';
 import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
+import { ProfileHeader } from './ProfileHeader';
+import { SocialPanel } from './SocialPanel';
+import { TournamentList } from './TournamentList';
+import { RecentAchievements } from './RecentAchievements';
+import { QuickStats } from './QuickStats';
+import { useNotifications } from '../hooks/useNotifications';
+import { NotificationToast } from './NotificationToast';
+import { GameInvitationModal } from './GameInvitationModal';
 
 export function MainMenu() {
   const { setGameState, setLocalPlayerId } = useGame();
   const { profile, signOut } = useAuth();
+  const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
   
   const [playerName, setPlayerName] = useState(profile?.username || 'Jugador');
   const [roomIdInput, setRoomIdInput] = useState('');
   const [mode, setMode] = useState<GameMode>('1v1');
+  const [mobileTab, setMobileTab] = useState<'social' | 'lobby' | 'stats'>('lobby');
   
   const [view, setView] = useState<'menu' | 'waiting'>('menu');
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [playersInRoom, setPlayersInRoom] = useState<string[]>([]);
   const [error, setError] = useState('');
+
+  // ─── Desktop Invitation Listener ───
+  useEffect(() => {
+    const handleJoinGameFromInvite = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { roomId } = customEvent.detail;
+      setRoomIdInput(roomId);
+      if (playerName.trim() && roomId) {
+        socketService.connect().then(socket => {
+          socket.emit('join_room', { roomId: roomId.toUpperCase(), playerName });
+        }).catch(err => setError(err.message || 'Error conectando al servidor...'));
+      }
+    };
+
+    window.addEventListener('join_game_from_invite', handleJoinGameFromInvite);
+    return () => {
+      window.removeEventListener('join_game_from_invite', handleJoinGameFromInvite);
+    };
+  }, [playerName]);
 
   useEffect(() => {
     if (profile?.username) {
@@ -23,6 +52,7 @@ export function MainMenu() {
     }
   }, [profile]);
 
+  // ─── Socket Logic (UNTOUCHED) ───
   useEffect(() => {
     let mounted = true;
 
@@ -32,7 +62,6 @@ export function MainMenu() {
         
         if (!mounted) return;
 
-        // Auto-Reconexión: Verificar si había una sala activa
         const savedRoomId = localStorage.getItem('casino21_roomId');
         if (savedRoomId && profile?.username) {
           socket.emit('join_room', { roomId: savedRoomId, playerName: profile.username });
@@ -41,11 +70,8 @@ export function MainMenu() {
         socket.on('room_created', ({ roomId, playerId }) => {
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
-          
-          // Guardar información de la sala en localStorage para permitir reconexión
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
-          
           setPlayersInRoom([playerName]);
           setView('waiting');
           setError('');
@@ -53,12 +79,10 @@ export function MainMenu() {
 
         socket.on('player_joined', ({ players }) => {
           setPlayersInRoom(players);
-          // Cambiar a vista de espera si aún no lo estamos
           setView(prevView => {
             if (prevView === 'menu') {
               const rId = roomIdInput.toUpperCase();
               setCurrentRoomId(rId);
-              // Guardar información de la sala en localStorage para reconexión (el playerId real lo asume el server por el JWT)
               localStorage.setItem('casino21_roomId', rId);
               return 'waiting';
             }
@@ -69,9 +93,6 @@ export function MainMenu() {
         socket.on('error', (msg: string) => {
           setError(msg);
         });
-
-        // Ya no escuchamos game_state_update aquí porque se desmonta al iniciar y perdemos el socket
-        // Ahora se escucha globalmente en useGame.tsx
       } catch (err) {
         console.error("Error conectando socket:", err);
       }
@@ -91,6 +112,7 @@ export function MainMenu() {
       }
     };
   }, [playerName, setGameState, setLocalPlayerId]);
+  // ─── END Socket Logic ───
 
   const handleCreateRoom = async () => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
@@ -110,126 +132,279 @@ export function MainMenu() {
     try {
       const socket = await socketService.connect();
       socket.emit('join_room', { roomId: roomIdInput.toUpperCase(), playerName });
-      // Removemos el setCurrentRoomId de aquí para esperar a que el servidor confirme la unión
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'Error conectando al servidor...');
     }
   };
 
+  // ─── Waiting Room View ───
   if (view === 'waiting') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-transparent">
-        <div className="bg-black/40 backdrop-blur-md p-10 rounded-3xl border border-white/10 max-w-md w-full text-center shadow-2xl">
-          <h2 className="text-3xl font-bold text-yellow-400 mb-2">Sala: {currentRoomId}</h2>
-          <p className="text-gray-300 mb-8">Comparte este código con tus oponentes</p>
+      <div className="flex items-center justify-center min-h-screen p-6 relative z-10">
+        <div className="glass-panel-strong p-8 max-w-md w-full text-center animate-fade-in">
+          {/* Room Code */}
+          <div className="mb-6">
+            <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Código de Sala</p>
+            <h2 className="text-4xl font-display font-black text-casino-gold tracking-widest animate-glow-pulse inline-block">
+              {currentRoomId}
+            </h2>
+          </div>
           
-          <div className="space-y-4 mb-8">
-            <h3 className="font-bold text-white uppercase tracking-widest text-sm">Jugadores ({playersInRoom.length}/{mode === '1v1' ? 2 : 4})</h3>
+          <p className="text-gray-400 text-sm mb-8">Comparte este código con tus oponentes</p>
+          
+          {/* Player Slots */}
+          <div className="space-y-3 mb-8">
+            <h3 className="section-header text-center">
+              Jugadores ({playersInRoom.length}/{mode === '1v1' ? 2 : 4})
+            </h3>
             {playersInRoom.map((p, i) => (
-              <div key={i} className="bg-white/10 py-3 rounded-xl text-lg font-medium border border-white/5">
+              <div key={i} className="bg-casino-emerald/10 border border-casino-emerald/20 py-3 px-4 rounded-xl text-sm font-display font-bold text-casino-emerald flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-casino-emerald animate-pulse" />
                 {p}
               </div>
             ))}
-            {/* Skeletons para jugadores faltantes */}
             {Array.from({ length: (mode === '1v1' ? 2 : 4) - playersInRoom.length }).map((_, i) => (
-              <div key={`empty-${i}`} className="bg-white/5 py-3 rounded-xl text-lg font-medium border border-dashed border-white/20 text-white/30">
+              <div key={`empty-${i}`} className="bg-white/[0.02] py-3 px-4 rounded-xl text-sm font-medium border border-dashed border-white/[0.08] text-gray-600 flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-gray-600/50" />
                 Esperando jugador...
               </div>
             ))}
           </div>
 
-          <div className="animate-pulse text-blue-400 font-bold">
-            El juego iniciará automáticamente...
+          {/* Loading indicator */}
+          <div className="flex items-center justify-center gap-2 text-blue-400">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            <span className="text-sm font-medium ml-2">El juego iniciará automáticamente</span>
           </div>
         </div>
       </div>
     );
   }
 
+  // ─── Main 3-Column Layout ───
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-transparent relative z-10">
-      <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 flex items-center gap-4">
-        <div className="text-right">
-          <div className="text-white font-bold">{profile?.username || 'Jugador'}</div>
-          <div className="text-yellow-400 text-sm font-black">ELO: {profile?.elo || 1000}</div>
+    <div className="flex h-screen overflow-hidden relative z-10">
+      {/* Ambient background orbs */}
+      <div className="ambient-orb ambient-orb-gold w-[400px] h-[400px] -top-40 -left-20" />
+      <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10" />
+      
+      {/* ═════ LEFT COLUMN — Social ═════ */}
+      <aside className="w-72 shrink-0 border-r border-white/[0.04] overflow-y-auto p-4 space-y-4 hidden lg:block">
+        <ProfileHeader 
+          appNotifications={appNotifications}
+          unreadCount={unreadCount}
+          onMarkAllAsRead={markAllAsRead}
+          onMarkAsRead={markNotificationAsRead}
+          onChallengeClick={setActiveGameInvitation}
+        />
+        <SocialPanel />
+      </aside>
+
+      {/* ═════ CENTER COLUMN — Main Lobby ═════ */}
+      <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+        <div className="max-w-xl mx-auto p-6 space-y-6">
+
+          {/* Mobile Tab Content */}
+          <div className="lg:hidden">
+            {mobileTab === 'social' && (
+              <div className="space-y-4 animate-fade-in">
+                <ProfileHeader 
+                  appNotifications={appNotifications}
+                  unreadCount={unreadCount}
+                  onMarkAllAsRead={markAllAsRead}
+                  onMarkAsRead={markNotificationAsRead}
+                  onChallengeClick={setActiveGameInvitation}
+                />
+                <SocialPanel />
+              </div>
+            )}
+            {mobileTab === 'stats' && (
+              <div className="space-y-4 animate-fade-in">
+                <div>
+                  <h3 className="section-header">🏅 Logros Recientes</h3>
+                  <RecentAchievements />
+                </div>
+                <div>
+                  <h3 className="section-header">📊 Estadísticas</h3>
+                  <QuickStats />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Content & Mobile Lobby Tab */}
+          <div className={`space-y-6 lg:block ${mobileTab === 'lobby' ? 'block animate-fade-in' : 'hidden'}`}>
+            {/* Big Logo */}
+          <div className="text-center pt-4 pb-2">
+            <h1 className="text-6xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg animate-fade-in select-none">
+              CASINO 21
+            </h1>
+            <p className="text-gray-500 text-xs mt-2 uppercase tracking-[0.3em] font-bold">
+              Juego de cartas competitivo
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-center text-sm border border-red-500/20 animate-slide-down font-medium">
+              {error}
+            </div>
+          )}
+
+          {/* ─── Create Game Card ─── */}
+          <div className="glass-panel-strong p-6 animate-slide-up">
+            <h2 className="section-header">🎮 Nueva Partida</h2>
+            
+            {/* Player Name */}
+            <div className="mb-5">
+              <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Tu Nombre</label>
+              <input 
+                type="text" 
+                value={playerName} 
+                onChange={e => setPlayerName(e.target.value)} 
+                className="input-casino text-lg" 
+                placeholder="Ej. Jugador 1"
+              />
+            </div>
+
+            {/* Game Mode Toggle */}
+            <div className="mb-6">
+              <label className="block text-[11px] text-gray-500 mb-2 uppercase tracking-widest font-bold">Modo de Juego</label>
+              <div className="flex gap-3">
+                <button 
+                  className={`flex-1 py-3 rounded-xl font-display font-bold text-sm transition-all duration-300 ${
+                    mode === '1v1' 
+                      ? 'bg-casino-gold/15 text-casino-gold border border-casino-gold/30 shadow-gold' 
+                      : 'btn-ghost'
+                  }`}
+                  onClick={() => setMode('1v1')}
+                >
+                  <span className="text-lg block mb-0.5">⚔</span>
+                  1 vs 1
+                </button>
+                <button 
+                  className={`flex-1 py-3 rounded-xl font-display font-bold text-sm transition-all duration-300 ${
+                    mode === '2v2' 
+                      ? 'bg-casino-gold/15 text-casino-gold border border-casino-gold/30 shadow-gold' 
+                      : 'btn-ghost'
+                  }`}
+                  onClick={() => setMode('2v2')}
+                >
+                  <span className="text-lg block mb-0.5">👥</span>
+                  2 vs 2
+                </button>
+              </div>
+            </div>
+
+            {/* Create Room Button */}
+            <button 
+              onClick={handleCreateRoom}
+              className="btn-gold w-full py-4 text-lg font-display font-black tracking-wide"
+            >
+              CREAR SALA
+            </button>
+          </div>
+
+          {/* ─── Join Game Card ─── */}
+          <div className="glass-panel p-6 animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <h2 className="section-header">🚪 Unirse a una Sala</h2>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={roomIdInput} 
+                onChange={e => setRoomIdInput(e.target.value.toUpperCase())} 
+                className="input-casino flex-1 text-center font-mono text-xl uppercase tracking-[0.15em] placeholder:text-sm placeholder:normal-case placeholder:tracking-normal" 
+                placeholder="Código de sala"
+                maxLength={6}
+              />
+              <button 
+                onClick={handleJoinRoom}
+                className="btn-emerald px-6 shrink-0 font-display"
+              >
+                Unirse
+              </button>
+            </div>
+          </div>
+
+          {/* ─── Tournaments Section ─── */}
+          <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <h2 className="section-header">🏆 Torneos Activos</h2>
+            <TournamentList />
+          </div>
+
+          {/* Bottom spacing */}
+          <div className="h-6" />
+          </div>
         </div>
+      </main>
+
+      {/* ═════ RIGHT COLUMN — Quick Stats ═════ */}
+      <aside className="w-72 shrink-0 border-l border-white/[0.04] overflow-y-auto p-4 space-y-4 hidden xl:block">
+        {/* Recent Achievements */}
+        <div>
+          <h3 className="section-header">🏅 Logros Recientes</h3>
+          <RecentAchievements />
+        </div>
+        
+        {/* Quick Stats */}
+        <div>
+          <h3 className="section-header">📊 Estadísticas</h3>
+          <QuickStats />
+        </div>
+      </aside>
+
+      {/* ═════ MOBILE BOTTOM NAVIGATION ═════ */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 glass-panel-strong border-t border-white/[0.05] flex justify-around items-center p-3 px-6 z-50">
         <button 
-          onClick={signOut}
-          className="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors border border-red-500/30"
+          onClick={() => setMobileTab('social')}
+          className={`flex flex-col items-center gap-1 transition-colors relative ${mobileTab === 'social' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
         >
-          Salir
+          <span className="text-xl">👥</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Social</span>
+          {totalPending > 0 && (
+            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">
+              {totalPending}
+            </span>
+          )}
+        </button>
+        <button 
+          onClick={() => setMobileTab('lobby')}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'lobby' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          <span className="text-xl">🎲</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Lobby</span>
+        </button>
+        <button 
+          onClick={() => setMobileTab('stats')}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'stats' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          <span className="text-xl">📊</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Stats</span>
         </button>
       </div>
 
-      <div className="bg-black/40 backdrop-blur-md p-10 rounded-3xl border border-white/10 max-w-md w-full shadow-2xl">
-        <h1 className="text-6xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 mb-10 drop-shadow-lg">
-          CASINO 21
-        </h1>
-        
-        {error && <div className="bg-red-500/20 text-red-300 p-3 rounded-lg text-center mb-6 border border-red-500/50">{error}</div>}
+      {/* Global Toast Notification */}
+      {toast && (
+        <NotificationToast 
+          toast={toast}
+          onDismiss={dismissToast}
+          onGameInviteAccept={(invitationId, roomId) => handleGameInvite(invitationId, roomId, 'accepted')}
+          onGameInviteReject={(invitationId) => handleGameInvite(invitationId, null, 'rejected')}
+        />
+      )}
 
-        <div className="mb-6">
-          <label className="block text-sm text-gray-400 mb-2 uppercase tracking-widest font-bold">Tu Nombre</label>
-          <input 
-            type="text" 
-            value={playerName} 
-            onChange={e => setPlayerName(e.target.value)} 
-            className="w-full bg-black/50 border border-white/20 rounded-xl p-4 text-white text-lg focus:outline-none focus:border-yellow-500 transition-colors" 
-            placeholder="Ej. Jugador 1"
-          />
-        </div>
-
-        <div className="mb-8">
-          <label className="block text-sm text-gray-400 mb-2 uppercase tracking-widest font-bold">Modo de Juego</label>
-          <div className="flex gap-4">
-            <button 
-              className={`flex-1 py-3 rounded-xl font-bold transition-all ${mode === '1v1' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`}
-              onClick={() => setMode('1v1')}
-            >
-              1 vs 1
-            </button>
-            <button 
-              className={`flex-1 py-3 rounded-xl font-bold transition-all ${mode === '2v2' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`}
-              onClick={() => setMode('2v2')}
-            >
-              2 vs 2
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <button 
-            onClick={handleCreateRoom}
-            className="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-black text-lg py-4 rounded-xl shadow-lg transition transform hover:scale-105"
-          >
-            CREAR SALA
-          </button>
-          
-          <div className="relative flex py-4 items-center">
-            <div className="flex-grow border-t border-white/10"></div>
-            <span className="flex-shrink-0 mx-4 text-gray-500 text-sm font-bold">O ÚNETE A UNA</span>
-            <div className="flex-grow border-t border-white/10"></div>
-          </div>
-
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              value={roomIdInput} 
-              onChange={e => setRoomIdInput(e.target.value.toUpperCase())} 
-              className="flex-grow bg-black/50 border border-white/20 rounded-xl p-4 text-white text-center font-mono text-xl focus:outline-none focus:border-blue-500 transition-colors uppercase placeholder:normal-case placeholder:text-sm" 
-              placeholder="Código"
-              maxLength={6}
-            />
-            <button 
-              onClick={handleJoinRoom}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 rounded-xl shadow-lg transition"
-            >
-              Unirse
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Persistence Game Challenge Modal */}
+      {activeGameInvitation && (
+        <GameInvitationModal 
+          invite={activeGameInvitation}
+          onAccept={(invId, rId) => handleGameInvite(invId, rId, 'accepted')}
+          onReject={(invId) => handleGameInvite(invId, null, 'rejected')}
+          onClose={() => setActiveGameInvitation(null)}
+        />
+      )}
     </div>
   );
 }

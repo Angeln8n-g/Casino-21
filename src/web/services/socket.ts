@@ -5,6 +5,8 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
 
 class SocketService {
   private socket: Socket | null = null;
+  /** Tracks the current room the user is in (for presence) */
+  public currentRoomId: string | null = null;
 
   async connect() {
     if (!this.socket || !this.socket.connected) {
@@ -31,6 +33,28 @@ class SocketService {
 
         this.socket.on('connect', () => {
           resolve(this.socket!);
+        });
+
+        // Track room changes for presence
+        this.socket.on('room_joined', ({ roomId }: { roomId?: string; playerId?: string }) => {
+          if (roomId) {
+            this.currentRoomId = roomId;
+            window.dispatchEvent(new CustomEvent('room_joined_event', { detail: { roomId } }));
+          }
+        });
+        this.socket.on('room_created', ({ roomId }: { roomId?: string }) => {
+          if (roomId) {
+            this.currentRoomId = roomId;
+            window.dispatchEvent(new CustomEvent('room_joined_event', { detail: { roomId } }));
+          }
+        });
+        this.socket.on('game_over', () => {
+          this.currentRoomId = null;
+          window.dispatchEvent(new CustomEvent('room_left_event'));
+        });
+        this.socket.on('disconnect', () => {
+          this.currentRoomId = null;
+          window.dispatchEvent(new CustomEvent('room_left_event'));
         });
 
         this.socket.on('connect_error', (err) => {

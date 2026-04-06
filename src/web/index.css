@@ -3,18 +3,160 @@
 @tailwind utilities;
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-[#0f172a] text-white min-h-screen m-0 p-0 font-sans overflow-hidden;
+    @apply bg-casino-bg text-white min-h-screen m-0 p-0 font-sans overflow-hidden;
+    background: radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(251, 191, 36, 0.2);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 191, 36, 0.4);
   }
 }
 
-/* Custom Animations */
+@layer components {
+  /* ─── Glass Panel ─── */
+  .glass-panel {
+    @apply bg-casino-surface/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl shadow-card;
+    background: linear-gradient(
+      135deg,
+      rgba(30, 41, 59, 0.5) 0%,
+      rgba(30, 41, 59, 0.25) 100%
+    );
+  }
+
+  .glass-panel-strong {
+    @apply bg-casino-surface/60 backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-card;
+    background: linear-gradient(
+      135deg,
+      rgba(30, 41, 59, 0.7) 0%,
+      rgba(30, 41, 59, 0.4) 100%
+    );
+  }
+
+  /* ─── Gold Button ─── */
+  .btn-gold {
+    @apply relative overflow-hidden font-display font-bold text-casino-bg py-3 px-6 rounded-xl 
+           transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98];
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .btn-gold:hover {
+    box-shadow: 0 6px 25px rgba(251, 191, 36, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .btn-gold::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: btnShimmer 3s infinite;
+  }
+
+  /* ─── Emerald Button ─── */
+  .btn-emerald {
+    @apply font-display font-bold text-white py-3 px-6 rounded-xl 
+           transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98]
+           border border-casino-emerald/30;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+  }
+  .btn-emerald:hover {
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.35);
+  }
+
+  /* ─── Ghost Button ─── */
+  .btn-ghost {
+    @apply font-display font-semibold text-gray-300 py-2.5 px-5 rounded-xl 
+           bg-white/[0.04] border border-white/[0.06]
+           transition-all duration-300 hover:bg-white/[0.08] hover:border-white/[0.12]
+           hover:text-white;
+  }
+
+  /* ─── Input Field ─── */
+  .input-casino {
+    @apply w-full bg-black/40 border border-white/[0.08] rounded-xl px-4 py-3 
+           text-white placeholder:text-gray-500 font-sans
+           focus:outline-none focus:border-casino-gold/40 focus:ring-1 focus:ring-casino-gold/20
+           transition-all duration-300;
+  }
+
+  /* ─── Stat Badge ─── */
+  .stat-badge {
+    @apply flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg border border-white/[0.06]
+           text-sm font-medium;
+  }
+
+  /* ─── Division Badge ─── */
+  .division-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider;
+  }
+  .division-bronze {
+    @apply bg-amber-900/30 text-amber-400 border border-amber-700/30;
+  }
+  .division-silver {
+    @apply bg-gray-500/20 text-gray-300 border border-gray-500/30;
+  }
+  .division-gold {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+  .division-platinum {
+    @apply bg-cyan-500/20 text-cyan-300 border border-cyan-500/30;
+  }
+  .division-diamond {
+    @apply bg-violet-500/20 text-violet-300 border border-violet-500/30;
+  }
+
+  /* ─── Section Header ─── */
+  .section-header {
+    @apply text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500 mb-3 px-1;
+  }
+
+  /* ─── Tournament Card ─── */
+  .tournament-card {
+    @apply glass-panel p-4 transition-all duration-300 hover:border-casino-gold/20 cursor-pointer;
+  }
+  .tournament-card:hover {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.08);
+  }
+
+  /* ─── Achievement Pill ─── */
+  .achievement-pill {
+    @apply flex items-center gap-3 bg-casino-emerald/10 border border-casino-emerald/20 
+           rounded-xl px-4 py-3 transition-all duration-500;
+  }
+}
+
+/* ─── Animations ─── */
 @keyframes deal-card {
   0% {
     transform: translate(0, -300px) scale(0) rotate(180deg);
     opacity: 0;
   }
-
   100% {
     transform: translate(0, 0) scale(1) rotate(0deg);
     opacity: 1;
@@ -25,13 +167,59 @@
   animation: deal-card 0.5s ease-out forwards;
 }
 
-/* Strobe light effect */
 @keyframes strobe {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  50% { opacity: 0.85; }
   75% { opacity: 0.95; }
 }
 
 .animate-strobe {
   animation: strobe 4s infinite alternate;
+}
+
+@keyframes btnShimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+@keyframes carousel-slide {
+  0% { transform: translateX(0); opacity: 1; }
+  25% { transform: translateX(0); opacity: 1; }
+  33% { transform: translateX(-100%); opacity: 0; }
+  100% { transform: translateX(-100%); opacity: 0; }
+}
+
+/* ─── Noise texture overlay (applied to root wrapper) ─── */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* ─── XP Progress Bar ─── */
+.xp-bar {
+  @apply w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden;
+}
+.xp-bar-fill {
+  @apply h-full rounded-full transition-all duration-1000 ease-out;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+/* ─── Ambient orb effects ─── */
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.08;
+  pointer-events: none;
+  animation: float 8s ease-in-out infinite;
+}
+.ambient-orb-gold {
+  background: #fbbf24;
+}
+.ambient-orb-emerald {
+  background: #10b981;
 }
