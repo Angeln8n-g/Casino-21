@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
@@ -44,24 +44,29 @@ export function SocialPanel() {
   }, [user]);
 
   // ── Fetch accepted friends ──────────────────────────────────
-  const fetchFriends = async () => {
+  const fetchFriends = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
     try {
       const { data: friendships, error } = await supabase
         .from('friend_requests')
         .select('sender_id, receiver_id')
         .eq('status', 'accepted')
-        .or(`sender_id.eq.${user!.id},receiver_id.eq.${user!.id}`)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .limit(30);
 
       if (error || !friendships) { setLoading(false); return; }
 
       const friendIds = [
         ...new Set(
-          friendships.map(f => f.sender_id === user!.id ? f.receiver_id : f.sender_id)
+          friendships.map(f => f.sender_id === user.id ? f.receiver_id : f.sender_id)
         )
       ];
 
-      if (friendIds.length === 0) { setLoading(false); return; }
+      if (friendIds.length === 0) { 
+        setFriends([]);
+        setLoading(false); 
+        return; 
+      }
 
       const { data: profiles } = await supabase
         .from('profiles')
@@ -74,18 +79,22 @@ export function SocialPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // ── Fetch pending INCOMING requests ─────────────────────────
-  const fetchPendingIncoming = async () => {
+  const fetchPendingIncoming = useCallback(async () => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from('friend_requests')
         .select('id, sender_id')
-        .eq('receiver_id', user!.id)
+        .eq('receiver_id', user.id)
         .eq('status', 'pending');
 
-      if (error || !data || data.length === 0) return;
+      if (error || !data || data.length === 0) {
+        setPendingIncoming([]);
+        return;
+      }
 
       const senderIds = data.map(r => r.sender_id);
       const { data: profiles } = await supabase
@@ -116,11 +125,13 @@ export function SocialPanel() {
     } catch (err) {
       console.error('Error fetching pending requests:', err);
     }
-  };
+  }, [user]);
 
-  // ── Real-time: new incoming friend requests ─────────────────
+
+  // ── Real-time: new and updated friend requests ─────────────────
   useEffect(() => {
     if (!user) return;
+    
     const channel = supabase
       .channel('social_panel_friend_requests')
       .on(
@@ -133,22 +144,62 @@ export function SocialPanel() {
             .eq('id', payload.new.sender_id)
             .single();
           if (profile) {
-            setPendingIncoming(prev => [...prev, {
-              requestId: payload.new.id,
-              senderId: payload.new.sender_id,
-              username: profile.username,
-              elo: profile.elo,
-              level: profile.level,
-              wins: profile.wins,
-              losses: profile.losses,
-              xp: profile.xp,
-            }]);
+            setPendingIncoming(prev => {
+              if (prev.some(r => r.requestId === payload.new.id)) return prev;
+              return [...prev, {
+                requestId: payload.new.id,
+                senderId: payload.new.sender_id,
+                username: profile.username,
+                elo: profile.elo,
+                level: profile.level,
+                wins: profile.wins,
+                losses: profile.losses,
+                xp: profile.xp,
+              }];
+            });
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'friend_requests' },
+        (payload) => {
+          // If a request we sent was accepted, or a request we received was updated
+          if (payload.new.status === 'accepted') {
+            if (payload.new.sender_id === user.id || payload.new.receiver_id === user.id) {
+              fetchFriends();
+              setPendingIncoming(prev => prev.filter(r => r.requestId !== payload.new.id));
+            }
+          } else if (payload.new.status === 'rejected') {
+            if (payload.new.receiver_id === user.id) {
+              setPendingIncoming(prev => prev.filter(r => r.requestId !== payload.new.id));
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'friend_requests' },
+        (payload) => {
+          setPendingIncoming(prev => prev.filter(r => r.requestId !== payload.old.id));
+        }
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
+    
+    // Listen for custom events from child components (like FriendSearch)
+    const handleFriendshipChange = () => {
+      fetchFriends();
+      fetchPendingIncoming();
+    };
+    window.addEventListener('friendships_changed', handleFriendshipChange);
+
+    return () => { 
+      supabase.removeChannel(channel);
+      window.removeEventListener('friendships_changed', handleFriendshipChange);
+    };
+  }, [user, fetchFriends, fetchPendingIncoming]);
+
+
 
   // ── Real-time presence with room_id ──────────────────────────
   useEffect(() => {

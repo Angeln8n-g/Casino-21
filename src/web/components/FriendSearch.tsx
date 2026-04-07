@@ -112,62 +112,57 @@ export function FriendSearch() {
     setActionFeedback(null);
 
     try {
-      const currentStatus = relationships[receiverId];
+      // 1. Fresh thorough check (to avoid race conditions or stale state)
+      const { data: existing, error: fetchError } = await supabase
+        .from('friend_requests')
+        .select('id, sender_id, receiver_id, status')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
+        .maybeSingle();
 
-      // Guard: already friends
-      if (currentStatus === 'accepted') {
-        setActionFeedback({ id: receiverId, message: '¡Ya son amigos!', type: 'error' });
-        setSendingRequest(false);
-        return;
+      if (fetchError) {
+        console.error('Error checking existing relationship:', fetchError);
       }
 
-      // Guard: already sent
-      if (currentStatus === 'pending_sent') {
-        setActionFeedback({ id: receiverId, message: 'Solicitud ya enviada', type: 'error' });
-        setSendingRequest(false);
-        return;
-      }
-
-      // Guard: they already sent us a request — auto-accept it
-      if (currentStatus === 'pending_received') {
-        // Find the existing request and accept it
-        const { data: existingReq } = await supabase
-          .from('friend_requests')
-          .select('id')
-          .eq('sender_id', receiverId)
-          .eq('receiver_id', user.id)
-          .eq('status', 'pending')
-          .single();
-
-        if (existingReq) {
-          const { error: updateError } = await supabase
-            .from('friend_requests')
-            .update({ status: 'accepted', responded_at: new Date().toISOString() })
-            .eq('id', existingReq.id);
-
-          if (updateError) {
-            console.error('Error accepting existing request:', updateError);
-            setActionFeedback({ id: receiverId, message: 'Error al aceptar', type: 'error' });
+      if (existing) {
+        if (existing.status === 'accepted') {
+          setRelationships(prev => ({ ...prev, [receiverId]: 'accepted' }));
+          setActionFeedback({ id: receiverId, message: '¡Ya son amigos!', type: 'error' });
+          setSendingRequest(false);
+          return;
+        }
+        
+        if (existing.status === 'pending') {
+          if (existing.sender_id === user.id) {
+            setRelationships(prev => ({ ...prev, [receiverId]: 'pending_sent' }));
+            setActionFeedback({ id: receiverId, message: 'Solicitud ya enviada', type: 'error' });
+            setSendingRequest(false);
+            return;
           } else {
-            setRelationships(prev => ({ ...prev, [receiverId]: 'accepted' }));
-            setActionFeedback({ id: receiverId, message: '¡Ahora son amigos!', type: 'success' });
+            // They sent us a request - auto-accept it!
+            const { error: updateError } = await supabase
+              .from('friend_requests')
+              .update({ status: 'accepted', responded_at: new Date().toISOString() })
+              .eq('id', existing.id);
+
+            if (updateError) {
+              setActionFeedback({ id: receiverId, message: 'Error al aceptar solicitud', type: 'error' });
+            } else {
+              setRelationships(prev => ({ ...prev, [receiverId]: 'accepted' }));
+              setActionFeedback({ id: receiverId, message: '¡Ahora son amigos!', type: 'success' });
+            }
+            setSendingRequest(false);
+            setSelectedPlayer(null);
+            return;
           }
         }
-        setSendingRequest(false);
-        setSelectedPlayer(null);
-        return;
+        
+        // If rejected, allow a fresh insert (the existing logic was deleting, but we can just update or insert)
+        if (existing.status === 'rejected') {
+          await supabase.from('friend_requests').delete().eq('id', existing.id);
+        }
       }
 
-      // If previously rejected, delete the old row first so we can insert fresh
-      if (currentStatus === 'rejected') {
-        await supabase
-          .from('friend_requests')
-          .delete()
-          .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
-          .eq('status', 'rejected');
-      }
-
-      // Insert the new friend request
+      // 2. Insert the new friend request
       const { error: insertError } = await supabase
         .from('friend_requests')
         .insert({
@@ -177,49 +172,53 @@ export function FriendSearch() {
         });
 
       if (insertError) {
-        // Handle unique constraint violation 
-        if (insertError.code === '23505') {
+        if (insertError.code === '23505') { // Unique constraint
           setActionFeedback({ id: receiverId, message: 'Solicitud ya existe', type: 'error' });
           setRelationships(prev => ({ ...prev, [receiverId]: 'pending_sent' }));
         } else {
-          console.error('Insert error:', insertError);
           setActionFeedback({ id: receiverId, message: `Error: ${insertError.message}`, type: 'error' });
         }
         setSendingRequest(false);
-        setSelectedPlayer(null);
         return;
       }
 
-      // Successfully inserted — Now create notification for receiver
-      // Uses the REAL DB schema: player_id, type, content
-      const senderProfile = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
+      // 3. Create notification for receiver
+      try {
+        const { data: senderProfile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .single();
 
-      const senderName = senderProfile.data?.username || 'Un jugador';
+        const senderName = senderProfile?.username || 'Un jugador';
 
-      await supabase
-        .from('notifications')
-        .insert({
-          player_id: receiverId,
-          type: 'friend_request',
-          content: `${senderName} te ha enviado una solicitud de amistad.`,
-          is_read: false,
-          metadata: { sender_id: user.id, sender_username: senderName }
-        });
+        await supabase
+          .from('notifications')
+          .insert({
+            player_id: receiverId,
+            type: 'friend_request',
+            content: `${senderName} te ha enviado una solicitud de amistad.`,
+            is_read: false,
+            metadata: { sender_id: user.id, sender_username: senderName }
+          });
+      } catch (notifErr) {
+        console.warn('Failed to send notification:', notifErr);
+      }
 
       setRelationships(prev => ({ ...prev, [receiverId]: 'pending_sent' }));
       setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
-      setSelectedPlayer(null);
+      
+      // Auto-refresh the parent panel if we have a listener (dispatch custom event)
+      window.dispatchEvent(new CustomEvent('friendships_changed'));
+
+      // Close modal on success
+      setTimeout(() => setSelectedPlayer(null), 1500);
 
     } catch (err) {
       console.error('Send request error:', err);
       setActionFeedback({ id: receiverId, message: 'Error inesperado', type: 'error' });
     } finally {
       setSendingRequest(false);
-      // Auto-clear feedback
       setTimeout(() => setActionFeedback(null), 3000);
     }
   };
@@ -358,14 +357,14 @@ function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose
     switch (relationshipStatus) {
       case 'accepted':
         return (
-          <button disabled className="w-full py-3 rounded-xl bg-casino-emerald/20 text-casino-emerald font-bold text-sm border border-casino-emerald/30 cursor-not-allowed">
-            ✓ Ya son Amigos
+          <button disabled className="w-full py-3.5 rounded-xl bg-casino-emerald/20 text-casino-emerald font-bold text-sm border border-casino-emerald/30 cursor-default flex items-center justify-center gap-2">
+            <span className="text-xl">✓</span> Ya son Amigos
           </button>
         );
       case 'pending_sent':
         return (
-          <button disabled className="w-full py-3 rounded-xl bg-casino-gold/20 text-casino-gold font-bold text-sm border border-casino-gold/30 cursor-not-allowed">
-            ⏳ Solicitud Enviada
+          <button disabled className="w-full py-3.5 rounded-xl bg-casino-gold/20 text-casino-gold font-bold text-sm border border-casino-gold/30 cursor-default flex items-center justify-center gap-2">
+            <span className="animate-pulse">⏳</span> Solicitud Enviada
           </button>
         );
       case 'pending_received':
@@ -373,9 +372,9 @@ function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose
           <button
             onClick={onSendRequest}
             disabled={sending}
-            className="w-full py-3 rounded-xl bg-casino-emerald text-white font-bold text-sm hover:bg-casino-emerald/90 transition-all active:scale-[0.98] disabled:opacity-50 animate-pulse"
+            className="w-full py-3.5 rounded-xl bg-casino-emerald text-white font-black text-sm hover:bg-casino-emerald/90 transition-all active:scale-[0.98] disabled:opacity-50 animate-pulse shadow-lg shadow-casino-emerald/20 flex items-center justify-center gap-2"
           >
-            {sending ? 'Aceptando...' : '🤝 Aceptar Solicitud'}
+            {sending ? 'Aceptando...' : '🤝 Aceptar Solicitud de Amistad'}
           </button>
         );
       default: // 'none' or 'rejected'
@@ -383,106 +382,124 @@ function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose
           <button
             onClick={onSendRequest}
             disabled={sending}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-casino-gold/20"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-casino-gold via-yellow-400 to-yellow-600 text-black font-black text-sm hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 shadow-xl shadow-casino-gold/30 flex items-center justify-center gap-2"
           >
             {sending ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              <>
+                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                 Enviando...
-              </span>
-            ) : '✉️ Enviar Solicitud de Amistad'}
+              </>
+            ) : (
+              <>
+                <span className="text-lg">✉️</span> Enviar Solicitud
+              </>
+            )}
           </button>
         );
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 
-      {/* Modal */}
+      {/* Modal Container */}
       <div
-        className="relative w-full max-w-sm rounded-2xl border border-white/[0.08] overflow-hidden animate-fade-in"
+        className="relative w-full max-w-sm rounded-[2rem] border border-white/[0.1] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(2,6,23,0.98) 100%)',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7), 0 0 40px rgba(251,191,36,0.08)',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8), 0 0 80px rgba(251,191,36,0.1)',
         }}
       >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-10"
+          className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 group"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
-        {/* Header Banner */}
-        <div className="h-20 bg-gradient-to-r from-casino-gold/20 via-casino-emerald/10 to-casino-gold/20 relative">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCAwaDQwdjQwSDB6IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTIwIDBMMjAgNDAiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIvPjxwYXRoIGQ9Ik0wIDIwTDQwIDIwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiLz48L3N2Zz4=')] opacity-50" />
+        {/* Banner with pattern */}
+        <div className="h-28 bg-gradient-to-br from-casino-gold/30 via-transparent to-casino-emerald/20 relative">
+          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")` }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-casino-bg to-transparent" />
         </div>
 
-        {/* Avatar */}
-        <div className="flex justify-center -mt-10 relative z-10">
-          <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl ${
-            player.elo >= 1500 ? 'text-casino-gold' : 'text-gray-300'
-          }`}>
-            {player.username.charAt(0).toUpperCase()}
+        {/* Content */}
+        <div className="px-8 pb-8 relative">
+          {/* Avatar Area */}
+          <div className="flex justify-center -mt-14 relative z-10 mb-4">
+            <div className="relative">
+              <div className={`w-28 h-28 rounded-3xl bg-casino-surface-light flex items-center justify-center text-4xl font-black border-4 border-casino-bg shadow-2xl transform hover:rotate-3 transition-transform duration-500 ${
+                player.elo >= 1500 ? 'text-casino-gold' : 'text-gray-300'
+              }`}>
+                {player.username.charAt(0).toUpperCase()}
+              </div>
+              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-xl border-4 border-casino-bg flex items-center justify-center shadow-lg ${div.cssClass}`}>
+                <span className="text-sm">{div.icon}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Player Info */}
-        <div className="px-6 pt-3 pb-5 space-y-4">
-          {/* Name & Division */}
-          <div className="text-center">
-            <h3 className={`text-lg font-bold ${player.elo >= 1500 ? 'text-casino-gold' : 'text-white'}`}>
+          {/* Info Section */}
+          <div className="text-center mb-6">
+            <h3 className={`text-2xl font-black tracking-tight ${player.elo >= 1500 ? 'text-casino-gold' : 'text-white'}`}>
               {player.username}
             </h3>
-            <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full text-xs font-semibold ${div.cssClass}`}>
-              {div.icon} {div.name}
+            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
+              {div.name} Division
+            </p>
+          </div>
+
+          {/* Core Stats Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="glass-panel-light p-4 text-center rounded-2xl border border-white/5 bg-white/[0.02]">
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Rango ELO</p>
+              <p className="text-xl font-black text-white">{player.elo}</p>
+            </div>
+            <div className="glass-panel-light p-4 text-center rounded-2xl border border-white/5 bg-white/[0.02]">
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Nivel Actual</p>
+              <p className="text-xl font-black text-white">{player.level}</p>
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-2">
-            <StatBox label="Nivel" value={`${player.level}`} icon="⭐" />
-            <StatBox label="ELO" value={`${player.elo}`} icon="🏆" />
-            <StatBox label="XP" value={player.xp >= 1000 ? `${(player.xp / 1000).toFixed(1)}k` : `${player.xp}`} icon="✨" />
-          </div>
-
-          {/* W/L Record */}
-          <div className="glass-panel px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400 text-xs">Récord (W/L)</span>
-              <span className="text-white text-sm font-bold">{player.wins}W / {player.losses}L</span>
+          {/* Record Section */}
+          <div className="glass-panel p-5 rounded-2xl border border-white/[0.08] mb-8 bg-white/[0.01]">
+            <div className="flex items-center justify-between mb-3 text-xs font-bold uppercase tracking-wider">
+              <span className="text-gray-500">Historial de Combate</span>
+              <span className="text-casino-gold">{player.wins}W — {player.losses}L</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-casino-emerald to-emerald-400 transition-all"
-                  style={{ width: `${winRate}%` }}
-                />
-              </div>
-              <span className={`text-xs font-bold ${winRate >= 50 ? 'text-casino-emerald' : 'text-red-400'}`}>
-                {winRate}%
+            
+            <div className="h-3 rounded-full bg-white/5 overflow-hidden flex mb-2 border border-white/5">
+              <div
+                className="h-full bg-gradient-to-r from-casino-emerald to-emerald-400 transition-all duration-1000"
+                style={{ width: `${winRate}%` }}
+              />
+              <div className="h-full flex-1 bg-red-500/30" />
+            </div>
+
+            <div className="flex justify-between items-center mt-3">
+              <span className="text-[10px] text-gray-600 font-medium">RENDIMIENTO GENERAL</span>
+              <span className={`text-sm font-black ${winRate >= 50 ? 'text-casino-emerald' : 'text-red-400'}`}>
+                {winRate}% WR
               </span>
             </div>
           </div>
 
-          {/* Action Button */}
-          <div className="space-y-2">
+          {/* Action area */}
+          <div className="space-y-4">
             {getActionButton()}
 
-            {/* Feedback */}
             {feedback && (
-              <p className={`text-center text-xs font-medium animate-fade-in ${
-                feedback.type === 'success' ? 'text-casino-emerald' : 'text-red-400'
+              <div className={`p-3 rounded-xl text-center text-xs font-bold animate-slide-up border ${
+                feedback.type === 'success' ? 'bg-casino-emerald/10 text-casino-emerald border-casino-emerald/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
               }`}>
                 {feedback.message}
-              </p>
+              </div>
             )}
           </div>
         </div>
