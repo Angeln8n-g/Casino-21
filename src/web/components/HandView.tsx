@@ -19,20 +19,20 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
   const hand = player.hand || [];
 
   return (
-    <div className={`p-6 rounded-3xl transition-colors backdrop-blur-md border flex gap-8 items-center ${isCurrentTurn ? 'bg-blue-900/30 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-black/20 border-white/10'}`}>
+    <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl transition-colors backdrop-blur-md border flex flex-col md:flex-row gap-4 md:gap-8 items-center w-full max-w-full ${isCurrentTurn ? 'bg-blue-900/30 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-black/20 border-white/10'}`}>
       
-      <div className="flex-grow">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-bold flex items-center gap-3 drop-shadow-md">
+      <div className="flex-grow w-full">
+        <div className="flex justify-between items-center mb-2 md:mb-4">
+          <h3 className="text-base md:text-2xl font-bold flex items-center gap-2 md:gap-3 drop-shadow-md">
             {player.name}
-            {isCurrentTurn && <span className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-xs px-3 py-1 rounded-full animate-pulse shadow-lg">Tu Turno</span>}
+            {isCurrentTurn && <span className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-[9px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 rounded-full animate-pulse shadow-lg">Tu Turno</span>}
           </h3>
-          <div className="text-sm text-gray-200 bg-black/30 px-4 py-2 rounded-full border border-white/10">
+          <div className="text-[10px] md:text-sm text-gray-200 bg-black/30 px-2 md:px-4 py-1 md:py-2 rounded-full border border-white/10">
             Virados: <span className="font-bold text-yellow-400">{player.virados}</span>
           </div>
         </div>
         
-        <div className="flex justify-center gap-4 h-40">
+        <div className="flex justify-center gap-2 md:gap-4 h-[24vw] min-h-[4.5rem] max-h-[9rem] md:h-40 w-full overflow-visible">
           {hand.map((card, index) => {
             if (!card) return null;
             return (
@@ -51,13 +51,16 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
             );
           })}
           {hand.length === 0 && (
-            <div className="h-full flex items-center justify-center text-gray-400 italic">
+            <div className="h-full flex items-center justify-center text-xs md:text-sm text-gray-400 italic">
               Esperando cartas...
             </div>
           )}
         </div>
       </div>
 
+      <div className="flex md:hidden w-full border-t border-white/10 pt-4 justify-center">
+        <CollectedCardsDeck player={player} />
+      </div>
       <div className="hidden md:flex flex-col items-center justify-center border-l border-white/10 pl-8">
         <CollectedCardsDeck player={player} />
       </div>

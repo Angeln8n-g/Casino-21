@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
@@ -27,9 +27,15 @@ export function GameScreen() {
   } | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 8,
       },
     })
   );
@@ -331,56 +337,65 @@ export function GameScreen() {
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
         <div className="flex flex-col h-full max-w-6xl mx-auto p-4 gap-4 relative z-10 pointer-events-auto">
           {/* Top Header */}
-        <header className="flex flex-col gap-4 bg-black/30 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-2xl relative">
+        <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
           
           {/* Disconnection Warning */}
           {disconnectionMessage && (
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white p-6 rounded-2xl shadow-2xl border border-red-500/50 z-50 flex flex-col items-center gap-4 animate-in slide-in-from-top-4">
-              <div className="flex items-center gap-3 text-red-400 font-bold text-lg">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white p-4 md:p-6 rounded-2xl shadow-2xl border border-red-500/50 z-50 flex flex-col items-center gap-3 md:gap-4 animate-in slide-in-from-top-4 w-[90%] max-w-sm text-center">
+              <div className="flex items-center gap-2 text-red-400 font-bold text-base md:text-lg">
                 <span className="animate-pulse">⚠️</span>
                 {disconnectionMessage}
               </div>
-              <div className="text-sm text-gray-400">
-                Código de la sala: <span className="font-mono text-yellow-400 font-bold bg-black/50 px-2 py-1 rounded">{localStorage.getItem('casino21_roomId') || 'Desconocido'}</span>
+              <div className="text-xs md:text-sm text-gray-400">
+                Sala: <span className="font-mono text-yellow-400 font-bold bg-black/50 px-2 py-1 rounded">{localStorage.getItem('casino21_roomId') || 'Desconocido'}</span>
               </div>
               <button 
                 onClick={() => {
                   localStorage.removeItem('casino21_roomId');
                   window.location.reload();
                 }}
-                className="mt-2 bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-xl font-bold transition-colors w-full"
+                className="mt-2 bg-red-600 hover:bg-red-500 text-white px-4 md:px-6 py-2 rounded-xl font-bold transition-colors w-full text-sm md:text-base"
               >
-                Salir de la sala
+                Salir
               </button>
             </div>
           )}
 
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm">Casino 21</h1>
-              <p className="text-sm text-gray-300 mt-1 font-medium">Ronda: {gameState.roundCount}</p>
-              <button 
-                onClick={() => {
-                  localStorage.removeItem('casino21_roomId');
-                  window.location.reload();
-                }}
-                className="mt-2 text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-500/30 transition cursor-pointer"
-              >
-                Abandonar Partida
-              </button>
+          <div className="flex flex-wrap justify-between items-center gap-2 md:gap-0">
+            <div className="flex items-center justify-between w-full md:w-auto md:block">
+              <div>
+                <h1 className="text-xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm leading-none">Casino 21</h1>
+                <p className="text-xs md:text-sm text-gray-300 mt-0.5 md:mt-1 font-medium">Ronda: {gameState.roundCount}</p>
+              </div>
+              <div className="flex gap-2 items-center md:hidden">
+                <div className="text-right bg-black/40 px-3 py-1.5 rounded-xl border border-white/10">
+                  <p className="text-[10px] text-gray-300">Mazo</p>
+                  <p className="text-lg font-bold text-white leading-none">{gameState.deck.cards.length}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('casino21_roomId');
+                    window.location.reload();
+                  }}
+                  className="text-[10px] bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-1.5 rounded border border-red-500/30 transition cursor-pointer"
+                >
+                  Salir
+                </button>
+              </div>
             </div>
-            <div className="flex gap-4">
+            
+            <div className="flex gap-2 md:gap-4 w-full md:w-auto justify-center mt-2 md:mt-0 order-3 md:order-none">
               {gameState.players.map((p, i) => (
-                <div key={p.id} className={`text-center px-6 py-2 rounded-2xl border transition-all ${i === gameState.currentTurnPlayerIndex ? 'bg-blue-600/80 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)] scale-110 z-10' : 'bg-black/40 border-white/10 opacity-70'}`}>
-                  <div className="font-bold text-white">{p.name} {p.id === localPlayerId ? '(Tú)' : ''}</div>
-                  <div className={`text-xs font-black uppercase mt-1 ${i === gameState.currentTurnPlayerIndex ? 'text-white' : 'text-gray-400'}`}>
-                    {i === gameState.currentTurnPlayerIndex ? 'TU TURNO' : 'Esperando...'}
+                <div key={p.id} className={`flex-1 md:flex-none text-center px-2 md:px-6 py-1.5 md:py-2 rounded-xl md:rounded-2xl border transition-all ${i === gameState.currentTurnPlayerIndex ? 'bg-blue-600/80 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)] md:scale-110 z-10' : 'bg-black/40 border-white/10 opacity-70'}`}>
+                  <div className="font-bold text-white text-xs md:text-base truncate max-w-[80px] md:max-w-none mx-auto" title={p.name}>{p.name} {p.id === localPlayerId ? '(Tú)' : ''}</div>
+                  <div className={`text-[9px] md:text-xs font-black uppercase mt-0.5 md:mt-1 ${i === gameState.currentTurnPlayerIndex ? 'text-white' : 'text-gray-400'}`}>
+                    {i === gameState.currentTurnPlayerIndex ? 'TURNO' : 'Espera...'}
                   </div>
-                  <div className="text-xs text-yellow-400 mt-1 font-bold">Recogidas: {p.collectedCards.length}</div>
+                  <div className="hidden md:block text-xs text-yellow-400 mt-1 font-bold">Recogidas: {p.collectedCards.length}</div>
                   
                   {/* Timer display for current turn */}
                   {i === gameState.currentTurnPlayerIndex && (
-                    <div className="mt-2 w-full bg-black/50 rounded-full h-1.5 overflow-hidden">
+                    <div className="mt-1 md:mt-2 w-full bg-black/50 rounded-full h-1 md:h-1.5 overflow-hidden">
                       <div 
                         className={`h-full transition-all duration-1000 linear ${timeRemaining < 10000 ? 'bg-red-500' : 'bg-green-400'}`}
                         style={{ width: `${(timeRemaining / 30000) * 100}%` }}
@@ -390,25 +405,35 @@ export function GameScreen() {
                 </div>
               ))}
             </div>
-            <div className="text-right bg-black/40 px-6 py-2 rounded-2xl border border-white/10">
+            <div className="hidden md:block text-right bg-black/40 px-6 py-2 rounded-2xl border border-white/10">
               <p className="text-sm text-gray-300">Cartas en Mazo</p>
               <p className="text-3xl font-bold text-white">{gameState.deck.cards.length}</p>
             </div>
+            
+            <button 
+              onClick={() => {
+                localStorage.removeItem('casino21_roomId');
+                window.location.reload();
+              }}
+              className="hidden md:block text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-500/30 transition cursor-pointer order-last"
+            >
+              Abandonar Partida
+            </button>
           </div>
 
           {/* Progress Bars */}
-          <div className="flex gap-4 w-full">
+          <div className="flex gap-2 md:gap-4 w-full">
             {getEntities().map(entity => {
               const progress = Math.min((entity.score / 21) * 100, 100);
               return (
                 <div key={entity.id} className="flex-1">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>{(entity as any).name || `Equipo ${entity.id}`}</span>
-                    <span>{entity.score} / 21 pts</span>
+                  <div className="flex justify-between text-[9px] md:text-xs mb-0.5 md:mb-1">
+                    <span className="truncate pr-1">{(entity as any).name || `Equipo ${entity.id}`}</span>
+                    <span className="shrink-0">{entity.score} / 21</span>
                   </div>
-                  <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div className="w-full bg-gray-700 rounded-full h-1.5 md:h-3 overflow-hidden">
                     <div 
-                      className="bg-green-500 h-3 transition-all duration-1000 ease-in-out" 
+                      className="bg-green-500 h-1.5 md:h-3 transition-all duration-1000 ease-in-out" 
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
@@ -457,10 +482,10 @@ export function GameScreen() {
         </div>
 
         {/* Player Hand */}
-        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-6 rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-6 relative overflow-hidden transition-all duration-300`}>
+        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-3 md:gap-6 relative overflow-hidden transition-all duration-300 w-full`}>
           {!isCurrentTurn && (
             <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
-              <span className="text-gray-300 font-black tracking-widest text-lg animate-pulse">ESPERANDO TURNO...</span>
+              <span className="text-gray-300 font-black tracking-widest text-sm md:text-lg animate-pulse">ESPERANDO TURNO...</span>
             </div>
           )}
           <HandView 
@@ -473,9 +498,9 @@ export function GameScreen() {
         </footer>
 
         {/* Drag Overlay */}
-        <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
+        <DragOverlay dropAnimation={{ duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
           {activeDragCard ? (
-            <div className="rotate-6 scale-110 shadow-2xl z-[9999] pointer-events-none">
+            <div className="rotate-3 md:rotate-6 scale-105 md:scale-110 shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95">
               <CardView card={activeDragCard} />
             </div>
           ) : null}
@@ -483,15 +508,15 @@ export function GameScreen() {
 
         {/* Drag Action Modal */}
         {dragModalData && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-gradient-to-b from-gray-800 to-gray-900 p-8 rounded-3xl border border-white/20 shadow-2xl max-w-md w-full text-center">
-              <h2 className="text-2xl font-bold text-yellow-400 mb-6">¿Qué jugada deseas realizar?</h2>
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+            <div className="bg-gradient-to-b from-gray-800 to-gray-950 p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] max-w-md w-full text-center animate-scale-up">
+              <h2 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 mb-6 drop-shadow-md">¿Qué jugada deseas realizar?</h2>
               
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:gap-4">
                 {dragModalData.validActions.map((action, idx) => (
                   <button
                     key={idx}
-                    className={`w-full py-4 rounded-xl font-bold text-xl transition-all shadow-lg border border-white/10 uppercase tracking-widest text-white hover:scale-105
+                    className={`w-full py-3 md:py-4 rounded-xl font-bold text-lg md:text-xl transition-all shadow-lg border border-white/10 uppercase tracking-widest text-white hover:scale-105 active:scale-95 touch-manipulation
                       ${action.type === 'llevar' ? 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400' : ''}
                       ${action.type === 'formar' ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black' : ''}
                       ${action.type === 'formarPar' ? 'bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400' : ''}

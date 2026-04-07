@@ -29,7 +29,7 @@ export function ActionPanel({
 }: ActionPanelProps) {
   if (!selectedHandCardId) {
     return (
-      <div className="h-16 flex items-center justify-center text-gray-400">
+      <div className="h-12 md:h-16 flex items-center justify-center text-xs md:text-base text-gray-400 px-4 text-center">
         Selecciona una carta de tu mano para ver las acciones disponibles.
       </div>
     );
@@ -75,47 +75,49 @@ export function ActionPanel({
   };
 
   return (
-    <div className="h-20 flex items-center justify-center gap-4 bg-black/40 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-white/20">
-      <span className="text-sm font-bold text-gray-300 mr-4 drop-shadow">Acciones:</span>
+    <div className="h-auto md:h-20 flex flex-wrap md:flex-nowrap items-center justify-center md:justify-start gap-2 md:gap-4 bg-black/40 backdrop-blur-md p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-2xl border border-white/20 w-full max-w-full">
+      <span className="hidden md:inline text-sm font-bold text-gray-300 mr-4 drop-shadow">Acciones:</span>
       
-      {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
-        <>
-          <button onClick={handleColocar} className="btn bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
-            Colocar
-          </button>
-          <button onClick={handleCantar} className="btn bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
-            Cantar As
-          </button>
-        </>
-      ) : (
-        <>
-          <button onClick={handleLlevar} className="btn bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
-            Llevar
-          </button>
-          {selectedBoardCardIds.size > 0 && selectedFormationIds.size === 0 && (
-            <>
-              <button onClick={handleFormar} className="btn bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10 text-black">
-                Formar
-              </button>
-              <button onClick={handleFormarPar} className="btn bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10 text-white">
-                Formar Par
-              </button>
-            </>
-          )}
-          {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
-            <>
-              <button onClick={handleFormarPar} className="btn bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10 text-white">
-                Formar Par
-              </button>
-              <button onClick={handleAumentarFormacion} className="btn bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:scale-105 border border-white/10">
-                Aumentar
-              </button>
-            </>
-          )}
-        </>
-      )}
+      <div className="flex flex-wrap justify-center gap-2 md:gap-4 w-full md:w-auto flex-1">
+        {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
+          <>
+            <button onClick={handleColocar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+              Colocar
+            </button>
+            <button onClick={handleCantar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+              Cantar As
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={handleLlevar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+              Llevar
+            </button>
+            {selectedBoardCardIds.size > 0 && selectedFormationIds.size === 0 && (
+              <>
+                <button onClick={handleFormar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-black touch-manipulation">
+                  Formar
+                </button>
+                <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
+                  Formar Par
+                </button>
+              </>
+            )}
+            {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
+              <>
+                <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
+                  Formar Par
+                </button>
+                <button onClick={handleAumentarFormacion} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+                  Aumentar
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
-      <button onClick={onClearSelection} className="btn bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold transition-all shadow-lg border border-white/20 ml-auto">
+      <button onClick={onClearSelection} className="btn w-full md:w-auto min-h-[44px] bg-white/10 hover:bg-white/20 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg border border-white/20 md:ml-auto mt-2 md:mt-0 touch-manipulation">
         Cancelar
       </button>
     </div>

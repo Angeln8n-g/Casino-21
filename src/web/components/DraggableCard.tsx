@@ -21,11 +21,12 @@ export function DraggableCard({ card, disabled, selected, onClick }: DraggableCa
     disabled,
   });
 
-  const style = transform ? {
+  const style: React.CSSProperties | undefined = transform ? {
     transform: CSS.Translate.toString(transform),
     zIndex: isDragging ? 50 : 1,
     opacity: isDragging ? 0.3 : 1, 
-  } : undefined;
+    touchAction: 'none', // Critical for preventing scroll while dragging on touch devices
+  } : { touchAction: 'none' };
 
   return (
     <CardView
