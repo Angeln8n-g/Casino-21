@@ -259,6 +259,21 @@ export function useNotifications() {
         (payload) => {
           if (payload.new.status !== 'pending') {
             setPendingGameInvites((prev) => Math.max(0, prev - 1));
+            // Close modal if this is the active invitation
+            setActiveGameInvitation(current => {
+              if (current && current.invitationId === payload.new.id) {
+                return null;
+              }
+              return current;
+            });
+            // Mark the notification as read if it corresponds to this invitation
+            supabase
+              .from('notifications')
+              .update({ is_read: true })
+              .eq('player_id', user.id)
+              .eq('type', 'game_invitation')
+              .contains('metadata', { invitation_id: payload.new.id })
+              .then(() => {});
           }
         }
       )
@@ -303,8 +318,23 @@ export function useNotifications() {
   };
 
   const handleGameInvite = async (id: string, roomId: string | null, status: 'accepted' | 'rejected') => {
+    // 1. Check current status before accepting
+    if (status === 'accepted') {
+      const { data } = await supabase.from('game_invitations').select('status').eq('id', id).single();
+      if (data && (data.status === 'cancelled' || data.status === 'expired')) {
+        setToast({
+          id: 'expired-invite',
+          title: 'Invitación no válida',
+          message: 'La invitación ha expirado o fue cancelada.',
+        });
+        setActiveGameInvitation(null);
+        return;
+      }
+    }
+
     await supabase.from('game_invitations').update({ status }).eq('id', id);
     setToast(null);
+    setActiveGameInvitation(null);
     if (status === 'accepted' && roomId) {
       const event = new CustomEvent('join_game_from_invite', { detail: { roomId } });
       window.dispatchEvent(event);

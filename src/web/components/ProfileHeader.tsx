@@ -234,11 +234,11 @@ export function ProfileHeader({
                           onChallengeClick?.({
                             invitationId: n.metadata.invitation_id,
                             senderId: n.metadata.sender_id,
-                            username: n.metadata.sender_username || 'Amigo',
+                            username: n.metadata.senderName || n.metadata.sender_username || 'Amigo',
                             elo: n.metadata.sender_elo || 1000,
                             level: n.metadata.sender_level || 1,
-                            roomId: n.metadata.room_id || '????',
-                            expiresAt: n.metadata.expires_at
+                            roomId: n.metadata.roomId || n.metadata.room_id || '????',
+                            expiresAt: n.metadata.expiresAt || n.metadata.expires_at
                           });
                         }
                       }}

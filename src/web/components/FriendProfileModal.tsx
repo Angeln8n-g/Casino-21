@@ -81,11 +81,9 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
           resolve(roomId);
         });
 
-        socket.emit('join_room', { 
-          roomId: null, 
+        socket.emit('create_room', { 
           playerName: user.email?.split('@')[0] || 'Jugador',
-          mode: '1v1',
-          isPrivate: true
+          mode: '1v1'
         });
       });
 
@@ -122,14 +120,14 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
         metadata: { 
           sender_id: user.id, 
           invitation_id: data.id,
-          room_id: roomId,
-          sender_username: senderProfile?.username,
+          roomId: roomId,
+          senderName: senderProfile?.username,
           sender_elo: senderProfile?.elo,
           sender_level: senderProfile?.level,
           sender_wins: senderProfile?.wins,
           sender_losses: senderProfile?.losses,
           sender_xp: senderProfile?.xp,
-          expires_at: expiresAt
+          expiresAt: expiresAt
         },
       });
 

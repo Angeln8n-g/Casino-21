@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { GameInviteToastData } from '../hooks/useNotifications';
 import { getDivisionFromElo } from './ProfileHeader';
+import challengeSound from '../../Public/Steel_Over_Stone.mp3';
 
 interface GameInvitationModalProps {
   invite: GameInviteToastData;
@@ -17,9 +18,28 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
   const [progress, setProgress] = useState(100);
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [accepting, setAccepting] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const endTime = new Date(invite.expiresAt).getTime();
+    audioRef.current = new Audio(challengeSound);
+    audioRef.current.volume = 0.5;
+    audioRef.current.loop = true;
+    audioRef.current.play().catch(e => console.log('Autoplay prevented:', e));
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let endTime = new Date(invite.expiresAt).getTime();
+    if (isNaN(endTime)) {
+      endTime = Date.now() + 60000; // Default to 60s if invalid
+    }
+    
     const totalMs = endTime - Date.now();
     
     if (totalMs <= 0) {
@@ -45,12 +65,20 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
   }, [invite.expiresAt, invite.invitationId]);
 
   const handleAccept = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setAccepting(true);
     onAccept(invite.invitationId, invite.roomId);
     onClose();
   };
 
   const handleReject = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     onReject(invite.invitationId);
     onClose();
   };
