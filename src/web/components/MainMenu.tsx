@@ -15,7 +15,7 @@ import { GameInvitationModal } from './GameInvitationModal';
 export function MainMenu() {
   const { setGameState, setLocalPlayerId } = useGame();
   const { profile, signOut } = useAuth();
-  const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
+  const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, deleteReadNotifications, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
   
   const [playerName, setPlayerName] = useState(profile?.username || 'Jugador');
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -192,33 +192,43 @@ export function MainMenu() {
       <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10" />
       
       {/* ═════ LEFT COLUMN — Social ═════ */}
-      <aside className="w-72 shrink-0 border-r border-white/[0.04] overflow-y-auto p-4 space-y-4 hidden lg:block">
-        <ProfileHeader 
-          appNotifications={appNotifications}
-          unreadCount={unreadCount}
-          onMarkAllAsRead={markAllAsRead}
-          onMarkAsRead={markNotificationAsRead}
-          onChallengeClick={setActiveGameInvitation}
-        />
-        <SocialPanel />
+      <aside className="w-72 shrink-0 border-r border-white/[0.04] hidden lg:flex flex-col relative z-20 overflow-visible">
+        <div className="p-4 overflow-visible relative z-50"> {/* Dropdown anchor area */}
+          <ProfileHeader 
+            appNotifications={appNotifications}
+            unreadCount={unreadCount}
+            onMarkAllAsRead={markAllAsRead}
+            onMarkAsRead={markNotificationAsRead}
+            onChallengeClick={setActiveGameInvitation}
+            onDeleteRead={deleteReadNotifications}
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 custom-scrollbar relative z-10">
+          <SocialPanel />
+        </div>
       </aside>
 
       {/* ═════ CENTER COLUMN — Main Lobby ═════ */}
-      <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-        <div className="max-w-xl mx-auto p-6 space-y-6">
+      <main className="flex-1 overflow-y-auto pb-20 lg:pb-0 relative z-10">
+        <div className="max-w-xl mx-auto p-4 md:p-6 space-y-6 overflow-visible">
 
           {/* Mobile Tab Content */}
           <div className="lg:hidden">
             {mobileTab === 'social' && (
-              <div className="space-y-4 animate-fade-in">
-                <ProfileHeader 
-                  appNotifications={appNotifications}
-                  unreadCount={unreadCount}
-                  onMarkAllAsRead={markAllAsRead}
-                  onMarkAsRead={markNotificationAsRead}
-                  onChallengeClick={setActiveGameInvitation}
-                />
-                <SocialPanel />
+              <div className="space-y-4 animate-fade-in overflow-visible relative">
+                <div className="overflow-visible relative z-50">
+                  <ProfileHeader 
+                    appNotifications={appNotifications}
+                    unreadCount={unreadCount}
+                    onMarkAllAsRead={markAllAsRead}
+                    onMarkAsRead={markNotificationAsRead}
+                    onChallengeClick={setActiveGameInvitation}
+                    onDeleteRead={deleteReadNotifications}
+                  />
+                </div>
+                <div className="relative z-10">
+                  <SocialPanel />
+                </div>
               </div>
             )}
             {mobileTab === 'stats' && (

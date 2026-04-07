@@ -29,6 +29,10 @@ export function SocialPanel() {
   const [pendingIncoming, setPendingIncoming] = useState<FriendRequestProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'friends' | 'search' | 'chat'>('friends');
+  const [activeChatFriendId, setActiveChatFriendId] = useState<string | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
+
 
   // Presence: userId → PresenceEntry
   const [presenceMap, setPresenceMap] = useState<Map<string, PresenceEntry>>(new Map());
@@ -187,17 +191,73 @@ export function SocialPanel() {
       .subscribe();
     
     // Listen for custom events from child components (like FriendSearch)
-    const handleFriendshipChange = () => {
-      fetchFriends();
-      fetchPendingIncoming();
+    const handleEvents = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (e.type === 'friendships_changed') {
+        fetchFriends();
+        fetchPendingIncoming();
+      } else if (e.type === 'open_social_tab') {
+        const { tab } = customEvent.detail;
+        setActiveTab(tab);
+      }
     };
-    window.addEventListener('friendships_changed', handleFriendshipChange);
+    window.addEventListener('friendships_changed', handleEvents);
+    window.addEventListener('open_social_tab', handleEvents);
 
     return () => { 
       supabase.removeChannel(channel);
-      window.removeEventListener('friendships_changed', handleFriendshipChange);
+      window.removeEventListener('friendships_changed', handleEvents);
+      window.removeEventListener('open_social_tab', handleEvents);
     };
   }, [user, fetchFriends, fetchPendingIncoming]);
+
+  // ── Real-time: Chat Badges ─────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    
+    // Initial fetch of unread counts
+    const fetchUnread = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+      
+      if (!error && data) {
+        const counts: Record<string, number> = {};
+        data.forEach(m => {
+          counts[m.sender_id] = (counts[m.sender_id] || 0) + 1;
+        });
+        setFriendUnreadMap(counts);
+        
+        // Sum total overall unread messages
+        setUnreadMessagesCount(data.length);
+      }
+    };
+    fetchUnread();
+
+    const channel = supabase
+      .channel('unread_messages_sync')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => fetchUnread()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => fetchUnread()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => fetchUnread()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
 
 
 
@@ -319,11 +379,16 @@ export function SocialPanel() {
           </button>
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-lg transition-all ${
+            className={`flex-1 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-lg transition-all relative ${
               activeTab === 'chat' ? 'bg-white/10 text-casino-gold shadow-sm border border-white/5' : 'text-gray-500 hover:text-gray-300'
             }`}
           >
             Chat
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1.5 -right-0.5 min-w-[16px] h-4 bg-red-500 rounded-full text-[9px] font-black text-white flex items-center justify-center px-1 animate-pulse">
+                {unreadMessagesCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -331,7 +396,6 @@ export function SocialPanel() {
           {/* ─── AMIGOS TAB ─────────────────────────────────── */}
           {activeTab === 'friends' && (
             <div className="space-y-3 animate-fade-in h-full flex flex-col pb-2">
-
               {/* Pending incoming requests */}
               {pendingIncoming.length > 0 && (
                 <div className="shrink-0 space-y-2">
@@ -407,21 +471,21 @@ export function SocialPanel() {
                     const isOnline = !!presence;
                     const roomId = presence?.room_id;
                     const isInRoom = !!roomId;
+                    const unread = friendUnreadMap[friend.id] || 0;
 
                     return (
                       <div
                         key={friend.id}
-                        onClick={() => openFriendModal(friend)}
-                        className="glass-panel px-3 py-2.5 flex items-center gap-3 hover:border-white/[0.12] transition-all cursor-pointer group"
+                        className="glass-panel px-3 py-2.5 flex items-center gap-3 hover:border-white/[0.12] transition-all group"
                       >
                         {/* Avatar + status dot */}
-                        <div className="relative shrink-0">
-                          <div className={`w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold ${
+                        <div className="relative shrink-0 cursor-pointer" onClick={() => openFriendModal(friend)}>
+                          <div className={`w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold transition-colors ${
                             isOnline ? 'text-white' : 'text-gray-500'
                           }`}>
                             {friend.username.charAt(0).toUpperCase()}
                           </div>
-                          <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-casino-bg ${
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-casino-bg transition-colors ${
                             !isOnline ? 'bg-gray-600'
                             : isInRoom ? 'bg-purple-500 animate-pulse'
                             : 'bg-casino-emerald'
@@ -429,7 +493,7 @@ export function SocialPanel() {
                         </div>
 
                         {/* Name + status */}
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => openFriendModal(friend)}>
                           <p className={`text-sm font-medium truncate group-hover:text-white transition-colors ${
                             isOnline ? 'text-gray-200' : 'text-gray-500'
                           }`}>
@@ -446,35 +510,47 @@ export function SocialPanel() {
                                 {isInRoom ? '🎮 En partida' : '● Online'}
                               </span>
                             )}
+                            {unread > 0 && (
+                              <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
+                                {unread}
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        {/* Action hint */}
-                        <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        {/* Chat Button */}
+                        <button
+                          onClick={() => {
+                            setActiveChatFriendId(friend.id);
+                            setActiveTab('chat');
+                          }}
+                          className="shrink-0 p-2 rounded-lg bg-white/5 text-gray-500 hover:text-casino-gold hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+                          title="Chat privado"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                           </svg>
-                        </div>
+                        </button>
                       </div>
                     );
                   })
                 )}
               </div>
 
-              {/* Online counter */}
-              <div className="glass-panel px-4 py-2.5 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
+              {/* Online counter summary */}
+              <div className="glass-panel px-4 py-2.5 flex items-center justify-between shrink-0 mt-auto">
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-casino-emerald animate-pulse" />
-                    <span className="text-gray-400 text-xs">Online</span>
-                    <span className="text-casino-emerald font-bold text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-casino-emerald" />
+                    <span className="text-gray-400 text-[10px]">Online</span>
+                    <span className="text-white font-bold text-[10px]">
                       {friends.filter(f => presenceMap.has(f.id) && !presenceMap.get(f.id)?.room_id).length}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                    <span className="text-gray-400 text-xs">En partida</span>
-                    <span className="text-purple-400 font-bold text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                    <span className="text-gray-400 text-[10px]">En partida</span>
+                    <span className="text-white font-bold text-[10px]">
                       {friends.filter(f => !!presenceMap.get(f.id)?.room_id).length}
                     </span>
                   </div>
@@ -496,9 +572,23 @@ export function SocialPanel() {
           {/* ─── CHAT TAB ───────────────────────────────────── */}
           {activeTab === 'chat' && (
             <div className="animate-fade-in h-full flex flex-col pb-2">
-              <h3 className="section-header shrink-0">💬 Chat Global</h3>
+              <div className="flex items-center justify-between shrink-0 mb-2">
+                <h3 className="section-header mb-0">
+                  {activeChatFriendId 
+                    ? `💬 Chat con ${friends.find(f => f.id === activeChatFriendId)?.username || 'Amigo'}` 
+                    : '💬 Chat Global'}
+                </h3>
+                {activeChatFriendId && (
+                  <button 
+                    onClick={() => setActiveChatFriendId(null)}
+                    className="text-[10px] text-gray-500 hover:text-casino-gold font-bold uppercase transition-colors flex items-center gap-1"
+                  >
+                    <span>←</span> Global
+                  </button>
+                )}
+              </div>
               <div className="flex-1 overflow-hidden">
-                <ChatWindow />
+                <ChatWindow receiverId={activeChatFriendId || undefined} />
               </div>
             </div>
           )}
@@ -520,11 +610,13 @@ export function SocialPanel() {
           friend={selectedFriend}
           onClose={() => setSelectedFriend(null)}
           onOpenChat={() => {
-            setSelectedFriend(null);
+            setActiveChatFriendId(selectedFriend.id);
             setActiveTab('chat');
+            setSelectedFriend(null);
           }}
         />
       )}
     </>
   );
 }
+

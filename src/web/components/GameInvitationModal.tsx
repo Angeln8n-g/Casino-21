@@ -80,9 +80,7 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
           <div className="flex flex-col items-center text-center mb-6">
             <div className="w-16 h-16 rounded-2xl bg-casino-surface-light flex items-center justify-center text-3xl mb-4 border-2 border-casino-gold shadow-lg shadow-casino-gold/20 relative">
               <span className="animate-bounce">⚔️</span>
-              <div className="absolute -top-2 -right-2 bg-casino-gold text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Desafío
-              </div>
+              
             </div>
             <h2 className="text-xl font-display font-black text-white uppercase tracking-wider leading-tight">
               ¡Has sido desafiado!

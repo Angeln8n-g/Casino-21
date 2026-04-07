@@ -129,6 +129,13 @@ export function useNotifications() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications' },
+        (payload) => {
+          setAppNotifications(prev => prev.filter(n => n.id !== payload.old.id));
+        }
+      )
       .subscribe();
 
     // Subscribe to friend_requests
@@ -318,6 +325,11 @@ export function useNotifications() {
     await supabase.from('notifications').update({ is_read: true }).eq('player_id', user.id).eq('is_read', false);
   };
 
+  const deleteReadNotifications = async () => {
+    if (!user) return;
+    await supabase.from('notifications').delete().eq('player_id', user.id).eq('is_read', true);
+  };
+
   return {
     pendingFriendRequests,
     pendingGameInvites,
@@ -330,6 +342,7 @@ export function useNotifications() {
     appNotifications,
     unreadCount,
     markNotificationAsRead,
-    markAllAsRead
+    markAllAsRead,
+    deleteReadNotifications
   };
 }

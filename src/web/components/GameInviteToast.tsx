@@ -83,7 +83,7 @@ export function GameInviteToast({ data, onAccept, onReject }: GameInviteToastPro
 
         {/* ── Header ──────────────────────────────────────── */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="text-lg animate-[bounce_1s_ease-in-out_3]">⚔️</span>
             <div>
               <p className="text-white font-black text-sm leading-none">¡Invitación a Partida!</p>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { LogOut, Bell, Shield, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useGame } from '../hooks/useGame';
 
 // ─── Utility: Division from ELO ───
 export function getDivisionFromElo(elo: number): { name: string; label: string; icon: string; cssClass: string } {
@@ -34,6 +36,7 @@ interface ProfileHeaderProps {
   onMarkAllAsRead?: () => void;
   onMarkAsRead?: (id: string) => void;
   onChallengeClick?: (inviteData: any) => void;
+  onDeleteRead?: () => void;
 }
 
 export function ProfileHeader({ 
@@ -42,7 +45,8 @@ export function ProfileHeader({
   appNotifications = [],
   onMarkAllAsRead,
   onMarkAsRead,
-  onChallengeClick
+  onChallengeClick,
+  onDeleteRead
 }: ProfileHeaderProps) {
   const { profile, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -56,18 +60,25 @@ export function ProfileHeader({
   const progress = ((xp - currentLevelMinXp) / (nextLevelXp - currentLevelMinXp)) * 100;
   const div = getDivisionFromElo(elo);
 
-  // Click outside listener
+  // Click outside and Esc listener
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setShowNotifications(false);
+      }
+    }
     if (showNotifications) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [showNotifications]);
 
@@ -89,175 +100,197 @@ export function ProfileHeader({
   }
 
   return (
-    <div className="glass-panel-strong p-4 rounded-2xl border border-casino-gold/20 relative overflow-hidden group">
-      {/* Background Decor */}
-      <div className="absolute -top-12 -right-12 w-32 h-32 bg-casino-gold/5 blur-3xl rounded-full group-hover:bg-casino-gold/10 transition-colors duration-500" />
-      
-      <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
-        {/* Avatar Section */}
-        <div className="relative">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-3xl font-black text-casino-gold shadow-xl shadow-black/40">
-            {profile?.username?.charAt(0).toUpperCase() || 'P'}
+    <div className="relative overflow-visible glass-panel-strong p-3 md:p-5 rounded-2xl border border-casino-gold/10 group animate-fade-in shadow-2xl">
+      {/* ─── Header Row ─── */}
+      <div className="flex justify-between items-center gap-4 relative z-20">
+        
+        {/* Lado Izquierdo: Perfil e Info */}
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-2xl font-black text-casino-gold shadow-lg transform group-hover:rotate-1 transition-transform duration-500">
+              {profile?.username?.charAt(0).toUpperCase() || 'P'}
+            </div>
+            <div className="absolute -bottom-1 -right-1 bg-casino-surface border border-casino-gold/20 px-2 py-0.5 rounded-lg shadow-xl z-30">
+              <span className="text-[8px] font-black uppercase text-casino-gold tracking-tighter whitespace-nowrap">
+                {div.label}
+              </span>
+            </div>
           </div>
-          <div className="absolute -bottom-2 -right-2 bg-casino-surface border border-casino-gold/30 px-2 py-0.5 rounded-lg shadow-lg">
-            <span className={`text-[10px] font-black uppercase text-casino-gold tracking-widest`}>
-              {div.label}
-            </span>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-display font-black text-white leading-tight truncate pr-1" title={profile?.username}>
+              {profile?.username || 'Jugador'}
+            </h2>
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
+                <Shield className="w-3 h-3 text-casino-gold" />
+                <span className="text-[10px] font-black text-gray-400">LVL {level}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
+                <TrendingUp className="w-3 h-3 text-emerald-400" />
+                <span className="text-[10px] font-black text-emerald-400">{elo} ELO</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Info Section */}
-        <div className="flex-1 w-full space-y-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-xl font-display font-black text-white tracking-tight leading-none">
-                {profile?.username || 'Jugador'}
-              </h2>
-              <p className="text-casino-gold/60 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
-                Estatus VIP • {div.name}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="bg-black/30 px-3 py-1.5 rounded-xl border border-white/5 flex items-center gap-2">
-                <span className="text-xs font-bold text-casino-gold">ELO</span>
-                <span className="text-lg font-mono font-black text-white leading-none">{elo}</span>
-              </div>
-              
-              {/* Notifications Toggle */}
-              <div className="relative">
-                <button 
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative ${
-                    showNotifications 
-                      ? 'bg-casino-gold text-casino-bg shadow-[0_0_15px_rgba(251,191,36,0.4)]' 
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                  }`}
-                  title="Notificaciones"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                  </svg>
+        {/* Lado Derecho: Iconos y Dropdown Anchor (REGLA 1 y 3) */}
+        <div className="flex items-center gap-[8px] shrink-0 relative">
+          
+          {/* BOTÓN CAMPANA */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowNotifications(!showNotifications);
+            }}
+            className={`
+              relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+              border border-white/10 bg-white/[0.03]
+              ${showNotifications ? 'bg-casino-gold/20 border-casino-gold text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'}
+            `}
+          >
+            <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'animate-swing' : ''}`} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-600 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-casino-surface-light animate-bounce shadow-lg">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* BOTÓN LOGOUT */}
+          <button 
+            onClick={signOut}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 transition-all duration-300"
+            title="Cerrar Sesión"
+          >
+            <LogOut className="w-4 h-4 translate-x-0.5" />
+          </button>
+
+          {/* ══════════════════════════════════════════════════════════════════
+               DROPDOWN DE NOTIFICACIONES (REGLA 2 y 5)
+               ══════════════════════════════════════════════════════════════════ */}
+          {showNotifications && (
+            <div 
+              ref={dropdownRef}
+              className="
+                absolute top-[calc(100%+10px)] right-0 lg:-right-4 xl:-right-6 2xl:-right-8
+                w-[90vw] md:w-[350px] max-h-[480px]
+                bg-[#020617]/95 backdrop-blur-[12px]
+                border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
+                overflow-hidden z-[1000] animate-scale-up origin-top-right
+              "
+            >
+              <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-casino-gold animate-pulse" />
+                  <h3 className="text-xs font-display font-black text-white uppercase tracking-widest italic">Avisos Recientes</h3>
+                </div>
+                <div className="flex gap-3">
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-casino-bg text-[8px] font-black flex items-center justify-center text-white">
-                      {unreadCount}
-                    </span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMarkAllAsRead?.();
+                      }}
+                      className="text-[10px] font-black text-casino-gold hover:text-white transition-colors uppercase tracking-wider"
+                    >
+                      Limpiar todo
+                    </button>
                   )}
-                </button>
-                
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div 
-                    ref={dropdownRef}
-                    className="absolute top-12 right-0 w-80 glass-panel-strong border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[100] animate-scale-up origin-top-right scale-100"
-                  >
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-md">
-                      <h3 className="text-xs font-display font-black text-white uppercase tracking-widest italic">Notificaciones</h3>
-                      {unreadCount > 0 && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMarkAllAsRead?.();
-                          }}
-                          className="text-[9px] text-casino-gold hover:text-white uppercase tracking-widest font-black transition-colors"
-                        >
-                          Limpiar todo
-                        </button>
-                      )}
+                  {appNotifications.some(n => n.is_read) && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteRead?.();
+                      }}
+                      className="text-[10px] font-black text-gray-400 hover:text-red-400 transition-colors uppercase tracking-wider"
+                      title="Borrar notificaciones leídas"
+                    >
+                      Borrar leídas
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-y-auto max-h-[400px] p-2 space-y-2 custom-scrollbar">
+                {appNotifications.length === 0 ? (
+                  <div className="py-12 text-center space-y-3 opacity-40">
+                    <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto border border-white/5">
+                      <Bell className="w-6 h-6 text-gray-500" />
                     </div>
-                    <div className="max-h-80 overflow-y-auto bg-casino-bg/40 backdrop-blur-lg">
-                      {appNotifications.length === 0 ? (
-                        <div className="p-8 text-center flex flex-col items-center gap-2">
-                          <span className="text-2xl opacity-20">📭</span>
-                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Bandeja vacía</p>
-                        </div>
-                      ) : (
-                        appNotifications.map(notif => (
-                          <div 
-                            key={notif.id} 
-                            className={`p-4 border-b border-white/5 last:border-0 transition-all cursor-pointer hover:bg-white/10 relative group/item ${notif.is_read ? 'opacity-50' : 'bg-white/[0.03]'}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!notif.is_read) onMarkAsRead?.(notif.id);
-                              setShowNotifications(false);
-                              
-                              if (notif.type === 'game_invitation' && notif.metadata) {
-                                const m = notif.metadata;
-                                onChallengeClick?.({
-                                  invitationId: m.invitation_id,
-                                  senderId: m.sender_id,
-                                  username: m.sender_username || 'Amigo',
-                                  elo: m.sender_elo || 1000,
-                                  level: m.sender_level || 1,
-                                  wins: m.sender_wins || 0,
-                                  losses: m.sender_losses || 0,
-                                  xp: m.sender_xp || 0,
-                                  roomId: m.room_id || '????',
-                                  expiresAt: m.expires_at || new Date(Date.now() + 60000).toISOString()
-                                });
-                              }
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">
-                                  {notif.type === 'friend_request' ? '👥' :
-                                   notif.type === 'game_invitation' ? '⚔️' :
-                                   notif.type === 'achievement' ? '🏆' :
-                                   notif.type === 'level_up' ? '⭐' : '🔔'}
-                                </span>
-                                <h4 className={`text-[11px] font-black uppercase tracking-wider ${notif.is_read ? 'text-gray-400' : 'text-white'}`}>
-                                  {notif.type === 'game_invitation' ? 'Desafío 1v1' : 'Notificación'}
-                                </h4>
-                              </div>
-                              {!notif.is_read && <span className="w-2 h-2 rounded-full bg-casino-gold shadow-[0_0_8px_rgba(251,191,36,0.6)] mt-1" />}
-                            </div>
-                            <p className={`text-[11px] mt-1 pr-4 leading-relaxed ${notif.is_read ? 'text-gray-500' : 'text-gray-300'}`}>
-                              {notif.content}
-                            </p>
-                            <div className="flex justify-between items-center mt-2 opacity-40 text-[9px] font-bold">
-                              <span>Hace un momento</span>
-                              <span className="group-hover/item:text-casino-gold transition-colors italic">Ver detalles →</span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Bandeja vacía</p>
                   </div>
+                ) : (
+                  appNotifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => {
+                        if (!n.is_read) onMarkAsRead?.(n.id);
+                        setShowNotifications(false);
+                        if (n.type === 'friend_request') {
+                          window.dispatchEvent(new CustomEvent('open_social_tab', { detail: { tab: 'friends' } }));
+                        }
+                        if (n.type === 'game_invitation' && n.metadata) {
+                          onChallengeClick?.({
+                            invitationId: n.metadata.invitation_id,
+                            senderId: n.metadata.sender_id,
+                            username: n.metadata.sender_username || 'Amigo',
+                            elo: n.metadata.sender_elo || 1000,
+                            level: n.metadata.sender_level || 1,
+                            roomId: n.metadata.room_id || '????',
+                            expiresAt: n.metadata.expires_at
+                          });
+                        }
+                      }}
+                      className={`
+                        w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer
+                        border border-transparent hover:border-white/10
+                        ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
+                      `}
+                    >
+                      <div className="flex gap-3">
+                        <div className={`
+                          w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5
+                          ${n.type === 'game_invitation' ? 'bg-casino-gold/20 text-casino-gold' : 'bg-blue-500/20 text-blue-400'}
+                        `}>
+                          {n.type === 'game_invitation' ? <Trophy className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">
+                            {n.type === 'game_invitation' ? 'Desafío Real' : 'Sistema'}
+                          </h4>
+                          <p className="text-[11px] font-bold text-white mb-0.5 line-clamp-2 leading-relaxed">
+                            {n.content}
+                          </p>
+                          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        {!n.is_read && (
+                          <div className="w-2 h-2 rounded-full bg-casino-gold shrink-0 mt-3 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                        )}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      </div>
 
-              {/* Sign Out */}
-              <button 
-                onClick={signOut}
-                className="w-10 h-10 rounded-xl bg-red-500/5 hover:bg-red-500/20 text-red-500/50 hover:text-red-400 flex items-center justify-center transition-all border border-red-500/10 hover:border-red-500/30 shadow-inner group/out"
-                title="Cerrar sesión"
-              >
-                <svg className="group-hover/out:-translate-x-0.5 transition-transform" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Level Bar */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-[10px] font-black tracking-widest uppercase italic">
-              <span className="text-white/60">Nivel {level}</span>
-              <span className="text-casino-gold">{xp} / {nextLevelXp} XP</span>
-            </div>
-            <div className="h-3 bg-black/40 rounded-full p-0.5 border border-white/5 overflow-hidden shadow-inner">
-              <div 
-                className="h-full rounded-full bg-gradient-to-r from-casino-gold-dark via-casino-gold to-yellow-200 transition-all duration-1000 relative"
-                style={{ width: `${progress}%` }}
-              >
-                {/* Shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent h-1/2 rounded-full" />
-              </div>
-            </div>
+      {/* Progress Bar Row */}
+      <div className="mt-5 space-y-2 relative z-10">
+        <div className="flex justify-between items-end px-1">
+          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest italic">Nivel {level}</span>
+          <span className="text-[10px] font-black text-casino-gold drop-shadow-sm">{xp} / {nextLevelXp} XP</span>
+        </div>
+        <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner">
+          <div 
+            className="h-full bg-gradient-to-r from-casino-gold-dark via-casino-gold to-yellow-200 rounded-full transition-all duration-1000 ease-out relative"
+            style={{ width: `${progress}%` }}
+          >
+             <div className="absolute inset-0 bg-white/20 animate-shimmer" />
           </div>
         </div>
       </div>
