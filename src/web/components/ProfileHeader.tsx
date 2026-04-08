@@ -237,6 +237,9 @@ export function ProfileHeader({
                             username: n.metadata.senderName || n.metadata.sender_username || 'Amigo',
                             elo: n.metadata.sender_elo || 1000,
                             level: n.metadata.sender_level || 1,
+                            wins: n.metadata.sender_wins || 0,
+                            losses: n.metadata.sender_losses || 0,
+                            xp: n.metadata.sender_xp || 0,
                             roomId: n.metadata.roomId || n.metadata.room_id || '????',
                             expiresAt: n.metadata.expiresAt || n.metadata.expires_at
                           });

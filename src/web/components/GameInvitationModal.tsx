@@ -11,9 +11,11 @@ interface GameInvitationModalProps {
 }
 
 export function GameInvitationModal({ invite, onAccept, onReject, onClose }: GameInvitationModalProps) {
-  const div = getDivisionFromElo(invite.elo);
-  const totalGames = invite.wins + invite.losses;
-  const winRate = totalGames > 0 ? Math.round((invite.wins / totalGames) * 100) : 0;
+  const div = getDivisionFromElo(invite.elo || 1000);
+  const wins = invite.wins || 0;
+  const losses = invite.losses || 0;
+  const totalGames = wins + losses;
+  const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
 
   const [progress, setProgress] = useState(100);
   const [secondsLeft, setSecondsLeft] = useState(60);

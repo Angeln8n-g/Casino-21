@@ -21,9 +21,11 @@ interface GameInviteToastProps {
 }
 
 export function GameInviteToast({ data, onAccept, onReject }: GameInviteToastProps) {
-  const div = getDivisionFromElo(data.elo);
-  const totalGames = data.wins + data.losses;
-  const winRate = totalGames > 0 ? Math.round((data.wins / totalGames) * 100) : 0;
+  const div = getDivisionFromElo(data.elo || 1000);
+  const wins = data.wins || 0;
+  const losses = data.losses || 0;
+  const totalGames = wins + losses;
+  const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
 
   // ── Countdown ────────────────────────────────────────────────
   const [progress, setProgress] = useState(100);
@@ -31,7 +33,11 @@ export function GameInviteToast({ data, onAccept, onReject }: GameInviteToastPro
   const [accepting, setAccepting] = useState(false);
 
   useEffect(() => {
-    const endTime = new Date(data.expiresAt).getTime();
+    let endTime = new Date(data.expiresAt).getTime();
+    if (isNaN(endTime)) {
+      endTime = Date.now() + 60000;
+    }
+    
     const totalMs = endTime - Date.now();
     if (totalMs <= 0) {
       onReject(data.invitationId);

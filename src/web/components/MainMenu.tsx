@@ -77,17 +77,19 @@ export function MainMenu() {
           setError('');
         });
 
+        socket.on('room_joined', ({ roomId, playerId }) => {
+          setCurrentRoomId(roomId);
+          setLocalPlayerId(playerId);
+          localStorage.setItem('casino21_roomId', roomId);
+          localStorage.setItem('casino21_playerId', playerId);
+          setView('waiting');
+          setError('');
+        });
+
         socket.on('player_joined', ({ players }) => {
           setPlayersInRoom(players);
-          setView(prevView => {
-            if (prevView === 'menu') {
-              const rId = roomIdInput.toUpperCase();
-              setCurrentRoomId(rId);
-              localStorage.setItem('casino21_roomId', rId);
-              return 'waiting';
-            }
-            return prevView;
-          });
+          // Only switch view if not already waiting. RoomId will be set by room_joined if this player just joined
+          setView(prevView => prevView === 'menu' ? 'waiting' : prevView);
         });
 
         socket.on('error', (msg: string) => {
@@ -105,6 +107,7 @@ export function MainMenu() {
       try {
         const socket = socketService.getSocket();
         socket.off('room_created');
+        socket.off('room_joined');
         socket.off('player_joined');
         socket.off('error');
       } catch (e) {
