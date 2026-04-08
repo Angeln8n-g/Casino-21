@@ -110,7 +110,7 @@ export function useNotifications() {
 
     // Subscribe to notifications — DB column is player_id
     const appNotifSubscription = supabase
-      .channel('notifications_changes')
+      .channel(`notifications_changes_${user.id}_${Date.now()}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `player_id=eq.${user.id}` },
@@ -140,7 +140,7 @@ export function useNotifications() {
 
     // Subscribe to friend_requests
     const friendSubscription = supabase
-      .channel('friend_requests_changes')
+      .channel(`friend_requests_changes_${user.id}_${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -195,7 +195,7 @@ export function useNotifications() {
 
     // Subscribe to game_invitations
     const gameSubscription = supabase
-      .channel('game_invitations_changes')
+      .channel(`game_invitations_changes_${user.id}_${Date.now()}`)
       .on(
         'postgres_changes',
         {

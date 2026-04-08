@@ -136,8 +136,9 @@ export function SocialPanel() {
   useEffect(() => {
     if (!user) return;
     
+    const channelName = `social_panel_friend_requests_${user.id}_${Date.now()}`;
     const channel = supabase
-      .channel('social_panel_friend_requests')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'friend_requests', filter: `receiver_id=eq.${user.id}` },
@@ -236,8 +237,9 @@ export function SocialPanel() {
     };
     fetchUnread();
 
+    const channelName = `unread_messages_sync_${user.id}_${Date.now()}`;
     const channel = supabase
-      .channel('unread_messages_sync')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
@@ -266,9 +268,13 @@ export function SocialPanel() {
     if (!user) return;
 
     let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
+    let isSubscribed = false;
 
     const setupPresence = async () => {
-      if (presenceChannel) await supabase.removeChannel(presenceChannel);
+      if (presenceChannel) {
+        await supabase.removeChannel(presenceChannel);
+        isSubscribed = false;
+      }
 
       const currentRoomId = socketService.currentRoomId;
 
@@ -277,7 +283,8 @@ export function SocialPanel() {
       });
 
       const syncPresence = () => {
-        const state = presenceChannel!.presenceState<PresenceEntry>();
+        if (!presenceChannel) return;
+        const state = presenceChannel.presenceState<PresenceEntry>();
         const newMap = new Map<string, PresenceEntry>();
         for (const [userId, presenceList] of Object.entries(state)) {
           const latest = (presenceList as PresenceEntry[])[0];
@@ -292,6 +299,7 @@ export function SocialPanel() {
         .on('presence', { event: 'leave' }, syncPresence)
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
+            isSubscribed = true;
             await presenceChannel!.track({
               online_at: new Date().toISOString(),
               room_id: currentRoomId,
@@ -304,7 +312,7 @@ export function SocialPanel() {
 
     // Re-track presence when room changes (join or leave)
     const handleRoomChange = () => {
-      if (presenceChannel) {
+      if (presenceChannel && isSubscribed) {
         presenceChannel.track({
           online_at: new Date().toISOString(),
           room_id: socketService.currentRoomId,
@@ -318,7 +326,10 @@ export function SocialPanel() {
     return () => {
       window.removeEventListener('room_joined_event', handleRoomChange);
       window.removeEventListener('room_left_event', handleRoomChange);
-      if (presenceChannel) supabase.removeChannel(presenceChannel);
+      if (presenceChannel) {
+        supabase.removeChannel(presenceChannel);
+        isSubscribed = false;
+      }
     };
   }, [user]);
 

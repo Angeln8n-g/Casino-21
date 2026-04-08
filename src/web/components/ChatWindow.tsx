@@ -38,15 +38,16 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     setMessages([]); // Reset on switch
     fetchMessages();
     
-    const channelId = receiverId 
+    const baseId = receiverId 
       ? `chat_private_${[user.id, receiverId].sort().join('_')}`
       : 'chat_global_room';
 
-    const channel = supabase.channel(channelId);
+    const dbChannel = supabase.channel(`${baseId}_db_${Date.now()}`);
+    const presenceChannel = supabase.channel(`${baseId}_presence`);
 
     if (receiverId) {
       // Private Chat Listeners
-      channel
+      dbChannel
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
@@ -71,7 +72,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         });
     } else {
       // Global Chat Listeners
-      channel.on('postgres_changes', {
+      dbChannel.on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'chat_messages',
@@ -81,10 +82,12 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
       });
     }
 
+    dbChannel.subscribe();
+
     // Typing presence
-    channel
+    presenceChannel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
+        const state = presenceChannel.presenceState();
         const typing = Object.values(state).some((presences: any) => 
           presences.some((p: any) => p.user_id !== user.id && p.is_typing)
         );
@@ -92,12 +95,13 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: user.id, is_typing: false });
+          await presenceChannel.track({ user_id: user.id, is_typing: false });
         }
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(dbChannel);
+      supabase.removeChannel(presenceChannel);
     };
   }, [user, receiverId]);
 
@@ -164,19 +168,19 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     // Typing indicator logic
     if (!isTyping && e.target.value.length > 0) {
       setIsTyping(true);
-      const channelId = receiverId 
+      const baseId = receiverId 
         ? `chat_private_${[user!.id, receiverId].sort().join('_')}`
         : 'chat_global_room';
-      supabase.channel(channelId).track({ user_id: user!.id, is_typing: true });
+      supabase.channel(`${baseId}_presence`).track({ user_id: user!.id, is_typing: true });
     }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      const channelId = receiverId 
+      const baseId = receiverId 
         ? `chat_private_${[user!.id, receiverId].sort().join('_')}`
         : 'chat_global_room';
-      supabase.channel(channelId).track({ user_id: user!.id, is_typing: false });
+      supabase.channel(`${baseId}_presence`).track({ user_id: user!.id, is_typing: false });
     }, 2000);
   };
 
