@@ -30,10 +30,9 @@ export interface GameEngine {
    * Processes a player's action during their turn.
    * @param state - The current game state
    * @param action - The action to execute
-   * @param skipValidation - If true, bypasses rule validation (used for forced timeouts)
    * @returns A Result containing the new GameState or an error if invalid
    */
-  playCard(state: GameState, action: Action, skipValidation?: boolean): Result<GameState>;
+  playCard(state: GameState, action: Action): Result<GameState>;
   
   /**
    * Retrieves the current game state if a game is active.
@@ -94,19 +93,12 @@ export class DefaultGameEngine implements GameEngine {
     let teams: Team[] = [];
 
     if (mode === '1v1') {
-      const p1Name = playerNames[0] || 'Jugador 1';
-      const p2Name = playerNames[1] || 'Jugador 2';
-      const p = create1v1Players(p1Name, p2Name);
-      players = p as Player[];
+      const p = create1v1Players(playerNames[0], playerNames[1]);
+      players = [p[0], p[1]];
     } else {
-      const t1P1Name = playerNames[0] || 'Jugador 1';
-      const t1P2Name = playerNames[2] || 'Jugador 3';
-      const t2P1Name = playerNames[1] || 'Jugador 2';
-      const t2P2Name = playerNames[3] || 'Jugador 4';
-      
       const pt = create2v2PlayersAndTeams(
-        [t1P1Name, t1P2Name],
-        [t2P1Name, t2P2Name]
+        [playerNames[0], playerNames[2]],
+        [playerNames[1], playerNames[3]]
       );
       players = pt.players;
       teams = pt.teams;
@@ -135,49 +127,36 @@ export class DefaultGameEngine implements GameEngine {
       currentTurnPlayerIndex: Math.floor(Math.random() * players.length),
       turnCount: 0,
       roundCount: 1,
-      lastAction: undefined,
-    lastScoreBreakdown: undefined,
-    lastPlayerToTakeId: undefined,
-    winnerId: undefined
-  } as unknown as GameState;
+    };
 
     this.currentState = state;
     return { success: true, value: state };
   }
 
-  playCard(state: GameState, action: Action, skipValidation: boolean = false): Result<GameState> {
-    if (!skipValidation) {
-      const validation = this.validator.validate(state, action);
-      if (!validation.isValid) {
-        return { success: false, error: validation.error || ErrorCode.INVALID_ACTION };
-      }
+  playCard(state: GameState, action: Action): Result<GameState> {
+    // 1. Verify it's the player's turn and validate action
+    const validation = this.validator.validate(state, action);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error || ErrorCode.INVALID_ACTION };
     }
 
     let newState = { ...state };
     let playerIndex = newState.players.findIndex(p => p.id === action.playerId);
-    if (playerIndex === -1) {
-      return { success: false, error: ErrorCode.INVALID_STATE };
-    }
     let player = { ...newState.players[playerIndex] };
 
     // 2. Execute action specific logic
     switch (action.type) {
-      case 'colocar':
-      case 'botar': {
-        const handCards = player.hand || [];
-        const cardIndex = handCards.findIndex(c => c.id === action.cardId);
-        const card = handCards[cardIndex];
-        if (!card) return { success: false, error: ErrorCode.INVALID_ACTION };
-        player.hand = handCards.filter(c => c.id !== action.cardId);
+      case 'colocar': {
+        const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+        const card = player.hand[cardIndex];
+        player.hand = player.hand.filter(c => c.id !== action.cardId);
         newState.board = addCard(newState.board, card);
         break;
       }
       case 'llevar': {
-        const handCards = player.hand || [];
-        const cardIndex = handCards.findIndex(c => c.id === action.cardId);
-        const card = handCards[cardIndex];
-        if (!card) return { success: false, error: ErrorCode.INVALID_ACTION }; // type guard
-        player.hand = handCards.filter(c => c.id !== action.cardId);
+        const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+        const card = player.hand[cardIndex];
+        player.hand = player.hand.filter(c => c.id !== action.cardId);
         
         const collectedCards = [card];
         
@@ -207,7 +186,7 @@ export class DefaultGameEngine implements GameEngine {
           }
         }
 
-        player.collectedCards = [...(player.collectedCards || []), ...collectedCards] as Card[];
+        player.collectedCards = [...player.collectedCards, ...collectedCards];
 
         // Check for virado (if board is left empty)
         if (isEmpty(newState.board)) {
@@ -248,11 +227,7 @@ export class DefaultGameEngine implements GameEngine {
 
             // Only add a virado to this player if we DID NOT remove one from the opponent
             if (!removedFromOpponent) {
-            if (player.virados !== undefined) {
               player.virados += 1;
-            } else {
-              player.virados = 1;
-            }
             }
           }
         }
@@ -263,109 +238,181 @@ export class DefaultGameEngine implements GameEngine {
         break;
       }
       case 'formar': {
-          const handCards = player.hand || [];
-          const cardIndex = handCards.findIndex(c => c.id === action.cardId);
-          const card = handCards[cardIndex];
-          if (!card) return { success: false, error: ErrorCode.INVALID_ACTION }; // type guard
-          player.hand = handCards.filter(c => c.id !== action.cardId);
+        const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+        const card = player.hand[cardIndex];
+        player.hand = player.hand.filter(c => c.id !== action.cardId);
 
         const boardCardsToForm = newState.board.cards.filter(c => action.boardCardIds.includes(c.id));
         newState.board = removeCards(newState.board, action.boardCardIds);
 
-        const formationValue = card.value + boardCardsToForm.reduce((sum, c) => sum + c.value, 0);
+        // Calculate target value by finding which value from the remaining hand cards can perfectly partition the selected cards
+        let formationValue = 0;
+        let isGroup = false;
 
-        const newFormation = {
-          id: Math.random().toString(36).substring(2, 9),
-          cards: [...boardCardsToForm, card],
-          value: formationValue,
-          createdBy: action.playerId,
-          createdAt: newState.turnCount
-        };
+        const allValues = [card.value, ...boardCardsToForm.map(c => c.value)];
+        const possibleAces = card.rank === 'A' ? [1, 14] : [card.value];
+        
+        // Find potential targets from player's remaining hand
+        const potentialTargets = new Set<number>();
+        for (const c of player.hand) {
+          if (c.rank === 'A') {
+            potentialTargets.add(1);
+            potentialTargets.add(14);
+          } else {
+            potentialTargets.add(c.value);
+          }
+        }
 
-        newState.board = addFormation(newState.board, newFormation);
-        break;
-      }
-      case 'formarPar': {
-          const handCards = player.hand || [];
-          const cardIndex = handCards.findIndex(c => c.id === action.cardId);
-          const card = handCards[cardIndex];
-          if (!card) return { success: false, error: ErrorCode.INVALID_ACTION }; // type guard
-          player.hand = handCards.filter(c => c.id !== action.cardId);
+        // Determine the actual formationValue
+        for (const handVal of possibleAces) {
+          const valuesToPartition = [handVal, ...boardCardsToForm.map(c => c.value)];
+          for (const target of potentialTargets) {
+            if (target > 14) continue;
+            // Use the validator's canPartitionIntoSum logic indirectly by checking the sum
+            const totalSum = valuesToPartition.reduce((a, b) => a + b, 0);
+            if (totalSum % target === 0 && totalSum >= target) {
+              // We assume validation passed, so this target is the one
+              formationValue = target;
+              if (totalSum > target) {
+                isGroup = true;
+              }
+              break;
+            }
+          }
+          if (formationValue > 0) break;
+        }
 
-        let updatedFormation;
-        let formationIdToRemove;
+        // Fallback if not found (should not happen if validation passed)
+        if (formationValue === 0) {
+          formationValue = card.value + boardCardsToForm.reduce((sum, c) => sum + c.value, 0);
+        }
 
-        if (action.formationId) {
-          const formation = newState.board.formations.find(f => f.id === action.formationId)!;
-          updatedFormation = {
-            ...formation,
-            cards: [...formation.cards, card],
-            createdBy: action.playerId // Usually taking ownership of the par
-          };
-          formationIdToRemove = action.formationId;
-        } else if (action.boardCardIds && action.boardCardIds.length > 0) {
-          const boardCardsToForm = newState.board.cards.filter(c => action.boardCardIds!.includes(c.id));
-          newState.board = removeCards(newState.board, action.boardCardIds);
+        // Auto-group check: merge into ANY formation of this value
+        const matchingFormations = newState.board.formations.filter(f => f.value === formationValue);
+
+        if (matchingFormations.length > 0) {
+          const primaryFormation = matchingFormations[0];
+          let mergedCards = [...primaryFormation.cards, ...boardCardsToForm, card];
           
-          updatedFormation = {
+          for (let i = 1; i < matchingFormations.length; i++) {
+             mergedCards = [...mergedCards, ...matchingFormations[i].cards];
+             newState.board = removeFormation(newState.board, matchingFormations[i].id);
+          }
+
+          const updatedFormation = {
+            ...primaryFormation,
+            cards: mergedCards,
+            isGroup: true,
+            createdBy: action.playerId
+          };
+          
+          const newFormations = newState.board.formations.map(f => f.id === primaryFormation.id ? updatedFormation : f);
+          newState.board = { ...newState.board, formations: newFormations };
+        } else {
+          const newFormation = {
             id: Math.random().toString(36).substring(2, 9),
             cards: [...boardCardsToForm, card],
-            value: card.value, // or 14 if it's an Ace, but card.value handles it unless it's a sum. Wait, targetValue is sum.
+            value: formationValue,
+            isGroup: isGroup,
             createdBy: action.playerId,
             createdAt: newState.turnCount
           };
-          // Correct value if it was an Ace taking a 14
-          const targetValue = boardCardsToForm.reduce((sum, c) => sum + c.value, 0);
-          updatedFormation.value = targetValue;
+          newState.board = addFormation(newState.board, newFormation);
+        }
+        break;
+      }
+      case 'formarPar': {
+        const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+        const card = player.hand[cardIndex];
+        player.hand = player.hand.filter(c => c.id !== action.cardId);
+
+        let boardCardsToForm: import('../domain/card').Card[] = [];
+        if (action.boardCardIds && action.boardCardIds.length > 0) {
+          boardCardsToForm = newState.board.cards.filter(c => action.boardCardIds!.includes(c.id));
+          newState.board = removeCards(newState.board, action.boardCardIds);
         }
 
-        if (formationIdToRemove) {
-          newState.board = removeFormation(newState.board, formationIdToRemove);
+        let targetValue = card.value;
+        if (card.rank === 'A' && boardCardsToForm.length > 0) {
+           const values = boardCardsToForm.map(c => c.value);
+           const sum = values.reduce((a, b) => a + b, 0);
+           if (sum % 14 === 0) targetValue = 14;
+           else targetValue = 1;
+        } else if (card.rank === 'A' && action.formationId) {
+           const form = newState.board.formations.find(f => f.id === action.formationId);
+           if (form) targetValue = form.value;
         }
-        if (updatedFormation) {
-          newState.board = addFormation(newState.board, updatedFormation);
+
+        // Gather ALL formations of this value from the board
+        const matchingFormations = newState.board.formations.filter(f => f.value === targetValue);
+        
+        if (matchingFormations.length > 0) {
+          // Merge EVERYTHING into the first matching formation
+          const primaryFormation = matchingFormations[0];
+          let mergedCards = [...primaryFormation.cards, ...boardCardsToForm, card];
+          
+          // Add cards from other matching formations and remove them
+          for (let i = 1; i < matchingFormations.length; i++) {
+             mergedCards = [...mergedCards, ...matchingFormations[i].cards];
+             newState.board = removeFormation(newState.board, matchingFormations[i].id);
+          }
+
+          const updatedFormation = {
+            ...primaryFormation,
+            cards: mergedCards,
+            isGroup: true,
+            createdBy: action.playerId
+          };
+          
+          // Update the primary formation in the array
+          const newFormations = newState.board.formations.map(f => f.id === primaryFormation.id ? updatedFormation : f);
+          newState.board = { ...newState.board, formations: newFormations };
+        } else {
+          // No existing formations of this value, create a new one
+          const newFormation = {
+            id: Math.random().toString(36).substring(2, 9),
+            cards: [...boardCardsToForm, card],
+            value: targetValue,
+            isGroup: true,
+            createdBy: action.playerId,
+            createdAt: newState.turnCount
+          };
+          newState.board = addFormation(newState.board, newFormation);
         }
         break;
       }
       case 'aumentarFormacion': {
-          const handCards = player.hand || [];
-          const cardIndex = handCards.findIndex(c => c.id === action.cardId);
-          const card = handCards[cardIndex];
-          if (!card) return { success: false, error: ErrorCode.INVALID_ACTION }; // type guard
-          player.hand = handCards.filter(c => c.id !== action.cardId);
+        const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+        const card = player.hand[cardIndex];
+        player.hand = player.hand.filter(c => c.id !== action.cardId);
 
         const formationIndex = newState.board.formations.findIndex(f => f.id === action.formationId);
-        if (formationIndex !== -1) {
-          const formation = newState.board.formations[formationIndex];
-          if (formation) {
-            const newFormation = {
-              ...formation,
-              cards: [...formation.cards, card],
-              value: formation.value + card.value,
-              createdBy: action.playerId, // now owned by this player
-              createdAt: newState.turnCount
-            };
+        const formation = newState.board.formations[formationIndex];
+        
+        const newFormation = {
+          ...formation,
+          cards: [...formation.cards, card],
+          value: formation.value + card.value,
+          createdBy: action.playerId, // now owned by this player
+          createdAt: newState.turnCount
+        };
 
-            const newFormations = [...newState.board.formations];
-            newFormations[formationIndex] = newFormation;
-            newState.board = { ...newState.board, formations: newFormations };
-          }
-        }
+        const newFormations = [...newState.board.formations];
+        newFormations[formationIndex] = newFormation;
+        newState.board = { ...newState.board, formations: newFormations };
         break;
       }
       case 'cantar': {
-          const handCards = player.hand || [];
-          const cardIndex = handCards.findIndex(c => c.id === action.cardId);
-          const card = handCards[cardIndex];
-          if (!card) return { success: false, error: ErrorCode.INVALID_ACTION }; // type guard
-          player.hand = handCards.filter(c => c.id !== action.cardId);
-        
+        const cardIndex = player.hand.findIndex(c => c.id === action.cardId);
+        const card = player.hand[cardIndex];
+        player.hand = player.hand.filter(c => c.id !== action.cardId);
+
         newState.board = addCantedCard(newState.board, card, action.playerId);
         break;
       }
     }
 
-    newState.players = newState.players.map((p, i) => i === playerIndex ? (player as Player) : p) as Player[];
+    newState.players = newState.players.map((p, i) => i === playerIndex ? player : p);
     newState.turnCount += 1;
     newState.lastAction = action.type;
 
@@ -391,8 +438,8 @@ export class DefaultGameEngine implements GameEngine {
               remainingCards.push(canted.card);
             }
             
-            lastPlayer.collectedCards = [...(lastPlayer.collectedCards || []), ...remainingCards] as Card[];
-            newState.players = newState.players.map((p, i) => i === lastPlayerIndex ? (lastPlayer as Player) : p) as Player[];
+            lastPlayer.collectedCards = [...lastPlayer.collectedCards, ...remainingCards];
+            newState.players = newState.players.map((p, i) => i === lastPlayerIndex ? lastPlayer : p);
             
             // Clear the board
             newState.board = { cards: [], formations: [], cantedCards: [] };
@@ -492,7 +539,7 @@ export class DefaultGameEngine implements GameEngine {
       const { drawn, remainingDeck } = draw(deck, 4);
       deck = remainingDeck;
       return { ...player, hand: drawn, collectedCards: [], virados: 0 };
-    }) as Player[];
+    });
 
     const teams = state.teams.map(team => ({
       ...team,
@@ -518,7 +565,7 @@ export class DefaultGameEngine implements GameEngine {
       turnCount: 0,
       lastAction: undefined,
       lastScoreBreakdown: undefined
-    } as unknown as GameState;
+    };
   }
 
   getCurrentState(): GameState | null {

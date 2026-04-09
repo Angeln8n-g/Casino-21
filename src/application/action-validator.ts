@@ -121,6 +121,19 @@ export class DefaultActionValidator implements ActionValidator {
       }
     }
 
+    // Rule: If the player has a pending formation of the target value, they MUST take it
+    // if they are taking anything of that value.
+    const myPendingFormations = state.board.formations.filter(f => 
+      f.createdBy === player.id && targetValues.includes(f.value)
+    );
+
+    if (myPendingFormations.length > 0) {
+      const isTakingOwnFormation = myPendingFormations.some(f => action.formationIds.includes(f.id));
+      if (!isTakingOwnFormation) {
+        return { isValid: false, error: ErrorCode.INVALID_ACTION };
+      }
+    }
+
     // Check protection
     // According to new rules, canted cards can only be taken by an Ace (value 1 or 14).
     // So if any board card is canted, handCard MUST be an Ace.
@@ -234,29 +247,58 @@ export class DefaultActionValidator implements ActionValidator {
       return { isValid: false, error: ErrorCode.INVALID_ACTION };
     }
 
-    let sum = handCard.value;
-    for (const boardCardId of action.boardCardIds) {
-      const boardCard = state.board.cards.find(c => c.id === boardCardId);
-      if (!boardCard) {
-        // Canted cards cannot be used to form
-        const isCanted = state.board.cantedCards.some(cc => cc.card.id === boardCardId);
-        if (isCanted) {
-          return { isValid: false, error: ErrorCode.CARD_PROTECTED };
-        }
-        return { isValid: false, error: ErrorCode.INVALID_STATE };
-      }
-      sum += boardCard.value;
+    const boardCards = action.boardCardIds.map(id => state.board.cards.find(c => c.id === id));
+    if (boardCards.some(c => !c)) {
+      const hasCanted = action.boardCardIds.some(id => state.board.cantedCards.some(cc => cc.card.id === id));
+      if (hasCanted) return { isValid: false, error: ErrorCode.CARD_PROTECTED };
+      return { isValid: false, error: ErrorCode.INVALID_STATE };
     }
 
-    if (sum > 14) {
+    const allValues = [handCard.value, ...boardCards.map(c => c!.value)];
+    const possibleAces = handCard.rank === 'A' ? [1, 14] : [handCard.value];
+
+    // The target value must be the value of another card in the player's hand
+    // or if the hand card itself can form multiple groups of its own value (which is covered by FormarPar, but we can allow it here too).
+    // We look for a target value X such that ALL selected cards (hand + board) can be partitioned into sets of X.
+    // AND one of the sets MUST include the handCard. (Since allValues includes handCard, a valid partition implies handCard is in one of the sets summing to X).
+    // AND the player MUST have a card of value X in hand (other than the handCard used, unless they used one and have another).
+    
+    // Find all potential target values from the remaining cards in hand
+    const potentialTargets = new Set<number>();
+    for (const c of player.hand) {
+      if (c.id !== action.cardId) {
+        if (c.rank === 'A') {
+          potentialTargets.add(1);
+          potentialTargets.add(14);
+        } else {
+          potentialTargets.add(c.value);
+        }
+      }
+    }
+
+    let validTargetFound = false;
+
+    // We must test each possible value of the hand card (if it's an Ace, 1 or 14)
+    for (const handVal of possibleAces) {
+      const valuesToPartition = [handVal, ...boardCards.map(c => c!.value)];
+      
+      for (const target of potentialTargets) {
+        if (target > 14) continue;
+        if (this.canPartitionIntoSum(valuesToPartition, target)) {
+          validTargetFound = true;
+          break;
+        }
+      }
+      if (validTargetFound) break;
+    }
+
+    if (!validTargetFound) {
       return { isValid: false, error: ErrorCode.INVALID_FORMATION_SUM };
     }
 
-    const hasCardToTake = player.hand.some(c => c.id !== action.cardId && (c.value === sum || (c.rank === 'A' && sum === 14)));
-    if (!hasCardToTake) {
-      return { isValid: false, error: ErrorCode.INVALID_ACTION };
-    }
-
+    // Rule: if player already has a formation of this target value, they are effectively grouping them.
+    // They still need another card to take it, which was validated above because potentialTargets requires a different card in hand.
+    
     return { isValid: true };
   }
 
@@ -277,18 +319,30 @@ export class DefaultActionValidator implements ActionValidator {
         return { isValid: false, error: ErrorCode.FORMATION_NOT_FOUND };
       }
       targetValue = formation.value;
+      if (handCard.value !== targetValue && !(handCard.rank === 'A' && targetValue === 14)) {
+        return { isValid: false, error: ErrorCode.INVALID_ACTION };
+      }
     } 
-    // Case 2: Forming par by combining multiple loose cards that sum to handCard's value
-    else if (action.boardCardIds && action.boardCardIds.length > 0) {
+    
+    // Case 2: Forming par by combining loose cards
+    if (action.boardCardIds && action.boardCardIds.length > 0) {
       const boardCards = action.boardCardIds.map(id => state.board.cards.find(c => c.id === id));
       if (boardCards.some(c => !c)) {
         return { isValid: false, error: ErrorCode.INVALID_STATE };
       }
-      targetValue = boardCards.reduce((sum, c) => sum + c!.value, 0);
-    }
-
-    if (handCard.value !== targetValue && !(handCard.rank === 'A' && targetValue === 14)) {
-      return { isValid: false, error: ErrorCode.INVALID_ACTION };
+      
+      const values = boardCards.map(c => c!.value);
+      const possibleTargets = handCard.rank === 'A' ? [1, 14] : [handCard.value];
+      
+      const validTarget = possibleTargets.find(tv => this.canPartitionIntoSum(values, tv));
+      if (!validTarget) {
+        return { isValid: false, error: ErrorCode.INVALID_ACTION };
+      }
+      
+      if (targetValue !== 0 && targetValue !== validTarget) {
+        return { isValid: false, error: ErrorCode.INVALID_ACTION };
+      }
+      targetValue = validTarget;
     }
 
     // Must have another card in hand to eventually take this par
@@ -307,6 +361,10 @@ export class DefaultActionValidator implements ActionValidator {
     const formation = state.board.formations.find(f => f.id === action.formationId);
     if (!formation) {
       return { isValid: false, error: ErrorCode.FORMATION_NOT_FOUND };
+    }
+
+    if (formation.isGroup) {
+      return { isValid: false, error: ErrorCode.CANNOT_INCREASE_GROUP };
     }
 
     if (formation.createdBy === action.playerId) {
@@ -394,6 +452,8 @@ export class DefaultActionValidator implements ActionValidator {
     // Aumentar Formacion
     for (const card of player.hand) {
       for (const formation of state.board.formations) {
+        if (formation.isGroup) continue;
+
         const newSum = formation.value + card.value;
         if (newSum <= 14 && player.hand.some(c => c.id !== card.id && (c.value === newSum || (c.rank === 'A' && newSum === 14)))) {
           validActions.push({
@@ -462,14 +522,12 @@ export class DefaultActionValidator implements ActionValidator {
     for (const card of player.hand) {
       for (const formation of state.board.formations) {
         if (card.value === formation.value || (card.rank === 'A' && formation.value === 14)) {
-          if (player.hand.some(c => c.id !== card.id && (c.value === formation.value || (c.rank === 'A' && formation.value === 14)))) {
-            validActions.push({
-              type: 'formarPar',
-              playerId,
-              cardId: card.id,
-              formationId: formation.id
-            });
-          }
+          validActions.push({
+            type: 'formarPar',
+            playerId,
+            cardId: card.id,
+            formationId: formation.id
+          });
         }
       }
     }
@@ -484,15 +542,13 @@ export class DefaultActionValidator implements ActionValidator {
         // For accurate UI, the user selects the cards and we validate it.
         const values = state.board.cards.map(c => c.value);
         if (this.canPartitionIntoSum(values, tv)) {
-          if (player.hand.some(c => c.id !== card.id && (c.value === tv || (c.rank === 'A' && tv === 14)))) {
-            // We push a generic formarPar, though the specific boardCardIds would be chosen by user
-            validActions.push({
-              type: 'formarPar',
-              playerId,
-              cardId: card.id,
-              boardCardIds: state.board.cards.map(c => c.id) // Just a placeholder for UI suggestion
-            });
-          }
+          // We push a generic formarPar, though the specific boardCardIds would be chosen by user
+          validActions.push({
+            type: 'formarPar',
+            playerId,
+            cardId: card.id,
+            boardCardIds: state.board.cards.map(c => c.id) // Just a placeholder for UI suggestion
+          });
         }
       }
     }

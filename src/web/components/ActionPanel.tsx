@@ -40,14 +40,53 @@ export function ActionPanel({
   };
 
   const handleLlevar = () => {
+    // If the player has a pending formation that matches the hand card's value, we should auto-include it
+    // if they haven't explicitly selected it, to avoid the validation error.
+    let currentFormationIds = Array.from(selectedFormationIds);
+    const player = gameState.players[gameState.currentTurnPlayerIndex];
+    const handCard = player.hand.find(c => c.id === selectedHandCardId);
+    
+    if (handCard) {
+      const targetValues = handCard.rank === 'A' ? [1, 14] : [handCard.value];
+      const myPendingFormations = gameState.board.formations.filter(f => 
+        f.createdBy === player.id && targetValues.includes(f.value)
+      );
+
+      for (const form of myPendingFormations) {
+        if (!currentFormationIds.includes(form.id)) {
+          currentFormationIds.push(form.id);
+        }
+      }
+    }
+
     onPlayAction({
       type: 'llevar',
       boardCardIds: Array.from(selectedBoardCardIds),
-      formationIds: Array.from(selectedFormationIds)
+      formationIds: currentFormationIds
     });
   };
 
   const handleFormar = () => {
+    // Determine the expected formation value to see if we should auto-merge with an existing formation
+    const player = gameState.players[gameState.currentTurnPlayerIndex];
+    const handCard = player.hand.find(c => c.id === selectedHandCardId);
+    
+    if (handCard) {
+      const boardCards = gameState.board.cards.filter(c => selectedBoardCardIds.has(c.id));
+      const targetSum = handCard.value + boardCards.reduce((sum, c) => sum + c.value, 0);
+      
+      const existingFormation = gameState.board.formations.find(f => 
+        f.createdBy === player.id && f.value === targetSum
+      );
+      
+      if (existingFormation && !selectedFormationIds.has(existingFormation.id)) {
+        // Instead of calling 'formar', if they have a formation of this value, 
+        // the game-engine's 'formar' automatically merges it now, so we can just proceed with 'formar'.
+        // Or we can convert it to 'formarPar' internally if needed.
+        // We'll just dispatch 'formar' and the engine will handle the merge and set isGroup = true.
+      }
+    }
+
     onPlayAction({
       type: 'formar',
       boardCardIds: Array.from(selectedBoardCardIds)
@@ -99,14 +138,14 @@ export function ActionPanel({
                   Formar
                 </button>
                 <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
-                  Formar Par
+                  Agrupar
                 </button>
               </>
             )}
             {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
               <>
                 <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
-                  Formar Par
+                  Agrupar
                 </button>
                 <button onClick={handleAumentarFormacion} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
                   Aumentar

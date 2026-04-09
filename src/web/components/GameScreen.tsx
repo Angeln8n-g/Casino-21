@@ -531,7 +531,7 @@ export function GameScreen() {
                       setSelectedFormationIds(new Set());
                     }}
                   >
-                    {action.type === 'aumentarFormacion' ? 'Aumentar' : action.type}
+                    {action.type === 'aumentarFormacion' ? 'Aumentar' : action.type === 'formarPar' ? 'Agrupar' : action.type}
                   </button>
                 ))}
               </div>

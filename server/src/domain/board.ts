@@ -10,6 +10,8 @@ export interface Formation {
   readonly cards: readonly Card[];
   /** The target value of the formation */
   readonly value: number;
+  /** Indicates if this formation is a paired group (cannot be increased in value) */
+  readonly isGroup?: boolean;
   /** ID of the player who created the formation */
   readonly createdBy: string;
   /** Turn number when the formation was created */

@@ -245,17 +245,80 @@ export class DefaultGameEngine implements GameEngine {
         const boardCardsToForm = newState.board.cards.filter(c => action.boardCardIds.includes(c.id));
         newState.board = removeCards(newState.board, action.boardCardIds);
 
-        const formationValue = card.value + boardCardsToForm.reduce((sum, c) => sum + c.value, 0);
+        // Calculate target value by finding which value from the remaining hand cards can perfectly partition the selected cards
+        let formationValue = 0;
+        let isGroup = false;
 
-        const newFormation = {
-          id: Math.random().toString(36).substring(2, 9),
-          cards: [...boardCardsToForm, card],
-          value: formationValue,
-          createdBy: action.playerId,
-          createdAt: newState.turnCount
-        };
+        const allValues = [card.value, ...boardCardsToForm.map(c => c.value)];
+        const possibleAces = card.rank === 'A' ? [1, 14] : [card.value];
+        
+        // Find potential targets from player's remaining hand
+        const potentialTargets = new Set<number>();
+        for (const c of player.hand) {
+          if (c.rank === 'A') {
+            potentialTargets.add(1);
+            potentialTargets.add(14);
+          } else {
+            potentialTargets.add(c.value);
+          }
+        }
 
-        newState.board = addFormation(newState.board, newFormation);
+        // Determine the actual formationValue
+        for (const handVal of possibleAces) {
+          const valuesToPartition = [handVal, ...boardCardsToForm.map(c => c.value)];
+          for (const target of potentialTargets) {
+            if (target > 14) continue;
+            // Use the validator's canPartitionIntoSum logic indirectly by checking the sum
+            const totalSum = valuesToPartition.reduce((a, b) => a + b, 0);
+            if (totalSum % target === 0 && totalSum >= target) {
+              // We assume validation passed, so this target is the one
+              formationValue = target;
+              if (totalSum > target) {
+                isGroup = true;
+              }
+              break;
+            }
+          }
+          if (formationValue > 0) break;
+        }
+
+        // Fallback if not found (should not happen if validation passed)
+        if (formationValue === 0) {
+          formationValue = card.value + boardCardsToForm.reduce((sum, c) => sum + c.value, 0);
+        }
+
+        // Auto-group check: merge into ANY formation of this value
+        const matchingFormations = newState.board.formations.filter(f => f.value === formationValue);
+
+        if (matchingFormations.length > 0) {
+          const primaryFormation = matchingFormations[0];
+          let mergedCards = [...primaryFormation.cards, ...boardCardsToForm, card];
+          
+          for (let i = 1; i < matchingFormations.length; i++) {
+             mergedCards = [...mergedCards, ...matchingFormations[i].cards];
+             newState.board = removeFormation(newState.board, matchingFormations[i].id);
+          }
+
+          const updatedFormation = {
+            ...primaryFormation,
+            cards: mergedCards,
+            isGroup: true,
+            createdBy: action.playerId
+          };
+          
+          const newFormations = newState.board.formations.map(f => f.id === primaryFormation.id ? updatedFormation : f);
+          newState.board = { ...newState.board, formations: newFormations };
+        } else {
+          const newFormation = {
+            id: Math.random().toString(36).substring(2, 9),
+            cards: [...boardCardsToForm, card],
+            value: formationValue,
+            isGroup: isGroup,
+            createdBy: action.playerId,
+            createdAt: newState.turnCount
+          };
+          newState.board = addFormation(newState.board, newFormation);
+        }
         break;
       }
       case 'formarPar': {
@@ -263,38 +326,58 @@ export class DefaultGameEngine implements GameEngine {
         const card = player.hand[cardIndex];
         player.hand = player.hand.filter(c => c.id !== action.cardId);
 
-        let updatedFormation;
-        let formationIdToRemove;
-
-        if (action.formationId) {
-          const formation = newState.board.formations.find(f => f.id === action.formationId)!;
-          updatedFormation = {
-            ...formation,
-            cards: [...formation.cards, card],
-            createdBy: action.playerId // Usually taking ownership of the par
-          };
-          formationIdToRemove = action.formationId;
-        } else if (action.boardCardIds && action.boardCardIds.length > 0) {
-          const boardCardsToForm = newState.board.cards.filter(c => action.boardCardIds!.includes(c.id));
+        let boardCardsToForm: import('../domain/card').Card[] = [];
+        if (action.boardCardIds && action.boardCardIds.length > 0) {
+          boardCardsToForm = newState.board.cards.filter(c => action.boardCardIds!.includes(c.id));
           newState.board = removeCards(newState.board, action.boardCardIds);
+        }
+
+        let targetValue = card.value;
+        if (card.rank === 'A' && boardCardsToForm.length > 0) {
+           const values = boardCardsToForm.map(c => c.value);
+           const sum = values.reduce((a, b) => a + b, 0);
+           if (sum % 14 === 0) targetValue = 14;
+           else targetValue = 1;
+        } else if (card.rank === 'A' && action.formationId) {
+           const form = newState.board.formations.find(f => f.id === action.formationId);
+           if (form) targetValue = form.value;
+        }
+
+        // Gather ALL formations of this value from the board
+        const matchingFormations = newState.board.formations.filter(f => f.value === targetValue);
+        
+        if (matchingFormations.length > 0) {
+          // Merge EVERYTHING into the first matching formation
+          const primaryFormation = matchingFormations[0];
+          let mergedCards = [...primaryFormation.cards, ...boardCardsToForm, card];
           
-          updatedFormation = {
+          // Add cards from other matching formations and remove them
+          for (let i = 1; i < matchingFormations.length; i++) {
+             mergedCards = [...mergedCards, ...matchingFormations[i].cards];
+             newState.board = removeFormation(newState.board, matchingFormations[i].id);
+          }
+
+          const updatedFormation = {
+            ...primaryFormation,
+            cards: mergedCards,
+            isGroup: true,
+            createdBy: action.playerId
+          };
+          
+          // Update the primary formation in the array
+          const newFormations = newState.board.formations.map(f => f.id === primaryFormation.id ? updatedFormation : f);
+          newState.board = { ...newState.board, formations: newFormations };
+        } else {
+          // No existing formations of this value, create a new one
+          const newFormation = {
             id: Math.random().toString(36).substring(2, 9),
             cards: [...boardCardsToForm, card],
-            value: card.value, // or 14 if it's an Ace, but card.value handles it unless it's a sum. Wait, targetValue is sum.
+            value: targetValue,
+            isGroup: true,
             createdBy: action.playerId,
             createdAt: newState.turnCount
           };
-          // Correct value if it was an Ace taking a 14
-          const targetValue = boardCardsToForm.reduce((sum, c) => sum + c.value, 0);
-          updatedFormation.value = targetValue;
-        }
-
-        if (formationIdToRemove) {
-          newState.board = removeFormation(newState.board, formationIdToRemove);
-        }
-        if (updatedFormation) {
-          newState.board = addFormation(newState.board, updatedFormation);
+          newState.board = addFormation(newState.board, newFormation);
         }
         break;
       }
