@@ -11,6 +11,7 @@ interface ChatMessage {
   created_at: string;
   profiles?: {
     username: string;
+    avatar_url?: string | null;
     level: number;
     elo: number;
     xp?: number;
@@ -30,6 +31,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
 
   // ── Sync: Private vs Global ────────────────────────────────────
@@ -42,8 +44,9 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
       ? `chat_private_${[user.id, receiverId].sort().join('_')}`
       : 'chat_global_room';
 
-    const dbChannel = supabase.channel(`${baseId}_db_${Date.now()}`);
-    const presenceChannel = supabase.channel(`${baseId}_presence`);
+    const dbChannel = supabase.channel(`${baseId}_db_${Date.now()}_${Math.random()}`);
+    const presenceChannel = supabase.channel(`${baseId}_presence_${Date.now()}_${Math.random()}`);
+    presenceChannelRef.current = presenceChannel;
 
     if (receiverId) {
       // Private Chat Listeners
@@ -100,6 +103,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
       });
 
     return () => {
+      presenceChannelRef.current = null;
       supabase.removeChannel(dbChannel);
       supabase.removeChannel(presenceChannel);
     };
@@ -112,7 +116,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
   const fetchNewMessageProfile = async (msgData: any) => {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('username, level, elo')
+      .select('username, avatar_url, level, elo')
       .eq('id', msgData.sender_id)
       .single();
     const newMessage = { ...msgData, profiles: profile } as ChatMessage;
@@ -129,7 +133,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           .from('messages')
           .select(`
             id, sender_id, receiver_id, content, created_at,
-            profiles:sender_id (username, level, elo)
+            profiles:sender_id (username, avatar_url, level, elo)
           `)
           .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`);
         
@@ -145,7 +149,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           .from('chat_messages')
           .select(`
             id, sender_id, room_id, content, created_at,
-            profiles:sender_id (username, level, elo)
+            profiles:sender_id (username, avatar_url, level, elo)
           `)
           .is('room_id', null);
       }
@@ -168,19 +172,13 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     // Typing indicator logic
     if (!isTyping && e.target.value.length > 0) {
       setIsTyping(true);
-      const baseId = receiverId 
-        ? `chat_private_${[user!.id, receiverId].sort().join('_')}`
-        : 'chat_global_room';
-      supabase.channel(`${baseId}_presence`).track({ user_id: user!.id, is_typing: true });
+      presenceChannelRef.current?.track({ user_id: user!.id, is_typing: true });
     }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-      const baseId = receiverId 
-        ? `chat_private_${[user!.id, receiverId].sort().join('_')}`
-        : 'chat_global_room';
-      supabase.channel(`${baseId}_presence`).track({ user_id: user!.id, is_typing: false });
+      presenceChannelRef.current?.track({ user_id: user!.id, is_typing: false });
     }, 2000);
   };
 
@@ -221,18 +219,25 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         ) : (
           messages.map(m => {
             const isMe = m.sender_id === user?.id;
-            const profile = m.profiles || { username: 'Jugador', level: 1, elo: 1000 };
+            const profile = m.profiles || { username: 'Jugador', avatar_url: null, level: 1, elo: 1000 };
             return (
-              <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up`}>
-                <div className="flex items-baseline gap-1 mb-0.5 px-2">
-                  <span className={`text-[10px] font-bold tracking-wide ${isMe ? 'text-gray-500' : 'text-gray-400'}`}>
+              <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up mb-3`}>
+                <div className={`flex items-end gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
+                    {profile.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      profile.username.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-bold tracking-wide ${isMe ? 'text-gray-500' : 'text-casino-gold/70'}`}>
                     {profile.username}
                   </span>
                 </div>
-                <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-sm shadow-lg ${
+                <div className={`px-3 py-2 rounded-2xl max-w-[85%] text-sm shadow-lg ${
                   isMe 
-                    ? 'bg-gradient-to-br from-casino-gold/30 to-casino-gold/10 text-white border border-casino-gold/20' 
-                    : 'bg-white/[0.05] border border-white/[0.05] text-gray-200'
+                    ? 'bg-gradient-to-br from-casino-gold/30 to-casino-gold/10 text-white border border-casino-gold/20 rounded-tr-none' 
+                    : 'bg-white/[0.05] border border-white/[0.05] text-gray-200 rounded-tl-none'
                 }`}>
                   {m.content}
                 </div>

@@ -6,7 +6,6 @@ import { FriendSearch } from './FriendSearch';
 import { ChatWindow } from './ChatWindow';
 import { FriendRequestModal, FriendRequestProfile } from './FriendRequestModal';
 import { FriendProfileModal, FriendForModal } from './FriendProfileModal';
-import { socketService } from '../services/socket';
 
 interface Friend {
   id: string;
@@ -24,7 +23,7 @@ interface PresenceEntry {
 }
 
 export function SocialPanel() {
-  const { user } = useAuth();
+  const { user, presenceByUserId } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<FriendRequestProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +32,7 @@ export function SocialPanel() {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
 
-
-  // Presence: userId → PresenceEntry
-  const [presenceMap, setPresenceMap] = useState<Map<string, PresenceEntry>>(new Map());
+  const presenceMap = new Map<string, PresenceEntry>(Object.entries(presenceByUserId || {}));
 
   // Modals
   const [selectedRequest, setSelectedRequest] = useState<FriendRequestProfile | null>(null);
@@ -43,20 +40,30 @@ export function SocialPanel() {
 
   useEffect(() => {
     if (!user) return;
-    fetchFriends();
-    fetchPendingIncoming();
+    
+    let isMounted = true;
+    fetchFriends(() => isMounted);
+    fetchPendingIncoming(() => isMounted);
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   // ── Fetch accepted friends ──────────────────────────────────
-  const fetchFriends = useCallback(async () => {
+  const fetchFriends = useCallback(async (getIsMounted?: () => boolean) => {
     if (!user) { setLoading(false); return; }
     try {
-      const { data: friendships, error } = await supabase
+      const query = supabase
         .from('friend_requests')
         .select('sender_id, receiver_id')
         .eq('status', 'accepted')
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .limit(30);
+        
+      const { data: friendships, error } = await query;
+
+      if (getIsMounted && !getIsMounted()) return;
 
       if (error || !friendships) { setLoading(false); return; }
 
@@ -72,28 +79,37 @@ export function SocialPanel() {
         return; 
       }
 
-      const { data: profiles } = await supabase
+      const profilesQuery = supabase
         .from('profiles')
         .select('id, username, elo, level, wins, losses, xp')
         .in('id', friendIds);
+        
+      const { data: profiles, error: profilesError } = await profilesQuery;
 
-      if (profiles) setFriends(profiles);
-    } catch (err) {
+      if (getIsMounted && !getIsMounted()) return;
+
+      if (profiles && !profilesError) setFriends(profiles);
+    } catch (err: any) {
+      if (getIsMounted && !getIsMounted()) return;
       console.error('Error fetching friends:', err);
     } finally {
-      setLoading(false);
+      if (!getIsMounted || getIsMounted()) setLoading(false);
     }
   }, [user]);
 
   // ── Fetch pending INCOMING requests ─────────────────────────
-  const fetchPendingIncoming = useCallback(async () => {
+  const fetchPendingIncoming = useCallback(async (getIsMounted?: () => boolean) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from('friend_requests')
         .select('id, sender_id')
         .eq('receiver_id', user.id)
         .eq('status', 'pending');
+        
+      const { data, error } = await query;
+
+      if (getIsMounted && !getIsMounted()) return;
 
       if (error || !data || data.length === 0) {
         setPendingIncoming([]);
@@ -101,12 +117,16 @@ export function SocialPanel() {
       }
 
       const senderIds = data.map(r => r.sender_id);
-      const { data: profiles } = await supabase
+      const profilesQuery = supabase
         .from('profiles')
         .select('id, username, elo, level, wins, losses, xp')
         .in('id', senderIds);
+        
+      const { data: profiles, error: profilesError } = await profilesQuery;
 
-      if (!profiles) return;
+      if (getIsMounted && !getIsMounted()) return;
+
+      if (!profiles || profilesError) return;
 
       const requests: FriendRequestProfile[] = data
         .map(req => {
@@ -126,7 +146,8 @@ export function SocialPanel() {
         .filter(Boolean) as FriendRequestProfile[];
 
       setPendingIncoming(requests);
-    } catch (err) {
+    } catch (err: any) {
+      if (getIsMounted && !getIsMounted()) return;
       console.error('Error fetching pending requests:', err);
     }
   }, [user]);
@@ -136,7 +157,7 @@ export function SocialPanel() {
   useEffect(() => {
     if (!user) return;
     
-    const channelName = `social_panel_friend_requests_${user.id}_${Date.now()}`;
+    const channelName = `social_panel_friend_requests_${user.id}_${Date.now()}_${Math.random()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -237,7 +258,7 @@ export function SocialPanel() {
     };
     fetchUnread();
 
-    const channelName = `unread_messages_sync_${user.id}_${Date.now()}`;
+    const channelName = `unread_messages_sync_${user.id}_${Date.now()}_${Math.random()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -258,79 +279,6 @@ export function SocialPanel() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
-
-
-
-
-  // ── Real-time presence with room_id ──────────────────────────
-  useEffect(() => {
-    if (!user) return;
-
-    let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
-    let isSubscribed = false;
-
-    const setupPresence = async () => {
-      if (presenceChannel) {
-        await supabase.removeChannel(presenceChannel);
-        isSubscribed = false;
-      }
-
-      const currentRoomId = socketService.currentRoomId;
-
-      presenceChannel = supabase.channel('global:presence', {
-        config: { presence: { key: user.id } },
-      });
-
-      const syncPresence = () => {
-        if (!presenceChannel) return;
-        const state = presenceChannel.presenceState<PresenceEntry>();
-        const newMap = new Map<string, PresenceEntry>();
-        for (const [userId, presenceList] of Object.entries(state)) {
-          const latest = (presenceList as PresenceEntry[])[0];
-          if (latest) newMap.set(userId, latest);
-        }
-        setPresenceMap(newMap);
-      };
-
-      presenceChannel
-        .on('presence', { event: 'sync' }, syncPresence)
-        .on('presence', { event: 'join' }, syncPresence)
-        .on('presence', { event: 'leave' }, syncPresence)
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            isSubscribed = true;
-            await presenceChannel!.track({
-              online_at: new Date().toISOString(),
-              room_id: currentRoomId,
-            });
-          }
-        });
-    };
-
-    setupPresence();
-
-    // Re-track presence when room changes (join or leave)
-    const handleRoomChange = () => {
-      if (presenceChannel && isSubscribed) {
-        presenceChannel.track({
-          online_at: new Date().toISOString(),
-          room_id: socketService.currentRoomId,
-        }).catch(console.error);
-      }
-    };
-
-    window.addEventListener('room_joined_event', handleRoomChange);
-    window.addEventListener('room_left_event', handleRoomChange);
-
-    return () => {
-      window.removeEventListener('room_joined_event', handleRoomChange);
-      window.removeEventListener('room_left_event', handleRoomChange);
-      if (presenceChannel) {
-        supabase.removeChannel(presenceChannel);
-        isSubscribed = false;
-      }
-    };
   }, [user]);
 
   // ── Handlers ─────────────────────────────────────────────────

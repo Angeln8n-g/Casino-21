@@ -31,26 +31,41 @@ export function useLandingData() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchAll() {
-      const [profilesRes, matchesRes, tournamentsRes] = await Promise.all([
-        supabase.from('profiles').select('username, elo, wins, losses, level').order('elo', { ascending: false }).limit(10),
-        supabase.from('matches').select('id', { count: 'exact', head: true }),
-        supabase.from('tournaments').select('id, name, code, current_players, max_players, status').eq('status', 'waiting').limit(4),
-      ]);
+      try {
+        const [profilesRes, matchesRes, tournamentsRes] = await Promise.all([
+          supabase.from('profiles').select('username, elo, wins, losses, level').order('elo', { ascending: false }).limit(10),
+          supabase.from('matches').select('id', { count: 'exact', head: true }),
+          supabase.from('tournaments').select('id, name, code, current_players, max_players, status').eq('status', 'waiting').limit(4),
+        ]);
 
-      if (profilesRes.data) setLeaderboard(profilesRes.data);
-      if (tournamentsRes.data) setTournaments(tournamentsRes.data);
+        if (!isMounted) return;
 
-      setStats({
-        totalPlayers: profilesRes.data?.length ?? 0,
-        totalMatches: matchesRes.count ?? 0,
-        activeTournaments: tournamentsRes.data?.length ?? 0,
-      });
+        if (profilesRes.data) setLeaderboard(profilesRes.data);
+        if (tournamentsRes.data) setTournaments(tournamentsRes.data);
 
-      setLoading(false);
+        setStats({
+          totalPlayers: profilesRes.data?.length ?? 0,
+          totalMatches: matchesRes.count ?? 0,
+          activeTournaments: tournamentsRes.data?.length ?? 0,
+        });
+      } catch (err: any) {
+        if (!isMounted) return;
+        const message = String(err?.message || '');
+        if (err?.name === 'TypeError' && message.includes('Failed to fetch')) return;
+        console.error('Error fetching landing data:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
 
     fetchAll();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return { leaderboard, tournaments, stats, loading };

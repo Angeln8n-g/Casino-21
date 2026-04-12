@@ -11,6 +11,9 @@ import { supabase } from './supabase';
 
 dotenv.config();
 
+const RULES_VERSION = 'agrupar-merge-2026-04-09';
+const EXPOSE_RULES_VERSION = process.env.EXPOSE_RULES_VERSION === 'true';
+
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001")
   .split(",")
@@ -18,6 +21,12 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http:
   .filter(Boolean);
 
 app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST"] }));
+
+if (EXPOSE_RULES_VERSION) {
+  app.get('/rules_version', (_req, res) => {
+    res.json({ rulesVersion: RULES_VERSION });
+  });
+}
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -73,20 +82,24 @@ io.use((socket, next) => {
 });
 
 // En memoria por ahora (luego pasará a base de datos/Redis)
-const rooms: Record<string, {
-  engine: DefaultGameEngine;
-  state: GameState | null;
-  players: { socketId: string, playerId: string, name: string, userId: string }[];
-  maxPlayers: number;
-  timerInterval?: NodeJS.Timeout;
-  lastActionTime?: number;
-}> = {};
+  const rooms: Record<string, {
+    engine: DefaultGameEngine;
+    state: GameState | null;
+    players: { socketId: string, playerId: string, name: string, userId: string }[];
+    maxPlayers: number;
+    timerInterval?: NodeJS.Timeout;
+    lastActionTime?: number;
+    isTournament?: boolean;
+  }> = {};
 
 const TURN_TIME_LIMIT_MS = 30000; // 30 segundos
 
 io.on('connection', (socket) => {
   const userId = (socket as any).userId || (socket as any).user?.sub;
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
+  if (EXPOSE_RULES_VERSION) {
+    socket.emit('rules_version', { rulesVersion: RULES_VERSION });
+  }
 
   // 1. Crear Sala
   socket.on('create_room', ({ playerName, mode }: { playerName: string, mode: '1v1' | '2v2' }) => {
@@ -106,11 +119,27 @@ io.on('connection', (socket) => {
   });
 
   // 2. Unirse a Sala
-  socket.on('join_room', ({ roomId, playerName }: { roomId: string, playerName: string }) => {
-    const room = rooms[roomId];
+  socket.on('join_room', ({ roomId, playerName, isTournament }: { roomId: string, playerName: string, isTournament?: boolean }) => {
+    let room = rooms[roomId];
+    
     if (!room) {
-      socket.emit('error', 'La sala no existe');
-      return;
+      if (isTournament) {
+        // Create the tournament room automatically if it doesn't exist
+        rooms[roomId] = {
+          engine: new DefaultGameEngine(),
+          state: null,
+          players: [{ socketId: socket.id, playerId: userId, name: playerName, userId }],
+          maxPlayers: 2, // Tournaments are 1v1 for now
+          isTournament: true
+        };
+        socket.join(roomId);
+        socket.emit('room_created', { roomId, playerId: userId });
+        console.log(`Sala de torneo ${roomId} creada automáticamente por ${playerName}`);
+        return;
+      } else {
+        socket.emit('error', 'La sala no existe');
+        return;
+      }
     }
 
     // Lógica de Reconexión: Si el usuario ya estaba en esta sala
@@ -206,7 +235,7 @@ io.on('connection', (socket) => {
       // Comprobar si el juego terminó y guardar en DB
       if (room.state.phase === 'completed') {
         if (room.timerInterval) clearInterval(room.timerInterval);
-        saveMatchResult(room);
+        saveMatchResult(roomId, room);
       }
     } else {
       socket.emit('action_error', (result as any).error || 'Acción inválida');
@@ -309,7 +338,7 @@ function startTurnTimer(roomId: string, room: any) {
         
         if (room.state.phase === 'completed') {
           if (room.timerInterval) clearInterval(room.timerInterval);
-          saveMatchResult(room);
+          saveMatchResult(roomId, room);
         }
       } else {
         console.error(`Error al aplicar descarte automático por timeout:`, result.error);
@@ -318,7 +347,7 @@ function startTurnTimer(roomId: string, room: any) {
   }, 1000);
 }
 
-async function saveMatchResult(room: any) {
+async function saveMatchResult(roomId: string, room: any) {
   if (!room.state || room.state.phase !== 'completed') return;
 
   // Determinar ganador (el que tenga mayor puntaje, o el primero si hay empate por ahora)
@@ -334,7 +363,7 @@ async function saveMatchResult(room: any) {
   // Si son iguales, winnerId se queda en null (empate)
 
   try {
-    // 1. Guardar la partida
+    // 1. Guardar la partida en la tabla genérica
     await supabase.from('matches').insert({
       player1_id: room.players[0].userId,
       player2_id: room.players[1].userId,
@@ -342,6 +371,56 @@ async function saveMatchResult(room: any) {
       status: 'completed'
     });
     console.log('Resultado de partida guardado en DB');
+
+    // 1.5 Update tournament match if applicable
+    if (room.isTournament && winnerId) {
+      const { data: tMatch, error: tError } = await supabase
+        .from('tournament_matches')
+        .update({
+          status: 'completed',
+          winner_id: winnerId
+        })
+        .eq('game_room_id', roomId)
+        .select()
+        .single();
+        
+      if (tError) console.error('Error actualizando torneo:', tError);
+      
+      if (tMatch) {
+        // If there's a next match, we need to advance the winner
+        // Logic for advancing in the bracket (Phase 2)
+        // Find next match: same event_id, round_number = current + 1, match_order = Math.ceil(current_order / 2)
+        const nextRound = tMatch.round_number + 1;
+        const nextOrder = Math.ceil(tMatch.match_order / 2);
+        
+        // Find the next match node
+        const { data: nextMatch } = await supabase
+          .from('tournament_matches')
+          .select('id, player1_id, player2_id')
+          .eq('event_id', tMatch.event_id)
+          .eq('round_number', nextRound)
+          .eq('match_order', nextOrder)
+          .single();
+          
+        if (nextMatch) {
+          const updateData: any = {};
+          // If match_order is odd, the winner of this match goes to player1_id of the next match.
+          // If even, goes to player2_id.
+          if (tMatch.match_order % 2 !== 0) {
+            updateData.player1_id = winnerId;
+          } else {
+            updateData.player2_id = winnerId;
+          }
+          
+          await supabase
+            .from('tournament_matches')
+            .update(updateData)
+            .eq('id', nextMatch.id);
+            
+          console.log(`Ganador ${winnerId} avanzado a la ronda ${nextRound}`);
+        }
+      }
+    }
 
     // 2. Actualizar ELO y Estadísticas de los jugadores
     if (winnerId) {

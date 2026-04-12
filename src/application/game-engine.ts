@@ -1,6 +1,6 @@
 import { GameState } from '../domain/game-state';
 import { GameMode, ErrorCode } from '../domain/types';
-import { Action, ActionValidator, DefaultActionValidator } from './action-validator';
+import { Action, ActionValidator, DefaultActionValidator, canPartitionIntoSum } from './action-validator';
 import { TurnManager, DefaultTurnManager } from './turn-manager';
 import { ScoreCalculator, DefaultScoreCalculator } from './score-calculator';
 import { createDeck, shuffle, draw } from '../domain/deck';
@@ -268,10 +268,8 @@ export class DefaultGameEngine implements GameEngine {
           const valuesToPartition = [handVal, ...boardCardsToForm.map(c => c.value)];
           for (const target of potentialTargets) {
             if (target > 14) continue;
-            // Use the validator's canPartitionIntoSum logic indirectly by checking the sum
-            const totalSum = valuesToPartition.reduce((a, b) => a + b, 0);
-            if (totalSum % target === 0 && totalSum >= target) {
-              // We assume validation passed, so this target is the one
+            if (canPartitionIntoSum(valuesToPartition, target)) {
+              const totalSum = valuesToPartition.reduce((a, b) => a + b, 0);
               formationValue = target;
               if (totalSum > target) {
                 isGroup = true;

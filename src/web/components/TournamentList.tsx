@@ -23,7 +23,7 @@ export function TournamentList() {
     
     // Subscribe to real-time updates
     const channel = supabase
-      .channel('tournaments-lobby')
+      .channel(`tournaments-lobby_${Math.random()}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

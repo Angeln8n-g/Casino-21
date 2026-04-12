@@ -6,6 +6,7 @@ export interface FriendRequestProfile {
   requestId: string;        // friend_requests.id
   senderId: string;
   username: string;
+  avatar_url?: string | null;
   elo: number;
   level: number;
   wins: number;
@@ -33,6 +34,7 @@ export function FriendRequestModal({
   const totalGames = request.wins + request.losses;
   const winRate = totalGames > 0 ? Math.round((request.wins / totalGames) * 100) : 0;
   const isHighElo = request.elo >= 1500;
+  const initial = request.username?.trim()?.[0]?.toUpperCase() ?? '?';
 
   const handleAction = async (action: 'accepted' | 'rejected') => {
     setLoading(action === 'accepted' ? 'accept' : 'reject');
@@ -101,8 +103,12 @@ export function FriendRequestModal({
         <div className="flex justify-center -mt-10 relative z-10">
           <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl ${
             isHighElo ? 'text-casino-gold' : 'text-gray-300'
-          }`}>
-            {request.username.charAt(0).toUpperCase()}
+          } overflow-hidden`}>
+            {request.avatar_url ? (
+              <img src={request.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              initial
+            )}
           </div>
         </div>
 

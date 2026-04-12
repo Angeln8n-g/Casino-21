@@ -6,6 +6,7 @@ import { getDivisionFromElo } from './ProfileHeader';
 interface SearchResult {
   id: string;
   username: string;
+  avatar_url?: string | null;
   elo: number;
   level: number;
   wins: number;
@@ -42,7 +43,7 @@ export function FriendSearch() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, elo, level, wins, losses, xp')
+          .select('id, username, avatar_url, elo, level, wins, losses, xp')
           .ilike('username', `%${query}%`)
           .neq('id', user.id)
           .limit(8);
@@ -278,8 +279,12 @@ export function FriendSearch() {
           return (
             <div key={r.id} className="glass-panel px-3 py-2.5 flex items-center justify-between group relative">
               <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedPlayer(r)}>
-                <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0">
-                  {r.username.charAt(0).toUpperCase()}
+                <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0 overflow-hidden">
+                  {r.avatar_url ? (
+                    <img src={r.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    r.username.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className={`text-sm font-medium truncate ${isHighLevel ? 'text-casino-gold' : 'text-gray-200'}`}>

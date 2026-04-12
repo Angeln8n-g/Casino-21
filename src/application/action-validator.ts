@@ -54,6 +54,31 @@ export interface ActionValidator {
   getValidActions(state: GameState, playerId: string): Action[];
 }
 
+export function canPartitionIntoSum(numbers: number[], target: number): boolean {
+  if (numbers.length === 0) return true;
+  const sum = numbers.reduce((a, b) => a + b, 0);
+  if (sum % target !== 0) return false;
+  
+  const used = new Array(numbers.length).fill(false);
+  
+  const backtrack = (startIndex: number, currentSum: number, groupsFormed: number): boolean => {
+    if (groupsFormed === sum / target) return true;
+    if (currentSum === target) {
+      return backtrack(0, 0, groupsFormed + 1);
+    }
+    for (let i = startIndex; i < numbers.length; i++) {
+      if (!used[i] && currentSum + numbers[i] <= target) {
+        used[i] = true;
+        if (backtrack(i + 1, currentSum + numbers[i], groupsFormed)) return true;
+        used[i] = false;
+      }
+    }
+    return false;
+  };
+  
+  return backtrack(0, 0, 0);
+}
+
 export class DefaultActionValidator implements ActionValidator {
   validate(state: GameState, action: Action): ValidationResult {
     // Basic turn validation
@@ -178,7 +203,7 @@ export class DefaultActionValidator implements ActionValidator {
         if (handCard.rank === 'A' && boardCards.every(c => c!.rank === 'A')) {
           // If we are just taking an Ace with an Ace, the partition logic will work for tv=1 if we treat Ace as 1, 
           // or we can explicitly allow it. The backtrack function will group 1s into 1s successfully.
-          return this.canPartitionIntoSum(values.map(v => v === 14 ? 1 : v), 1);
+          return canPartitionIntoSum(values.map(v => v === 14 ? 1 : v), 1);
         }
 
         // First check if formations match this specific target value tv
@@ -191,7 +216,7 @@ export class DefaultActionValidator implements ActionValidator {
           if (!allFormationsMatchTv) return false;
         }
         
-        return this.canPartitionIntoSum(values, tv);
+        return canPartitionIntoSum(values, tv);
       });
       
       if (!partitionSuccessful) {
@@ -212,31 +237,6 @@ export class DefaultActionValidator implements ActionValidator {
     }
 
     return { isValid: true };
-  }
-
-  private canPartitionIntoSum(numbers: number[], target: number): boolean {
-    if (numbers.length === 0) return true;
-    const sum = numbers.reduce((a, b) => a + b, 0);
-    if (sum % target !== 0) return false;
-    
-    const used = new Array(numbers.length).fill(false);
-    
-    const backtrack = (startIndex: number, currentSum: number, groupsFormed: number): boolean => {
-      if (groupsFormed === sum / target) return true;
-      if (currentSum === target) {
-        return backtrack(0, 0, groupsFormed + 1);
-      }
-      for (let i = startIndex; i < numbers.length; i++) {
-        if (!used[i] && currentSum + numbers[i] <= target) {
-          used[i] = true;
-          if (backtrack(i + 1, currentSum + numbers[i], groupsFormed)) return true;
-          used[i] = false;
-        }
-      }
-      return false;
-    };
-    
-    return backtrack(0, 0, 0);
   }
 
   private validateFormar(state: GameState, action: FormarAction): ValidationResult {
@@ -284,7 +284,7 @@ export class DefaultActionValidator implements ActionValidator {
       
       for (const target of potentialTargets) {
         if (target > 14) continue;
-        if (this.canPartitionIntoSum(valuesToPartition, target)) {
+        if (canPartitionIntoSum(valuesToPartition, target)) {
           validTargetFound = true;
           break;
         }
@@ -334,7 +334,7 @@ export class DefaultActionValidator implements ActionValidator {
       const values = boardCards.map(c => c!.value);
       const possibleTargets = handCard.rank === 'A' ? [1, 14] : [handCard.value];
       
-      const validTarget = possibleTargets.find(tv => this.canPartitionIntoSum(values, tv));
+      const validTarget = possibleTargets.find(tv => canPartitionIntoSum(values, tv));
       if (!validTarget) {
         return { isValid: false, error: ErrorCode.INVALID_ACTION };
       }
@@ -541,7 +541,7 @@ export class DefaultActionValidator implements ActionValidator {
         // This is a simplified check for validActions generation to keep it performant
         // For accurate UI, the user selects the cards and we validate it.
         const values = state.board.cards.map(c => c.value);
-        if (this.canPartitionIntoSum(values, tv)) {
+        if (canPartitionIntoSum(values, tv)) {
           // We push a generic formarPar, though the specific boardCardIds would be chosen by user
           validActions.push({
             type: 'formarPar',

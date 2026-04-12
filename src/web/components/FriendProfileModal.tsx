@@ -7,6 +7,7 @@ import { socketService } from '../services/socket';
 export interface FriendForModal {
   id: string;
   username: string;
+  avatar_url?: string | null;
   elo: number;
   level: number;
   wins: number;
@@ -135,7 +136,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
       // 4. Listen for acceptance
       const channel = supabase
-        .channel(`invitation_${data.id}`)
+        .channel(`invitation_${data.id}_${Math.random()}`)
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'game_invitations', filter: `id=eq.${data.id}` },
@@ -226,10 +227,14 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
         {/* Avatar */}
         <div className="flex justify-center -mt-10 relative z-10">
           <div className="relative">
-            <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl ${
+            <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl overflow-hidden ${
               isHighElo ? 'text-casino-gold' : 'text-gray-300'
             }`}>
-              {friend.username.charAt(0).toUpperCase()}
+              {friend.avatar_url ? (
+                <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                friend.username.charAt(0).toUpperCase()
+              )}
             </div>
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-casino-bg ${
               friend.isOnline

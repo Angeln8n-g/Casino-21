@@ -74,35 +74,50 @@ export function useNotifications() {
 
   useEffect(() => {
     if (!user) return;
+    
+    let isMounted = true;
 
     // Fetch initial counts
     const fetchCounts = async () => {
-      const { count: friendCount } = await supabase
-        .from('friend_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .eq('status', 'pending');
-        
-      const { count: gameCount } = await supabase
-        .from('game_invitations')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .eq('status', 'pending');
+      try {
+        const { count: friendCount, error: friendError } = await supabase
+          .from('friend_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('status', 'pending');
+          
+        if (friendError) throw friendError;
 
-      // DB column is player_id, not user_id
-      const { data: notifs } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('player_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        const { count: gameCount, error: gameError } = await supabase
+          .from('game_invitations')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('status', 'pending');
+          
+        if (gameError) throw gameError;
 
-      setPendingFriendRequests(friendCount || 0);
-      setPendingGameInvites(gameCount || 0);
+        // DB column is player_id, not user_id
+        const { data: notifs, error: notifError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('player_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+          
+        if (notifError) throw notifError;
 
-      if (notifs) {
-        setAppNotifications(notifs as AppNotification[]);
-        setUnreadCount(notifs.filter(n => !n.is_read).length);
+        if (!isMounted) return;
+
+        setPendingFriendRequests(friendCount || 0);
+        setPendingGameInvites(gameCount || 0);
+
+        if (notifs) {
+          setAppNotifications(notifs as AppNotification[]);
+          setUnreadCount(notifs.filter(n => !n.is_read).length);
+        }
+      } catch (error: any) {
+        if (!isMounted) return;
+        console.error('Error fetching notification counts:', error);
       }
     };
 
@@ -110,7 +125,7 @@ export function useNotifications() {
 
     // Subscribe to notifications — DB column is player_id
     const appNotifSubscription = supabase
-      .channel(`notifications_changes_${user.id}_${Date.now()}`)
+      .channel(`notifications_changes_${user.id}_${Date.now()}_${Math.random()}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `player_id=eq.${user.id}` },
@@ -140,7 +155,7 @@ export function useNotifications() {
 
     // Subscribe to friend_requests
     const friendSubscription = supabase
-      .channel(`friend_requests_changes_${user.id}_${Date.now()}`)
+      .channel(`friend_requests_changes_${user.id}_${Date.now()}_${Math.random()}`)
       .on(
         'postgres_changes',
         {
@@ -195,7 +210,7 @@ export function useNotifications() {
 
     // Subscribe to game_invitations
     const gameSubscription = supabase
-      .channel(`game_invitations_changes_${user.id}_${Date.now()}`)
+      .channel(`game_invitations_changes_${user.id}_${Date.now()}_${Math.random()}`)
       .on(
         'postgres_changes',
         {
@@ -280,6 +295,7 @@ export function useNotifications() {
       .subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(friendSubscription);
       supabase.removeChannel(appNotifSubscription);
       supabase.removeChannel(gameSubscription);
