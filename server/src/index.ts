@@ -310,38 +310,24 @@ function startTurnTimer(roomId: string, room: any) {
         return;
       }
       
-      const lowestValueCard = currentPlayer.hand.reduce((minCard, currentCard) => {
-        return currentCard.value < minCard.value ? currentCard : minCard;
-      }, currentPlayer.hand[0]);
+      try {
+        const action = room.engine.getTimeoutAction(room.state, currentPlayer.id);
+        const result = room.engine.playCard(room.state, action);
 
-      const action: Action = {
-        type: 'botar',
-        playerId: currentPlayer.id,
-        cardId: lowestValueCard.id
-      };
-      
-      let result = room.engine.playCard(room.state, action, true);
-
-      if (!result.success) {
-        const fallbackAction: Action = {
-          type: 'colocar',
-          playerId: currentPlayer.id,
-          cardId: lowestValueCard.id
-        };
-        result = room.engine.playCard(room.state, fallbackAction, true);
-      }
-      
-      if (result.success) {
-        room.state = result.value;
-        startTurnTimer(roomId, room);
-        broadcastGameState(roomId, room);
-        
-        if (room.state.phase === 'completed') {
-          if (room.timerInterval) clearInterval(room.timerInterval);
-          saveMatchResult(roomId, room);
+        if (result.success) {
+          room.state = result.value;
+          startTurnTimer(roomId, room);
+          broadcastGameState(roomId, room);
+          
+          if (room.state.phase === 'completed') {
+            if (room.timerInterval) clearInterval(room.timerInterval);
+            saveMatchResult(roomId, room);
+          }
+        } else {
+          console.error(`Error al aplicar jugada automática por timeout:`, result.error);
         }
-      } else {
-        console.error(`Error al aplicar descarte automático por timeout:`, result.error);
+      } catch (error) {
+        console.error('Excepción al generar o aplicar jugada por timeout:', error);
       }
     }
   }, 1000);

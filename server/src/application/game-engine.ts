@@ -47,6 +47,17 @@ export interface GameEngine {
    * @returns An array of valid Action objects
    */
   getValidActions(state: GameState, playerId: string): Action[];
+
+  /**
+   * Calculates the best automatic action for a player when their turn times out.
+   * Priority 1: Take their own formation if possible.
+   * Priority 2: Drop the lowest value non-Ace card.
+   * Fallback: Drop an Ace.
+   * @param state - The current game state
+   * @param playerId - The ID of the player
+   * @returns An Action to be executed
+   */
+  getTimeoutAction(state: GameState, playerId: string): Action;
   
   /**
    * Serializes the current game state to a JSON string.
@@ -572,6 +583,46 @@ export class DefaultGameEngine implements GameEngine {
 
   getValidActions(state: GameState, playerId: string): Action[] {
     return this.validator.getValidActions(state, playerId);
+  }
+
+  getTimeoutAction(state: GameState, playerId: string): Action {
+    const player = state.players.find(p => p.id === playerId);
+    if (!player || player.hand.length === 0) {
+      throw new Error('Cannot get timeout action for empty hand');
+    }
+
+    // Priority 1: Take own formation
+    const myFormations = state.board.formations.filter(f => f.createdBy === playerId);
+    if (myFormations.length > 0) {
+      const validActions = this.getValidActions(state, playerId);
+      const llevarActions = validActions.filter(a => a.type === 'llevar') as import('./action-validator').LlevarAction[];
+      
+      const takeMyFormationAction = llevarActions.find(a => 
+        a.formationIds.some(fid => myFormations.some(mf => mf.id === fid))
+      );
+
+      if (takeMyFormationAction) {
+        return takeMyFormationAction;
+      }
+    }
+
+    // Priority 2: Drop lowest non-Ace card
+    const nonAces = player.hand.filter(c => c.rank !== 'A');
+    let cardToDrop;
+    
+    if (nonAces.length > 0) {
+      nonAces.sort((a, b) => a.value - b.value);
+      cardToDrop = nonAces[0];
+    } else {
+      // Fallback: Drop an Ace
+      cardToDrop = player.hand[0];
+    }
+
+    return {
+      type: 'colocar',
+      playerId,
+      cardId: cardToDrop.id
+    };
   }
 
   saveGame(state: GameState): string {

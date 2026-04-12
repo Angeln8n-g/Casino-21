@@ -239,6 +239,18 @@ export class DefaultActionValidator implements ActionValidator {
     return { isValid: true };
   }
 
+  private hasTakeCardForPendingFormations(state: GameState, playerId: string, hand: ReadonlyArray<{ id: string; value: number; rank: string }>, usedCardId: string): boolean { 
+    const pendingFormations = state.board.formations.filter(f => f.createdBy === playerId); 
+    if (pendingFormations.length === 0) { 
+      return true; 
+    } 
+
+    const remainingHand = hand.filter(c => c.id !== usedCardId); 
+    return pendingFormations.every(formation => 
+      remainingHand.some(c => c.value === formation.value || (c.rank === 'A' && formation.value === 14)) 
+    ); 
+  }
+
   private validateFormar(state: GameState, action: FormarAction): ValidationResult {
     const player = state.players.find(p => p.id === action.playerId)!;
     const handCard = player.hand.find(c => c.id === action.cardId)!;
@@ -299,6 +311,10 @@ export class DefaultActionValidator implements ActionValidator {
     // Rule: if player already has a formation of this target value, they are effectively grouping them.
     // They still need another card to take it, which was validated above because potentialTargets requires a different card in hand.
     
+    if (!this.hasTakeCardForPendingFormations(state, player.id, player.hand, action.cardId)) {
+      return { isValid: false, error: ErrorCode.INVALID_ACTION };
+    }
+
     return { isValid: true };
   }
 
@@ -351,6 +367,10 @@ export class DefaultActionValidator implements ActionValidator {
       return { isValid: false, error: ErrorCode.INVALID_ACTION };
     }
 
+    if (!this.hasTakeCardForPendingFormations(state, player.id, player.hand, action.cardId)) {
+      return { isValid: false, error: ErrorCode.INVALID_ACTION };
+    }
+
     return { isValid: true };
   }
 
@@ -380,6 +400,10 @@ export class DefaultActionValidator implements ActionValidator {
 
     const hasCardToTake = player.hand.some(c => c.id !== action.cardId && (c.value === newSum || (c.rank === 'A' && newSum === 14)));
     if (!hasCardToTake) {
+      return { isValid: false, error: ErrorCode.INVALID_ACTION };
+    }
+
+    if (!this.hasTakeCardForPendingFormations(state, player.id, player.hand, action.cardId)) {
       return { isValid: false, error: ErrorCode.INVALID_ACTION };
     }
 
