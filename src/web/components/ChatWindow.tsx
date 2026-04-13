@@ -2,13 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 
+const GLOBAL_ROOM_ID = 'GLOBAL';
+
 interface ChatMessage {
   id: string;
   sender_id: string;
   receiver_id?: string; // Private chat
   room_id?: string | null; // Global/Room chat
   content: string;
-  created_at: string;
+  created_at?: string;
+  timestamp?: string;
+  local_status?: 'sending' | 'error' | 'sent';
   profiles?: {
     username: string;
     avatar_url?: string | null;
@@ -29,23 +33,44 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'degraded'>('connecting');
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const disposedRef = useRef(false);
+
+  const getMessageTime = (m: ChatMessage) => m.created_at || m.timestamp || new Date().toISOString();
+
+  const upsertMessage = (msg: ChatMessage) => {
+    setMessages((prev) => {
+      const index = prev.findIndex((m) => m.id === msg.id);
+      if (index >= 0) {
+        const next = [...prev];
+        next[index] = { ...next[index], ...msg, local_status: msg.local_status || 'sent' };
+        return next;
+      }
+      return [...prev, { ...msg, local_status: msg.local_status || 'sent' }];
+    });
+  };
 
 
   // ── Sync: Private vs Global ────────────────────────────────────
   useEffect(() => {
     if (!user) return;
+    disposedRef.current = false;
+    setChatError(null);
+    setRealtimeStatus('connecting');
     setMessages([]); // Reset on switch
     fetchMessages();
     
-    const baseId = receiverId 
+    const conversationKey = receiverId
       ? `chat_private_${[user.id, receiverId].sort().join('_')}`
-      : 'chat_global_room';
+      : `chat_global_${GLOBAL_ROOM_ID}`;
 
-    const dbChannel = supabase.channel(`${baseId}_db_${Date.now()}_${Math.random()}`);
-    const presenceChannel = supabase.channel(`${baseId}_presence_${Date.now()}_${Math.random()}`);
+    const dbChannel = supabase.channel(`${conversationKey}_db_${Date.now()}`);
+    const presenceChannel = supabase.channel(`${conversationKey}_presence`);
     presenceChannelRef.current = presenceChannel;
 
     if (receiverId) {
@@ -70,7 +95,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           filter: `sender_id=eq.${user.id}`,
         }, (payload) => {
           if (payload.new.receiver_id === receiverId) {
-             fetchNewMessageProfile(payload.new);
+            fetchNewMessageProfile(payload.new);
           }
         });
     } else {
@@ -79,13 +104,19 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         event: 'INSERT',
         schema: 'public',
         table: 'chat_messages',
-        filter: 'room_id=is.null',
+        filter: `room_id=eq.${GLOBAL_ROOM_ID}`,
       }, async (payload) => {
         fetchNewMessageProfile(payload.new);
       });
     }
 
-    dbChannel.subscribe();
+    dbChannel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setRealtimeStatus('connected');
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setRealtimeStatus('degraded');
+      }
+    });
 
     // Typing presence
     presenceChannel
@@ -103,9 +134,31 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
       });
 
     return () => {
+      disposedRef.current = true;
       presenceChannelRef.current = null;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       supabase.removeChannel(dbChannel);
       supabase.removeChannel(presenceChannel);
+    };
+  }, [user, receiverId]);
+
+  // Fallback sync loop: keeps chat consistent even if realtime misses events
+  useEffect(() => {
+    if (!user) return;
+    const pollId = window.setInterval(() => {
+      fetchMessages();
+    }, 3000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchMessages();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [user, receiverId]);
 
@@ -114,13 +167,15 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
   }, [messages, otherUserTyping]);
 
   const fetchNewMessageProfile = async (msgData: any) => {
+    if (disposedRef.current) return;
     const { data: profile } = await supabase
       .from('profiles')
       .select('username, avatar_url, level, elo')
       .eq('id', msgData.sender_id)
       .single();
-    const newMessage = { ...msgData, profiles: profile } as ChatMessage;
-    setMessages(prev => [...prev, newMessage]);
+    if (disposedRef.current) return;
+    const newMessage = { ...msgData, profiles: profile, local_status: 'sent' } as ChatMessage;
+    upsertMessage(newMessage);
   };
 
   const fetchMessages = async () => {
@@ -148,21 +203,43 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         query = supabase
           .from('chat_messages')
           .select(`
-            id, sender_id, room_id, content, created_at,
+            id, sender_id, room_id, content, created_at, timestamp,
             profiles:sender_id (username, avatar_url, level, elo)
           `)
-          .is('room_id', null);
+          .eq('room_id', GLOBAL_ROOM_ID);
       }
 
-      const { data, error } = await query
+      let { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(50);
 
+      if (!receiverId && error) {
+        // Legacy fallback for databases still using "timestamp"
+        const fallback = await supabase
+          .from('chat_messages')
+          .select(`
+            id, sender_id, room_id, content, timestamp,
+            profiles:sender_id (username, avatar_url, level, elo)
+          `)
+          .eq('room_id', GLOBAL_ROOM_ID)
+          .order('timestamp', { ascending: false })
+          .limit(50);
+        data = fallback.data as any;
+        error = fallback.error as any;
+      }
+
       if (!error && data) {
-        setMessages((data as any[]).reverse() as ChatMessage[]);
+        setMessages((data as any[]).reverse().map((m) => ({ ...m, local_status: 'sent' })) as ChatMessage[]);
+        setChatError(null);
+        setLastSyncAt(new Date().toISOString());
+      } else {
+        setChatError('No se pudo sincronizar el chat. Intenta nuevamente.');
+        setRealtimeStatus('degraded');
       }
     } catch (err) {
       console.error(err);
+      setChatError('No se pudo sincronizar el chat. Intenta nuevamente.');
+      setRealtimeStatus('degraded');
     }
   };
 
@@ -190,30 +267,69 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     setInput('');
     setIsTyping(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    presenceChannelRef.current?.track({ user_id: user.id, is_typing: false });
+
+    const tempId = `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      sender_id: user.id,
+      receiver_id: receiverId,
+      room_id: receiverId ? null : GLOBAL_ROOM_ID,
+      content: msg,
+      created_at: new Date().toISOString(),
+      local_status: 'sending',
+      profiles: {
+        username: user.email?.split('@')[0] || 'Tú',
+        avatar_url: null,
+        level: 1,
+        elo: 1000,
+      },
+    };
+    upsertMessage(optimisticMessage);
 
     try {
       if (receiverId) {
-        await supabase.from('messages').insert({
+        const { data, error } = await supabase.from('messages').insert({
           sender_id: user.id,
           receiver_id: receiverId,
-          content: msg
-        });
+          content: msg,
+        }).select('id, sender_id, receiver_id, content, created_at').single();
+        if (error) throw error;
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        await fetchNewMessageProfile(data);
       } else {
         await supabase.rpc('add_player_xp', { p_id: user.id, p_xp_amount: 2 });
-        await supabase.from('chat_messages').insert({
+        const { data, error } = await supabase.from('chat_messages').insert({
           sender_id: user.id,
-          room_id: null,
-          content: msg
-        });
+          room_id: GLOBAL_ROOM_ID,
+          content: msg,
+        }).select('id, sender_id, room_id, content, created_at, timestamp').single();
+        if (error) throw error;
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        await fetchNewMessageProfile(data);
       }
+      setChatError(null);
     } catch (err) {
       console.error(err);
+      setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, local_status: 'error' } : m)));
+      setChatError('No se pudo enviar el mensaje. Puedes reintentar.');
     }
+  };
+
+  const retryMessage = async (failed: ChatMessage) => {
+    setInput(failed.content);
+    setMessages((prev) => prev.filter((m) => m.id !== failed.id));
   };
 
   return (
     <div className="flex flex-col h-full min-h-[300px]">
       <div className="flex-1 overflow-y-auto mb-3 space-y-3 pr-2 custom-scrollbar">
+        {chatError && (
+          <div className="mx-1 mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300 flex items-center justify-between">
+            <span>{chatError}</span>
+            <button onClick={fetchMessages} className="font-bold text-red-200 hover:text-white">Reintentar</button>
+          </div>
+        )}
         {messages.length === 0 ? (
           <p className="text-center text-xs text-gray-500 mt-4">Di hola...</p>
         ) : (
@@ -241,6 +357,17 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
                 }`}>
                   {m.content}
                 </div>
+                {isMe && m.local_status === 'sending' && (
+                  <span className="text-[10px] text-gray-500 mt-1">Enviando...</span>
+                )}
+                {isMe && m.local_status === 'error' && (
+                  <button
+                    onClick={() => retryMessage(m)}
+                    className="text-[10px] text-red-400 mt-1 hover:text-red-200"
+                  >
+                    Error al enviar. Reintentar.
+                  </button>
+                )}
               </div>
             );
           })
