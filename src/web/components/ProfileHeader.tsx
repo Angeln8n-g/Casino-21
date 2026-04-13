@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, Bell, Shield, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useGame } from '../hooks/useGame';
 import { AvatarGallery } from './AvatarGallery';
 
 // ─── Utility: Division from ELO ───
@@ -38,6 +37,7 @@ interface ProfileHeaderProps {
   onMarkAsRead?: (id: string) => void;
   onChallengeClick?: (inviteData: any) => void;
   onDeleteRead?: () => void;
+  onDeleteNotification?: (id: string) => void;
 }
 
 export function ProfileHeader({ 
@@ -47,7 +47,8 @@ export function ProfileHeader({
   onMarkAllAsRead,
   onMarkAsRead,
   onChallengeClick,
-  onDeleteRead
+  onDeleteRead,
+  onDeleteNotification
 }: ProfileHeaderProps) {
   const { profile, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -226,11 +227,21 @@ export function ProfileHeader({
                       }
                     }}
                     className={`
-                      w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer
+                      w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer relative
                       border border-transparent hover:border-white/10
                       ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
                     `}
                   >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteNotification?.(n.id);
+                      }}
+                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-500 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
+                      title="Eliminar notificación"
+                    >
+                      ×
+                    </button>
                     <div className="flex gap-3">
                       <div className={`
                         w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5
@@ -418,11 +429,21 @@ export function ProfileHeader({
                         }
                       }}
                       className={`
-                        w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer
+                        w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer relative
                         border border-transparent hover:border-white/10
                         ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
                       `}
                     >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteNotification?.(n.id);
+                        }}
+                        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-500 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
+                        title="Eliminar notificación"
+                      >
+                        ×
+                      </button>
                       <div className="flex gap-3">
                         <div className={`
                           w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5

@@ -19,7 +19,7 @@ import { GameInvitationModal } from './GameInvitationModal';
 export function MainMenu() {
   const { setGameState, setLocalPlayerId } = useGame();
   const { profile, signOut } = useAuth();
-  const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, deleteReadNotifications, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
+  const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, deleteReadNotifications, deleteNotification, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
   
   const [playerName, setPlayerName] = useState(profile?.username || 'Jugador');
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -128,6 +128,23 @@ export function MainMenu() {
         socket.on('error', (msg: string) => {
           setError(msg);
         });
+
+        socket.on('room_closed', ({ roomId, reason }: { roomId: string; reason?: string }) => {
+          setView('menu');
+          setCurrentRoomId(null);
+          setPlayersInRoom([]);
+          localStorage.removeItem('casino21_roomId');
+          localStorage.removeItem('casino21_playerId');
+          if (reason === 'challenge_rejected') {
+            setError('Tu desafío fue rechazado.');
+          } else if (reason === 'challenge_expired') {
+            setError('Tu desafío expiró sin respuesta.');
+          } else if (reason === 'challenge_cancelled') {
+            setError('El desafío fue cancelado.');
+          } else {
+            setError(`La sala ${roomId} fue cerrada.`);
+          }
+        });
       } catch (err) {
         console.error("Error conectando socket:", err);
       }
@@ -143,6 +160,7 @@ export function MainMenu() {
         socket.off('room_joined');
         socket.off('player_joined');
         socket.off('error');
+        socket.off('room_closed');
       } catch (e) {
         // Socket might not be connected yet
       }
@@ -234,6 +252,7 @@ export function MainMenu() {
         onMarkAsRead={markNotificationAsRead}
         onChallengeClick={setActiveGameInvitation}
         onDeleteRead={deleteReadNotifications}
+        onDeleteNotification={deleteNotification}
         activeTab={desktopTab}
         onTabChange={setDesktopTab}
         leftCollapsed={leftCollapsed}
@@ -279,6 +298,7 @@ export function MainMenu() {
                     onMarkAsRead={markNotificationAsRead}
                     onChallengeClick={setActiveGameInvitation}
                     onDeleteRead={deleteReadNotifications}
+                    onDeleteNotification={deleteNotification}
                   />
                 </div>
                 <div className="relative z-10">

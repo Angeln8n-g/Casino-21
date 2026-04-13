@@ -94,6 +94,16 @@ io.use((socket, next) => {
 
 const TURN_TIME_LIMIT_MS = 30000; // 30 segundos
 
+function closeRoom(roomId: string, reason: string = 'room_closed') {
+  const room = rooms[roomId];
+  if (!room) return;
+  if (room.timerInterval) clearInterval(room.timerInterval);
+  io.to(roomId).emit('room_closed', { roomId, reason });
+  io.in(roomId).socketsLeave(roomId);
+  delete rooms[roomId];
+  console.log(`Sala ${roomId} cerrada. Motivo: ${reason}`);
+}
+
 io.on('connection', (socket) => {
   const userId = (socket as any).userId || (socket as any).user?.sub;
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
@@ -208,6 +218,25 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('cancel_room', ({ roomId, reason }: { roomId: string, reason?: string }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    const requesterIsParticipant = room.players.some((p) => p.userId === userId);
+    if (!requesterIsParticipant) {
+      socket.emit('error', 'No puedes cerrar una sala de la que no formas parte.');
+      return;
+    }
+
+    // Only allow challenge-room cancellation before match starts.
+    if (room.state) {
+      socket.emit('error', 'No se puede cerrar una sala con partida iniciada.');
+      return;
+    }
+
+    closeRoom(roomId, reason || 'challenge_cancelled');
+  });
+
   // 3. Jugar Carta
   socket.on('play_action', (action: Action) => {
     // Buscar la sala del jugador
@@ -273,8 +302,10 @@ io.on('connection', (socket) => {
         message: 'El oponente se ha desconectado. Esperando reconexión...' 
       });
 
-      // Podríamos dar un margen de 30-60 segundos antes de abandonar la partida
-      // Por ahora, solo informamos
+      // If this is still a pre-game room (challenge waiting room), close it immediately
+      if (room && !room.state) {
+        closeRoom(roomId, 'creator_disconnected');
+      }
     }
   });
 });

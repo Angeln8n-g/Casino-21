@@ -15,15 +15,14 @@ interface Friend {
   wins: number;
   losses: number;
   xp: number;
+  last_seen_at?: string | null;
+  current_room_id?: string | null;
 }
 
-interface PresenceEntry {
-  online_at: string;
-  room_id?: string | null;
-}
+const ONLINE_WINDOW_MS = 45_000;
 
 export function SocialPanel() {
-  const { user, presenceByUserId } = useAuth();
+  const { user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<FriendRequestProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +31,12 @@ export function SocialPanel() {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
 
-  const presenceMap = new Map<string, PresenceEntry>(Object.entries(presenceByUserId || {}));
+  const isFriendOnline = useCallback((friend: Friend) => {
+    if (!friend.last_seen_at) return false;
+    const ts = Date.parse(friend.last_seen_at);
+    if (!Number.isFinite(ts)) return false;
+    return Date.now() - ts <= ONLINE_WINDOW_MS;
+  }, []);
 
   // Modals
   const [selectedRequest, setSelectedRequest] = useState<FriendRequestProfile | null>(null);
@@ -81,7 +85,7 @@ export function SocialPanel() {
 
       const profilesQuery = supabase
         .from('profiles')
-        .select('id, username, elo, level, wins, losses, xp')
+        .select('id, username, elo, level, wins, losses, xp, last_seen_at, current_room_id')
         .in('id', friendIds);
         
       const { data: profiles, error: profilesError } = await profilesQuery;
@@ -96,6 +100,15 @@ export function SocialPanel() {
       if (!getIsMounted || getIsMounted()) setLoading(false);
     }
   }, [user]);
+
+  // Keep friend online/offline state fresh even when no realtime events arrive
+  useEffect(() => {
+    if (!user) return;
+    const intervalId = window.setInterval(() => {
+      fetchFriends();
+    }, 10_000);
+    return () => window.clearInterval(intervalId);
+  }, [user, fetchFriends]);
 
   // ── Fetch pending INCOMING requests ─────────────────────────
   const fetchPendingIncoming = useCallback(async (getIsMounted?: () => boolean) => {
@@ -292,9 +305,8 @@ export function SocialPanel() {
   };
 
   const openFriendModal = (friend: Friend) => {
-    const presence = presenceMap.get(friend.id);
-    const isOnline = !!presence;
-    const roomId = presence?.room_id ?? null;
+    const isOnline = isFriendOnline(friend);
+    const roomId = friend.current_room_id ?? null;
     setSelectedFriend({
       id: friend.id,
       username: friend.username,
@@ -399,7 +411,7 @@ export function SocialPanel() {
               <div className="flex items-center justify-between shrink-0">
                 <h3 className="section-header mb-0">👥 Mis Amigos</h3>
                 <span className="text-gray-600 text-[10px]">
-                  {friends.filter(f => presenceMap.has(f.id)).length} en línea
+                  {friends.filter(isFriendOnline).length} en línea
                 </span>
               </div>
 
@@ -426,9 +438,8 @@ export function SocialPanel() {
                 ) : (
                   friends.map((friend) => {
                     const div = getDivisionFromElo(friend.elo);
-                    const presence = presenceMap.get(friend.id);
-                    const isOnline = !!presence;
-                    const roomId = presence?.room_id;
+                    const isOnline = isFriendOnline(friend);
+                    const roomId = friend.current_room_id;
                     const isInRoom = !!roomId;
                     const unread = friendUnreadMap[friend.id] || 0;
 
@@ -503,14 +514,14 @@ export function SocialPanel() {
                     <span className="w-1.5 h-1.5 rounded-full bg-casino-emerald" />
                     <span className="text-gray-400 text-[10px]">Online</span>
                     <span className="text-white font-bold text-[10px]">
-                      {friends.filter(f => presenceMap.has(f.id) && !presenceMap.get(f.id)?.room_id).length}
+                      {friends.filter(f => isFriendOnline(f) && !f.current_room_id).length}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                     <span className="text-gray-400 text-[10px]">En partida</span>
                     <span className="text-white font-bold text-[10px]">
-                      {friends.filter(f => !!presenceMap.get(f.id)?.room_id).length}
+                      {friends.filter(f => isFriendOnline(f) && !!f.current_room_id).length}
                     </span>
                   </div>
                 </div>

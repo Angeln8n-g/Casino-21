@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from './useAuth';
 import { useGame } from './useGame';
+import { socketService } from '../services/socket';
 
 export interface AppNotification {
   id: string;
@@ -59,6 +60,7 @@ export function useNotifications() {
   const { user } = useAuth();
   const { gameState } = useGame();
   const gameStateRef = useRef(gameState);
+  const seenGameInviteIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -76,6 +78,43 @@ export function useNotifications() {
     if (!user) return;
     
     let isMounted = true;
+
+    const buildAndShowGameInvite = async (inviteRow: any) => {
+      if (!inviteRow?.id || !inviteRow?.sender_id || !inviteRow?.room_id) return;
+      if (seenGameInviteIdsRef.current.has(inviteRow.id)) return;
+      if (gameStateRef.current && gameStateRef.current.phase !== 'completed') return;
+
+      const { data: sender } = await supabase
+        .from('profiles')
+        .select('id, username, elo, level, wins, losses, xp')
+        .eq('id', inviteRow.sender_id)
+        .single();
+
+      if (!sender) return;
+
+      const inviteData: GameInviteToastData = {
+        invitationId: inviteRow.id,
+        senderId: inviteRow.sender_id,
+        username: sender.username,
+        elo: sender.elo,
+        level: sender.level,
+        wins: sender.wins,
+        losses: sender.losses,
+        xp: sender.xp,
+        roomId: inviteRow.room_id,
+        expiresAt: inviteRow.expires_at,
+      };
+
+      seenGameInviteIdsRef.current.add(inviteRow.id);
+      setActiveGameInvitation(inviteData);
+      showToast({
+        id: inviteRow.id,
+        title: 'Invitación a Partida',
+        message: `¡${sender.username} te invita a jugar!`,
+        expiresAt: inviteRow.expires_at,
+        gameInviteData: inviteData,
+      });
+    };
 
     // Fetch initial counts
     const fetchCounts = async () => {
@@ -106,6 +145,17 @@ export function useNotifications() {
           
         if (notifError) throw notifError;
 
+        // Fallback robustness:
+        // if realtime event was missed, this ensures pending challenge appears without page refresh.
+        const { data: latestPendingInvite } = await supabase
+          .from('game_invitations')
+          .select('id, sender_id, room_id, expires_at, status, created_at')
+          .eq('receiver_id', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
         if (!isMounted) return;
 
         setPendingFriendRequests(friendCount || 0);
@@ -115,6 +165,10 @@ export function useNotifications() {
           setAppNotifications(notifs as AppNotification[]);
           setUnreadCount(notifs.filter(n => !n.is_read).length);
         }
+
+        if (latestPendingInvite && latestPendingInvite.room_id) {
+          await buildAndShowGameInvite(latestPendingInvite);
+        }
       } catch (error: any) {
         if (!isMounted) return;
         console.error('Error fetching notification counts:', error);
@@ -122,6 +176,7 @@ export function useNotifications() {
     };
 
     fetchCounts();
+    const pollingId = window.setInterval(fetchCounts, 7000);
 
     // Subscribe to notifications — DB column is player_id
     const appNotifSubscription = supabase
@@ -148,7 +203,13 @@ export function useNotifications() {
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'notifications' },
         (payload) => {
-          setAppNotifications(prev => prev.filter(n => n.id !== payload.old.id));
+          setAppNotifications(prev => {
+            const deleted = prev.find(n => n.id === payload.old.id);
+            if (deleted && !deleted.is_read) {
+              setUnreadCount(current => Math.max(0, current - 1));
+            }
+            return prev.filter(n => n.id !== payload.old.id);
+          });
         }
       )
       .subscribe();
@@ -222,45 +283,7 @@ export function useNotifications() {
         async (payload) => {
           setPendingGameInvites((prev) => prev + 1);
 
-          // Skip if already in an active game
-          if (gameStateRef.current && gameStateRef.current.phase !== 'completed') {
-            return;
-          }
-
-          // Must have a room_id to be actionable
-          if (!payload.new.room_id) return;
-
-          // Fetch full sender profile
-          const { data: sender } = await supabase
-            .from('profiles')
-            .select('id, username, elo, level, wins, losses, xp')
-            .eq('id', payload.new.sender_id)
-            .single();
-
-          if (sender) {
-            const inviteData: GameInviteToastData = {
-              invitationId: payload.new.id,
-              senderId: payload.new.sender_id,
-              username: sender.username,
-              elo: sender.elo,
-              level: sender.level,
-              wins: sender.wins,
-              losses: sender.losses,
-              xp: sender.xp,
-              roomId: payload.new.room_id,
-              expiresAt: payload.new.expires_at,
-            };
-
-            setActiveGameInvitation(inviteData);
-
-            showToast({
-              id: payload.new.id,
-              title: 'Invitación a Partida',
-              message: `¡${sender.username} te invita a jugar!`,
-              expiresAt: payload.new.expires_at,
-              gameInviteData: inviteData,
-            });
-          }
+          await buildAndShowGameInvite(payload.new);
         }
       )
       .on(
@@ -274,6 +297,7 @@ export function useNotifications() {
         (payload) => {
           if (payload.new.status !== 'pending') {
             setPendingGameInvites((prev) => Math.max(0, prev - 1));
+            seenGameInviteIdsRef.current.delete(payload.new.id);
             // Close modal if this is the active invitation
             setActiveGameInvitation(current => {
               if (current && current.invitationId === payload.new.id) {
@@ -296,6 +320,7 @@ export function useNotifications() {
 
     return () => {
       isMounted = false;
+      window.clearInterval(pollingId);
       supabase.removeChannel(friendSubscription);
       supabase.removeChannel(appNotifSubscription);
       supabase.removeChannel(gameSubscription);
@@ -349,6 +374,16 @@ export function useNotifications() {
     }
 
     await supabase.from('game_invitations').update({ status }).eq('id', id);
+
+    if (status === 'rejected' && roomId) {
+      try {
+        const socket = await socketService.connect();
+        socket.emit('cancel_room', { roomId, reason: 'challenge_rejected' });
+      } catch (err) {
+        console.warn('No se pudo cerrar la sala rechazada:', err);
+      }
+    }
+
     setToast(null);
     setActiveGameInvitation(null);
     if (status === 'accepted' && roomId) {
@@ -361,19 +396,53 @@ export function useNotifications() {
 
   const totalPending = pendingFriendRequests + pendingGameInvites;
 
+  const removeNotificationFromState = (id: string) => {
+    setAppNotifications((prev) => {
+      const target = prev.find((n) => n.id === id);
+      if (target && !target.is_read) {
+        setUnreadCount((count) => Math.max(0, count - 1));
+      }
+      return prev.filter((n) => n.id !== id);
+    });
+  };
+
   // DB column is player_id, not user_id
   const markNotificationAsRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    removeNotificationFromState(id);
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', id)
+      .eq('player_id', user?.id || '');
+    if (error) {
+      console.error('Error eliminando notificación:', error);
+    }
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
-    await supabase.from('notifications').update({ is_read: true }).eq('player_id', user.id).eq('is_read', false);
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('player_id', user.id)
+      .eq('is_read', false);
   };
 
   const deleteReadNotifications = async () => {
     if (!user) return;
     await supabase.from('notifications').delete().eq('player_id', user.id).eq('is_read', true);
+  };
+
+  const deleteNotification = async (id: string) => {
+    removeNotificationFromState(id);
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', id)
+      .eq('player_id', user?.id || '');
+    if (error) {
+      console.error('Error eliminando notificación:', error);
+    }
   };
 
   return {
@@ -389,6 +458,7 @@ export function useNotifications() {
     unreadCount,
     markNotificationAsRead,
     markAllAsRead,
-    deleteReadNotifications
+    deleteReadNotifications,
+    deleteNotification
   };
 }

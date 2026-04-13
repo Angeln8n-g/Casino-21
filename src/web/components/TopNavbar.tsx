@@ -17,6 +17,7 @@ interface TopNavbarProps {
   onMarkAsRead?: (id: string) => void;
   onChallengeClick?: (inviteData: any) => void;
   onDeleteRead?: () => void;
+  onDeleteNotification?: (id: string) => void;
   activeTab: DesktopTab;
   onTabChange: (tab: DesktopTab) => void;
   leftCollapsed?: boolean;
@@ -33,6 +34,7 @@ export function TopNavbar({
   onMarkAsRead,
   onChallengeClick,
   onDeleteRead,
+  onDeleteNotification,
   activeTab,
   onTabChange,
   leftCollapsed,
@@ -54,6 +56,7 @@ export function TopNavbar({
               onMarkAsRead={onMarkAsRead}
               onChallengeClick={onChallengeClick}
               onDeleteRead={onDeleteRead}
+              onDeleteNotification={onDeleteNotification}
             />
           </div>
 

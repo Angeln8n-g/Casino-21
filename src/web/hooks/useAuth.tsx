@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 import { socketService } from '../services/socket';
@@ -32,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [presenceByUserId, setPresenceByUserId] = useState<Record<string, PresenceEntry>>({});
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     // Obtener sesión inicial
@@ -64,80 +65,127 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user) return;
 
-    let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
     let isSubscribed = false;
+    let isDisposed = false;
 
-    const setupPresence = async () => {
-      // Remove any existing channel with the same name before creating a new one
-      // to avoid 'tried to subscribe multiple times' in React StrictMode
-      const existingChannel = supabase.getChannels().find(c => c.topic === 'realtime:global:presence');
-      if (existingChannel) {
-        await supabase.removeChannel(existingChannel);
-      }
+    const presenceChannel = supabase.channel('global-presence', {
+      config: { presence: { key: user.id } },
+    });
+    presenceChannelRef.current = presenceChannel;
 
-      presenceChannel = supabase.channel('global:presence', {
-        config: { presence: { key: user.id } },
-      });
-
-      const syncPresence = () => {
-        if (!presenceChannel) return;
-        const state = presenceChannel.presenceState<PresenceEntry>();
-        const next: Record<string, PresenceEntry> = {};
-
-        for (const [userId, presenceList] of Object.entries(state)) {
-          const list = presenceList as unknown as PresenceEntry[];
-          if (!Array.isArray(list) || list.length === 0) continue;
-
-          const latest = list.reduce<PresenceEntry>((acc, cur) => {
-            const accTs = Date.parse(acc?.online_at || '') || 0;
-            const curTs = Date.parse(cur?.online_at || '') || 0;
-            return curTs >= accTs ? cur : acc;
-          }, list[0]);
-
-          if (latest?.online_at) next[userId] = latest;
-        }
-
-        setPresenceByUserId(next);
-      };
-
-      presenceChannel
-        .on('presence', { event: 'sync' }, syncPresence)
-        .on('presence', { event: 'join' }, syncPresence)
-        .on('presence', { event: 'leave' }, syncPresence)
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            isSubscribed = true;
-            await presenceChannel!.track({
-              online_at: new Date().toISOString(),
-              room_id: socketService.currentRoomId,
-            });
-          }
-        });
-    };
-
-    setupPresence();
-
-    const handleRoomChange = () => {
-      if (presenceChannel && isSubscribed) {
-        presenceChannel.track({
+    const trackPresence = async () => {
+      if (isDisposed) return;
+      try {
+        await presenceChannel.track({
           online_at: new Date().toISOString(),
           room_id: socketService.currentRoomId,
-        }).catch(console.error);
+        });
+      } catch (err) {
+        if (!isDisposed) console.error('Presence track error:', err);
       }
+    };
+
+    const syncPresence = () => {
+      const state = presenceChannel.presenceState<PresenceEntry>();
+      const next: Record<string, PresenceEntry> = {};
+
+      for (const [userId, presenceList] of Object.entries(state)) {
+        const list = presenceList as PresenceEntry[];
+        if (!Array.isArray(list) || list.length === 0) continue;
+        const latest = list[list.length - 1];
+        if (latest?.online_at) {
+          next[userId] = latest;
+        }
+      }
+      
+      if (!isDisposed) {
+        setPresenceByUserId(next);
+      }
+    };
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, syncPresence)
+      .on('presence', { event: 'join' }, syncPresence)
+      .on('presence', { event: 'leave' }, syncPresence)
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          isSubscribed = true;
+          await trackPresence();
+          return;
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          isSubscribed = false;
+          if (!isDisposed) {
+            setPresenceByUserId({});
+          }
+        }
+      });
+
+    const handleRoomChange = () => {
+      if (!isSubscribed || isDisposed) return;
+      trackPresence();
     };
 
     window.addEventListener('room_joined_event', handleRoomChange);
     window.addEventListener('room_left_event', handleRoomChange);
 
     return () => {
+      isDisposed = true;
+      isSubscribed = false;
       window.removeEventListener('room_joined_event', handleRoomChange);
       window.removeEventListener('room_left_event', handleRoomChange);
-      if (presenceChannel) {
-        supabase.removeChannel(presenceChannel);
-        isSubscribed = false;
+      presenceChannel.unsubscribe();
+      supabase.removeChannel(presenceChannel);
+      if (presenceChannelRef.current === presenceChannel) {
+        presenceChannelRef.current = null;
       }
     };
-  }, [user]);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let disposed = false;
+
+    const heartbeat = async () => {
+      if (disposed) return;
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          last_seen_at: new Date().toISOString(),
+          current_room_id: socketService.currentRoomId,
+        })
+        .eq('id', user.id);
+      if (error && !disposed) {
+        console.warn('Heartbeat update failed:', error.message);
+      }
+    };
+
+    const handleRoomChange = () => {
+      heartbeat();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        heartbeat();
+      }
+    };
+
+    heartbeat();
+    const intervalId = window.setInterval(heartbeat, 15_000);
+
+    window.addEventListener('room_joined_event', handleRoomChange);
+    window.addEventListener('room_left_event', handleRoomChange);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('room_joined_event', handleRoomChange);
+      window.removeEventListener('room_left_event', handleRoomChange);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user?.id]);
 
   const fetchProfile = async (userId: string) => {
     try {

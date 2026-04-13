@@ -37,6 +37,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
   const [challengeState, setChallengeState] = useState<'idle' | 'waiting' | 'accepted' | 'expired'>('idle');
   const [progress, setProgress] = useState(100); // 100% → 0% over 60s
   const [invitationId, setInvitationId] = useState<string | null>(null);
+  const [challengeRoomId, setChallengeRoomId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -45,7 +46,17 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  const startCountdown = () => {
+  const closeChallengeRoom = async (roomId?: string | null, reason: 'challenge_cancelled' | 'challenge_rejected' | 'challenge_expired' = 'challenge_cancelled') => {
+    if (!roomId) return;
+    try {
+      const socket = await socketService.connect();
+      socket.emit('cancel_room', { roomId, reason });
+    } catch (err) {
+      console.warn('No se pudo cerrar la sala del desafío:', err);
+    }
+  };
+
+  const startCountdown = (invId: string, roomId: string) => {
     startTimeRef.current = Date.now();
     setProgress(100);
     timerRef.current = setInterval(() => {
@@ -58,9 +69,8 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
         if (timerRef.current) clearInterval(timerRef.current);
         setChallengeState('expired');
         // Auto-cancel the invitation
-        if (invitationId) {
-          supabase.from('game_invitations').update({ status: 'expired' }).eq('id', invitationId).then(() => {});
-        }
+        supabase.from('game_invitations').update({ status: 'expired' }).eq('id', invId).then(() => {});
+        closeChallengeRoom(roomId, 'challenge_expired');
       }
     }, 250);
   };
@@ -105,6 +115,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
       if (error) throw error;
       setInvitationId(data.id);
+      setChallengeRoomId(roomId);
 
       // 3. Create rich notification
       const { data: senderProfile } = await supabase
@@ -132,7 +143,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
         },
       });
 
-      startCountdown();
+      startCountdown(data.id, roomId);
 
       // 4. Listen for acceptance
       const channel = supabase
@@ -144,6 +155,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
             if (payload.new.status === 'accepted') {
               if (timerRef.current) clearInterval(timerRef.current);
               setChallengeState('accepted');
+              setChallengeRoomId(null);
               supabase.removeChannel(channel);
               setTimeout(() => {
                 onClose();
@@ -151,6 +163,8 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
             } else if (payload.new.status === 'rejected' || payload.new.status === 'cancelled' || payload.new.status === 'expired') {
               if (timerRef.current) clearInterval(timerRef.current);
               setChallengeState('expired');
+              closeChallengeRoom(roomId, payload.new.status === 'rejected' ? 'challenge_rejected' : 'challenge_expired');
+              setChallengeRoomId(null);
               supabase.removeChannel(channel);
             }
           }
@@ -167,8 +181,10 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
     if (invitationId) {
       await supabase.from('game_invitations').update({ status: 'cancelled' }).eq('id', invitationId);
     }
+    await closeChallengeRoom(challengeRoomId, 'challenge_cancelled');
     setChallengeState('idle');
     setInvitationId(null);
+    setChallengeRoomId(null);
   };
 
   const handleChat = () => {
@@ -281,15 +297,37 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
           {/* Action Zone */}
           {!friend.isOnline && (
-            <div className="py-3 rounded-xl text-center text-sm text-gray-500 bg-white/[0.02] border border-white/5">
-              ⚫ Jugador desconectado
+            <div className="space-y-3">
+              <div className="py-3 rounded-xl text-center text-sm text-gray-500 bg-white/[0.02] border border-white/5">
+                ⚫ Jugador desconectado
+              </div>
+              <button
+                onClick={handleChat}
+                className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat
+              </button>
             </div>
           )}
 
           {friend.isOnline && isInRoom && (
-            <div className="py-3 rounded-xl text-center bg-purple-500/10 border border-purple-500/20 space-y-1">
-              <p className="text-purple-400 font-bold text-sm">🎮 En partida activa</p>
-              <p className="text-gray-500 text-xs">Podrás desafiarle cuando termine</p>
+            <div className="space-y-3">
+              <div className="py-3 rounded-xl text-center bg-purple-500/10 border border-purple-500/20 space-y-1">
+                <p className="text-purple-400 font-bold text-sm">🎮 En partida activa</p>
+                <p className="text-gray-500 text-xs">Podrás desafiarle cuando termine</p>
+              </div>
+              <button
+                onClick={handleChat}
+                className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat
+              </button>
             </div>
           )}
 
