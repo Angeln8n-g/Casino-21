@@ -17,15 +17,16 @@ export interface TournamentMatch {
   game_room_id?: string | null;
 }
 
-interface TournamentBracketProps {
+export interface TournamentBracketProps {
   matches: TournamentMatch[];
   title?: string;
   maxParticipants?: number;
   onJoinMatch?: (match: TournamentMatch) => void;
   currentUserId?: string | null;
+  isAdmin?: boolean;
 }
 
-function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; currentUserId?: string | null }) {
+function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; currentUserId?: string | null; isAdmin?: boolean }) {
   if (!match) {
     return (
       <div className="w-32 md:w-40 h-16 border-2 border-white/10 rounded-lg bg-black/40 flex flex-col justify-center opacity-50 relative z-10">
@@ -50,11 +51,12 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId }: { mat
 
   const isPlayerInMatch = currentUserId && (match.player1?.id === currentUserId || match.player2?.id === currentUserId);
   const canJoin = (match.status === 'pending' || match.status === 'live') && isPlayerInMatch && match.player1 && match.player2;
+  const isClickable = canJoin || (isAdmin && match.status !== 'completed');
 
   return (
     <div 
-      className={`w-32 md:w-40 h-16 border-2 rounded-lg flex flex-col justify-center relative z-10 backdrop-blur-sm transition-all ${canJoin ? 'hover:scale-105 hover:border-casino-gold/50 cursor-pointer shadow-[0_0_15px_rgba(234,179,8,0.2)]' : ''} ${getBoxClass()}`}
-      onClick={() => canJoin && onJoinMatch && onJoinMatch(match)}
+      className={`w-32 md:w-40 h-16 border-2 rounded-lg flex flex-col justify-center relative z-10 backdrop-blur-sm transition-all ${isClickable ? 'hover:scale-105 hover:border-casino-gold/50 cursor-pointer shadow-[0_0_15px_rgba(234,179,8,0.2)]' : ''} ${getBoxClass()}`}
+      onClick={() => isClickable && onJoinMatch && onJoinMatch(match)}
     >
       {match.status === 'live' && (
         <div className="absolute -top-2 -right-2 w-4 h-4">
@@ -105,7 +107,7 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId }: { mat
   );
 }
 
-export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, currentUserId }: TournamentBracketProps) {
+export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, currentUserId, isAdmin }: TournamentBracketProps) {
   // Helper to find a match by round and position
   const getMatch = (r: number, p: number) => matches.find(m => m.round === r && m.position === p);
 
@@ -116,6 +118,7 @@ export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxP
       isFinal={isFinal} 
       onJoinMatch={onJoinMatch} 
       currentUserId={currentUserId} 
+      isAdmin={isAdmin}
     />
   );
 

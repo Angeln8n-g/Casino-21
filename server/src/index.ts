@@ -283,8 +283,15 @@ io.on('connection', (socket) => {
     const result = room.engine.continueToNextRound(room.state);
     if (result.success && result.value) {
       room.state = result.value;
-      startTurnTimer(roomId, room);
-      broadcastGameState(roomId, room);
+      
+      if (room.state.phase === 'completed') {
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        broadcastGameState(roomId, room);
+        saveMatchResult(roomId, room);
+      } else {
+        startTurnTimer(roomId, room);
+        broadcastGameState(roomId, room);
+      }
     }
   });
 
@@ -368,14 +375,16 @@ async function saveMatchResult(roomId: string, room: any) {
   if (!room.state || room.state.phase !== 'completed') return;
 
   // Determinar ganador (el que tenga mayor puntaje, o el primero si hay empate por ahora)
-  let winnerId = null;
+  let winnerId = room.state.winnerId || null;
   const p1 = room.state.players[0];
   const p2 = room.state.players[1];
 
-  if (p1.score > p2.score) {
-    winnerId = p1.id;
-  } else if (p2.score > p1.score) {
-    winnerId = p2.id;
+  if (!winnerId) {
+    if (p1.score > p2.score) {
+      winnerId = p1.id;
+    } else if (p2.score > p1.score) {
+      winnerId = p2.id;
+    }
   }
   // Si son iguales, winnerId se queda en null (empate)
 
@@ -435,6 +444,36 @@ async function saveMatchResult(roomId: string, room: any) {
             .eq('id', nextMatch.id);
             
           console.log(`Ganador ${winnerId} avanzado a la ronda ${nextRound}`);
+        } else {
+          // If there is no next match, this was the Final!
+          console.log(`¡Ganador del Torneo! ${winnerId} ha ganado el evento ${tMatch.event_id}`);
+          
+          // Entregar el premio llamando al RPC
+          const prizeAmount = 1000; // Podríamos leerlo de la tabla events, pero lo dejamos hardcodeado por simplicidad MVP o buscarlo:
+          const { data: eventData } = await supabase.from('events').select('prize_pool').eq('id', tMatch.event_id).single();
+          
+          // Extract numbers from prize_pool string (e.g. "10,000 Monedas" -> 10000)
+          let finalPrize = 0;
+          if (eventData && eventData.prize_pool) {
+            const match = eventData.prize_pool.replace(/,/g, '').match(/(\d+)/);
+            if (match) {
+              finalPrize = parseInt(match[0], 10);
+            }
+          }
+          
+          if (finalPrize > 0) {
+            const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
+              event_id_param: tMatch.event_id,
+              winner_id_param: winnerId,
+              prize_amount: finalPrize
+            });
+            
+            if (rewardError) {
+              console.error('Error entregando premio al ganador del torneo:', rewardError);
+            } else {
+              console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
+            }
+          }
         }
       }
     }

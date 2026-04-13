@@ -105,6 +105,9 @@ export function ProfileHeader({
             <div className="flex items-center gap-2">
               <span className={`text-[10px] font-bold ${div.cssClass}`}>{div.icon} {div.label}</span>
               <span className="text-[10px] text-casino-gold font-bold">Lvl {level}</span>
+              <span className="text-[10px] text-yellow-400 font-bold bg-yellow-900/40 px-1.5 py-0.5 rounded-md border border-yellow-500/20 flex items-center gap-1">
+                <span className="text-[10px]">🪙</span> {profile?.coins || 0}
+              </span>
             </div>
           </div>
         </div>
@@ -304,7 +307,7 @@ export function ProfileHeader({
             <h2 className="text-lg font-display font-black text-white leading-tight truncate pr-1" title={profile?.username}>
               {profile?.username || 'Jugador'}
             </h2>
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
                 <Shield className="w-3 h-3 text-casino-gold" />
                 <span className="text-[10px] font-black text-gray-400">LVL {level}</span>
@@ -312,6 +315,10 @@ export function ProfileHeader({
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
                 <TrendingUp className="w-3 h-3 text-emerald-400" />
                 <span className="text-[10px] font-black text-emerald-400">{elo} ELO</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-yellow-900/30 border border-yellow-500/20 shadow-inner">
+                <span className="text-[10px]">🪙</span>
+                <span className="text-[10px] font-black text-yellow-400">{profile?.coins || 0}</span>
               </div>
             </div>
           </div>

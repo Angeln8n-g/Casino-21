@@ -93,7 +93,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
   };
 
   return (
-    <div className="glass-panel group relative overflow-hidden rounded-2xl border border-white/10 hover:border-white/30 transition-all cursor-pointer h-64 flex flex-col">
+    <div className="glass-panel group relative overflow-hidden rounded-2xl border border-white/10 hover:border-casino-gold/50 hover:shadow-[0_0_25px_rgba(234,179,8,0.2)] hover:-translate-y-2 transition-all duration-300 cursor-pointer h-64 flex flex-col">
       {/* Background Image Placeholder */}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent z-10" />
       <div 
@@ -121,19 +121,26 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
           </p>
           
           <div className="flex justify-between items-end">
-            <div className="flex items-center gap-2 bg-black/50 w-fit px-3 py-2 rounded-xl border border-white/5">
-              <span className="text-xs">🎁</span>
+            <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-900/40 to-black/50 w-fit px-3 py-2 rounded-xl border border-yellow-500/20">
+              <span className="text-xs">🏆</span>
               <span className="text-xs font-bold text-casino-gold">{prize_pool}</span>
             </div>
             <div className="flex gap-2">
-              {(status === 'upcoming' || status === 'live') && (
-                <button 
-                  onClick={(e) => onJoinEvent(id, title, e)}
-                  disabled={isLoading}
-                  className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition-colors border ${isEnrolled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'text-black bg-casino-gold hover:bg-yellow-400 border-casino-gold'}`}
-                >
-                  {isLoading ? '...' : isEnrolled ? 'Inscrito' : 'Entrar Ahora'}
-                </button>
+              {(status === 'upcoming' || (status === 'live' && type !== 'torneo')) && (
+                <div className="flex flex-col items-end gap-1">
+                  {entry_fee > 0 && (
+                    <span className="text-[9px] font-black text-yellow-400 bg-black/50 px-2 py-0.5 rounded uppercase tracking-widest border border-yellow-500/20">
+                      Entrada: 🪙 {entry_fee}
+                    </span>
+                  )}
+                  <button 
+                    onClick={(e) => onJoinEvent(id, title, e)}
+                    disabled={isLoading}
+                    className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition-colors border ${isEnrolled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'text-black bg-casino-gold hover:bg-yellow-400 border-casino-gold'}`}
+                  >
+                    {isLoading ? '...' : isEnrolled ? 'Inscrito' : 'Entrar Ahora'}
+                  </button>
+                </div>
               )}
               <button 
                 onClick={(e) => {
@@ -344,13 +351,18 @@ export function EventsPage() {
     }
     
     setActionLoading(eventId);
-    const { error } = await supabase.from('event_entries').insert([
-      { event_id: eventId, player_id: user.id }
-    ]);
+    
+    // Call the secure RPC function to handle entry fee deduction and enrollment
+    const { error, data } = await supabase.rpc('join_event', {
+      event_id_param: eventId,
+      player_id_param: user.id
+    });
     
     if (error) {
       console.error(error);
       setEnrollmentStatus('error');
+      // Hack to pass custom error message via status for simplicity in this MVP
+      setEnrollmentEventTitle(title + ' - ' + (error.message.includes('Saldo insuficiente') ? 'Saldo Insuficiente' : 'Error de inscripción'));
       setEnrollmentModalOpen(true);
     } else {
       setUserEntries([...userEntries, eventId]);
@@ -358,14 +370,29 @@ export function EventsPage() {
       setEvents(events.map(ev => ev.id === eventId ? { ...ev, participants_count: ev.participants_count + 1 } : ev));
       setEnrollmentStatus('success');
       setEnrollmentModalOpen(true);
+      
+      // Update profile coins optimistically via custom event or reload
+      // (The actual profile refresh is handled by useAuth fetching automatically on certain triggers, 
+      // but a quick reload or event helps)
     }
     setActionLoading(null);
   };
 
   const filteredEvents = events.filter(e => filter === 'all' || e.status === filter);
   
-  // Find a featured event (preferably live, then upcoming)
-  const featuredEvent = events.find(e => e.status === 'live') || events.find(e => e.status === 'upcoming');
+  // Find featured events (live or upcoming)
+  const featuredEvents = events.filter(e => e.status === 'live' || e.status === 'upcoming');
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (featuredEvents.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % featuredEvents.length);
+    }, 6000);
+    return () => window.clearInterval(timer);
+  }, [featuredEvents.length]);
+
+  const featuredEvent = featuredEvents[currentSlide];
 
   useEffect(() => {
     if (!featuredEvent) return;
@@ -395,7 +422,7 @@ export function EventsPage() {
 
   return (
     <div className="w-full text-white animate-fade-in">
-      {/* Hero Banner (Featured Event) */}
+      {/* Hero Banner (Featured Event Carousel) */}
       {featuredEvent && (
         <div className="relative w-full h-72 md:h-96 rounded-3xl overflow-hidden mb-8 border border-casino-gold/30 shadow-[0_0_30px_rgba(234,179,8,0.15)] group cursor-pointer">
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-10" />
@@ -426,17 +453,19 @@ export function EventsPage() {
             </p>
             
             <div className="flex gap-4">
-              <button 
-                onClick={(e) => handleJoinEvent(featuredEvent.id, featuredEvent.title, e)}
-                disabled={actionLoading === featuredEvent.id}
-                className={`px-8 py-3 rounded-xl uppercase tracking-wider font-black transition-all transform hover:-translate-y-1 shadow-[0_0_20px_rgba(234,179,8,0.4)]
-                  ${userEntries.includes(featuredEvent.id) 
-                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 text-green-400 border border-green-500/30' 
-                    : 'bg-gradient-to-r from-casino-gold to-yellow-600 hover:from-yellow-400 hover:to-casino-gold text-black'
-                  }`}
-              >
-                {actionLoading === featuredEvent.id ? 'Cargando...' : userEntries.includes(featuredEvent.id) ? 'Ya Estás Inscrito' : 'Entrar Ahora'}
-              </button>
+              {(featuredEvent.status === 'upcoming' || (featuredEvent.status === 'live' && featuredEvent.type !== 'torneo')) && (
+                <button 
+                  onClick={(e) => handleJoinEvent(featuredEvent.id, featuredEvent.title, e)}
+                  disabled={actionLoading === featuredEvent.id}
+                  className={`px-8 py-3 rounded-xl uppercase tracking-wider font-black transition-all transform hover:-translate-y-1 shadow-[0_0_20px_rgba(234,179,8,0.4)]
+                    ${userEntries.includes(featuredEvent.id) 
+                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 text-green-400 border border-green-500/30' 
+                      : 'bg-gradient-to-r from-casino-gold to-yellow-600 hover:from-yellow-400 hover:to-casino-gold text-black'
+                    }`}
+                >
+                  {actionLoading === featuredEvent.id ? 'Cargando...' : userEntries.includes(featuredEvent.id) ? 'Ya Estás Inscrito' : 'Entrar Ahora'}
+                </button>
+              )}
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -459,6 +488,26 @@ export function EventsPage() {
               )}
             </div>
           </div>
+          
+          {/* Carousel Controls */}
+          {featuredEvents.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+              {featuredEvents.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentSlide(idx);
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    idx === currentSlide 
+                      ? 'bg-casino-gold w-6' 
+                      : 'bg-white/30 hover:bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

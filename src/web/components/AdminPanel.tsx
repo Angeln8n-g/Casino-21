@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
+import { TournamentBracket, TournamentMatch } from './TournamentBracket';
+
 interface EventData {
   id: string;
   title: string;
@@ -22,6 +24,18 @@ export function AdminPanel() {
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Participants Modal State
+  const [participantsModalOpen, setParticipantsModalOpen] = useState(false);
+  const [currentEventParticipants, setCurrentEventParticipants] = useState<any[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+
+  // Bracket Admin Modal State
+  const [bracketModalOpen, setBracketModalOpen] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState<EventData | null>(null);
+  const [tournamentMatches, setTournamentMatches] = useState<any[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
 
   // Form state
   const [isEditing, setIsEditing] = useState(false);
@@ -111,18 +125,25 @@ export function AdminPanel() {
       const maxP = event.max_participants || 16;
       const totalRounds = Math.log2(maxP);
       
+      // The UI expects the Final to ALWAYS be Round 4.
+      // 32 players (5 rounds): 0, 1, 2, 3, 4
+      // 16 players (4 rounds): 1, 2, 3, 4
+      // 8 players (3 rounds): 2, 3, 4
+      const startRound = 4 - totalRounds + 1;
+      
       const matchesToInsert = [];
       let playerIndex = 0;
 
-      for (let round = 1; round <= totalRounds; round++) {
-        const matchesInRound = maxP / Math.pow(2, round);
+      for (let i = 0; i < totalRounds; i++) {
+        const round = startRound + i;
+        const matchesInRound = maxP / Math.pow(2, i + 1);
         
         for (let order = 1; order <= matchesInRound; order++) {
           let p1 = null;
           let p2 = null;
           
-          // Only assign players in Round 1
-          if (round === 1) {
+          // Only assign players in the first round played
+          if (i === 0) {
             if (playerIndex < players.length) p1 = players[playerIndex++];
             if (playerIndex < players.length) p2 = players[playerIndex++];
           }
@@ -133,7 +154,7 @@ export function AdminPanel() {
             match_order: order,
             player1_id: p1,
             player2_id: p2,
-            status: round === 1 ? 'pending' : 'pending', // Only Round 1 is ready conceptually, but we set all to pending initially
+            status: i === 0 ? 'pending' : 'pending', // Only first round is ready conceptually, but we set all to pending initially
             game_room_id: Math.random().toString(36).substring(2, 8).toUpperCase()
           });
         }
@@ -164,6 +185,180 @@ export function AdminPanel() {
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (error) setError(error.message);
     else fetchEvents();
+  };
+
+  const handleViewParticipants = async (eventId: string) => {
+    setSelectedEventId(eventId);
+    setParticipantsModalOpen(true);
+    setParticipantsLoading(true);
+    
+    const { data, error } = await supabase
+      .from('event_entries')
+      .select('id, player_id, score, joined_at, profiles!inner(id, username, avatar_url, elo)')
+      .eq('event_id', eventId);
+      
+    if (error) {
+      console.error("Error fetching participants:", error);
+      setError("Error al cargar participantes.");
+    } else {
+      setCurrentEventParticipants(data || []);
+    }
+    setParticipantsLoading(false);
+  };
+
+  const handleKickParticipant = async (entryId: string, playerName: string) => {
+    if (!confirm(`¿Estás seguro de expulsar a ${playerName} del evento?`)) return;
+    
+    setParticipantsLoading(true);
+    const { error } = await supabase.from('event_entries').delete().eq('id', entryId);
+    
+    if (error) {
+      console.error("Error kicking participant:", error);
+      alert("Error al expulsar jugador.");
+    } else {
+      // Update local state
+      setCurrentEventParticipants(prev => prev.filter(p => p.id !== entryId));
+      // Update main events table to reflect count change
+      fetchEvents();
+    }
+    setParticipantsLoading(false);
+  };
+
+  const handleCloseEvent = async (event: EventData) => {
+    if (!confirm(`¿Estás seguro de finalizar manualmente "${event.title}"?`)) return;
+    setLoading(true);
+    const { error } = await supabase.from('events').update({ status: 'completed' }).eq('id', event.id);
+    if (error) setError(error.message);
+    else fetchEvents();
+    setLoading(false);
+  };
+
+  const handleAdminBracketView = async (event: EventData) => {
+    setSelectedTournament(event);
+    setBracketModalOpen(true);
+    setMatchesLoading(true);
+
+    const { data, error } = await supabase
+      .from('tournament_matches')
+      .select(`
+        id, round_number, match_order, status, winner_id,
+        player1_id, player2_id, game_room_id
+      `)
+      .eq('event_id', event.id);
+
+    if (error) {
+      console.error('Error fetching matches:', error);
+    } else if (data) {
+      const playerIds = Array.from(new Set(data.flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean)));
+      
+      let profiles: Record<string, any> = {};
+      if (playerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .in('id', playerIds);
+          
+        if (profilesData) {
+          profilesData.forEach(p => {
+            profiles[p.id] = p;
+          });
+        }
+      }
+
+      const mappedMatches: TournamentMatch[] = data.map(m => {
+        const p1 = m.player1_id ? profiles[m.player1_id] : null;
+        const p2 = m.player2_id ? profiles[m.player2_id] : null;
+        
+        return {
+          id: m.id,
+          round: m.round_number,
+          position: m.match_order,
+          player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
+          player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
+          status: m.status as any,
+          game_room_id: m.game_room_id
+        };
+      });
+      setTournamentMatches(mappedMatches);
+    }
+    
+    setMatchesLoading(false);
+  };
+
+  const handleAdminMatchClick = async (match: TournamentMatch) => {
+    // Only allow clicking matches that are not completed yet
+    if (match.status === 'completed') return;
+
+    const action = window.prompt(
+      `Opciones para este encuentro:\n\n1 - Declarar ganador a: ${match.player1?.name || 'TBD'}\n2 - Declarar ganador a: ${match.player2?.name || 'TBD'}\n3 - Marcar "No Show" (Ambos pierden/Nulo)\n\nIngresa el número (1, 2 o 3):`
+    );
+
+    if (!action) return;
+
+    let winnerId: string | null = null;
+    let newStatus = 'completed';
+
+    if (action === '1' && match.player1) {
+      winnerId = match.player1.id;
+    } else if (action === '2' && match.player2) {
+      winnerId = match.player2.id;
+    } else if (action === '3') {
+      newStatus = 'no_show';
+    } else {
+      alert("Opción inválida o jugador no definido.");
+      return;
+    }
+
+    setMatchesLoading(true);
+
+    try {
+      // Update the current match
+      const { data: tMatch, error: updateError } = await supabase
+        .from('tournament_matches')
+        .update({ status: newStatus, winner_id: winnerId })
+        .eq('id', match.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // Advance the winner if there's one
+      if (winnerId && tMatch && selectedTournament) {
+        const nextRound = tMatch.round_number + 1;
+        const nextOrder = Math.ceil(tMatch.match_order / 2);
+        
+        const { data: nextMatch } = await supabase
+          .from('tournament_matches')
+          .select('id, player1_id, player2_id')
+          .eq('event_id', selectedTournament.id)
+          .eq('round_number', nextRound)
+          .eq('match_order', nextOrder)
+          .single();
+          
+        if (nextMatch) {
+          const updateData: any = {};
+          if (tMatch.match_order % 2 !== 0) {
+            updateData.player1_id = winnerId;
+          } else {
+            updateData.player2_id = winnerId;
+          }
+          
+          await supabase
+            .from('tournament_matches')
+            .update(updateData)
+            .eq('id', nextMatch.id);
+        }
+      }
+
+      // Refresh bracket
+      if (selectedTournament) {
+        await handleAdminBracketView(selectedTournament);
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("Error al actualizar llave: " + e.message);
+      setMatchesLoading(false);
+    }
   };
 
   return (
@@ -284,9 +479,22 @@ export function AdminPanel() {
                       </td>
                       <td className="p-4 text-sm text-gray-300">{ev.prize_pool}</td>
                       <td className="p-4 text-right space-x-2">
+                        <button onClick={() => handleViewParticipants(ev.id)} className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-1.5 rounded transition">
+                          👥 {ev.participants_count}
+                        </button>
                         {ev.type === 'torneo' && (ev.status === 'upcoming' || ev.status === 'live') && (
-                          <button onClick={() => handleGenerateBracket(ev)} className="text-xs bg-casino-gold/20 text-casino-gold hover:bg-casino-gold/40 px-3 py-1.5 rounded transition">
-                            Generar Llaves
+                          <>
+                            <button onClick={() => handleGenerateBracket(ev)} className="text-xs bg-casino-gold/20 text-casino-gold hover:bg-casino-gold/40 px-3 py-1.5 rounded transition">
+                              Generar Llaves
+                            </button>
+                            <button onClick={() => handleAdminBracketView(ev)} className="text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/40 px-3 py-1.5 rounded transition">
+                              Admin Llaves
+                            </button>
+                          </>
+                        )}
+                        {ev.status === 'live' && (
+                          <button onClick={() => handleCloseEvent(ev)} className="text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/40 px-3 py-1.5 rounded transition">
+                            Finalizar
                           </button>
                         )}
                         <button onClick={() => {setCurrentEvent(ev); setIsEditing(true);}} className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition">Editar</button>
@@ -297,6 +505,116 @@ export function AdminPanel() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Participants Modal */}
+      {participantsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setParticipantsModalOpen(false)}>
+          <div className="glass-panel-strong w-full max-w-2xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="text-xs font-bold text-casino-gold uppercase tracking-widest mb-1">Participantes Inscritos</h3>
+                <h2 className="text-xl font-black text-white leading-tight">Gestión de Jugadores</h2>
+              </div>
+              <button 
+                onClick={() => setParticipantsModalOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              {participantsLoading ? (
+                <div className="text-center py-8 text-gray-500 font-bold uppercase tracking-widest animate-pulse">Cargando...</div>
+              ) : currentEventParticipants.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 font-bold uppercase tracking-widest">No hay inscritos aún</div>
+              ) : (
+                <div className="space-y-2">
+                  {currentEventParticipants.map(p => (
+                    <div key={p.id} className="flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-black/50 border border-white/10 flex items-center justify-center">
+                          {p.profiles.avatar_url ? (
+                            <img src={p.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="font-bold text-gray-400">{p.profiles.username?.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-white">{p.profiles.username}</div>
+                          <div className="text-xs text-gray-400">ELO: {p.profiles.elo}</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleKickParticipant(p.id, p.profiles.username)}
+                        className="bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                      >
+                        Expulsar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-white/10 bg-slate-900/50 shrink-0 text-right">
+              <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Total: {currentEventParticipants.length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Bracket Modal */}
+      {bracketModalOpen && selectedTournament && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => setBracketModalOpen(false)}>
+          <div className="glass-panel-strong w-full max-w-7xl rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
+            
+            <div className="p-4 md:p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0 relative z-10">
+              <div>
+                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">Modo Administrador - Llaves</h3>
+                <h2 className="text-xl md:text-2xl font-black text-white leading-tight">{selectedTournament.title}</h2>
+              </div>
+              <button 
+                onClick={() => setBracketModalOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto relative z-10">
+              {matchesLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-emerald-400 animate-pulse font-bold tracking-widest uppercase">Cargando llaves...</div>
+                </div>
+              ) : tournamentMatches.length === 0 ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-gray-400 font-bold tracking-widest uppercase">Las llaves aún no se han generado</div>
+                </div>
+              ) : (
+                <TournamentBracket 
+                  matches={tournamentMatches} 
+                  title={selectedTournament.title} 
+                  maxParticipants={selectedTournament.max_participants} 
+                  onJoinMatch={handleAdminMatchClick}
+                  currentUserId={null}
+                  isAdmin={true}
+                />
+              )}
+            </div>
+            
+            <div className="p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
+              <p className="text-xs text-emerald-400 mb-2">Haz clic en cualquier encuentro activo para declarar un ganador manualmente o marcar "No Show".</p>
+              <button 
+                onClick={() => setBracketModalOpen(false)}
+                className="w-full md:w-auto px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm float-right"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
