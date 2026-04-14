@@ -50,6 +50,11 @@ export function MainMenu() {
   const [playersInRoom, setPlayersInRoom] = useState<string[]>([]);
   const [error, setError] = useState('');
   
+  // ─── Modal Apuesta Sala ───
+  const [showBetModal, setShowBetModal] = useState(false);
+  const [betAmount, setBetAmount] = useState<number>(0);
+  const [roomBet, setRoomBet] = useState<number>(0); // Guardamos la apuesta de la sala actual
+
   // ─── FASE 8: Matchmaking State ───
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingTime, setMatchmakingTime] = useState(0);
@@ -110,9 +115,10 @@ export function MainMenu() {
           socket.emit('join_room', { roomId: savedRoomId, playerName: profile.username });
         }
 
-        socket.on('room_created', ({ roomId, playerId }) => {
+        socket.on('room_created', ({ roomId, playerId, betAmount }) => {
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
+          if (betAmount !== undefined) setRoomBet(betAmount);
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
           setPlayersInRoom([playerName]);
@@ -120,9 +126,10 @@ export function MainMenu() {
           setError('');
         });
 
-        socket.on('room_joined', ({ roomId, playerId }) => {
+        socket.on('room_joined', ({ roomId, playerId, betAmount }) => {
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
+          if (betAmount !== undefined) setRoomBet(betAmount);
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
           setView('waiting');
@@ -220,15 +227,32 @@ export function MainMenu() {
   }, [playerName, setGameState, setLocalPlayerId, profile?.id]);
   // ─── END Socket Logic ───
 
-  const handleCreateRoom = async () => {
+  const handleCreateRoomClick = () => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
+    setShowBetModal(true);
+  };
+
+  const handleCreateRoomConfirm = async () => {
     try {
+      if (profile && betAmount > profile.coins) {
+        return setError('No tienes suficientes monedas para esta apuesta.');
+      }
       const socket = await socketService.connect();
-      socket.emit('create_room', { playerName, mode });
+      socket.emit('create_room', { playerName, mode, betAmount });
+      setShowBetModal(false);
     } catch (e: any) {
-      console.error("Error en handleCreateRoom:", e);
+      console.error("Error en handleCreateRoomConfirm:", e);
       setError(e.message || 'Error conectando al servidor...');
     }
+  };
+
+  const handleCancelRoom = () => {
+    try {
+      if (currentRoomId) {
+        const socket = socketService.getSocket();
+        socket.emit('cancel_room', { roomId: currentRoomId });
+      }
+    } catch (e) {}
   };
 
   const handleJoinRoom = async () => {
@@ -304,6 +328,13 @@ export function MainMenu() {
             <h3 className="section-header text-center">
               Jugadores ({playersInRoom.length}/{mode === '1v1' ? 2 : 4})
             </h3>
+            {roomBet > 0 && (
+              <div className="flex justify-center mb-4">
+                <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-3 py-1 rounded-full text-xs font-bold shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                  Apuesta: 🪙 {roomBet}
+                </span>
+              </div>
+            )}
             {playersInRoom.map((p, i) => (
               <div key={i} className="bg-casino-emerald/10 border border-casino-emerald/20 py-3 px-4 rounded-xl text-sm font-display font-bold text-casino-emerald flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-casino-emerald animate-pulse" />
@@ -318,12 +349,23 @@ export function MainMenu() {
             ))}
           </div>
 
-          {/* Loading indicator */}
-          <div className="flex items-center justify-center gap-2 text-blue-400">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-            <span className="text-sm font-medium ml-2">El juego iniciará automáticamente</span>
+          {/* Loading indicator & Actions */}
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center justify-center gap-2 text-blue-400">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="text-sm font-medium ml-2">El juego iniciará automáticamente</span>
+            </div>
+            
+            {playersInRoom.length === 1 && (
+              <button 
+                onClick={handleCancelRoom}
+                className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50 rounded-xl font-bold text-sm uppercase tracking-wider transition-all"
+              >
+                Cancelar Sala
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -573,7 +615,7 @@ export function MainMenu() {
             {/* Custom / Friend Room Card */}
             <div className="flex flex-col gap-4 h-64">
               <button 
-                onClick={handleCreateRoom}
+                onClick={handleCreateRoomClick}
                 className="flex-1 group relative overflow-hidden rounded-2xl border border-blue-500/30 hover:border-blue-500 transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_10px_30px_rgba(59,130,246,0.2)] text-left"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-900/30 to-black/80 z-0"></div>
@@ -730,6 +772,56 @@ export function MainMenu() {
 
       {/* Forzar Username Modal */}
       <WelcomeModal />
+
+      {/* ─── Modal Crear Sala (Apuesta) ─── */}
+      {showBetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="glass-panel-strong p-6 w-full max-w-sm relative">
+            <button 
+              onClick={() => setShowBetModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+            <h3 className="section-header text-center text-xl mb-4">Crear Sala 1vs1</h3>
+            <p className="text-sm text-gray-400 text-center mb-6">Selecciona el monto a apostar (Opcional)</p>
+            
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[0, 10, 50, 100, 500, 1000].map(amount => (
+                <button
+                  key={amount}
+                  onClick={() => setBetAmount(amount)}
+                  className={`py-2 rounded-xl border text-sm font-bold transition-all ${
+                    betAmount === amount 
+                      ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]' 
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                  }`}
+                >
+                  {amount === 0 ? 'Gratis' : `🪙 ${amount}`}
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-[10px] uppercase text-gray-500 font-bold mb-1 ml-1">Monto personalizado</label>
+              <input 
+                type="number" 
+                min={0}
+                value={betAmount}
+                onChange={e => setBetAmount(parseInt(e.target.value) || 0)}
+                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-center text-yellow-400 font-bold focus:border-yellow-500/50 outline-none transition-colors"
+              />
+            </div>
+
+            <button 
+              onClick={handleCreateRoomConfirm}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all transform hover:scale-[1.02]"
+            >
+              Crear y Esperar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

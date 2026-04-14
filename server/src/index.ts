@@ -222,7 +222,8 @@ io.on('connection', (socket) => {
   }
 
   // 1. Crear Sala
-  socket.on('create_room', ({ playerName, mode }: { playerName: string, mode: '1v1' | '2v2' }) => {
+  socket.on('create_room', (data: { playerName: string, mode: '1v1' | '2v2', betAmount?: number }) => {
+    const { playerName, mode, betAmount } = data;
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     const maxPlayers = mode === '1v1' ? 2 : 4;
     
@@ -232,12 +233,13 @@ io.on('connection', (socket) => {
       players: [{ socketId: socket.id, playerId: userId, name: playerName, userId }],
       spectators: [],
       maxPlayers,
-      chatHistory: []
+      chatHistory: [],
+      betAmount: mode === '1v1' ? (data.betAmount || 0) : 0 // Guardar monto de apuesta
     };
 
     socket.join(roomId);
-    socket.emit('room_created', { roomId, playerId: userId });
-    console.log(`Sala ${roomId} creada por ${playerName}`);
+    socket.emit('room_created', { roomId, playerId: userId, betAmount: rooms[roomId].betAmount });
+    console.log(`Sala ${roomId} creada por ${playerName} con apuesta ${rooms[roomId].betAmount}`);
   });
 
   // 2. Unirse a Sala
@@ -359,6 +361,14 @@ io.on('connection', (socket) => {
         // Enviar el estado inicial a cada jugador de forma segura (ocultando cartas de otros)
         broadcastGameState(roomId, room);
       }
+    }
+  });
+
+  // 3. Cancelar Sala
+  socket.on('cancel_room', ({ roomId }: { roomId: string }) => {
+    const room = rooms[roomId];
+    if (room && room.players[0].socketId === socket.id && !room.state) { // Solo el creador puede cancelarla si no ha empezado
+      closeRoom(roomId, 'room_cancelled');
     }
   });
 
@@ -607,6 +617,32 @@ async function saveMatchResult(roomId: string, room: any) {
   // Si son iguales, winnerId se queda en null (empate)
 
   try {
+    const betAmount = room.betAmount || 0;
+    let coinsEarnedP1 = 0;
+    let coinsEarnedP2 = 0;
+
+    if (betAmount > 0 && winnerId) {
+      if (winnerId === p1.id) {
+        coinsEarnedP1 = betAmount * 2;
+        coinsEarnedP2 = -betAmount;
+      } else {
+        coinsEarnedP2 = betAmount * 2;
+        coinsEarnedP1 = -betAmount;
+      }
+      
+      // Update wallets if there's a bet
+      if (coinsEarnedP1 !== 0) {
+        await supabase.rpc('update_wallet', { user_id: p1.id, amount: coinsEarnedP1, reason: `Match result: ${roomId}` });
+      }
+      if (coinsEarnedP2 !== 0) {
+        await supabase.rpc('update_wallet', { user_id: p2.id, amount: coinsEarnedP2, reason: `Match result: ${roomId}` });
+      }
+    } else {
+      // Default non-bet rewards
+      coinsEarnedP1 = winnerId === p1.id ? 50 : 10;
+      coinsEarnedP2 = winnerId === p2.id ? 50 : 10;
+    }
+
     // ─── FASE 10: Guardar en Historial de Partidas ───
     // Crear el arreglo de metadatos
     const metadata = [
@@ -615,14 +651,14 @@ async function saveMatchResult(roomId: string, room: any) {
         name: room.players[0].name,
         score: p1.score,
         elo_change: winnerId === p1.id ? 25 : (winnerId ? -25 : 0),
-        coins_earned: winnerId === p1.id ? 50 : 10 // Ejemplo de monedas por victoria/derrota
+        coins_earned: coinsEarnedP1
       },
       {
         id: p2.id,
         name: room.players[1].name,
         score: p2.score,
         elo_change: winnerId === p2.id ? 25 : (winnerId ? -25 : 0),
-        coins_earned: winnerId === p2.id ? 50 : 10
+        coins_earned: coinsEarnedP2
       }
     ];
 
