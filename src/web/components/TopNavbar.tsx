@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProfileHeader } from './ProfileHeader';
 
-export type DesktopTab = 'all' | 'lobby' | 'social' | 'stats' | 'events' | 'admin';
+export type DesktopTab = 'all' | 'lobby' | 'social' | 'stats' | 'events' | 'store' | 'admin';
 
 interface TopNavbarProps {
   unreadCount?: number;
@@ -96,6 +96,15 @@ export function TopNavbar({
               }`}
             >
               Eventos
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('store')}
+              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
+                activeTab === 'store' ? 'border-purple-400/40 text-purple-400 bg-purple-400/10 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/10 text-gray-400 hover:text-white'
+              }`}
+            >
+              Tienda
             </button>
             <button
               type="button"

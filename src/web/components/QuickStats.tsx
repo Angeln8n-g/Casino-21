@@ -24,6 +24,7 @@ export function QuickStats() {
   const elo = profile?.elo || 1000;
   const wins = profile?.wins || 0;
   const losses = profile?.losses || 0;
+  const coins = profile?.coins || 0;
   const totalGames = wins + losses;
   const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
   const division = getDivisionFromElo(elo);
@@ -51,9 +52,11 @@ export function QuickStats() {
   };
 
   const stats: QuickStat[] = [
+    { label: 'Monedas', value: coins.toLocaleString(), icon: '🪙', color: 'text-yellow-400' },
     { label: 'ELO', value: elo, icon: '⚔', color: 'text-casino-gold' },
     { label: 'Victorias', value: wins, icon: '✓', color: 'text-casino-emerald' },
     { label: 'Derrotas', value: losses, icon: '✗', color: 'text-red-400' },
+    { label: 'Partidas', value: totalGames, icon: '🎲', color: 'text-purple-400' },
     { label: 'Win Rate', value: `${winRate}%`, icon: '📊', color: 'text-blue-400' },
   ];
 

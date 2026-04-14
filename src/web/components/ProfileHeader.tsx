@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, Bell, Shield, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../services/supabase';
 import { AvatarGallery } from './AvatarGallery';
 
 // ─── Utility: Division from ELO ───
@@ -53,7 +54,33 @@ export function ProfileHeader({
   const { profile, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAvatarGallery, setShowAvatarGallery] = useState(false);
+  const [localCoins, setLocalCoins] = useState(profile?.coins || 0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (profile?.coins !== undefined) {
+      setLocalCoins(profile.coins);
+    }
+  }, [profile?.coins]);
+
+  useEffect(() => {
+    const handleCoinsUpdated = () => {
+      // In a real app, you might want to re-fetch the profile or just optimistically add the coins
+      // if you know how many were rewarded. For now, we rely on the auth context re-fetching or 
+      // we can do a quick manual fetch here if needed.
+      if (profile?.id) {
+        supabase.from('profiles').select('coins').eq('id', profile.id).single()
+          .then(({ data, error }) => {
+            if (data && !error) {
+              setLocalCoins(data.coins);
+            }
+          });
+      }
+    };
+
+    window.addEventListener('coins_updated', handleCoinsUpdated);
+    return () => window.removeEventListener('coins_updated', handleCoinsUpdated);
+  }, [profile?.id]);
 
   const elo = profile?.elo || 1000;
   const xp = profile?.xp || 0;
@@ -106,7 +133,7 @@ export function ProfileHeader({
               <span className={`text-[10px] font-bold ${div.cssClass}`}>{div.icon} {div.label}</span>
               <span className="text-[10px] text-casino-gold font-bold">Lvl {level}</span>
               <span className="text-[10px] text-yellow-400 font-bold bg-yellow-900/40 px-1.5 py-0.5 rounded-md border border-yellow-500/20 flex items-center gap-1">
-                <span className="text-[10px]">🪙</span> {profile?.coins || 0}
+                <span className="text-[10px]">🪙</span> {localCoins}
               </span>
             </div>
           </div>
@@ -290,7 +317,9 @@ export function ProfileHeader({
               className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-2xl font-black text-casino-gold shadow-lg transform group-hover:rotate-1 transition-all duration-500 cursor-pointer hover:border-casino-gold/80 overflow-hidden"
               title="Cambiar Avatar"
             >
-              {profile?.avatar_url ? (
+              {profile?.equipped_avatar ? (
+                <img src={`/assets/store/${profile.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+              ) : profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 profile?.username?.charAt(0).toUpperCase() || 'P'
@@ -304,8 +333,13 @@ export function ProfileHeader({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-display font-black text-white leading-tight truncate pr-1" title={profile?.username}>
-              {profile?.username || 'Jugador'}
+            <h2 className="text-lg font-display font-black text-white leading-tight truncate pr-1 flex flex-col" title={profile?.username}>
+              <span>{profile?.username || 'Jugador'}</span>
+              {profile?.equipped_title && (
+                <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest leading-none mt-1">
+                  {profile.equipped_title}
+                </span>
+              )}
             </h2>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
@@ -318,7 +352,7 @@ export function ProfileHeader({
               </div>
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-yellow-900/30 border border-yellow-500/20 shadow-inner">
                 <span className="text-[10px]">🪙</span>
-                <span className="text-[10px] font-black text-yellow-400">{profile?.coins || 0}</span>
+                <span className="text-[10px] font-black text-yellow-400">{localCoins}</span>
               </div>
             </div>
           </div>

@@ -72,7 +72,7 @@ const MOCK_EVENTS: EventData[] = [
   },
 ];
 
-function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, rules, max_participants, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
+function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, rules, max_participants, entry_fee, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
   const statusColors: Record<string, string> = {
     draft: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
     live: 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]',

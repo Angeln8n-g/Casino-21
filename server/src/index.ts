@@ -92,6 +92,101 @@ io.use((socket, next) => {
     isTournament?: boolean;
   }> = {};
 
+// ─── FASE 8: Matchmaking Queue ───
+interface MatchmakingPlayer {
+  socketId: string;
+  userId: string;
+  name: string;
+  elo: number;
+  joinedAt: number;
+}
+let matchmakingQueue: MatchmakingPlayer[] = [];
+
+// Matchmaking Loop
+setInterval(() => {
+  if (matchmakingQueue.length < 2) return;
+
+  // Ordenar por tiempo de espera (los que más llevan esperan menos)
+  matchmakingQueue.sort((a, b) => a.joinedAt - b.joinedAt);
+  const matched = new Set<string>();
+
+  for (let i = 0; i < matchmakingQueue.length; i++) {
+    const p1 = matchmakingQueue[i];
+    if (matched.has(p1.socketId)) continue;
+
+    const waitTimeP1 = Date.now() - p1.joinedAt;
+    // Tolerancia base de 50 ELO, se expande 50 cada 5 segundos de espera, máximo 500 de diferencia.
+    const toleranceP1 = 50 + Math.min(Math.floor(waitTimeP1 / 5000) * 50, 500);
+
+    for (let j = i + 1; j < matchmakingQueue.length; j++) {
+      const p2 = matchmakingQueue[j];
+      if (matched.has(p2.socketId)) continue;
+
+      const waitTimeP2 = Date.now() - p2.joinedAt;
+      const toleranceP2 = 50 + Math.min(Math.floor(waitTimeP2 / 5000) * 50, 500);
+
+      const eloDiff = Math.abs(p1.elo - p2.elo);
+
+      // Match si la diferencia de ELO es aceptable para la tolerancia de AMBOS jugadores (o al menos del mayor)
+      if (eloDiff <= Math.max(toleranceP1, toleranceP2)) {
+        matched.add(p1.socketId);
+        matched.add(p2.socketId);
+
+        // ¡Tenemos una partida!
+        const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        rooms[roomId] = {
+          engine: new DefaultGameEngine(),
+          state: null,
+          players: [
+            { socketId: p1.socketId, playerId: p1.userId, name: p1.name, userId: p1.userId },
+            { socketId: p2.socketId, playerId: p2.userId, name: p2.name, userId: p2.userId }
+          ],
+          maxPlayers: 2
+        };
+
+        const s1 = io.sockets.sockets.get(p1.socketId);
+        const s2 = io.sockets.sockets.get(p2.socketId);
+        
+        if (s1) s1.join(roomId);
+        if (s2) s2.join(roomId);
+
+        console.log(`¡Matchmaking exitoso! ${p1.name} (${p1.elo}) vs ${p2.name} (${p2.elo}) -> Sala ${roomId}`);
+
+        // Avisar a los clientes
+        io.to(roomId).emit('match_found', { 
+          roomId, 
+          players: [
+            { id: p1.userId, name: p1.name, elo: p1.elo },
+            { id: p2.userId, name: p2.name, elo: p2.elo }
+          ] 
+        });
+
+        // Iniciar la partida automáticamente en 3 segundos
+        setTimeout(() => {
+          const room = rooms[roomId];
+          if (!room) return;
+          const result = room.engine.startNewGame('1v1', [p1.name, p2.name]);
+          if (result.success && result.value) {
+            room.state = result.value;
+            room.state.players.forEach((p, index) => {
+              (p as any).id = room.players[index].userId;
+            });
+            startTurnTimer(roomId, room);
+            broadcastGameState(roomId, room);
+          }
+        }, 3000);
+
+        break; // Pasamos al siguiente p1
+      }
+    }
+  }
+
+  // Limpiar la cola de los jugadores emparejados
+  matchmakingQueue = matchmakingQueue.filter(p => !matched.has(p.socketId));
+
+}, 3000);
+// ─── FIN FASE 8 Matchmaking Queue ───
+
 const TURN_TIME_LIMIT_MS = 30000; // 30 segundos
 
 function closeRoom(roomId: string, reason: string = 'room_closed') {
@@ -218,6 +313,35 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ─── EVENTOS MATCHMAKING (FASE 8) ───
+  socket.on('join_matchmaking', ({ playerName, elo }: { playerName: string, elo: number }) => {
+    // Si ya está, actualizar datos
+    const existing = matchmakingQueue.find(p => p.userId === userId);
+    if (existing) {
+      existing.socketId = socket.id;
+      existing.name = playerName;
+      existing.elo = elo || 1000;
+    } else {
+      matchmakingQueue.push({
+        socketId: socket.id,
+        userId: userId,
+        name: playerName,
+        elo: elo || 1000,
+        joinedAt: Date.now()
+      });
+      console.log(`Jugador ${playerName} (${elo}) entró a la cola de Matchmaking`);
+    }
+  });
+
+  socket.on('leave_matchmaking', () => {
+    const p = matchmakingQueue.find(p => p.userId === userId);
+    if (p) {
+      matchmakingQueue = matchmakingQueue.filter(p => p.userId !== userId);
+      console.log(`Jugador ${p.name} salió de la cola de Matchmaking`);
+    }
+  });
+  // ─── FIN MATCHMAKING ───
+
   socket.on('cancel_room', ({ roomId, reason }: { roomId: string, reason?: string }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -298,6 +422,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Usuario desconectado: ${socket.id}`);
     
+    // Quitar de cola de matchmaking
+    matchmakingQueue = matchmakingQueue.filter(p => p.socketId !== socket.id);
+
     // Buscar si el jugador estaba en una sala
     const roomId = Object.keys(rooms).find(id => rooms[id]?.players.some(p => p.socketId === socket.id));
     if (roomId) {
@@ -494,11 +621,58 @@ async function saveMatchResult(roomId: string, room: any) {
             losses: profile.losses + (isWinner ? 0 : 1)
           }).eq('id', id);
         }
+
+        // FASE 5: Actualizar Misiones Diarias
+        try {
+          // Obtener misiones activas de hoy
+          const today = new Date().toISOString().split('T')[0];
+          const { data: quests } = await supabase
+            .from('player_daily_quests')
+            .select(`
+              id, progress, is_completed,
+              catalog:quest_catalog (target_amount, quest_type)
+            `)
+            .eq('player_id', id)
+            .eq('assigned_date', today)
+            .eq('is_completed', false);
+
+          if (quests && quests.length > 0) {
+            for (const quest of quests) {
+              // Manejo de catalog como array o como objeto dependiendo de la configuración de Supabase
+              const catalog = Array.isArray(quest.catalog) ? quest.catalog[0] : quest.catalog;
+              if (!catalog) continue;
+
+              const { target_amount, quest_type } = catalog;
+              
+              let increment = false;
+              if (quest_type === 'play_match') {
+                increment = true;
+              } else if (quest_type === 'win_match' && isWinner) {
+                increment = true;
+              }
+
+              if (increment) {
+                const newProgress = quest.progress + 1;
+                const isCompleted = newProgress >= target_amount;
+                
+                await supabase
+                  .from('player_daily_quests')
+                  .update({
+                    progress: newProgress,
+                    is_completed: isCompleted
+                  })
+                  .eq('id', quest.id);
+              }
+            }
+          }
+        } catch (questErr) {
+          console.error('Error actualizando misiones diarias:', questErr);
+        }
       };
 
       await updateProfile(winnerId, true);
       await updateProfile(loserId, false);
-      console.log('Estadísticas y ELO actualizados');
+      console.log('Estadísticas, ELO y Misiones actualizados');
     }
 
   } catch (err) {

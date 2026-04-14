@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
+import { useAuth } from '../hooks/useAuth';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
 import { ActionPanel, ActionPayload } from './ActionPanel';
@@ -11,6 +12,7 @@ import { CardView } from './CardView';
 
 export function GameScreen() {
   const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage } = useGame();
+  const { profile } = useAuth();
   
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
   const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
@@ -451,7 +453,10 @@ export function GameScreen() {
         )}
 
         {/* Main Board Area */}
-        <main className="flex-grow flex flex-col items-center justify-center relative">
+        <main 
+          className="flex-grow flex flex-col items-center justify-center relative bg-cover bg-center bg-no-repeat transition-all duration-1000"
+          style={profile?.equipped_board ? { backgroundImage: `url(/assets/store/${profile.equipped_board})` } : {}}
+        >
           
           {/* Indicador visual de turno grande */}
           {!isCurrentTurn && (

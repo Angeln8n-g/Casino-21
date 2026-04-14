@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../hooks/useGame';
 import { GameMode } from '../../domain/types';
 import { socketService } from '../services/socket';
@@ -8,6 +8,8 @@ import { SocialPanel } from './SocialPanel';
 import { TournamentList } from './TournamentList';
 import { RecentAchievements } from './RecentAchievements';
 import { QuickStats } from './QuickStats';
+import { DailyQuests } from './DailyQuests';
+import { Store } from './Store';
 import { TopNavbar } from './TopNavbar';
 import type { DesktopTab } from './TopNavbar';
 import { EventsPage } from './EventsPage';
@@ -24,7 +26,7 @@ export function MainMenu() {
   const [playerName, setPlayerName] = useState(profile?.username || 'Jugador');
   const [roomIdInput, setRoomIdInput] = useState('');
   const [mode, setMode] = useState<GameMode>('1v1');
-  const [mobileTab, setMobileTab] = useState<'social' | 'lobby' | 'stats' | 'events' | 'admin'>('lobby');
+  const [mobileTab, setMobileTab] = useState<'social' | 'lobby' | 'stats' | 'events' | 'store' | 'admin'>('lobby');
   const [desktopTab, setDesktopTab] = useState<DesktopTab>('all');
   const [leftCollapsed, setLeftCollapsed] = useState(() => {
     try {
@@ -45,6 +47,12 @@ export function MainMenu() {
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [playersInRoom, setPlayersInRoom] = useState<string[]>([]);
   const [error, setError] = useState('');
+  
+  // ─── FASE 8: Matchmaking State ───
+  const [isMatchmaking, setIsMatchmaking] = useState(false);
+  const [matchmakingTime, setMatchmakingTime] = useState(0);
+  const [matchFound, setMatchFound] = useState<{roomId: string, players: any[]} | null>(null);
+  const matchmakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const showLobbyDesktop = desktopTab === 'all' || desktopTab === 'lobby';
 
@@ -133,6 +141,9 @@ export function MainMenu() {
           setView('menu');
           setCurrentRoomId(null);
           setPlayersInRoom([]);
+          setIsMatchmaking(false);
+          setMatchFound(null);
+          if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
           localStorage.removeItem('casino21_roomId');
           localStorage.removeItem('casino21_playerId');
           if (reason === 'challenge_rejected') {
@@ -145,6 +156,29 @@ export function MainMenu() {
             setError(`La sala ${roomId} fue cerrada.`);
           }
         });
+
+        // ─── FASE 8: Matchmaking Events ───
+        socket.on('match_found', (data: { roomId: string, players: any[] }) => {
+          setIsMatchmaking(false);
+          if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
+          setMatchFound(data);
+          
+          // IMPORTANTE: Establecer localPlayerId para que el cliente sepa que es su turno
+          const myPlayer = data.players.find(p => p.id === profile?.id) || data.players.find(p => p.name === playerName);
+          if (myPlayer) {
+            setLocalPlayerId(myPlayer.id);
+            setCurrentRoomId(data.roomId);
+            localStorage.setItem('casino21_roomId', data.roomId);
+            localStorage.setItem('casino21_playerId', myPlayer.id);
+          }
+          
+          // Limpiar notificación tras 3 segundos (el juego arranca automáticamente)
+          setTimeout(() => {
+            setMatchFound(null);
+          }, 3500);
+        });
+        // ─── FIN FASE 8 ───
+
       } catch (err) {
         console.error("Error conectando socket:", err);
       }
@@ -161,11 +195,13 @@ export function MainMenu() {
         socket.off('player_joined');
         socket.off('error');
         socket.off('room_closed');
+        socket.off('match_found');
+        if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
       } catch (e) {
         // Socket might not be connected yet
       }
     };
-  }, [playerName, setGameState, setLocalPlayerId]);
+  }, [playerName, setGameState, setLocalPlayerId, profile?.id]);
   // ─── END Socket Logic ───
 
   const handleCreateRoom = async () => {
@@ -191,6 +227,46 @@ export function MainMenu() {
       setError(e.message || 'Error conectando al servidor...');
     }
   };
+
+  // ─── FASE 8: Matchmaking Logic ───
+  const startMatchmaking = async () => {
+    if (!playerName.trim()) return setError('Ingresa tu nombre');
+    try {
+      const socket = await socketService.connect();
+      socket.emit('join_matchmaking', { 
+        playerName, 
+        elo: profile?.elo || 1000 
+      });
+      setIsMatchmaking(true);
+      setMatchmakingTime(0);
+      setError('');
+      
+      if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
+      matchmakingIntervalRef.current = setInterval(() => {
+        setMatchmakingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (e: any) {
+      console.error("Error en startMatchmaking:", e);
+      setError(e.message || 'Error conectando al servidor...');
+    }
+  };
+
+  const cancelMatchmaking = () => {
+    try {
+      const socket = socketService.getSocket();
+      socket.emit('leave_matchmaking');
+      setIsMatchmaking(false);
+      if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
+    } catch (e) {}
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+  // ─── FIN FASE 8 ───
 
   // ─── Waiting Room View ───
   if (view === 'waiting') {
@@ -283,8 +359,8 @@ export function MainMenu() {
         </aside>
 
         {/* ═════ CENTER COLUMN — Main Lobby ═════ */}
-        <main className={`flex-1 overflow-y-auto pb-20 lg:pb-0 relative z-10 ${desktopTab === 'events' || desktopTab === 'admin' ? 'w-full' : ''}`}>
-          <div className={`mx-auto p-4 md:p-6 space-y-6 overflow-visible h-full flex flex-col ${desktopTab === 'events' || desktopTab === 'admin' ? 'max-w-7xl' : 'max-w-xl'}`}>
+        <main className={`flex-1 overflow-y-auto pb-20 lg:pb-0 relative z-10 ${desktopTab === 'events' || desktopTab === 'store' || desktopTab === 'admin' ? 'w-full' : ''}`}>
+          <div className={`mx-auto p-4 md:p-6 space-y-6 overflow-visible h-full flex flex-col ${desktopTab === 'events' || desktopTab === 'store' || desktopTab === 'admin' ? 'max-w-7xl' : 'max-w-xl'}`}>
 
           {/* Mobile Tab Content */}
           <div className="lg:hidden flex-1 flex flex-col">
@@ -309,6 +385,10 @@ export function MainMenu() {
             {mobileTab === 'stats' && (
               <div className="space-y-4 animate-fade-in">
                 <div>
+                  <h3 className="section-header">🎯 Misiones Diarias</h3>
+                  <DailyQuests />
+                </div>
+                <div>
                   <h3 className="section-header">🏅 Logros Recientes</h3>
                   <RecentAchievements />
                 </div>
@@ -328,6 +408,11 @@ export function MainMenu() {
                 <AdminPanel />
               </div>
             )}
+            {mobileTab === 'store' && (
+              <div className="animate-fade-in w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
+                <Store />
+              </div>
+            )}
           </div>
 
           <div className={`hidden ${desktopTab === 'social' ? 'lg:block animate-fade-in' : 'lg:hidden'}`}>
@@ -336,6 +421,10 @@ export function MainMenu() {
 
           <div className={`hidden ${desktopTab === 'stats' ? 'lg:block animate-fade-in' : 'lg:hidden'}`}>
             <div className="space-y-4">
+              <div>
+                <h3 className="section-header">🎯 Misiones Diarias</h3>
+                <DailyQuests />
+              </div>
               <div>
                 <h3 className="section-header">🏅 Logros Recientes</h3>
                 <RecentAchievements />
@@ -350,6 +439,12 @@ export function MainMenu() {
           <div className={`hidden ${desktopTab === 'events' ? 'lg:flex animate-fade-in flex-1' : 'lg:hidden'}`}>
             <div className="w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
               <EventsPage />
+            </div>
+          </div>
+
+          <div className={`hidden ${desktopTab === 'store' ? 'lg:flex animate-fade-in flex-1' : 'lg:hidden'}`}>
+            <div className="w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
+              <Store />
             </div>
           </div>
 
@@ -378,6 +473,55 @@ export function MainMenu() {
             </div>
           )}
 
+          {/* ─── Matchmaking Overlay (FASE 8) ─── */}
+          {isMatchmaking && !matchFound && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#020617]/90 backdrop-blur-md rounded-3xl p-6 text-center animate-fade-in">
+              <div className="space-y-6">
+                <div className="relative w-24 h-24 mx-auto">
+                  <div className="absolute inset-0 border-4 border-t-casino-gold border-r-casino-gold border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                  <div className="absolute inset-2 border-4 border-t-transparent border-r-transparent border-b-casino-emerald border-l-casino-emerald rounded-full animate-spin-reverse"></div>
+                  <div className="absolute inset-0 flex items-center justify-center text-2xl">⚔️</div>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-display font-black text-casino-gold uppercase tracking-widest animate-pulse">
+                    Buscando Oponente
+                  </h3>
+                  <p className="text-gray-400 mt-2 font-mono text-xl">{formatTime(matchmakingTime)}</p>
+                  <p className="text-gray-500 text-xs mt-1 uppercase tracking-widest">Rango Expandido +/- {50 + Math.min(Math.floor(matchmakingTime / 5) * 50, 500)} ELO</p>
+                </div>
+                <button 
+                  onClick={cancelMatchmaking}
+                  className="px-6 py-2 border border-red-500/30 text-red-400 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-red-500/10 transition-colors bg-transparent"
+                >
+                  Cancelar Búsqueda
+                </button>
+              </div>
+            </div>
+          )}
+
+          {matchFound && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-casino-gold/10 backdrop-blur-md rounded-3xl p-6 text-center animate-scale-up">
+              <div className="space-y-4 bg-black/60 p-8 rounded-3xl border border-casino-gold/30 shadow-[0_0_50px_rgba(251,191,36,0.3)]">
+                <h3 className="text-4xl font-display font-black text-white uppercase tracking-widest text-shadow-gold animate-bounce" style={{ textShadow: '0 0 10px rgba(251,191,36,0.8)' }}>
+                  ¡PARTIDA ENCONTRADA!
+                </h3>
+                <div className="flex items-center justify-center gap-6 mt-6">
+                  <div className="text-right">
+                    <p className="font-bold text-lg text-casino-gold">{matchFound.players[0].name}</p>
+                    <p className="text-xs text-gray-400">{matchFound.players[0].elo} ELO</p>
+                  </div>
+                  <div className="text-3xl animate-pulse">VS</div>
+                  <div className="text-left">
+                    <p className="font-bold text-lg text-casino-gold">{matchFound.players[1].name}</p>
+                    <p className="text-xs text-gray-400">{matchFound.players[1].elo} ELO</p>
+                  </div>
+                </div>
+                <p className="text-gray-400 text-sm mt-4">Iniciando en breve...</p>
+              </div>
+            </div>
+          )}
+          {/* ─── FIN MATCHMAKING OVERLAY ─── */}
+
           {/* ─── Create Game Card ─── */}
           <div className="glass-panel-strong p-6 animate-slide-up">
             <h2 className="section-header">🎮 Nueva Partida</h2>
@@ -393,6 +537,26 @@ export function MainMenu() {
                 placeholder="Ej. Jugador 1"
               />
             </div>
+
+            {/* ─── Matchmaking Button (FASE 8) ─── */}
+            <div className="mb-6 border-b border-white/5 pb-6">
+              <button 
+                onClick={startMatchmaking}
+                className="w-full relative group overflow-hidden rounded-2xl p-0.5"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-casino-gold via-yellow-200 to-casino-gold bg-[length:200%_auto] animate-shimmer opacity-70 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative bg-black/80 px-4 py-6 rounded-[14px] flex flex-col items-center justify-center gap-2 group-hover:bg-black/60 transition-colors">
+                  <span className="text-3xl mb-1 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse">⚔️</span>
+                  <span className="font-display font-black text-xl text-white uppercase tracking-widest text-shadow-gold">
+                    Buscar Partida
+                  </span>
+                  <span className="text-[10px] text-casino-gold font-bold uppercase tracking-widest">
+                    Clasificatoria (Ranked)
+                  </span>
+                </div>
+              </button>
+            </div>
+            {/* ─── FIN MATCHMAKING BUTTON ─── */}
 
             {/* Game Mode Toggle */}
             <div className="mb-6">
@@ -480,6 +644,10 @@ export function MainMenu() {
           ) : (
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
               <div>
+                <h3 className="section-header">🎯 Misiones Diarias</h3>
+                <DailyQuests />
+              </div>
+              <div>
                 <h3 className="section-header">🏅 Logros Recientes</h3>
                 <RecentAchievements />
               </div>
@@ -526,6 +694,13 @@ export function MainMenu() {
         >
           <span className="text-xl">📊</span>
           <span className="text-[10px] font-bold uppercase tracking-wider">Stats</span>
+        </button>
+        <button 
+          onClick={() => setMobileTab('store')}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'store' ? 'text-purple-400' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          <span className="text-xl">🏪</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Tienda</span>
         </button>
         {profile?.is_admin && (
           <button 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
+import { StoreAdmin } from './StoreAdmin';
 
 interface EventData {
   id: string;
@@ -21,6 +22,7 @@ interface EventData {
 }
 
 export function AdminPanel() {
+  const [activeTab, setActiveTab] = useState<'events' | 'store'>('events');
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -362,27 +364,55 @@ export function AdminPanel() {
   };
 
   return (
-    <div className="w-full text-white animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="w-full text-white animate-fade-in flex flex-col h-full">
+      <div className="flex justify-between items-center mb-6 shrink-0">
         <h2 className="text-2xl font-black uppercase tracking-wider text-casino-gold">Panel Administrativo</h2>
-        <button 
-          onClick={() => {
-            setCurrentEvent({ title: '', description: '', rules: '', type: 'torneo', status: 'draft', entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', max_participants: 16 });
-            setIsEditing(true);
-          }}
-          className="bg-casino-gold text-black px-4 py-2 rounded-xl font-bold hover:bg-yellow-400 transition"
-        >
-          + Nuevo Evento
-        </button>
+        
+        <div className="flex gap-2">
+          <div className="bg-black/40 p-1 rounded-xl flex gap-1 border border-white/5 mr-4">
+            <button 
+              onClick={() => setActiveTab('events')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                activeTab === 'events' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              Eventos
+            </button>
+            <button 
+              onClick={() => setActiveTab('store')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                activeTab === 'store' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              Tienda
+            </button>
+          </div>
+
+          {activeTab === 'events' && (
+            <button 
+              onClick={() => {
+                setCurrentEvent({ title: '', description: '', rules: '', type: 'torneo', status: 'draft', entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', max_participants: 16 });
+                setIsEditing(true);
+              }}
+              className="bg-casino-gold text-black px-4 py-2 rounded-xl font-bold hover:bg-yellow-400 transition whitespace-nowrap"
+            >
+              + Nuevo Evento
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/20 text-red-400 border border-red-500/50 p-4 rounded-xl mb-6">
+        <div className="bg-red-500/20 text-red-400 border border-red-500/50 p-4 rounded-xl mb-6 shrink-0">
           {error}
         </div>
       )}
 
-      {isEditing ? (
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+        {activeTab === 'events' ? (
+          <>
+            {/* Eventos Form / Table ... */}
+            {isEditing ? (
         <div className="glass-panel p-6 rounded-2xl border border-white/10 mb-8">
           <h3 className="text-xl font-bold mb-4">{currentEvent.id ? 'Editar Evento' : 'Crear Evento'}</h3>
           <form onSubmit={handleSave} className="space-y-4">
@@ -618,6 +648,11 @@ export function AdminPanel() {
           </div>
         </div>
       )}
+          </>
+        ) : (
+          <StoreAdmin />
+        )}
+      </div>
     </div>
   );
 }
