@@ -595,13 +595,14 @@ export function MainMenu() {
                     type="text" 
                     value={roomIdInput} 
                     onChange={e => setRoomIdInput(e.target.value.toUpperCase())} 
-                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 text-center font-mono text-lg uppercase tracking-widest placeholder:text-xs placeholder:normal-case placeholder:tracking-normal focus:border-blue-500/50 outline-none text-white transition-colors" 
+                    onKeyDown={e => { if (e.key === 'Enter') handleJoinRoom(); }}
+                    className="flex-1 min-w-0 bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-center font-mono text-lg uppercase tracking-widest placeholder:text-xs placeholder:normal-case placeholder:tracking-normal focus:border-blue-500/50 outline-none text-white transition-colors" 
                     placeholder="Código..."
                     maxLength={6}
                   />
                   <button 
                     onClick={handleJoinRoom}
-                    className="px-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl font-bold text-sm uppercase tracking-wider transition-colors"
+                    className="px-6 py-3 shrink-0 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500/60 rounded-xl font-black text-sm uppercase tracking-wider transition-all"
                   >
                     IR
                   </button>

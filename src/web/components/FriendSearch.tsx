@@ -7,6 +7,7 @@ interface SearchResult {
   id: string;
   username: string;
   avatar_url?: string | null;
+  equipped_avatar?: string | null;
   elo: number;
   level: number;
   wins: number;
@@ -43,7 +44,7 @@ export function FriendSearch() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url, elo, level, wins, losses, xp')
+          .select('id, username, avatar_url, equipped_avatar, elo, level, wins, losses, xp')
           .ilike('username', `%${query}%`)
           .neq('id', user.id)
           .limit(8);
@@ -280,7 +281,9 @@ export function FriendSearch() {
             <div key={r.id} className="glass-panel px-3 py-2.5 flex items-center justify-between group relative bg-black/20 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,255,255,0.05)] border border-white/5 hover:border-white/10 transition-all">
               <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedPlayer(r)}>
                 <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0 overflow-hidden shadow-inner border border-white/10">
-                  {r.avatar_url ? (
+                  {r.equipped_avatar ? (
+                    <img src={`/assets/store/${r.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : r.avatar_url ? (
                     <img src={r.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     r.username.charAt(0).toUpperCase()
@@ -439,10 +442,16 @@ function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose
           {/* Avatar Area */}
           <div className="flex justify-center -mt-14 relative z-10 mb-4">
             <div className="relative">
-              <div className={`w-28 h-28 rounded-3xl bg-casino-surface-light flex items-center justify-center text-4xl font-black border-4 border-casino-bg shadow-2xl transform hover:rotate-3 transition-transform duration-500 ${
+              <div className={`w-28 h-28 rounded-3xl bg-casino-surface-light flex items-center justify-center text-4xl font-black border-4 border-casino-bg shadow-2xl transform hover:rotate-3 transition-transform duration-500 overflow-hidden ${
                 player.elo >= 1500 ? 'text-casino-gold' : 'text-gray-300'
               }`}>
-                {player.username.charAt(0).toUpperCase()}
+                {player.equipped_avatar ? (
+                  <img src={`/assets/store/${player.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                ) : player.avatar_url ? (
+                  <img src={player.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  player.username.charAt(0).toUpperCase()
+                )}
               </div>
               <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-xl border-4 border-casino-bg flex items-center justify-center shadow-lg ${div.cssClass}`}>
                 <span className="text-sm">{div.icon}</span>

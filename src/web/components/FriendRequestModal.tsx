@@ -7,6 +7,7 @@ export interface FriendRequestProfile {
   senderId: string;
   username: string;
   avatar_url?: string | null;
+  equipped_avatar?: string | null;
   elo: number;
   level: number;
   wins: number;
@@ -101,10 +102,12 @@ export function FriendRequestModal({
 
         {/* Avatar */}
         <div className="flex justify-center -mt-10 relative z-10">
-          <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl ${
+          <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl overflow-hidden ${
             isHighElo ? 'text-casino-gold' : 'text-gray-300'
-          } overflow-hidden`}>
-            {request.avatar_url ? (
+          }`}>
+            {request.equipped_avatar ? (
+              <img src={`/assets/store/${request.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+            ) : request.avatar_url ? (
               <img src={request.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               initial

@@ -8,6 +8,7 @@ export interface FriendForModal {
   id: string;
   username: string;
   avatar_url?: string | null;
+  equipped_avatar?: string | null;
   elo: number;
   level: number;
   wins: number;
@@ -246,7 +247,9 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
             <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl overflow-hidden ${
               isHighElo ? 'text-casino-gold' : 'text-gray-300'
             }`}>
-              {friend.avatar_url ? (
+              {friend.equipped_avatar ? (
+                <img src={`/assets/store/${friend.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+              ) : friend.avatar_url ? (
                 <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 friend.username.charAt(0).toUpperCase()

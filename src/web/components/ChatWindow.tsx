@@ -16,6 +16,7 @@ interface ChatMessage {
   profiles?: {
     username: string;
     avatar_url?: string | null;
+    equipped_avatar?: string | null;
     level: number;
     elo: number;
     xp?: number;
@@ -170,7 +171,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     if (disposedRef.current) return;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('username, avatar_url, level, elo')
+      .select('username, avatar_url, equipped_avatar, level, elo')
       .eq('id', msgData.sender_id)
       .single();
     if (disposedRef.current) return;
@@ -188,7 +189,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           .from('messages')
           .select(`
             id, sender_id, receiver_id, content, created_at,
-            profiles:sender_id (username, avatar_url, level, elo)
+            profiles:sender_id (username, avatar_url, equipped_avatar, level, elo)
           `)
           .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`);
         
@@ -204,7 +205,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           .from('chat_messages')
           .select(`
             id, sender_id, room_id, content, created_at, timestamp,
-            profiles:sender_id (username, avatar_url, level, elo)
+            profiles:sender_id (username, avatar_url, equipped_avatar, level, elo)
           `)
           .eq('room_id', GLOBAL_ROOM_ID);
       }
@@ -219,7 +220,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           .from('chat_messages')
           .select(`
             id, sender_id, room_id, content, timestamp,
-            profiles:sender_id (username, avatar_url, level, elo)
+            profiles:sender_id (username, avatar_url, equipped_avatar, level, elo)
           `)
           .eq('room_id', GLOBAL_ROOM_ID)
           .order('timestamp', { ascending: false })
@@ -340,7 +341,9 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
               <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up mb-3`}>
                 <div className={`flex items-end gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
-                    {profile.avatar_url ? (
+                    {profile.equipped_avatar ? (
+                      <img src={`/assets/store/${profile.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : profile.avatar_url ? (
                       <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       profile.username.charAt(0).toUpperCase()

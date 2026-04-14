@@ -17,6 +17,8 @@ interface Friend {
   xp: number;
   last_seen_at?: string | null;
   current_room_id?: string | null;
+  avatar_url?: string | null;
+  equipped_avatar?: string | null;
 }
 
 const ONLINE_WINDOW_MS = 45_000;
@@ -85,7 +87,7 @@ export function SocialPanel() {
 
       const profilesQuery = supabase
         .from('profiles')
-        .select('id, username, elo, level, wins, losses, xp, last_seen_at, current_room_id')
+        .select('id, username, elo, level, wins, losses, xp, last_seen_at, current_room_id, avatar_url, equipped_avatar')
         .in('id', friendIds);
         
       const { data: profiles, error: profilesError } = await profilesQuery;
@@ -132,7 +134,7 @@ export function SocialPanel() {
       const senderIds = data.map(r => r.sender_id);
       const profilesQuery = supabase
         .from('profiles')
-        .select('id, username, elo, level, wins, losses, xp')
+        .select('id, username, elo, level, wins, losses, xp, avatar_url, equipped_avatar')
         .in('id', senderIds);
         
       const { data: profiles, error: profilesError } = await profilesQuery;
@@ -149,6 +151,8 @@ export function SocialPanel() {
             requestId: req.id,
             senderId: req.sender_id,
             username: profile.username,
+            avatar_url: profile.avatar_url,
+            equipped_avatar: profile.equipped_avatar,
             elo: profile.elo,
             level: profile.level,
             wins: profile.wins,
@@ -310,6 +314,8 @@ export function SocialPanel() {
     setSelectedFriend({
       id: friend.id,
       username: friend.username,
+      avatar_url: friend.avatar_url,
+      equipped_avatar: friend.equipped_avatar,
       elo: friend.elo,
       level: friend.level,
       wins: friend.wins,
@@ -385,8 +391,14 @@ export function SocialPanel() {
                           onClick={() => setSelectedRequest(req)}
                           className="glass-panel px-3 py-2.5 flex items-center gap-3 cursor-pointer hover:border-casino-gold/50 transition-all group border border-casino-gold/20 bg-black/20 backdrop-blur-sm hover:shadow-[0_0_15px_rgba(251,191,36,0.15)]"
                         >
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/40 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0 border border-casino-gold/30">
-                            {req.username.charAt(0).toUpperCase()}
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/40 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0 border border-casino-gold/30 overflow-hidden">
+                            {req.equipped_avatar ? (
+                              <img src={`/assets/store/${req.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : req.avatar_url ? (
+                              <img src={req.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              req.username.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-white font-medium truncate group-hover:text-casino-gold transition-colors drop-shadow-md">
@@ -450,10 +462,16 @@ export function SocialPanel() {
                       >
                         {/* Avatar + status dot */}
                         <div className="relative shrink-0 cursor-pointer" onClick={() => openFriendModal(friend)}>
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-inner ${
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-inner overflow-hidden ${
                             isOnline ? 'bg-gradient-to-br from-casino-emerald/20 to-black/50 text-white border border-casino-emerald/30' : 'bg-white/5 text-gray-500 border border-white/5'
                           }`}>
-                            {friend.username.charAt(0).toUpperCase()}
+                            {friend.equipped_avatar ? (
+                              <img src={`/assets/store/${friend.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : friend.avatar_url ? (
+                              <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              friend.username.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0B101A] transition-colors shadow-sm ${
                             !isOnline ? 'bg-gray-600'
