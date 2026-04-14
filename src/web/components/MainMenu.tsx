@@ -18,6 +18,7 @@ import { AdminPanel } from './AdminPanel';
 import { useNotifications } from '../hooks/useNotifications';
 import { NotificationToast } from './NotificationToast';
 import { GameInvitationModal } from './GameInvitationModal';
+import { WelcomeModal } from './WelcomeModal';
 
 export function MainMenu() {
   const { setGameState, setLocalPlayerId } = useGame();
@@ -478,9 +479,9 @@ export function MainMenu() {
           </div>
 
           {/* Desktop Content & Mobile Lobby Tab */}
-          <div className={`space-y-6 ${mobileTab === 'lobby' ? 'block animate-fade-in' : 'hidden'} ${showLobbyDesktop ? 'lg:block' : 'lg:hidden'}`}>
+          <div className={`space-y-8 ${mobileTab === 'lobby' ? 'block animate-fade-in' : 'hidden'} ${showLobbyDesktop ? 'lg:block' : 'lg:hidden'}`}>
             {/* Big Logo */}
-          <div className="text-center pt-4 pb-2 lg:hidden">
+          <div className="text-center pt-8 pb-4 lg:hidden">
             <h1 className="text-6xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg animate-fade-in select-none">
               CASINO 21
             </h1>
@@ -545,99 +546,69 @@ export function MainMenu() {
           )}
           {/* ─── FIN MATCHMAKING OVERLAY ─── */}
 
-          {/* ─── Create Game Card ─── */}
-          <div className="glass-panel-strong p-6 animate-slide-up">
-            <h2 className="section-header">🎮 Nueva Partida</h2>
+          {/* ─── NEW GAME MODE CARDS (FASE 12) ─── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-up">
             
-            {/* Player Name */}
-            <div className="mb-5">
-              <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Tu Nombre</label>
-              <input 
-                type="text" 
-                value={playerName} 
-                onChange={e => setPlayerName(e.target.value)} 
-                className="input-casino text-lg" 
-                placeholder="Ej. Jugador 1"
-              />
-            </div>
+            {/* Ranked Card */}
+            <button 
+              onClick={startMatchmaking}
+              className="group relative overflow-hidden rounded-3xl border border-casino-gold/30 hover:border-casino-gold transition-all duration-500 transform hover:-translate-y-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_rgba(251,191,36,0.3)] text-left flex flex-col h-64"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-900/40 to-black/80 z-0"></div>
+              <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-casino-gold/20 rounded-full blur-3xl group-hover:bg-casino-gold/30 transition-colors z-0"></div>
+              
+              <div className="relative z-10 p-6 flex flex-col h-full">
+                <div className="text-4xl mb-4 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)] animate-pulse">⚔️</div>
+                <h3 className="font-display font-black text-3xl text-white uppercase tracking-widest mt-auto mb-1 group-hover:text-casino-gold transition-colors">
+                  RANKED
+                </h3>
+                <p className="text-gray-400 text-sm font-medium">1vs1 Competitivo por ELO</p>
+                
+                <div className="absolute top-6 right-6 bg-casino-gold text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                  JUGAR
+                </div>
+              </div>
+            </button>
 
-            {/* ─── Matchmaking Button (FASE 8) ─── */}
-            <div className="mb-6 border-b border-white/5 pb-6">
+            {/* Custom / Friend Room Card */}
+            <div className="flex flex-col gap-4 h-64">
               <button 
-                onClick={startMatchmaking}
-                className="w-full relative group overflow-hidden rounded-2xl p-0.5"
+                onClick={handleCreateRoom}
+                className="flex-1 group relative overflow-hidden rounded-2xl border border-blue-500/30 hover:border-blue-500 transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_10px_30px_rgba(59,130,246,0.2)] text-left"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-casino-gold via-yellow-200 to-casino-gold bg-[length:200%_auto] animate-shimmer opacity-70 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative bg-black/80 px-4 py-6 rounded-[14px] flex flex-col items-center justify-center gap-2 group-hover:bg-black/60 transition-colors">
-                  <span className="text-3xl mb-1 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse">⚔️</span>
-                  <span className="font-display font-black text-xl text-white uppercase tracking-widest text-shadow-gold">
-                    Buscar Partida
-                  </span>
-                  <span className="text-[10px] text-casino-gold font-bold uppercase tracking-widest">
-                    Clasificatoria (Ranked)
-                  </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-900/30 to-black/80 z-0"></div>
+                <div className="relative z-10 p-5 flex items-center gap-4 h-full">
+                  <div className="text-3xl drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]">👥</div>
+                  <div>
+                    <h3 className="font-display font-black text-xl text-white uppercase tracking-wider group-hover:text-blue-400 transition-colors">
+                      CREAR SALA
+                    </h3>
+                    <p className="text-gray-400 text-xs">Juega con amigos (1v1 / 2v2)</p>
+                  </div>
                 </div>
               </button>
-            </div>
-            {/* ─── FIN MATCHMAKING BUTTON ─── */}
 
-            {/* Game Mode Toggle */}
-            <div className="mb-6">
-              <label className="block text-[11px] text-gray-500 mb-2 uppercase tracking-widest font-bold">Modo de Juego</label>
-              <div className="flex gap-3">
-                <button 
-                  className={`flex-1 py-3 rounded-xl font-display font-bold text-sm transition-all duration-300 ${
-                    mode === '1v1' 
-                      ? 'bg-casino-gold/15 text-casino-gold border border-casino-gold/30 shadow-gold' 
-                      : 'btn-ghost'
-                  }`}
-                  onClick={() => setMode('1v1')}
-                >
-                  <span className="text-lg block mb-0.5">⚔</span>
-                  1 vs 1
-                </button>
-                <button 
-                  className={`flex-1 py-3 rounded-xl font-display font-bold text-sm transition-all duration-300 ${
-                    mode === '2v2' 
-                      ? 'bg-casino-gold/15 text-casino-gold border border-casino-gold/30 shadow-gold' 
-                      : 'btn-ghost'
-                  }`}
-                  onClick={() => setMode('2v2')}
-                >
-                  <span className="text-lg block mb-0.5">👥</span>
-                  2 vs 2
-                </button>
+              <div className="flex-1 relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-center gap-3">
+                <h3 className="text-[10px] uppercase tracking-widest font-bold text-gray-500">Unirse a Sala</h3>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={roomIdInput} 
+                    onChange={e => setRoomIdInput(e.target.value.toUpperCase())} 
+                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 text-center font-mono text-lg uppercase tracking-widest placeholder:text-xs placeholder:normal-case placeholder:tracking-normal focus:border-blue-500/50 outline-none text-white transition-colors" 
+                    placeholder="Código..."
+                    maxLength={6}
+                  />
+                  <button 
+                    onClick={handleJoinRoom}
+                    className="px-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl font-bold text-sm uppercase tracking-wider transition-colors"
+                  >
+                    IR
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Create Room Button */}
-            <button 
-              onClick={handleCreateRoom}
-              className="btn-gold w-full py-4 text-lg font-display font-black tracking-wide"
-            >
-              CREAR SALA
-            </button>
-          </div>
-
-          {/* ─── Join Game Card ─── */}
-          <div className="glass-panel p-6 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <h2 className="section-header">🚪 Unirse a una Sala</h2>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={roomIdInput} 
-                onChange={e => setRoomIdInput(e.target.value.toUpperCase())} 
-                className="input-casino flex-1 text-center font-mono text-xl uppercase tracking-[0.15em] placeholder:text-sm placeholder:normal-case placeholder:tracking-normal" 
-                placeholder="Código de sala"
-                maxLength={6}
-              />
-              <button 
-                onClick={handleJoinRoom}
-                className="btn-emerald px-6 shrink-0 font-display"
-              >
-                Unirse
-              </button>
-            </div>
+            
           </div>
 
           {/* ─── Tournaments Section ─── */}
@@ -755,6 +726,9 @@ export function MainMenu() {
           onClose={() => setActiveGameInvitation(null)}
         />
       )}
+
+      {/* Forzar Username Modal */}
+      <WelcomeModal />
     </div>
   );
 }

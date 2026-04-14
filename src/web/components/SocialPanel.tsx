@@ -371,8 +371,8 @@ export function SocialPanel() {
               {pendingIncoming.length > 0 && (
                 <div className="shrink-0 space-y-2">
                   <div className="flex items-center gap-2">
-                    <h3 className="section-header mb-0 text-casino-gold">📨 Solicitudes</h3>
-                    <span className="bg-red-500/20 text-red-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-red-500/30">
+                    <h3 className="section-header mb-0 text-casino-gold drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]">📨 Solicitudes</h3>
+                    <span className="bg-red-500/20 text-red-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
                       {pendingIncoming.length}
                     </span>
                   </div>
@@ -383,20 +383,20 @@ export function SocialPanel() {
                         <div
                           key={req.requestId}
                           onClick={() => setSelectedRequest(req)}
-                          className="glass-panel px-3 py-2.5 flex items-center gap-3 cursor-pointer hover:border-casino-gold/30 transition-all group border border-casino-gold/10"
+                          className="glass-panel px-3 py-2.5 flex items-center gap-3 cursor-pointer hover:border-casino-gold/50 transition-all group border border-casino-gold/20 bg-black/20 backdrop-blur-sm hover:shadow-[0_0_15px_rgba(251,191,36,0.15)]"
                         >
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/30 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/40 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0 border border-casino-gold/30">
                             {req.username.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-white font-medium truncate group-hover:text-casino-gold transition-colors">
+                            <p className="text-sm text-white font-medium truncate group-hover:text-casino-gold transition-colors drop-shadow-md">
                               {req.username}
                             </p>
                             <div className={`division-badge ${div.cssClass} text-[8px] mt-0.5`}>
                               {div.icon} {req.elo}
                             </div>
                           </div>
-                          <span className="shrink-0 text-[9px] text-casino-gold/60 font-bold uppercase tracking-wider group-hover:text-casino-gold transition-colors">
+                          <span className="shrink-0 text-[9px] text-casino-gold/80 font-bold uppercase tracking-wider group-hover:text-casino-gold transition-colors group-hover:drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]">
                             Ver →
                           </span>
                         </div>
@@ -420,7 +420,7 @@ export function SocialPanel() {
                 {loading ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="glass-panel p-3 animate-pulse flex items-center gap-3">
+                      <div key={i} className="glass-panel p-3 animate-pulse flex items-center gap-3 bg-black/20">
                         <div className="w-8 h-8 rounded-full bg-white/5" />
                         <div className="flex-1">
                           <div className="h-3 bg-white/5 rounded w-20 mb-1" />
@@ -430,7 +430,7 @@ export function SocialPanel() {
                     ))}
                   </div>
                 ) : friends.length === 0 ? (
-                  <div className="glass-panel p-5 text-center">
+                  <div className="glass-panel p-5 text-center bg-black/20 backdrop-blur-md">
                     <div className="text-2xl mb-2 opacity-40">👤</div>
                     <p className="text-gray-500 text-xs">Aún no tienes amigos</p>
                     <p className="text-gray-600 text-[10px] mt-1">Busca jugadores y envíales una solicitud</p>
@@ -446,26 +446,26 @@ export function SocialPanel() {
                     return (
                       <div
                         key={friend.id}
-                        className="glass-panel px-3 py-2.5 flex items-center gap-3 hover:border-white/[0.12] transition-all group"
+                        className="glass-panel px-3 py-2.5 flex items-center gap-3 hover:border-white/[0.15] transition-all group bg-black/20 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,255,255,0.05)]"
                       >
                         {/* Avatar + status dot */}
                         <div className="relative shrink-0 cursor-pointer" onClick={() => openFriendModal(friend)}>
-                          <div className={`w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold transition-colors ${
-                            isOnline ? 'text-white' : 'text-gray-500'
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-inner ${
+                            isOnline ? 'bg-gradient-to-br from-casino-emerald/20 to-black/50 text-white border border-casino-emerald/30' : 'bg-white/5 text-gray-500 border border-white/5'
                           }`}>
                             {friend.username.charAt(0).toUpperCase()}
                           </div>
-                          <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-casino-bg transition-colors ${
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0B101A] transition-colors shadow-sm ${
                             !isOnline ? 'bg-gray-600'
-                            : isInRoom ? 'bg-purple-500 animate-pulse'
-                            : 'bg-casino-emerald'
+                            : isInRoom ? 'bg-purple-500 animate-pulse drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]'
+                            : 'bg-casino-emerald drop-shadow-[0_0_5px_rgba(16,185,129,0.8)]'
                           }`} />
                         </div>
 
                         {/* Name + status */}
                         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => openFriendModal(friend)}>
-                          <p className={`text-sm font-medium truncate group-hover:text-white transition-colors ${
-                            isOnline ? 'text-gray-200' : 'text-gray-500'
+                          <p className={`text-sm font-bold truncate transition-colors drop-shadow-sm ${
+                            isOnline ? 'text-gray-100 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-300'
                           }`}>
                             {friend.username}
                           </p>
@@ -474,14 +474,14 @@ export function SocialPanel() {
                               {div.icon} {friend.elo}
                             </div>
                             {isOnline && (
-                              <span className={`text-[8px] font-bold uppercase tracking-wide ${
-                                isInRoom ? 'text-purple-400' : 'text-casino-emerald'
+                              <span className={`text-[8px] font-black uppercase tracking-wider ${
+                                isInRoom ? 'text-purple-400 drop-shadow-[0_0_3px_rgba(168,85,247,0.5)]' : 'text-casino-emerald drop-shadow-[0_0_3px_rgba(16,185,129,0.5)]'
                               }`}>
                                 {isInRoom ? '🎮 En partida' : '● Online'}
                               </span>
                             )}
                             {unread > 0 && (
-                              <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
+                              <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
                                 {unread}
                               </span>
                             )}
@@ -494,7 +494,7 @@ export function SocialPanel() {
                             setActiveChatFriendId(friend.id);
                             setActiveTab('chat');
                           }}
-                          className="shrink-0 p-2 rounded-lg bg-white/5 text-gray-500 hover:text-casino-gold hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+                          className="shrink-0 p-2 rounded-lg bg-white/5 text-gray-400 hover:text-casino-gold hover:bg-casino-gold/10 hover:border-casino-gold/30 border border-transparent transition-all opacity-0 group-hover:opacity-100 shadow-sm"
                           title="Chat privado"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -508,7 +508,7 @@ export function SocialPanel() {
               </div>
 
               {/* Online counter summary */}
-              <div className="glass-panel px-4 py-2.5 flex items-center justify-between shrink-0 mt-auto">
+              <div className="glass-panel px-4 py-2.5 flex items-center justify-between shrink-0 mt-auto bg-black/20 backdrop-blur-md shadow-[0_-5px_15px_rgba(0,0,0,0.2)]">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-casino-emerald" />

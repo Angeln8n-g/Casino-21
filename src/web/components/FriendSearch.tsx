@@ -277,9 +277,9 @@ export function FriendSearch() {
           const isHighLevel = r.level >= 20 || r.elo >= 1500;
 
           return (
-            <div key={r.id} className="glass-panel px-3 py-2.5 flex items-center justify-between group relative">
+            <div key={r.id} className="glass-panel px-3 py-2.5 flex items-center justify-between group relative bg-black/20 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,255,255,0.05)] border border-white/5 hover:border-white/10 transition-all">
               <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedPlayer(r)}>
-                <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0 overflow-hidden shadow-inner border border-white/10">
                   {r.avatar_url ? (
                     <img src={r.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -287,10 +287,10 @@ export function FriendSearch() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className={`text-sm font-medium truncate ${isHighLevel ? 'text-casino-gold' : 'text-gray-200'}`}>
+                  <p className={`text-sm font-bold truncate drop-shadow-sm ${isHighLevel ? 'text-casino-gold group-hover:text-yellow-400' : 'text-gray-200 group-hover:text-white'} transition-colors`}>
                     {r.username}
                   </p>
-                  <div className={`division-badge ${div.cssClass} text-[8px] mt-0.5`}>
+                  <div className={`division-badge ${div.cssClass} text-[8px] mt-0.5 drop-shadow-sm`}>
                     Lvl. {r.level} • {div.icon} {r.elo}
                   </div>
                 </div>
@@ -304,7 +304,7 @@ export function FriendSearch() {
                   }
                 }}
                 disabled={btn.disabled}
-                className={`shrink-0 p-1.5 rounded-lg text-xs font-bold transition-all ${btn.className}`}
+                className={`shrink-0 p-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${btn.className}`}
               >
                 {btn.label || (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

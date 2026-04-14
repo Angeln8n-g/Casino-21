@@ -69,39 +69,30 @@ export function TopNavbar({
             </p>
           </div>
 
-          <div className="shrink-0 hidden lg:flex items-center gap-2">
+          <div className="shrink-0 hidden lg:flex items-center gap-1 bg-black/40 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
             <button
               type="button"
               onClick={() => onTabChange('all')}
-              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                activeTab === 'all' ? 'border-casino-gold/40 text-casino-gold bg-casino-gold/10' : 'border-white/10 text-gray-400 hover:text-white'
+              className={`px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-black transition-all duration-300 ${
+                activeTab === 'all' ? 'bg-casino-gold text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              Todo
-            </button>
-            <button
-              type="button"
-              onClick={() => onTabChange('lobby')}
-              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                activeTab === 'lobby' ? 'border-casino-gold/40 text-casino-gold bg-casino-gold/10' : 'border-white/10 text-gray-400 hover:text-white'
-              }`}
-            >
-              Lobby
+              Jugar
             </button>
             <button
               type="button"
               onClick={() => onTabChange('events')}
-              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                activeTab === 'events' ? 'border-casino-gold/40 text-casino-gold bg-casino-gold/10 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : 'border-white/10 text-gray-400 hover:text-white'
+              className={`px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-black transition-all duration-300 ${
+                activeTab === 'events' ? 'bg-casino-gold text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              Eventos
+              Torneos
             </button>
             <button
               type="button"
               onClick={() => onTabChange('store')}
-              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                activeTab === 'store' ? 'border-purple-400/40 text-purple-400 bg-purple-400/10 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/10 text-gray-400 hover:text-white'
+              className={`px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-black transition-all duration-300 ${
+                activeTab === 'store' ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               Tienda
@@ -109,8 +100,8 @@ export function TopNavbar({
             <button
               type="button"
               onClick={() => onTabChange('social')}
-              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                activeTab === 'social' ? 'border-casino-gold/40 text-casino-gold bg-casino-gold/10' : 'border-white/10 text-gray-400 hover:text-white'
+              className={`px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-black transition-all duration-300 ${
+                activeTab === 'social' ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
               Social
@@ -118,19 +109,19 @@ export function TopNavbar({
             <button
               type="button"
               onClick={() => onTabChange('stats')}
-              className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                activeTab === 'stats' ? 'border-casino-gold/40 text-casino-gold bg-casino-gold/10 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : 'border-white/10 text-gray-400 hover:text-white'
+              className={`px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-black transition-all duration-300 ${
+                activeTab === 'stats' ? 'bg-casino-gold text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              Estadísticas
+              Perfil
             </button>
 
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => onTabChange('admin')}
-                className={`glass-panel px-3 py-2 rounded-xl border text-[10px] uppercase tracking-[0.2em] font-black transition-colors ${
-                  activeTab === 'admin' ? 'border-purple-500/40 text-purple-400 bg-purple-500/10 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/10 text-gray-400 hover:text-white'
+                className={`ml-2 px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-black transition-all duration-300 border border-purple-500/50 ${
+                  activeTab === 'admin' ? 'bg-purple-500/20 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]' : 'text-purple-500 hover:bg-purple-500/10'
                 }`}
               >
                 Admin
@@ -138,11 +129,11 @@ export function TopNavbar({
             )}
 
             {activeTab === 'all' && (
-              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-white/10">
+              <div className="flex items-center gap-1 ml-2 pl-2 border-l border-white/10">
                 <button
                   type="button"
                   onClick={onToggleLeft}
-                  className="glass-panel w-10 h-10 rounded-xl border border-white/10 text-gray-300 hover:text-white transition-colors flex items-center justify-center"
+                  className="w-9 h-9 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center"
                   title={leftCollapsed ? 'Expandir Social' : 'Contraer Social'}
                 >
                   {leftCollapsed ? '⟩' : '⟨'}
@@ -150,7 +141,7 @@ export function TopNavbar({
                 <button
                   type="button"
                   onClick={onToggleRight}
-                  className="glass-panel w-10 h-10 rounded-xl border border-white/10 text-gray-300 hover:text-white transition-colors flex items-center justify-center"
+                  className="w-9 h-9 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center"
                   title={rightCollapsed ? 'Expandir Stats' : 'Contraer Stats'}
                 >
                   {rightCollapsed ? '⟨' : '⟩'}

@@ -63,30 +63,45 @@ export function QuickStats() {
   return (
     <div className="space-y-4">
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2">
-        {stats.map((stat, idx) => (
-          <div 
-            key={stat.label} 
-            className="glass-panel p-3 text-center animate-slide-up"
-            style={{ animationDelay: `${idx * 60}ms` }}
-          >
-            <div className={`text-lg ${stat.color}`}>{stat.icon}</div>
-            <div className="text-white font-bold text-lg font-display">{stat.value}</div>
-            <div className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">{stat.label}</div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        {stats.map((stat, idx) => {
+          let shadowClass = '';
+          if (stat.color.includes('yellow') || stat.color.includes('gold')) shadowClass = 'drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]';
+          if (stat.color.includes('emerald')) shadowClass = 'drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]';
+          if (stat.color.includes('red')) shadowClass = 'drop-shadow-[0_0_10px_rgba(239,68,68,0.6)]';
+          if (stat.color.includes('purple')) shadowClass = 'drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]';
+          if (stat.color.includes('blue')) shadowClass = 'drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]';
+
+          return (
+            <div 
+              key={stat.label} 
+              className="glass-panel p-4 text-center animate-slide-up flex flex-col justify-center items-center gap-1 border border-white/5 hover:border-white/20 transition-colors bg-black/20 backdrop-blur-md shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
+              style={{ animationDelay: `${idx * 60}ms` }}
+            >
+              <div className={`text-2xl mb-1 ${stat.color} ${shadowClass} animate-pulse-slow`}>{stat.icon}</div>
+              <div className="text-white font-black text-2xl font-display leading-none">{stat.value}</div>
+              <div className="text-gray-500 text-[9px] uppercase tracking-widest font-bold mt-1">{stat.label}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Division Card */}
-      <div className={`glass-panel p-4 text-center border ${
-        division.name === 'gold' ? 'border-yellow-500/20' :
-        division.name === 'diamond' ? 'border-violet-500/20' :
-        division.name === 'platinum' ? 'border-cyan-500/20' :
-        'border-white/[0.06]'
+      <div className={`glass-panel p-6 text-center border bg-black/20 backdrop-blur-md shadow-[0_10px_20px_rgba(0,0,0,0.3)] relative overflow-hidden group ${
+        division.name === 'gold' ? 'border-yellow-500/30' :
+        division.name === 'diamond' ? 'border-violet-500/30' :
+        division.name === 'platinum' ? 'border-cyan-500/30' :
+        'border-white/10'
       }`}>
-        <div className="text-3xl mb-1">{division.icon}</div>
-        <p className="font-display font-bold text-white">{division.label}</p>
-        <p className="text-gray-500 text-[10px] uppercase tracking-widest">División actual</p>
+        <div className={`absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity ${
+          division.name === 'gold' ? 'bg-yellow-500' :
+          division.name === 'diamond' ? 'bg-violet-500' :
+          division.name === 'platinum' ? 'bg-cyan-500' :
+          'bg-gray-500'
+        }`}></div>
+        <div className="text-5xl mb-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse-slow">{division.icon}</div>
+        <p className="font-display font-black text-2xl text-white tracking-widest uppercase">{division.label}</p>
+        <p className="text-gray-500 text-[10px] uppercase tracking-widest font-bold mt-1">División Actual</p>
       </div>
 
       {/* Mini Leaderboard */}
