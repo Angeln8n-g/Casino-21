@@ -14,6 +14,17 @@ dotenv.config();
 const RULES_VERSION = 'agrupar-merge-2026-04-09';
 const EXPOSE_RULES_VERSION = process.env.EXPOSE_RULES_VERSION === 'true';
 
+// Interface de Mensajes de Chat
+interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isSpectator: boolean;
+  isSystem?: boolean;
+}
+
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001")
   .split(",")
@@ -86,10 +97,12 @@ io.use((socket, next) => {
     engine: DefaultGameEngine;
     state: GameState | null;
     players: { socketId: string, playerId: string, name: string, userId: string }[];
+    spectators: { socketId: string, userId: string, name: string }[];
     maxPlayers: number;
     timerInterval?: NodeJS.Timeout;
     lastActionTime?: number;
     isTournament?: boolean;
+    chatHistory: ChatMessage[];
   }> = {};
 
 // ─── FASE 8: Matchmaking Queue ───
@@ -141,7 +154,9 @@ setInterval(() => {
             { socketId: p1.socketId, playerId: p1.userId, name: p1.name, userId: p1.userId },
             { socketId: p2.socketId, playerId: p2.userId, name: p2.name, userId: p2.userId }
           ],
-          maxPlayers: 2
+          spectators: [],
+          maxPlayers: 2,
+          chatHistory: []
         };
 
         const s1 = io.sockets.sockets.get(p1.socketId);
@@ -215,7 +230,9 @@ io.on('connection', (socket) => {
       engine: new DefaultGameEngine(),
       state: null,
       players: [{ socketId: socket.id, playerId: userId, name: playerName, userId }],
-      maxPlayers
+      spectators: [],
+      maxPlayers,
+      chatHistory: []
     };
 
     socket.join(roomId);
@@ -224,18 +241,20 @@ io.on('connection', (socket) => {
   });
 
   // 2. Unirse a Sala
-  socket.on('join_room', ({ roomId, playerName, isTournament }: { roomId: string, playerName: string, isTournament?: boolean }) => {
+  socket.on('join_room', ({ roomId, playerName, isTournament, isSpectator }: { roomId: string, playerName: string, isTournament?: boolean, isSpectator?: boolean }) => {
     let room = rooms[roomId];
     
     if (!room) {
-      if (isTournament) {
+      if (isTournament && !isSpectator) {
         // Create the tournament room automatically if it doesn't exist
         rooms[roomId] = {
           engine: new DefaultGameEngine(),
           state: null,
           players: [{ socketId: socket.id, playerId: userId, name: playerName, userId }],
+          spectators: [],
           maxPlayers: 2, // Tournaments are 1v1 for now
-          isTournament: true
+          isTournament: true,
+          chatHistory: []
         };
         socket.join(roomId);
         socket.emit('room_created', { roomId, playerId: userId });
@@ -246,6 +265,34 @@ io.on('connection', (socket) => {
         return;
       }
     }
+
+    // ─── Lógica para Espectadores ───
+    if (isSpectator) {
+      const existingSpectator = room.spectators.find(s => s.userId === userId);
+      if (existingSpectator) {
+        existingSpectator.socketId = socket.id;
+      } else {
+        room.spectators.push({ socketId: socket.id, userId, name: playerName });
+      }
+      
+      socket.join(roomId);
+      socket.emit('room_joined_as_spectator', { roomId });
+      console.log(`Espectador ${playerName} unido a la sala ${roomId}`);
+
+      if (room.state) {
+        // Send sanitized state immediately to the new spectator
+        const safeState: GameState = JSON.parse(JSON.stringify(room.state));
+        safeState.players.forEach(statePlayer => {
+          (statePlayer as any).hand = Array(statePlayer.hand.length).fill({ id: 'hidden', rank: '?', suit: 'hidden', value: 0 });
+        });
+        socket.emit('game_state_update', safeState);
+      }
+      
+      // Enviar el historial de chat a los espectadores
+      socket.emit('chat_history', room.chatHistory);
+      return;
+    }
+    // ─── Fin Lógica Espectadores ───
 
     // Lógica de Reconexión: Si el usuario ya estaba en esta sala
     const existingPlayer = room.players.find(p => p.userId === userId);
@@ -290,6 +337,8 @@ io.on('connection', (socket) => {
     socket.emit('room_joined', { roomId, playerId: userId });
 
     io.to(roomId).emit('player_joined', { players: room.players.map(p => p.name) });
+    
+    socket.emit('chat_history', room.chatHistory);
 
     // Si la sala se llenó, iniciar el juego
     if (room.players.length === room.maxPlayers) {
@@ -419,6 +468,48 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ─── FASE 9: Chat Integration ───
+  socket.on('send_message', ({ roomId, text }: { roomId: string, text: string }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    // Identify sender
+    const player = room.players.find(p => p.socketId === socket.id);
+    const spectator = room.spectators.find(s => s.socketId === socket.id);
+    
+    if (!player && !spectator) return; // Must be in the room
+
+    const isSpectator = !!spectator;
+    const senderName = player ? player.name : spectator!.name;
+    const senderId = player ? player.userId : spectator!.userId;
+
+    const message: ChatMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      senderId,
+      senderName,
+      text,
+      timestamp: Date.now(),
+      isSpectator
+    };
+
+    // Limit chat history length to prevent memory leak
+    if (room.chatHistory.length > 100) {
+      room.chatHistory.shift();
+    }
+    room.chatHistory.push(message);
+
+    if (isSpectator) {
+      // Solo a espectadores
+      room.spectators.forEach(s => {
+        io.to(s.socketId).emit('receive_message', message);
+      });
+    } else {
+      // A todos (jugadores y espectadores)
+      io.to(roomId).emit('receive_message', message);
+    }
+  });
+  // ─── FIN FASE 9 ───
+
   socket.on('disconnect', () => {
     console.log(`Usuario desconectado: ${socket.id}`);
     
@@ -516,6 +607,33 @@ async function saveMatchResult(roomId: string, room: any) {
   // Si son iguales, winnerId se queda en null (empate)
 
   try {
+    // ─── FASE 10: Guardar en Historial de Partidas ───
+    // Crear el arreglo de metadatos
+    const metadata = [
+      {
+        id: p1.id,
+        name: room.players[0].name,
+        score: p1.score,
+        elo_change: winnerId === p1.id ? 25 : (winnerId ? -25 : 0),
+        coins_earned: winnerId === p1.id ? 50 : 10 // Ejemplo de monedas por victoria/derrota
+      },
+      {
+        id: p2.id,
+        name: room.players[1].name,
+        score: p2.score,
+        elo_change: winnerId === p2.id ? 25 : (winnerId ? -25 : 0),
+        coins_earned: winnerId === p2.id ? 50 : 10
+      }
+    ];
+
+    await supabase.from('match_history').insert({
+      game_mode: room.isTournament ? 'tournament' : (room.maxPlayers === 2 ? '1v1' : '2v2'),
+      winner_id: winnerId,
+      metadata: metadata
+    });
+    console.log(`Historial de partida guardado en DB para la sala ${roomId}`);
+    // ─── FIN FASE 10 ───
+
     // 1. Guardar la partida en la tabla genérica
     await supabase.from('matches').insert({
       player1_id: room.players[0].userId,
@@ -685,6 +803,7 @@ function broadcastGameState(roomId: string, room: any) {
   if (!room.state) return;
   const fullState = room.state;
 
+  // 1. Enviar estado a los Jugadores Activos
   room.players.forEach((p: any) => {
     // Clonamos el estado para este jugador específico
     const safeState: GameState = JSON.parse(JSON.stringify(fullState));
@@ -700,6 +819,20 @@ function broadcastGameState(roomId: string, room: any) {
     // Enviar a cada socket su versión segura del estado
     io.to(p.socketId).emit('game_state_update', safeState);
   });
+
+  // 2. Enviar estado saneado a los Espectadores
+  if (room.spectators && room.spectators.length > 0) {
+    const spectatorSafeState: GameState = JSON.parse(JSON.stringify(fullState));
+    
+    // Ocultar TODAS las manos para los espectadores
+    spectatorSafeState.players.forEach(statePlayer => {
+      (statePlayer as any).hand = Array(statePlayer.hand.length).fill({ id: 'hidden', rank: '?', suit: 'hidden', value: 0 });
+    });
+
+    room.spectators.forEach((s: any) => {
+      io.to(s.socketId).emit('game_state_update', spectatorSafeState);
+    });
+  }
 }
 
 const PORT = process.env.PORT || 4000;

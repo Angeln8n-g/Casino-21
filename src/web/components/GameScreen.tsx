@@ -9,8 +9,9 @@ import { Action } from '../../application/action-validator';
 import { DefaultActionValidator } from '../../application/action-validator';
 import { Card } from '../../domain/card';
 import { CardView } from './CardView';
+import { GameChat } from './GameChat';
 
-export function GameScreen() {
+export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage } = useGame();
   const { profile } = useAuth();
   
@@ -66,11 +67,13 @@ export function GameScreen() {
 
   // En multijugador, queremos mostrar al jugador local en la parte inferior (footer)
   // independientemente de de quién sea el turno.
-  const localPlayer = gameState.players.find(p => p.id === localPlayerId) || gameState.players[0];
-  const isCurrentTurn = gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id;
+  // Si somos espectadores, forzamos al player 0 a estar abajo
+  const localPlayer = isSpectator ? gameState.players[0] : (gameState.players.find(p => p.id === localPlayerId) || gameState.players[0]);
+  const isCurrentTurn = !isSpectator && gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id;
   const currentPlayer = localPlayer;
 
   const handleBoardCardClick = (card: Card) => {
+    if (isSpectator) return;
     const newSet = new Set(selectedBoardCardIds);
     if (newSet.has(card.id)) {
       newSet.delete(card.id);
@@ -82,6 +85,7 @@ export function GameScreen() {
   };
 
   const handleFormationClick = (formationId: string) => {
+    if (isSpectator) return;
     const newSet = new Set(selectedFormationIds);
     if (newSet.has(formationId)) {
       newSet.delete(formationId);
@@ -475,20 +479,27 @@ export function GameScreen() {
         </main>
 
         {/* Action Panel */}
-        <div>
-          <ActionPanel 
-            gameState={gameState}
-            selectedHandCardId={selectedHandCardId}
-            selectedBoardCardIds={selectedBoardCardIds}
-            selectedFormationIds={selectedFormationIds}
-            onPlayAction={handlePlayAction}
-            onClearSelection={handleClearSelection}
-          />
-        </div>
+        {!isSpectator && (
+          <div>
+            <ActionPanel 
+              gameState={gameState}
+              selectedHandCardId={selectedHandCardId}
+              selectedBoardCardIds={selectedBoardCardIds}
+              selectedFormationIds={selectedFormationIds}
+              onPlayAction={handlePlayAction}
+              onClearSelection={handleClearSelection}
+            />
+          </div>
+        )}
 
         {/* Player Hand */}
         <footer className={`mt-auto bg-black/40 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-3 md:gap-6 relative overflow-hidden transition-all duration-300 w-full`}>
-          {!isCurrentTurn && (
+          {isSpectator && (
+            <div className="absolute inset-0 bg-blue-900/40 z-20 flex items-center justify-center backdrop-blur-sm border-t border-blue-500/50">
+              <span className="text-blue-300 font-black tracking-widest text-sm md:text-xl drop-shadow-md">MODO ESPECTADOR</span>
+            </div>
+          )}
+          {!isCurrentTurn && !isSpectator && (
             <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
               <span className="text-gray-300 font-black tracking-widest text-sm md:text-lg animate-pulse">ESPERANDO TURNO...</span>
             </div>
@@ -503,13 +514,15 @@ export function GameScreen() {
         </footer>
 
         {/* Drag Overlay */}
-        <DragOverlay dropAnimation={{ duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
-          {activeDragCard ? (
-            <div className="rotate-3 md:rotate-6 scale-105 md:scale-110 shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95">
-              <CardView card={activeDragCard} />
-            </div>
-          ) : null}
-        </DragOverlay>
+        {!isSpectator && (
+          <DragOverlay dropAnimation={{ duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+            {activeDragCard ? (
+              <div className="rotate-3 md:rotate-6 scale-105 md:scale-110 shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95">
+                <CardView card={activeDragCard} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        )}
 
         {/* Drag Action Modal */}
         {dragModalData && (
@@ -551,6 +564,13 @@ export function GameScreen() {
           </div>
         )}
         </div>
+
+        {/* ─── FASE 9: Floating Chat ─── */}
+        <GameChat 
+          roomId={localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || ''} 
+          isSpectator={isSpectator} 
+        />
+        
       </div>
     </DndContext>
   );

@@ -4,6 +4,16 @@ import { GameMode } from '../../domain/types';
 import { Action } from '../../application/action-validator';
 import { socketService } from '../services/socket';
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+  isSpectator: boolean;
+  isSystem?: boolean;
+}
+
 interface GameContextType {
   gameState: GameState | null;
   setGameState: (state: GameState) => void;
@@ -15,6 +25,8 @@ interface GameContextType {
   continueToNextRound: () => void;
   timeRemaining: number;
   disconnectionMessage: string | null;
+  chatMessages: ChatMessage[];
+  sendMessage: (roomId: string, text: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -25,6 +37,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(30000);
   const [disconnectionMessage, setDisconnectionMessage] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // Escuchar eventos del servidor
   React.useEffect(() => {
@@ -40,6 +53,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('room_joined');
       socket.off('room_created');
       socket.off('game_state_update');
+      socket.off('receive_message');
+      socket.off('chat_history');
 
       socket.on('action_error', (msg: string) => {
         setError(msg);
@@ -66,6 +81,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       socket.on('game_state_update', (state: GameState) => {
         setGameState(state);
+      });
+
+      socket.on('receive_message', (msg: ChatMessage) => {
+        setChatMessages(prev => [...prev, msg]);
+      });
+
+      socket.on('chat_history', (history: ChatMessage[]) => {
+        setChatMessages(history || []);
       });
     };
 
@@ -97,6 +120,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('room_joined');
         currentSocket.off('room_created');
         currentSocket.off('game_state_update');
+        currentSocket.off('receive_message');
+        currentSocket.off('chat_history');
       }
     };
   }, []);
@@ -125,6 +150,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.emit('continue_round');
   }, []);
 
+  const sendMessage = useCallback((roomId: string, text: string) => {
+    if (!text.trim()) return;
+    const socket = socketService.getSocket();
+    socket.emit('send_message', { roomId, text });
+  }, []);
+
   return (
     <GameContext.Provider 
       value={{ 
@@ -137,7 +168,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         clearError, 
         continueToNextRound,
         timeRemaining,
-        disconnectionMessage
+        disconnectionMessage,
+        chatMessages,
+        sendMessage
       }}
     >
       {children}

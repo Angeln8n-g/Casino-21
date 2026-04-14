@@ -51,7 +51,8 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
 
   const isPlayerInMatch = currentUserId && (match.player1?.id === currentUserId || match.player2?.id === currentUserId);
   const canJoin = (match.status === 'pending' || match.status === 'live') && isPlayerInMatch && match.player1 && match.player2;
-  const isClickable = canJoin || (isAdmin && match.status !== 'completed');
+  const isSpectatable = match.status === 'live' || (match.status === 'pending' && match.player1 && match.player2 && match.game_room_id);
+  const isClickable = canJoin || isSpectatable || (isAdmin && match.status !== 'completed');
 
   return (
     <div 
@@ -59,16 +60,20 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
       onClick={() => isClickable && onJoinMatch && onJoinMatch(match)}
     >
       {match.status === 'live' && (
-        <div className="absolute -top-2 -right-2 w-4 h-4">
+        <div className="absolute -top-2 -right-2 w-4 h-4 z-30">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-slate-900"></span>
         </div>
       )}
-      {canJoin && (
+      {canJoin ? (
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-casino-gold text-black text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-[0_0_10px_rgba(234,179,8,0.8)] z-20 animate-pulse">
           ¡TU TURNO!
         </div>
-      )}
+      ) : isSpectatable ? (
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500/80 border border-blue-400 text-white text-[8px] font-bold uppercase px-2 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.6)] z-20 flex items-center gap-1 group-hover:bg-blue-400 transition-colors">
+          <span>👁️</span> VER
+        </div>
+      ) : null}
       
       <div className="flex flex-col h-full text-xs">
         <div className={`flex-1 flex items-center px-2 border-b border-white/10 truncate ${getPlayerClass(match.player1)} gap-2`}>

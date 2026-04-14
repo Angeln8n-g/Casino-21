@@ -33,7 +33,9 @@ function AppContent() {
     return <MainMenu />;
   }
   
-  return <GameScreen />;
+  const isSpectator = !!localStorage.getItem('casino21_spectatorRoomId');
+  
+  return <GameScreen isSpectator={isSpectator} />;
 }
 
 export default function App() {

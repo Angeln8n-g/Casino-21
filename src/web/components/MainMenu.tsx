@@ -8,6 +8,7 @@ import { SocialPanel } from './SocialPanel';
 import { TournamentList } from './TournamentList';
 import { RecentAchievements } from './RecentAchievements';
 import { QuickStats } from './QuickStats';
+import { ProfileHistory } from './ProfileHistory';
 import { DailyQuests } from './DailyQuests';
 import { Store } from './Store';
 import { TopNavbar } from './TopNavbar';
@@ -68,15 +69,15 @@ export function MainMenu() {
     } catch {}
   }, [rightCollapsed]);
 
-  // ─── Desktop Invitation Listener ───
+  // ─── Desktop Invitation & Spectator Listener ───
   useEffect(() => {
     const handleJoinGameFromInvite = (e: Event) => {
       const customEvent = e as CustomEvent;
-      const { roomId, isTournament } = customEvent.detail;
+      const { roomId, isTournament, isSpectator } = customEvent.detail;
       setRoomIdInput(roomId);
       if (playerName.trim() && roomId) {
         socketService.connect().then(socket => {
-          socket.emit('join_room', { roomId: roomId.toUpperCase(), playerName, isTournament });
+          socket.emit('join_room', { roomId: roomId.toUpperCase(), playerName, isTournament, isSpectator });
         }).catch(err => setError(err.message || 'Error conectando al servidor...'));
       }
     };
@@ -127,6 +128,19 @@ export function MainMenu() {
           setError('');
         });
 
+        // ─── FASE 7: Espectador uniéndose ───
+        socket.on('room_joined_as_spectator', ({ roomId }) => {
+          setCurrentRoomId(roomId);
+          // Omitimos el localPlayerId porque no vamos a jugar
+          // En lugar de ir a 'waiting', podemos ir directamente al juego o mantener una vista
+          // El App.tsx se encarga de mostrar el GameScreen cuando hay currentRoomId
+          // Necesitaremos decirle al GameScreen que somos espectadores
+          // Podemos usar un estado global o local. Por simplicidad, agregamos un item a localStorage temporalmente
+          localStorage.setItem('casino21_spectatorRoomId', roomId);
+          setView('waiting'); // Se cambiará automáticamente a GameScreen cuando llegue el estado
+          setError('');
+        });
+
         socket.on('player_joined', ({ players }) => {
           setPlayersInRoom(players);
           // Only switch view if not already waiting. RoomId will be set by room_joined if this player just joined
@@ -146,6 +160,7 @@ export function MainMenu() {
           if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
           localStorage.removeItem('casino21_roomId');
           localStorage.removeItem('casino21_playerId');
+          localStorage.removeItem('casino21_spectatorRoomId');
           if (reason === 'challenge_rejected') {
             setError('Tu desafío fue rechazado.');
           } else if (reason === 'challenge_expired') {
@@ -383,7 +398,14 @@ export function MainMenu() {
               </div>
             )}
             {mobileTab === 'stats' && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-4 animate-fade-in pb-20">
+                <div>
+                  <h3 className="section-header">📊 Estadísticas</h3>
+                  <QuickStats />
+                </div>
+                <div>
+                  <ProfileHistory />
+                </div>
                 <div>
                   <h3 className="section-header">🎯 Misiones Diarias</h3>
                   <DailyQuests />
@@ -391,10 +413,6 @@ export function MainMenu() {
                 <div>
                   <h3 className="section-header">🏅 Logros Recientes</h3>
                   <RecentAchievements />
-                </div>
-                <div>
-                  <h3 className="section-header">📊 Estadísticas</h3>
-                  <QuickStats />
                 </div>
               </div>
             )}
@@ -419,19 +437,24 @@ export function MainMenu() {
             <SocialPanel />
           </div>
 
-          <div className={`hidden ${desktopTab === 'stats' ? 'lg:block animate-fade-in' : 'lg:hidden'}`}>
-            <div className="space-y-4">
-              <div>
-                <h3 className="section-header">🎯 Misiones Diarias</h3>
-                <DailyQuests />
-              </div>
-              <div>
-                <h3 className="section-header">🏅 Logros Recientes</h3>
-                <RecentAchievements />
-              </div>
+          <div className={`hidden ${desktopTab === 'stats' ? 'lg:block animate-fade-in flex-1 overflow-y-auto custom-scrollbar' : 'lg:hidden'}`}>
+            <div className="space-y-4 max-w-4xl mx-auto pb-10">
               <div>
                 <h3 className="section-header">📊 Estadísticas</h3>
                 <QuickStats />
+              </div>
+              <div>
+                <ProfileHistory />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="section-header">🎯 Misiones Diarias</h3>
+                  <DailyQuests />
+                </div>
+                <div>
+                  <h3 className="section-header">🏅 Logros Recientes</h3>
+                  <RecentAchievements />
+                </div>
               </div>
             </div>
           </div>
