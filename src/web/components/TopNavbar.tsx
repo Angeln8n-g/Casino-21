@@ -1,5 +1,6 @@
 import React from 'react';
 import { ProfileHeader } from './ProfileHeader';
+import { AudioControlButton } from './AudioControlButton';
 
 export type DesktopTab = 'all' | 'lobby' | 'social' | 'stats' | 'events' | 'store' | 'admin';
 
@@ -70,6 +71,9 @@ export function TopNavbar({
           </div>
 
           <div className="shrink-0 hidden lg:flex items-center gap-1 bg-black/40 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
+            <div className="pr-1 mr-1 border-r border-white/10">
+              <AudioControlButton />
+            </div>
             <button
               type="button"
               onClick={() => onTabChange('all')}

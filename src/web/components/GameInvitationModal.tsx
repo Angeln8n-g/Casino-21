@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { GameInviteToastData } from '../hooks/useNotifications';
 import { getDivisionFromElo } from './ProfileHeader';
-import challengeSound from '../../Public/Steel_Over_Stone.mp3';
+import { useAudio } from '../hooks/useAudio';
 
 interface GameInvitationModalProps {
   invite: GameInviteToastData;
@@ -16,25 +16,20 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
   const losses = invite.losses || 0;
   const totalGames = wins + losses;
   const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+  const { startLoop, stopLoop } = useAudio();
 
   const [progress, setProgress] = useState(100);
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [accepting, setAccepting] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loopIdRef = useRef(`invite-${invite.invitationId}`);
 
   useEffect(() => {
-    audioRef.current = new Audio(challengeSound);
-    audioRef.current.volume = 0.5;
-    audioRef.current.loop = true;
-    audioRef.current.play().catch(e => console.log('Autoplay prevented:', e));
+    startLoop(loopIdRef.current, 'alert', { volumeMultiplier: 0.9, playbackRate: 0.95 });
 
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
+      stopLoop(loopIdRef.current);
     };
-  }, []);
+  }, [startLoop, stopLoop]);
 
   useEffect(() => {
     let endTime = new Date(invite.expiresAt).getTime();
@@ -67,20 +62,14 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
   }, [invite.expiresAt, invite.invitationId]);
 
   const handleAccept = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopLoop(loopIdRef.current);
     setAccepting(true);
     onAccept(invite.invitationId, invite.roomId);
     onClose();
   };
 
   const handleReject = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopLoop(loopIdRef.current);
     onReject(invite.invitationId);
     onClose();
   };

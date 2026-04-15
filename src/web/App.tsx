@@ -1,5 +1,6 @@
 import React from 'react';
 import { GameProvider, useGame } from './hooks/useGame';
+import { AudioProvider } from './hooks/useAudio';
 import { MainMenu } from './components/MainMenu';
 import { GameScreen } from './components/GameScreen';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -41,15 +42,17 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <GameProvider>
-        <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white font-sans"
-          style={{ background: 'radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%)' }}
-        >
-          {/* Noise texture overlay */}
-          <div className="noise-overlay" />
-          <AppContent />
-        </div>
-      </GameProvider>
+      <AudioProvider>
+        <GameProvider>
+          <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white font-sans"
+            style={{ background: 'radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%)' }}
+          >
+            {/* Noise texture overlay */}
+            <div className="noise-overlay" />
+            <AppContent />
+          </div>
+        </GameProvider>
+      </AudioProvider>
     </AuthProvider>
   );
 }

@@ -19,11 +19,14 @@ import { useNotifications } from '../hooks/useNotifications';
 import { NotificationToast } from './NotificationToast';
 import { GameInvitationModal } from './GameInvitationModal';
 import { WelcomeModal } from './WelcomeModal';
+import { useAudio } from '../hooks/useAudio';
+import { AudioControlButton } from './AudioControlButton';
 
 export function MainMenu() {
   const { setGameState, setLocalPlayerId } = useGame();
   const { profile, signOut } = useAuth();
   const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, deleteReadNotifications, deleteNotification, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
+  const { playSfx } = useAudio();
   
   const [playerName, setPlayerName] = useState(profile?.username || 'Jugador');
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -61,6 +64,7 @@ export function MainMenu() {
   const [matchmakingTime, setMatchmakingTime] = useState(0);
   const [matchFound, setMatchFound] = useState<{roomId: string, players: any[]} | null>(null);
   const matchmakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previousPlayersInRoomRef = useRef(0);
 
   const showLobbyDesktop = desktopTab === 'all' || desktopTab === 'lobby';
 
@@ -75,6 +79,19 @@ export function MainMenu() {
       localStorage.setItem('casino21_ui_rightCollapsed', String(rightCollapsed));
     } catch {}
   }, [rightCollapsed]);
+
+  useEffect(() => {
+    if (view !== 'waiting') {
+      previousPlayersInRoomRef.current = 0;
+      return;
+    }
+
+    if (playersInRoom.length > previousPlayersInRoomRef.current && previousPlayersInRoomRef.current > 0) {
+      playSfx('cardDeal', { volumeMultiplier: 0.75 });
+    }
+
+    previousPlayersInRoomRef.current = playersInRoom.length;
+  }, [playersInRoom.length, playSfx, view]);
 
   // ─── Desktop Invitation & Spectator Listener ───
   useEffect(() => {
@@ -117,6 +134,7 @@ export function MainMenu() {
         }
 
         socket.on('room_created', ({ roomId, playerId, betAmount, mode }) => {
+          playSfx('cardPlay', { volumeMultiplier: 0.8 });
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
           if (betAmount !== undefined) setRoomBet(betAmount);
@@ -130,6 +148,7 @@ export function MainMenu() {
         });
 
         socket.on('room_joined', ({ roomId, playerId, betAmount, mode }) => {
+          playSfx('cardPlay', { volumeMultiplier: 0.8 });
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
           if (betAmount !== undefined) setRoomBet(betAmount);
@@ -143,6 +162,7 @@ export function MainMenu() {
 
         // ─── FASE 7: Espectador uniéndose ───
         socket.on('room_joined_as_spectator', ({ roomId }) => {
+          playSfx('cardPlay', { volumeMultiplier: 0.65, playbackRate: 1.05 });
           setCurrentRoomId(roomId);
           // Omitimos el localPlayerId porque no vamos a jugar
           // En lugar de ir a 'waiting', podemos ir directamente al juego o mantener una vista
@@ -161,10 +181,12 @@ export function MainMenu() {
         });
 
         socket.on('error', (msg: string) => {
+          playSfx('error');
           setError(msg);
         });
 
         socket.on('room_closed', ({ roomId, reason }: { roomId: string; reason?: string }) => {
+          playSfx('error', { volumeMultiplier: 0.9 });
           setView('menu');
           setCurrentRoomId(null);
           setPlayersInRoom([]);
@@ -187,6 +209,7 @@ export function MainMenu() {
 
         // ─── FASE 8: Matchmaking Events ───
         socket.on('match_found', (data: { roomId: string, players: any[] }) => {
+          playSfx('matchFound', { volumeMultiplier: 1.1 });
           setIsMatchmaking(false);
           if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
           setMatchFound(data);
@@ -229,21 +252,24 @@ export function MainMenu() {
         // Socket might not be connected yet
       }
     };
-  }, [playerName, setGameState, setLocalPlayerId, profile?.id]);
+  }, [playerName, setGameState, setLocalPlayerId, profile?.id, playSfx]);
   // ─── END Socket Logic ───
 
   const handleCreateRoomClick = () => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
+    playSfx('cardPlay', { volumeMultiplier: 0.65, playbackRate: 1.08 });
     setShowBetModal(true);
   };
 
   const handleCreateRoomConfirm = async () => {
     try {
       if (profile && betAmount > profile.coins) {
+        playSfx('error');
         return setError('No tienes suficientes monedas para esta apuesta.');
       }
       setMode(roomMode); // Sincronizamos el estado global del modo
       const socket = await socketService.connect();
+      playSfx('chipsClink', { volumeMultiplier: 0.8 });
       socket.emit('create_room', { playerName, mode: roomMode, betAmount });
       setShowBetModal(false);
     } catch (e: any) {
@@ -256,6 +282,7 @@ export function MainMenu() {
     try {
       if (currentRoomId) {
         const socket = socketService.getSocket();
+        playSfx('error', { volumeMultiplier: 0.75 });
         socket.emit('cancel_room', { roomId: currentRoomId });
       }
     } catch (e) {}
@@ -267,6 +294,7 @@ export function MainMenu() {
     
     try {
       const socket = await socketService.connect();
+      playSfx('cardPlay', { volumeMultiplier: 0.75 });
       socket.emit('join_room', { roomId: roomIdInput.toUpperCase(), playerName });
     } catch (e: any) {
       console.error(e);
@@ -279,6 +307,7 @@ export function MainMenu() {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
     try {
       const socket = await socketService.connect();
+      playSfx('cardPlay', { volumeMultiplier: 0.8, playbackRate: 1.06 });
       socket.emit('join_matchmaking', { 
         playerName, 
         elo: profile?.elo || 1000 
@@ -301,6 +330,7 @@ export function MainMenu() {
   const cancelMatchmaking = () => {
     try {
       const socket = socketService.getSocket();
+      playSfx('error', { volumeMultiplier: 0.7 });
       socket.emit('leave_matchmaking');
       setIsMatchmaking(false);
       if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
@@ -319,6 +349,9 @@ export function MainMenu() {
     return (
       <div className="flex items-center justify-center min-h-screen p-6 relative z-10">
         <div className="glass-panel-strong p-8 max-w-md w-full text-center animate-fade-in">
+          <div className="flex justify-end mb-4">
+            <AudioControlButton compact />
+          </div>
           {/* Room Code */}
           <div className="mb-6">
             <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Código de Sala</p>

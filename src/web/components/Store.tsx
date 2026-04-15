@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useAudio } from '../hooks/useAudio';
 
 interface StoreItem {
   id: string;
@@ -13,6 +14,7 @@ interface StoreItem {
 
 export function Store() {
   const { profile, user } = useAuth();
+  const { playSfx } = useAudio();
   const [items, setItems] = useState<StoreItem[]>([]);
   const [inventory, setInventory] = useState<string[]>([]); // item_ids
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export function Store() {
   const handleBuy = async (item: StoreItem) => {
     if (!profile) return;
     if ((profile.coins || 0) < item.price) {
+      playSfx('error');
       alert('Monedas insuficientes.');
       return;
     }
@@ -68,10 +71,12 @@ export function Store() {
         
         // Update local inventory
         setInventory(prev => [...prev, item.id]);
+        playSfx('chipsClink', { volumeMultiplier: 1.15 });
         // Disparar evento para actualizar el header
         window.dispatchEvent(new CustomEvent('coins_updated'));
       } catch (err: any) {
         console.error('Error buying item:', err);
+        playSfx('error');
         alert(err.message || 'Error al procesar la compra.');
       } finally {
         setProcessingId(null);
@@ -86,11 +91,13 @@ export function Store() {
       if (error) throw error;
       
       // Disparar evento global para recargar perfil (si tienes algo escuchando) o alertar
+      playSfx('cardPlay', { volumeMultiplier: 0.8, playbackRate: 1.08 });
       alert(`¡${item.name} equipado con éxito!`);
       // Opcional: trigger profile reload
       window.dispatchEvent(new Event('profile_updated'));
     } catch (err: any) {
       console.error('Error equipping item:', err);
+      playSfx('error');
       alert(err.message || 'Error al equipar.');
     } finally {
       setProcessingId(null);

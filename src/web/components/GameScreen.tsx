@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
+import { useAudio } from '../hooks/useAudio';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
 import { ActionPanel, ActionPayload } from './ActionPanel';
@@ -10,15 +11,40 @@ import { DefaultActionValidator } from '../../application/action-validator';
 import { Card } from '../../domain/card';
 import { CardView } from './CardView';
 import { GameChat } from './GameChat';
+import { AudioControlButton } from './AudioControlButton';
+import { CelebrationConfetti } from './CelebrationConfetti';
+import { GameState } from '../../domain/game-state';
+
+const getTotalVirados = (state: GameState) =>
+  state.players.reduce((sum, player) => sum + player.virados, 0) +
+  state.teams.reduce((sum, team) => sum + team.virados, 0);
+
+const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
+  if (!localPlayerId || !state.winnerId) {
+    return false;
+  }
+
+  const localPlayer = state.players.find((player) => player.id === localPlayerId);
+  if (!localPlayer) {
+    return false;
+  }
+
+  return state.mode === '2v2' ? localPlayer.teamId === state.winnerId : localPlayer.id === state.winnerId;
+};
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage } = useGame();
   const { profile } = useAuth();
+  const { playSfx } = useAudio();
   
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
   const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
   const [selectedFormationIds, setSelectedFormationIds] = useState<Set<string>>(new Set());
   const [isDealing, setIsDealing] = useState(false);
+  const [viradoBanner, setViradoBanner] = useState<{ id: number; playerName: string | null } | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationSeed, setCelebrationSeed] = useState(0);
+  const previousGameStateRef = useRef<GameState | null>(null);
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
@@ -57,11 +83,87 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const isMidRoundDeal = totalCardsInHands === maxCards && gameState?.turnCount !== 0 && gameState?.phase === 'playing';
 
     if (isNewRoundOrGame || isMidRoundDeal) {
+      playSfx('cardDeal', { volumeMultiplier: isMidRoundDeal ? 0.85 : 1 });
       setIsDealing(true);
       const timer = setTimeout(() => setIsDealing(false), 1000); // Wait for animations to finish
       return () => clearTimeout(timer);
     }
-  }, [gameState?.turnCount, gameState?.phase, gameState?.roundCount, totalCardsInHands, gameState?.mode]);
+  }, [gameState?.turnCount, gameState?.phase, gameState?.roundCount, totalCardsInHands, gameState?.mode, playSfx]);
+
+  useEffect(() => {
+    if (error) {
+      playSfx('error');
+    }
+  }, [error, playSfx]);
+
+  useEffect(() => {
+    if (!gameState) {
+      return;
+    }
+
+    const previousState = previousGameStateRef.current;
+
+    if (previousState) {
+      if (gameState.turnCount > previousState.turnCount && gameState.phase === 'playing') {
+        switch (gameState.lastAction) {
+          case 'colocar':
+            playSfx('cardPlay', { volumeMultiplier: 0.75, playbackRate: 1.05 });
+            break;
+          case 'llevar':
+            playSfx('cardPlay', { volumeMultiplier: 0.95, playbackRate: 0.92 });
+            break;
+          case 'formar':
+          case 'formarPar':
+            playSfx('cardPlay', { volumeMultiplier: 0.9, playbackRate: 0.88 });
+            break;
+          case 'aumentarFormacion':
+            playSfx('cardPlay', { volumeMultiplier: 1, playbackRate: 0.82 });
+            break;
+          case 'cantar':
+            playSfx('chipsClink', { volumeMultiplier: 0.8, playbackRate: 1.08 });
+            break;
+        }
+      }
+
+      if (gameState.phase === 'playing' && getTotalVirados(gameState) !== getTotalVirados(previousState)) {
+        setViradoBanner({
+          id: Date.now(),
+          playerName: previousState.players[previousState.currentTurnPlayerIndex]?.name ?? null,
+        });
+        playSfx('virado');
+      }
+
+      if (previousState.phase !== 'completed' && gameState.phase === 'completed') {
+        const shouldCelebrate = isSpectator || didLocalPlayerWin(gameState, localPlayerId);
+        playSfx(shouldCelebrate ? 'victory' : 'defeat');
+
+        if (shouldCelebrate) {
+          setCelebrationSeed(Date.now());
+          setShowCelebration(true);
+        }
+      }
+    }
+
+    previousGameStateRef.current = gameState;
+  }, [gameState, isSpectator, localPlayerId, playSfx]);
+
+  useEffect(() => {
+    if (!viradoBanner) {
+      return;
+    }
+
+    const timer = setTimeout(() => setViradoBanner(null), 2200);
+    return () => clearTimeout(timer);
+  }, [viradoBanner]);
+
+  useEffect(() => {
+    if (!showCelebration) {
+      return;
+    }
+
+    const timer = setTimeout(() => setShowCelebration(false), 4200);
+    return () => clearTimeout(timer);
+  }, [showCelebration]);
 
   if (!gameState) return null;
 
@@ -82,6 +184,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }
     setSelectedBoardCardIds(newSet);
     clearError();
+    playSfx('cardPlay', { volumeMultiplier: 0.28, playbackRate: 1.2 });
   };
 
   const handleFormationClick = (formationId: string) => {
@@ -94,6 +197,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }
     setSelectedFormationIds(newSet);
     clearError();
+    playSfx('cardPlay', { volumeMultiplier: 0.3, playbackRate: 1.08 });
   };
 
   const handlePlayAction = (actionPartial: ActionPayload) => {
@@ -122,6 +226,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     if (selectedHandCardId === card.id) {
       handleClearSelection();
     } else {
+      playSfx('cardPlay', { volumeMultiplier: 0.35, playbackRate: 1.18 });
       setSelectedHandCardId(card.id);
       setSelectedBoardCardIds(new Set());
       setSelectedFormationIds(new Set());
@@ -142,6 +247,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
       return;
     }
     if (event.active.data.current?.type === 'handCard') {
+      playSfx('cardPlay', { volumeMultiplier: 0.4, playbackRate: 1.12 });
       setActiveDragCard(event.active.data.current.card);
     }
   };
@@ -151,16 +257,21 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     
     // Si no es el turno, ignorar el drop
     if (!isCurrentTurn) {
+      playSfx('error', { volumeMultiplier: 0.45 });
       return;
     }
 
     const { active, over } = event;
 
-    if (!over || !gameState || !localPlayerId) return;
+    if (!over || !gameState || !localPlayerId) {
+      playSfx('error', { volumeMultiplier: 0.45 });
+      return;
+    }
     
     // Validar que sea el turno del jugador antes de permitir soltar la carta
     // (Ya validado arriba, pero por seguridad)
     if (gameState.players[gameState.currentTurnPlayerIndex]?.id !== localPlayerId) {
+      playSfx('error', { volumeMultiplier: 0.45 });
       return;
     }
 
@@ -210,8 +321,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         validActions: possibleActions
       });
     } else {
-      // Show some temporary error maybe, or just do nothing
-      // We could set an error state here
+      playSfx('error', { volumeMultiplier: 0.5 });
     }
   };
 
@@ -277,6 +387,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   if (gameState.phase === 'completed') {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-transparent relative z-10">
+        <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
         <div className="bg-black/60 backdrop-blur-md p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
           <h1 className="text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg">
             ¡PARTIDA TERMINADA!
@@ -346,6 +457,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
+        <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
         
         {/* Spectator Banner & Leave Button */}
         {isSpectator && (
@@ -366,6 +478,16 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         <div className="flex flex-col h-full max-w-6xl mx-auto p-4 gap-4 relative z-10 pointer-events-auto">
           {/* Top Header */}
         <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
+          {viradoBanner && (
+            <div className="absolute left-1/2 top-[105%] -translate-x-1/2 z-30 pointer-events-none">
+              <div className="animate-virado-banner rounded-full border border-yellow-400/40 bg-black/75 px-8 py-3 shadow-[0_0_35px_rgba(251,191,36,0.35)] backdrop-blur-md">
+                <p className="text-[11px] uppercase tracking-[0.4em] font-black text-yellow-300 text-center">Virado</p>
+                <p className="text-xl md:text-2xl font-black text-white text-center">
+                  {viradoBanner.playerName ? `${viradoBanner.playerName} limpio la mesa` : 'Mesa vacia'}
+                </p>
+              </div>
+            </div>
+          )}
           
           {/* Disconnection Warning */}
           {disconnectionMessage && (
@@ -400,6 +522,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   <p className="text-[10px] text-gray-300">Mazo</p>
                   <p className="text-lg font-bold text-white leading-none">{gameState.deck.cards.length}</p>
                 </div>
+                <AudioControlButton compact />
                 <button 
                   onClick={() => {
                     localStorage.removeItem('casino21_roomId');
@@ -433,9 +556,12 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                 </div>
               ))}
             </div>
-            <div className="hidden md:block text-right bg-black/40 px-6 py-2 rounded-2xl border border-white/10">
-              <p className="text-sm text-gray-300">Cartas en Mazo</p>
-              <p className="text-3xl font-bold text-white">{gameState.deck.cards.length}</p>
+            <div className="hidden md:flex items-center gap-3">
+              <AudioControlButton compact />
+              <div className="text-right bg-black/40 px-6 py-2 rounded-2xl border border-white/10">
+                <p className="text-sm text-gray-300">Cartas en Mazo</p>
+                <p className="text-3xl font-bold text-white">{gameState.deck.cards.length}</p>
+              </div>
             </div>
             
             <button 
