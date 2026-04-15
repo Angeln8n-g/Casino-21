@@ -203,9 +203,12 @@ export function EventsPage() {
     // Close the bracket modal
     setBracketModalOpen(false);
 
+    // Determinar si el usuario es jugador o espectador en esta partida
+    const isSpectator = !(user && (match.player1?.id === user.id || match.player2?.id === user.id));
+
     // Tell MainMenu (or the app) to join this room as a tournament
     window.dispatchEvent(new CustomEvent('join_game_from_invite', { 
-      detail: { roomId: match.game_room_id, isTournament: true } 
+      detail: { roomId: match.game_room_id, isTournament: true, isSpectator } 
     }));
   };
   const handleViewRules = (rules: string, title: string) => {

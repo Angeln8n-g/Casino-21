@@ -103,6 +103,7 @@ io.use((socket, next) => {
     lastActionTime?: number;
     isTournament?: boolean;
     chatHistory: ChatMessage[];
+    betAmount?: number;
   }> = {};
 
 // ─── FASE 8: Matchmaking Queue ───
@@ -238,7 +239,7 @@ io.on('connection', (socket) => {
     };
 
     socket.join(roomId);
-    socket.emit('room_created', { roomId, playerId: userId, betAmount: rooms[roomId].betAmount });
+    socket.emit('room_created', { roomId, playerId: userId, betAmount: rooms[roomId].betAmount, mode });
     console.log(`Sala ${roomId} creada por ${playerName} con apuesta ${rooms[roomId].betAmount}`);
   });
 
@@ -285,7 +286,9 @@ io.on('connection', (socket) => {
         // Send sanitized state immediately to the new spectator
         const safeState: GameState = JSON.parse(JSON.stringify(room.state));
         safeState.players.forEach(statePlayer => {
-          (statePlayer as any).hand = Array(statePlayer.hand.length).fill({ id: 'hidden', rank: '?', suit: 'hidden', value: 0 });
+          (statePlayer as any).hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({ 
+            id: `hidden_${i}`, rank: '?', suit: 'hidden', value: 0 
+          }));
         });
         socket.emit('game_state_update', safeState);
       }
@@ -309,7 +312,9 @@ io.on('connection', (socket) => {
         const safeState = JSON.parse(JSON.stringify(room.state));
         safeState.players.forEach((statePlayer: any) => {
           if (statePlayer.id !== existingPlayer.playerId) {
-            statePlayer.hand = Array(statePlayer.hand.length).fill({ id: 'hidden', rank: '?', suit: 'hidden', value: 0 });
+            statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({ 
+              id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
+            }));
           }
         });
         socket.emit('game_state_update', safeState);
@@ -336,7 +341,8 @@ io.on('connection', (socket) => {
     socket.join(roomId);
 
     // Enviar el playerId al jugador que se acaba de unir
-    socket.emit('room_joined', { roomId, playerId: userId });
+    const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
+    socket.emit('room_joined', { roomId, playerId: userId, betAmount: room.betAmount, mode });
 
     io.to(roomId).emit('player_joined', { players: room.players.map(p => p.name) });
     
@@ -845,10 +851,12 @@ function broadcastGameState(roomId: string, room: any) {
     const safeState: GameState = JSON.parse(JSON.stringify(fullState));
 
     // Ocultamos las manos de los rivales
-    safeState.players.forEach(statePlayer => {
+    safeState.players.forEach((statePlayer: any) => {
       if (statePlayer.id !== p.playerId) {
         // Solo mandamos el conteo de cartas, no los valores
-        (statePlayer as any).hand = Array(statePlayer.hand.length).fill({ id: 'hidden', rank: '?', suit: 'hidden', value: 0 });
+        statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({ 
+          id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
+        }));
       }
     });
 
@@ -861,8 +869,10 @@ function broadcastGameState(roomId: string, room: any) {
     const spectatorSafeState: GameState = JSON.parse(JSON.stringify(fullState));
     
     // Ocultar TODAS las manos para los espectadores
-    spectatorSafeState.players.forEach(statePlayer => {
-      (statePlayer as any).hand = Array(statePlayer.hand.length).fill({ id: 'hidden', rank: '?', suit: 'hidden', value: 0 });
+    spectatorSafeState.players.forEach((statePlayer: any) => {
+      statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({ 
+        id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
+      }));
     });
 
     room.spectators.forEach((s: any) => {

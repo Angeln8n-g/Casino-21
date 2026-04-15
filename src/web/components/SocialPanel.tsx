@@ -393,9 +393,27 @@ export function SocialPanel() {
                         >
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/40 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0 border border-casino-gold/30 overflow-hidden">
                             {req.equipped_avatar ? (
-                              <img src={`/assets/store/${req.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                              <img 
+                                src={`/assets/store/${req.equipped_avatar}`} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  if (target.parentElement) target.parentElement.innerHTML = req.username.charAt(0).toUpperCase();
+                                }}
+                              />
                             ) : req.avatar_url ? (
-                              <img src={req.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                              <img 
+                                src={req.avatar_url} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  if (target.parentElement) target.parentElement.innerHTML = req.username.charAt(0).toUpperCase();
+                                }}
+                              />
                             ) : (
                               req.username.charAt(0).toUpperCase()
                             )}
@@ -466,9 +484,27 @@ export function SocialPanel() {
                             isOnline ? 'bg-gradient-to-br from-casino-emerald/20 to-black/50 text-white border border-casino-emerald/30' : 'bg-white/5 text-gray-500 border border-white/5'
                           }`}>
                             {friend.equipped_avatar ? (
-                              <img src={`/assets/store/${friend.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                              <img 
+                                src={`/assets/store/${friend.equipped_avatar}`} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
+                                }}
+                              />
                             ) : friend.avatar_url ? (
-                              <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                              <img 
+                                src={friend.avatar_url} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
+                                }}
+                              />
                             ) : (
                               friend.username.charAt(0).toUpperCase()
                             )}

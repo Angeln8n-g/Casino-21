@@ -94,8 +94,9 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
         });
 
         socket.emit('create_room', { 
-          playerName: user.email?.split('@')[0] || 'Jugador',
-          mode: '1v1'
+          playerName: user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador',
+          mode: '1v1',
+          betAmount: 0
         });
       });
 
@@ -248,9 +249,27 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               isHighElo ? 'text-casino-gold' : 'text-gray-300'
             }`}>
               {friend.equipped_avatar ? (
-                <img src={`/assets/store/${friend.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                <img 
+                  src={`/assets/store/${friend.equipped_avatar}`} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
+                  }}
+                />
               ) : friend.avatar_url ? (
-                <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                <img 
+                  src={friend.avatar_url} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
+                  }}
+                />
               ) : (
                 friend.username.charAt(0).toUpperCase()
               )}

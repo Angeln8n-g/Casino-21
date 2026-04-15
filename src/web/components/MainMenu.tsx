@@ -54,6 +54,7 @@ export function MainMenu() {
   const [showBetModal, setShowBetModal] = useState(false);
   const [betAmount, setBetAmount] = useState<number>(0);
   const [roomBet, setRoomBet] = useState<number>(0); // Guardamos la apuesta de la sala actual
+  const [roomMode, setRoomMode] = useState<'1v1' | '2v2'>('1v1'); // Selección de modo al crear sala
 
   // ─── FASE 8: Matchmaking State ───
   const [isMatchmaking, setIsMatchmaking] = useState(false);
@@ -115,23 +116,27 @@ export function MainMenu() {
           socket.emit('join_room', { roomId: savedRoomId, playerName: profile.username });
         }
 
-        socket.on('room_created', ({ roomId, playerId, betAmount }) => {
+        socket.on('room_created', ({ roomId, playerId, betAmount, mode }) => {
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
           if (betAmount !== undefined) setRoomBet(betAmount);
+          if (mode) setMode(mode);
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
+          localStorage.removeItem('casino21_spectatorRoomId');
           setPlayersInRoom([playerName]);
           setView('waiting');
           setError('');
         });
 
-        socket.on('room_joined', ({ roomId, playerId, betAmount }) => {
+        socket.on('room_joined', ({ roomId, playerId, betAmount, mode }) => {
           setCurrentRoomId(roomId);
           setLocalPlayerId(playerId);
           if (betAmount !== undefined) setRoomBet(betAmount);
+          if (mode) setMode(mode);
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
+          localStorage.removeItem('casino21_spectatorRoomId');
           setView('waiting');
           setError('');
         });
@@ -237,8 +242,9 @@ export function MainMenu() {
       if (profile && betAmount > profile.coins) {
         return setError('No tienes suficientes monedas para esta apuesta.');
       }
+      setMode(roomMode); // Sincronizamos el estado global del modo
       const socket = await socketService.connect();
-      socket.emit('create_room', { playerName, mode, betAmount });
+      socket.emit('create_room', { playerName, mode: roomMode, betAmount });
       setShowBetModal(false);
     } catch (e: any) {
       console.error("Error en handleCreateRoomConfirm:", e);
@@ -783,8 +789,36 @@ export function MainMenu() {
             >
               ✕
             </button>
-            <h3 className="section-header text-center text-xl mb-4">Crear Sala 1vs1</h3>
-            <p className="text-sm text-gray-400 text-center mb-6">Selecciona el monto a apostar (Opcional)</p>
+            <h3 className="section-header text-center text-xl mb-4">Crear Sala</h3>
+            
+            {/* ─── Selección de Modo ─── */}
+            <div className="mb-6">
+              <label className="block text-[10px] uppercase text-gray-500 font-bold mb-2 ml-1 text-center">Modo de Juego</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRoomMode('1v1')}
+                  className={`flex-1 py-2 rounded-xl border text-sm font-black uppercase tracking-wider transition-all ${
+                    roomMode === '1v1'
+                      ? 'bg-blue-500/20 border-blue-500/50 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
+                      : 'bg-white/5 border-white/10 text-gray-500 hover:bg-white/10'
+                  }`}
+                >
+                  1 vs 1
+                </button>
+                <button
+                  onClick={() => setRoomMode('2v2')}
+                  className={`flex-1 py-2 rounded-xl border text-sm font-black uppercase tracking-wider transition-all ${
+                    roomMode === '2v2'
+                      ? 'bg-purple-500/20 border-purple-500/50 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                      : 'bg-white/5 border-white/10 text-gray-500 hover:bg-white/10'
+                  }`}
+                >
+                  2 vs 2
+                </button>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-400 text-center mb-4">Selecciona el monto a apostar (Opcional)</p>
             
             <div className="grid grid-cols-3 gap-2 mb-4">
               {[0, 10, 50, 100, 500, 1000].map(amount => (

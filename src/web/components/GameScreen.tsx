@@ -338,9 +338,31 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   // Si es tu turno pero no tienes cartas y el tiempo sigue corriendo, el servidor debería botar por ti
   // o avanzar, pero el UI no debe mostrar tus cartas si no hay.
   
+  const handleLeaveSpectator = () => {
+    localStorage.removeItem('casino21_spectatorRoomId');
+    window.location.reload();
+  };
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
+        
+        {/* Spectator Banner & Leave Button */}
+        {isSpectator && (
+          <div className="absolute top-0 left-0 w-full bg-blue-500/80 text-white text-xs font-bold text-center py-1 z-50 flex justify-between px-4 items-center shadow-[0_0_15px_rgba(59,130,246,0.6)] backdrop-blur-sm pointer-events-auto">
+            <span className="w-16"></span>
+            <span className="uppercase tracking-widest flex items-center gap-2">
+              <span className="animate-pulse">👁️</span> MODO ESPECTADOR
+            </span>
+            <button 
+              onClick={handleLeaveSpectator}
+              className="text-[10px] bg-black/30 hover:bg-black/50 px-3 py-1 rounded border border-white/20 transition-colors uppercase tracking-widest"
+            >
+              Salir
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col h-full max-w-6xl mx-auto p-4 gap-4 relative z-10 pointer-events-auto">
           {/* Top Header */}
         <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
