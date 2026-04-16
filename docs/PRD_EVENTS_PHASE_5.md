@@ -75,3 +75,10 @@ El servidor de juego (Socket.io) deberá ser modificado para emitir eventos de p
 2. **Paso 5.2**: Crear el componente frontend `DailyQuests.tsx` y añadirlo a la UI principal.
 3. **Paso 5.3**: Actualizar el backend (`server/src/index.ts`) para registrar el progreso de las misiones al finalizar las partidas.
 4. **Paso 5.4**: Implementar la lógica de reclamación en el frontend conectando con el RPC.
+
+---
+
+## 7. Extensión 5.1 (Admin + ELO por dificultad)
+Se define una extensión de la fase para operar misiones desde el panel admin y añadir recompensas de ELO por dificultad:
+
+- Ver documento: `docs/PRD_EVENTS_PHASE_5_1.md`

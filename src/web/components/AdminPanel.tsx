@@ -3,6 +3,8 @@ import { supabase } from '../services/supabase';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 import { StoreAdmin } from './StoreAdmin';
+import { QuestManager } from './QuestManager';
+import { useAudio } from '../hooks/useAudio';
 
 interface EventData {
   id: string;
@@ -17,12 +19,18 @@ interface EventData {
   prize_pool: string;
   min_elo: number;
   image_url: string;
+  audio_url?: string;
   participants_count: number;
   max_participants: number;
 }
 
 export function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<'events' | 'store'>('events');
+  const { startUrlLoop, stopLoop } = useAudio();
+  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests'>('events');
+  
+  useEffect(() => {
+    console.log('AdminPanel renderizado, pestaña activa:', activeTab);
+  }, [activeTab]);
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,6 +71,43 @@ export function AdminPanel() {
       setEvents(data || []);
     }
     setLoading(false);
+  };
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event_assets')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event_assets')
+        .getPublicUrl(filePath);
+
+      if (type === 'image') {
+        setCurrentEvent({ ...currentEvent, image_url: publicUrl });
+      } else {
+        setCurrentEvent({ ...currentEvent, audio_url: publicUrl });
+      }
+    } catch (err: any) {
+      console.error('Error uploading file:', err);
+      setError('Error al subir el archivo: ' + err.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -240,6 +285,10 @@ export function AdminPanel() {
     setBracketModalOpen(true);
     setMatchesLoading(true);
 
+    if (event.audio_url) {
+      startUrlLoop('event-bracket-audio', event.audio_url);
+    }
+
     const { data, error } = await supabase
       .from('tournament_matches')
       .select(`
@@ -386,6 +435,14 @@ export function AdminPanel() {
             >
               Tienda
             </button>
+            <button 
+              onClick={() => setActiveTab('quests')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                activeTab === 'quests' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              Misiones
+            </button>
           </div>
 
           {activeTab === 'events' && (
@@ -412,8 +469,7 @@ export function AdminPanel() {
         {activeTab === 'events' ? (
           <>
             {/* Eventos Form / Table ... */}
-            {isEditing ? (
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 mb-8">
+            {isEditing ? (        <div className="glass-panel p-6 rounded-2xl border border-white/10 mb-8">
           <h3 className="text-xl font-bold mb-4">{currentEvent.id ? 'Editar Evento' : 'Crear Evento'}</h3>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -458,9 +514,25 @@ export function AdminPanel() {
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">ELO Mínimo</label>
                 <input type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.min_elo} onChange={e => setCurrentEvent({...currentEvent, min_elo: parseInt(e.target.value) || 0})} />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">URL Imagen (Opcional)</label>
-                <input type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.image_url} onChange={e => setCurrentEvent({...currentEvent, image_url: e.target.value})} />
+              <div className="md:col-span-1">
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Imagen del Evento</label>
+                <div className="flex gap-2 items-center">
+                  <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL o subir archivo" value={currentEvent.image_url} onChange={e => setCurrentEvent({...currentEvent, image_url: e.target.value})} />
+                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                    {isUploading ? '...' : '📁'}
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'image')} disabled={isUploading} />
+                  </label>
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Audio del Evento (Llaves)</label>
+                <div className="flex gap-2 items-center">
+                  <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL o subir archivo" value={currentEvent.audio_url || ''} onChange={e => setCurrentEvent({...currentEvent, audio_url: e.target.value})} />
+                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                    {isUploading ? '...' : '🎵'}
+                    <input type="file" className="hidden" accept="audio/*" onChange={(e) => handleFileUpload(e, 'audio')} disabled={isUploading} />
+                  </label>
+                </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
@@ -599,7 +671,10 @@ export function AdminPanel() {
 
       {/* Admin Bracket Modal */}
       {bracketModalOpen && selectedTournament && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => setBracketModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
+          setBracketModalOpen(false);
+          stopLoop('event-bracket-audio');
+        }}>
           <div className="glass-panel-strong w-full max-w-7xl rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
             
             <div className="p-4 md:p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0 relative z-10">
@@ -608,7 +683,10 @@ export function AdminPanel() {
                 <h2 className="text-xl md:text-2xl font-black text-white leading-tight">{selectedTournament.title}</h2>
               </div>
               <button 
-                onClick={() => setBracketModalOpen(false)}
+                onClick={() => {
+                  setBracketModalOpen(false);
+                  stopLoop('event-bracket-audio');
+                }}
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
               >
                 ✕
@@ -639,7 +717,10 @@ export function AdminPanel() {
             <div className="p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
               <p className="text-xs text-emerald-400 mb-2">Haz clic en cualquier encuentro activo para declarar un ganador manualmente o marcar "No Show".</p>
               <button 
-                onClick={() => setBracketModalOpen(false)}
+                onClick={() => {
+                  setBracketModalOpen(false);
+                  stopLoop('event-bracket-audio');
+                }}
                 className="w-full md:w-auto px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm float-right"
               >
                 Cerrar
@@ -649,8 +730,10 @@ export function AdminPanel() {
         </div>
       )}
           </>
-        ) : (
+        ) : activeTab === 'store' ? (
           <StoreAdmin />
+        ) : (
+          <QuestManager />
         )}
       </div>
     </div>

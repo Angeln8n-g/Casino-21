@@ -15,6 +15,8 @@ interface DailyQuest {
     target_amount: number;
     reward_coins: number;
     reward_xp: number;
+    reward_elo: number;
+    difficulty: 'easy' | 'medium' | 'hard' | 'elite';
   };
 }
 
@@ -42,7 +44,7 @@ export function DailyQuests() {
         .from('player_daily_quests')
         .select(`
           id, quest_id, progress, is_completed, is_claimed, assigned_date,
-          catalog:quest_catalog (title, description, target_amount, reward_coins, reward_xp)
+          catalog:quest_catalog (title, description, target_amount, reward_coins, reward_xp, reward_elo, difficulty)
         `)
         .eq('player_id', user?.id)
         .eq('assigned_date', today);
@@ -76,8 +78,9 @@ export function DailyQuests() {
         q.id === questId ? { ...q, is_claimed: true } : q
       ));
       
-      // Emit event so other components (like ProfileHeader) can update coins
+      // Emit events so other components (like ProfileHeader) can update UI
       window.dispatchEvent(new CustomEvent('coins_updated'));
+      window.dispatchEvent(new CustomEvent('elo_updated'));
     } catch (error: any) {
       console.error('Error claiming quest:', error);
       alert('Error al reclamar la recompensa: ' + error.message);
@@ -110,7 +113,7 @@ export function DailyQuests() {
   return (
     <div className="space-y-3">
       {quests.map((quest) => {
-        const { title, description, target_amount, reward_coins } = quest.catalog;
+        const { title, description, target_amount, reward_coins, reward_elo, difficulty } = quest.catalog;
         const progressPercent = Math.min(100, Math.round((quest.progress / target_amount) * 100));
         
         return (
@@ -134,9 +137,17 @@ export function DailyQuests() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-display font-bold text-white text-sm">{title}</h4>
+                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
+                    difficulty === 'elite' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                    difficulty === 'hard' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                    difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                    'bg-green-500/20 text-green-400 border-green-500/30'
+                  }`}>
+                    {difficulty}
+                  </span>
                   {quest.is_claimed && (
                     <span className="bg-gray-600/50 text-gray-300 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                      Completada
+                      Reclamada
                     </span>
                   )}
                 </div>
@@ -159,10 +170,18 @@ export function DailyQuests() {
               </div>
 
               {/* Action / Reward */}
-              <div className="shrink-0 flex items-center gap-3 sm:flex-col sm:gap-2 w-full sm:w-auto">
-                <div className="bg-black/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-white/5">
-                  <span className="text-sm">🪙</span>
-                  <span className="text-casino-gold font-bold text-sm font-mono">+{reward_coins}</span>
+              <div className="shrink-0 flex items-center gap-2 sm:flex-col sm:gap-2 w-full sm:w-auto">
+                <div className="flex gap-2">
+                  <div className="bg-black/30 px-2 py-1.5 rounded-lg flex items-center gap-1.5 border border-white/5">
+                    <span className="text-xs">🪙</span>
+                    <span className="text-casino-gold font-bold text-xs font-mono">+{reward_coins}</span>
+                  </div>
+                  {reward_elo > 0 && (
+                    <div className="bg-black/30 px-2 py-1.5 rounded-lg flex items-center gap-1.5 border border-white/5">
+                      <span className="text-xs">🏆</span>
+                      <span className="text-blue-400 font-bold text-xs font-mono">+{reward_elo}</span>
+                    </div>
+                  )}
                 </div>
                 
                 {quest.is_completed && !quest.is_claimed ? (

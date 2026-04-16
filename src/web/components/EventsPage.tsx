@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useAudio } from '../hooks/useAudio';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 
@@ -17,6 +18,7 @@ interface EventData {
   prize_pool: string;
   min_elo: number;
   image_url?: string;
+  audio_url?: string;
   participants_count: number;
   max_participants: number;
 }
@@ -72,7 +74,7 @@ const MOCK_EVENTS: EventData[] = [
   },
 ];
 
-function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, rules, max_participants, entry_fee, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
+function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, audio_url, rules, max_participants, entry_fee, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
   const statusColors: Record<string, string> = {
     draft: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
     live: 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]',
@@ -155,7 +157,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    onViewBracket(id, title, max_participants, image_url);
+                    onViewBracket(id, title, max_participants, image_url, audio_url);
                   }}
                   className="text-[10px] uppercase font-bold text-casino-gold hover:text-yellow-300 bg-casino-gold/10 hover:bg-casino-gold/20 px-3 py-1.5 rounded-lg transition-colors border border-casino-gold/30"
                 >
@@ -172,6 +174,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
 
 export function EventsPage() {
   const { user } = useAuth();
+  const { startUrlLoop, stopLoop } = useAudio();
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
   const [events, setEvents] = useState<EventData[]>([]);
   const [userEntries, setUserEntries] = useState<string[]>([]);
@@ -216,12 +219,16 @@ export function EventsPage() {
     setRulesModalOpen(true);
   };
 
-  const handleViewBracket = async (eventId: string, title: string, maxParticipants: number, imageUrl?: string) => {
+  const handleViewBracket = async (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => {
     setSelectedTournament(title);
     setSelectedTournamentMaxParticipants(maxParticipants || 16);
     setSelectedTournamentImage(imageUrl);
     setBracketModalOpen(true);
     setMatchesLoading(true);
+
+    if (audioUrl) {
+      startUrlLoop('event-bracket-audio', audioUrl);
+    }
 
     const { data, error } = await supabase
       .from('tournament_matches')
@@ -596,7 +603,10 @@ export function EventsPage() {
 
       {/* Bracket Modal */}
       {bracketModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => setBracketModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
+          setBracketModalOpen(false);
+          stopLoop('event-bracket-audio');
+        }}>
           <div className="glass-panel-strong w-full max-w-7xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
             
             {/* Background Image with Blur */}
@@ -613,7 +623,10 @@ export function EventsPage() {
                 <h2 className="text-xl md:text-2xl font-black text-white leading-tight">{selectedTournament}</h2>
               </div>
               <button 
-                onClick={() => setBracketModalOpen(false)}
+                onClick={() => {
+                  setBracketModalOpen(false);
+                  stopLoop('event-bracket-audio');
+                }}
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
               >
                 ✕
@@ -642,7 +655,10 @@ export function EventsPage() {
             
             <div className="p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
               <button 
-                onClick={() => setBracketModalOpen(false)}
+                onClick={() => {
+                  setBracketModalOpen(false);
+                  stopLoop('event-bracket-audio');
+                }}
                 className="w-full md:w-auto px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm float-right"
               >
                 Cerrar

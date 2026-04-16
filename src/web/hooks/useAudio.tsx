@@ -38,7 +38,9 @@ interface AudioContextValue {
   toggleMuted: () => void;
   setVolume: (value: number) => void;
   playSfx: (cue: AudioCue, options?: PlaySfxOptions) => void;
+  playUrl: (url: string, options?: PlaySfxOptions) => void;
   startLoop: (id: string, cue: AudioCue, options?: PlaySfxOptions) => void;
+  startUrlLoop: (id: string, url: string, options?: PlaySfxOptions) => void;
   stopLoop: (id: string) => void;
 }
 
@@ -174,6 +176,30 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [muted, volume]
   );
 
+  const playUrl = useCallback(
+    (url: string, options?: PlaySfxOptions) => {
+      if (muted || !url) {
+        return;
+      }
+
+      const audio = new Audio(url);
+      audio.volume = clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1);
+      audio.playbackRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
+      audio.muted = muted;
+
+      audio.play().catch(() => {});
+
+      const cleanup = () => {
+        audio.pause();
+        audio.src = '';
+        audio.removeEventListener('ended', cleanup);
+      };
+
+      audio.addEventListener('ended', cleanup);
+    },
+    [muted, volume]
+  );
+
   const stopLoop = useCallback((id: string) => {
     const current = loopPlayersRef.current.get(id);
     if (!current) {
@@ -204,6 +230,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     [muted, stopLoop, volume]
   );
 
+  const startUrlLoop = useCallback(
+    (id: string, url: string, options?: PlaySfxOptions) => {
+      stopLoop(id);
+      if (!url) return;
+
+      const audio = new Audio(url);
+      audio.loop = true;
+      audio.volume = clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1);
+      audio.playbackRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
+      audio.muted = muted;
+
+      loopPlayersRef.current.set(id, audio);
+      audio.play().catch(() => {});
+    },
+    [muted, stopLoop, volume]
+  );
+
   const toggleMuted = useCallback(() => {
     setMuted((current) => !current);
   }, []);
@@ -216,10 +259,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       toggleMuted,
       setVolume,
       playSfx,
+      playUrl,
       startLoop,
+      startUrlLoop,
       stopLoop,
     }),
-    [muted, playSfx, setVolume, startLoop, stopLoop, toggleMuted, volume]
+    [muted, playSfx, playUrl, setVolume, startLoop, startUrlLoop, stopLoop, toggleMuted, volume]
   );
 
   return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;

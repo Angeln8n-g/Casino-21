@@ -55,34 +55,40 @@ export function ProfileHeader({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAvatarGallery, setShowAvatarGallery] = useState(false);
   const [localCoins, setLocalCoins] = useState(profile?.coins || 0);
+  const [localElo, setLocalElo] = useState(profile?.elo || 1000);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (profile?.coins !== undefined) {
       setLocalCoins(profile.coins);
     }
-  }, [profile?.coins]);
+    if (profile?.elo !== undefined) {
+      setLocalElo(profile.elo);
+    }
+  }, [profile?.coins, profile?.elo]);
 
   useEffect(() => {
-    const handleCoinsUpdated = () => {
-      // In a real app, you might want to re-fetch the profile or just optimistically add the coins
-      // if you know how many were rewarded. For now, we rely on the auth context re-fetching or 
-      // we can do a quick manual fetch here if needed.
+    const handleProfileUpdated = () => {
       if (profile?.id) {
-        supabase.from('profiles').select('coins').eq('id', profile.id).single()
+        supabase.from('profiles').select('coins, elo').eq('id', profile.id).single()
           .then(({ data, error }) => {
             if (data && !error) {
               setLocalCoins(data.coins);
+              setLocalElo(data.elo);
             }
           });
       }
     };
 
-    window.addEventListener('coins_updated', handleCoinsUpdated);
-    return () => window.removeEventListener('coins_updated', handleCoinsUpdated);
+    window.addEventListener('coins_updated', handleProfileUpdated);
+    window.addEventListener('elo_updated', handleProfileUpdated);
+    return () => {
+      window.removeEventListener('coins_updated', handleProfileUpdated);
+      window.removeEventListener('elo_updated', handleProfileUpdated);
+    };
   }, [profile?.id]);
 
-  const elo = profile?.elo || 1000;
+  const elo = localElo;
   const xp = profile?.xp || 0;
   const level = calculateLevelFromXp(xp);
   const nextLevelXp = xpForLevel(level + 1);
