@@ -61,14 +61,13 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   }
 });
-
 function extractUserIdFromTokenPayload(payload: any): string | null {
   if (!payload || typeof payload !== 'object') return null;
   return payload.sub || payload.user_id || payload.id || null;
 }
 
 // Middleware de Autenticación para Socket.io
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
     console.error('Intento de conexión sin token');
@@ -76,10 +75,17 @@ io.use((socket, next) => {
   }
 
   try {
-    // Verificar token JWT de Supabase
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || '');
-    (socket as any).user = decoded;
-    (socket as any).userId = extractUserIdFromTokenPayload(decoded);
+    // IMPORTANTE: Se usa la API oficial de Supabase para soportar nativamente 
+    // tokens asimétricos RS256 (nuevos proyectos de Supabase) o HS256 antiguo, 
+    // previniendo el crasheo de "invalid algorithm" de la librería jsonwebtoken.
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      throw error || new Error("User not found via token");
+    }
+
+    (socket as any).user = user;
+    (socket as any).userId = user.id;
     next();
   } catch (err: any) {
     console.error('Error verificando token:', err.message);
