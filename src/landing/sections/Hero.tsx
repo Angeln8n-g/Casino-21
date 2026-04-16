@@ -1,4 +1,5 @@
 import React from 'react';
+import brand21Icon from '../../Public/Icon (2).png';
 
 const CARDS = ['A♠', 'K♥', 'Q♦', '7♣', 'J♠'];
 
@@ -43,7 +44,7 @@ export default function Hero() {
 
       <div className="relative z-10 max-w-4xl">
         <div className="flex items-center justify-center gap-3 mb-6">
-          <img src="/src/Public/icon.png" alt="Casino 21 icon" className="w-12 h-12 rounded-xl object-contain drop-shadow-lg" />
+          <img src={brand21Icon} alt="Kasino21 icono" className="w-12 h-12 rounded-xl object-contain drop-shadow-lg" />
           <div className="inline-block bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">
             Juego de Cartas Competitivo Online
           </div>
@@ -51,7 +52,7 @@ export default function Hero() {
 
         <h1 className="text-6xl md:text-8xl font-black mb-6 leading-none">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-600">
-            CASINO 21
+            KASINO21
           </span>
         </h1>
 

@@ -7,6 +7,7 @@ import Leaderboard from './sections/Leaderboard';
 import Tournaments from './sections/Tournaments';
 import Footer from './sections/Footer';
 import { useLandingData } from './hooks/useLandingData';
+import brand21Icon from '../Public/Icon (2).png';
 
 export default function Landing() {
   const { leaderboard, tournaments, stats, loading } = useLandingData();
@@ -22,9 +23,9 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/src/Public/icon.png" alt="Casino 21" className="w-8 h-8 rounded-lg object-contain" />
+            <img src={brand21Icon} alt="Kasino21" className="w-8 h-8 rounded-lg object-contain" />
             <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
-              CASINO 21
+              KASINO21
             </span>
           </div>
           <a

@@ -15,6 +15,7 @@ import { GameChat } from './GameChat';
 import { AudioControlButton } from './AudioControlButton';
 import { CelebrationConfetti } from './CelebrationConfetti';
 import { GameState } from '../../domain/game-state';
+import brand21Icon from '../../Public/Icon (2).png';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -713,7 +714,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           <div className="flex flex-wrap justify-between items-center gap-2 md:gap-0">
             <div className="flex items-center justify-between w-full md:w-auto md:block">
               <div>
-                <h1 className="text-xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm leading-none">Casino 21</h1>
+                <div className="flex items-center gap-2">
+                  <img src={brand21Icon} alt="Kasino21 icono" className="w-7 h-7 md:w-10 md:h-10 rounded-lg object-cover border border-yellow-400/30" />
+                  <h1 className="text-xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm leading-none">Kasino21</h1>
+                </div>
                 <p className="text-xs md:text-sm text-gray-300 mt-0.5 md:mt-1 font-medium">Ronda: {gameState.roundCount}</p>
               </div>
               <div className="flex gap-2 items-center md:hidden">

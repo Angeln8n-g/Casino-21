@@ -1,6 +1,7 @@
 import React from 'react';
 import { ProfileHeader } from './ProfileHeader';
 import { AudioControlButton } from './AudioControlButton';
+import brand21Icon from '../../Public/Icon (2).png';
 
 export type DesktopTab = 'all' | 'lobby' | 'social' | 'stats' | 'events' | 'store' | 'admin';
 
@@ -62,9 +63,12 @@ export function TopNavbar({
           </div>
 
           <div className="flex-1 text-center select-none">
-            <h1 className="text-2xl md:text-3xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg leading-none">
-              CASINO 21
-            </h1>
+            <div className="flex items-center justify-center gap-2">
+              <img src={brand21Icon} alt="Kasino21 icono" className="w-8 h-8 rounded-lg object-cover border border-casino-gold/30" />
+              <h1 className="text-2xl md:text-3xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg leading-none">
+                KASINO21
+              </h1>
+            </div>
             <p className="text-gray-500 text-[10px] mt-1 uppercase tracking-[0.3em] font-bold">
               Juego de cartas competitivo
             </p>

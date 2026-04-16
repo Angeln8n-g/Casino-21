@@ -1,4 +1,5 @@
 import React from 'react';
+import brand21Icon from '../../Public/Icon (2).png';
 
 export default function Footer() {
   return (
@@ -24,8 +25,8 @@ export default function Footer() {
       <footer className="border-t border-white/5 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-gray-500 text-sm">
           <div className="flex items-center gap-2">
-            <img src="/src/Public/icon.png" alt="Casino 21" className="w-6 h-6 rounded object-contain opacity-60" />
-            <span className="font-black text-white/60">CASINO 21</span>
+            <img src={brand21Icon} alt="Kasino21" className="w-6 h-6 rounded object-contain opacity-60" />
+            <span className="font-black text-white/60">KASINO21</span>
           </div>
           <span>Juego de cartas competitivo online · {new Date().getFullYear()}</span>
         </div>

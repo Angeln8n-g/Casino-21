@@ -4,6 +4,7 @@ import { Board } from '../../domain/board';
 import { DroppableBoardCard } from './DroppableBoardCard';
 import { DroppableFormation } from './DroppableFormation';
 import { Card } from '../../domain/card';
+import splashBoard from '../../Public/splash.png';
 
 interface BoardViewProps {
   board: Board;
@@ -42,6 +43,17 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
       className={`relative flex flex-col items-center justify-center gap-4 md:gap-6 p-4 md:p-10 w-full max-w-5xl min-h-[30vh] md:min-h-[400px] rounded-3xl md:rounded-[4rem] shadow-[0_15px_30px_rgba(0,0,0,0.65),inset_0_5px_15px_rgba(0,0,0,0.85)] md:shadow-[0_30px_60px_rgba(0,0,0,0.7),inset_0_10px_30px_rgba(0,0,0,0.9)] border-[8px] md:border-[16px] border-[#2A1810] ring-4 md:ring-8 ring-black/50 transition-all flex-1 overflow-hidden ${isOver ? 'brightness-110 ring-cyan-300/40' : ''}`}
     >
       
+      {!boardThemeUrl && (
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          style={{
+            backgroundImage: `url(${splashBoard})`,
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: 'cover',
+          }}
+        />
+      )}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(251,191,36,0.18),transparent_30%,transparent_70%,rgba(251,191,36,0.12))]" />
       <div className="absolute inset-1 md:inset-2 rounded-2xl md:rounded-[3rem] border border-yellow-300/35 pointer-events-none" />
@@ -49,7 +61,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
       <div className="absolute inset-5 md:inset-8 rounded-xl md:rounded-[2rem] border border-yellow-100/10 pointer-events-none" />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-3xl md:rounded-[3rem]">
         <span className="text-4xl md:text-8xl font-black text-yellow-200/10 tracking-[0.2em] uppercase transform -rotate-12 select-none">
-          Casino 21
+          Kasino21
         </span>
       </div>
 

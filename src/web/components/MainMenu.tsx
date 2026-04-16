@@ -22,6 +22,8 @@ import { WelcomeModal } from './WelcomeModal';
 import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
+import mainMenuBg from '../../Public/background.jpg';
+import brand21Icon from '../../Public/Icon (2).png';
 
 export function MainMenu() {
   const { gameState, setGameState, setLocalPlayerId } = useGame();
@@ -419,8 +421,8 @@ export function MainMenu() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Casino 21 — Únete a mi sala',
-          text: `¡Únete a mi sala en Casino 21! Código: ${currentRoomId}`,
+          title: 'Kasino21 — Unete a mi sala',
+          text: `Unete a mi sala en Kasino21. Codigo: ${currentRoomId}`,
           url: getJoinUrl(),
         });
       } catch { /* user cancelled */ }
@@ -548,6 +550,16 @@ export function MainMenu() {
   // ─── Main 3-Column Layout ───
   return (
     <div className="flex flex-col h-screen overflow-hidden relative z-10">
+      <div
+        className="absolute inset-0 pointer-events-none opacity-35"
+        style={{
+          backgroundImage: `url(${mainMenuBg})`,
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(2,6,23,0.82)_0%,rgba(2,6,23,0.7)_45%,rgba(2,6,23,0.9)_100%)]" />
       {/* Ambient background orbs */}
       <div className="ambient-orb ambient-orb-gold w-[400px] h-[400px] -top-40 -left-20" />
       <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10" />
@@ -697,9 +709,12 @@ export function MainMenu() {
           <div className={`space-y-8 ${mobileTab === 'lobby' ? 'block animate-fade-in' : 'hidden'} ${showLobbyDesktop ? 'lg:block' : 'lg:hidden'}`}>
             {/* Big Logo */}
           <div className="text-center pt-8 pb-4 lg:hidden">
-            <h1 className="text-6xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg animate-fade-in select-none">
-              CASINO 21
-            </h1>
+            <div className="flex items-center justify-center gap-3">
+              <img src={brand21Icon} alt="Kasino21 icono" className="w-12 h-12 rounded-xl object-cover border border-casino-gold/30" />
+              <h1 className="text-6xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg animate-fade-in select-none">
+                KASINO21
+              </h1>
+            </div>
             <p className="text-gray-500 text-xs mt-2 uppercase tracking-[0.3em] font-bold">
               Juego de cartas competitivo
             </p>

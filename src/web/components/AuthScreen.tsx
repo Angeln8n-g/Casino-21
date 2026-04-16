@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
+import brand21Icon from '../../Public/Icon (2).png';
 
 export function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -54,9 +55,12 @@ export function AuthScreen() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg select-none">
-            CASINO 21
-          </h1>
+          <div className="flex items-center justify-center gap-3">
+            <img src={brand21Icon} alt="Kasino21 icono" className="w-12 h-12 rounded-xl object-cover border border-casino-gold/30" />
+            <h1 className="text-5xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg select-none">
+              KASINO21
+            </h1>
+          </div>
           <p className="text-gray-500 text-[10px] mt-2 uppercase tracking-[0.3em] font-bold">
             Juego de cartas competitivo
           </p>
