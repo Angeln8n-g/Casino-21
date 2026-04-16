@@ -83,6 +83,16 @@ cd server
 npm run build
 ```
 
+### Produccion (frontend + backend)
+
+```bash
+npm run build:prod
+```
+
+Guia operativa de VPS:
+
+- `DEPLOY_VPS.md`
+
 ## Mecánicas principales implementadas
 
 - Modos: `1v1` y base para `2v2`
@@ -107,13 +117,17 @@ npm run build
 
 - `npm run dev` → frontend con Vite
 - `npm run build` → build frontend
+- `npm run build:server` → build backend desde la raiz
+- `npm run build:prod` → build frontend + backend
 - `npm run start` → preview frontend build
+- `npm run start:server` → arranque backend desde la raiz
+- `npm run preview:host` → preview accesible en red para pruebas
 - `npm test` → tests del workspace principal
 
 ### `server/`
 
 - `npm run dev` → backend con nodemon + ts-node
-- `npm run start` → backend con ts-node
+- `npm run start` → backend compilado (`dist/index.js`)
 - `npm run build` → compilación TypeScript del backend
 
 ## Estado actual

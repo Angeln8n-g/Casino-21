@@ -13,6 +13,9 @@ dotenv.config();
 
 const RULES_VERSION = 'agrupar-merge-2026-04-09';
 const EXPOSE_RULES_VERSION = process.env.EXPOSE_RULES_VERSION === 'true';
+const ALLOW_INSECURE_JWT_FALLBACK = process.env.ALLOW_INSECURE_JWT_FALLBACK === 'true';
+const APP_ENV = process.env.NODE_ENV || 'development';
+const startedAt = Date.now();
 
 // Interface de Mensajes de Chat
 interface ChatMessage {
@@ -26,12 +29,24 @@ interface ChatMessage {
 }
 
 const app = express();
+app.set('trust proxy', 1);
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001")
   .split(",")
   .map(origin => origin.trim())
   .filter(Boolean);
 
 app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST"] }));
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    environment: APP_ENV,
+    uptimeSeconds: Math.round(process.uptime()),
+    startedAt: new Date(startedAt).toISOString(),
+    rooms: Object.keys(rooms).length,
+    matchmakingQueue: matchmakingQueue.length,
+    insecureJwtFallback: ALLOW_INSECURE_JWT_FALLBACK,
+  });
+});
 
 if (EXPOSE_RULES_VERSION) {
   app.get('/rules_version', (_req, res) => {
@@ -68,15 +83,11 @@ io.use((socket, next) => {
     next();
   } catch (err: any) {
     console.error('Error verificando token:', err.message);
-    // Para depuración, vamos a dejar pasar la conexión temporalmente 
-    // pero marcamos que falló la auth estricta
-    // next(new Error('Authentication error: Invalid token'));
-    
-    // WORKAROUND TEMPORAL: 
-    // Como Supabase usa su propia firma y a veces el JWT_SECRET no coincide exactamente 
-    // con el token del cliente (debido a configuración de anon_key vs jwt_secret),
-    // vamos a confiar en el token decodificándolo sin verificar la firma para el MVP,
-    // o simplemente usando un ID genérico si falla la verificación.
+    if (!ALLOW_INSECURE_JWT_FALLBACK) {
+      return next(new Error('Authentication error: Invalid token'));
+    }
+
+    // Solo habilitar esta vía de diagnóstico explícitamente fuera de producción.
     try {
       const decodedUnverified = jwt.decode(token);
       const normalizedDecoded = (decodedUnverified && typeof decodedUnverified === 'object')

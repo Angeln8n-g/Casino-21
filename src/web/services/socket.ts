@@ -1,7 +1,11 @@
 import { io, Socket } from 'socket.io-client';
 import { supabase } from './supabase';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (
+  import.meta.env.PROD && typeof window !== 'undefined'
+    ? window.location.origin
+    : 'http://localhost:4000'
+);
 
 class SocketService {
   private socket: Socket | null = null;
@@ -28,7 +32,10 @@ class SocketService {
         this.socket = io(SOCKET_URL, {
           auth: {
             token
-          }
+          },
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 10,
         });
 
         this.socket.on('connect', () => {
