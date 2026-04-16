@@ -20,6 +20,8 @@ const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
   state.teams.reduce((sum, team) => sum + team.virados, 0);
 
+const TURN_TIME_LIMIT_MS = 30000;
+
 const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
   if (!localPlayerId || !state.winnerId) {
     return false;
@@ -34,7 +36,7 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 };
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
-  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage } = useGame();
+  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages } = useGame();
   const { profile, user } = useAuth();
   const { playSfx } = useAudio();
   
@@ -46,9 +48,13 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationSeed, setCelebrationSeed] = useState(0);
   const [boardThemeUrl, setBoardThemeUrl] = useState<string | null>(null);
+  const [playerAvatarUrls, setPlayerAvatarUrls] = useState<Record<string, string | null>>({});
+  const [activeReactions, setActiveReactions] = useState<Record<string, { emoji: string; nonce: number }>>({});
   const previousGameStateRef = useRef<GameState | null>(null);
-  const quickEmojis = ['😀', '😮', '🔥', '👏', '💀', '🎉'];
+  const quickEmojis = useRef(['😀', '😮', '🔥', '👏', '💀', '🎉']).current;
   const roomId = localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || '';
+  const chatIndexRef = useRef(0);
+  const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
@@ -170,6 +176,12 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   }, [showCelebration]);
 
   useEffect(() => {
+    return () => {
+      Object.values(reactionTimersRef.current).forEach((t) => clearTimeout(t));
+    };
+  }, []);
+
+  useEffect(() => {
     let isMounted = true;
 
     const resolveBoardTheme = async () => {
@@ -229,6 +241,69 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
       isMounted = false;
     };
   }, [roomId, user?.id]);
+
+  useEffect(() => {
+    if (!gameState?.players?.length) return;
+
+    const ids = Array.from(new Set(gameState.players.map((p) => p.id).filter(Boolean)));
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      const { data, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, avatar_url, equipped_avatar')
+        .in('id', ids);
+
+      if (profilesError || !data || cancelled) return;
+
+      const next: Record<string, string | null> = {};
+      for (const row of data as any[]) {
+        const url = row.equipped_avatar ? `/assets/store/${row.equipped_avatar}` : row.avatar_url;
+        next[row.id] = url || null;
+      }
+      setPlayerAvatarUrls(next);
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [gameState?.players]);
+
+  useEffect(() => {
+    if (!chatMessages || chatMessages.length === 0) return;
+
+    const start = chatIndexRef.current;
+    if (chatMessages.length <= start) return;
+
+    const newMessages = chatMessages.slice(start);
+    chatIndexRef.current = chatMessages.length;
+
+    for (const msg of newMessages) {
+      const text = (msg.text || '').trim();
+      if (!quickEmojis.includes(text)) continue;
+      if (!gameState?.players?.some((p) => p.id === msg.senderId)) continue;
+
+      setActiveReactions((prev) => ({
+        ...prev,
+        [msg.senderId]: { emoji: text, nonce: Date.now() },
+      }));
+
+      const prevTimer = reactionTimersRef.current[msg.senderId];
+      if (prevTimer) clearTimeout(prevTimer);
+
+      reactionTimersRef.current[msg.senderId] = setTimeout(() => {
+        setActiveReactions((prev) => {
+          if (!prev[msg.senderId]) return prev;
+          const next = { ...prev };
+          delete next[msg.senderId];
+          return next;
+        });
+      }, 1600);
+    }
+  }, [chatMessages, gameState?.players, quickEmojis]);
 
   if (!gameState) return null;
 
@@ -524,6 +599,60 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     sendMessage(roomId, emoji);
   };
 
+  const getAvatarForPlayer = (playerId: string) => playerAvatarUrls[playerId] || null;
+
+  const renderTurnPlayer = (p: any, index: number) => {
+    const isTurn = index === gameState.currentTurnPlayerIndex;
+    const progress = isTurn ? Math.max(0, Math.min(1, timeRemaining / TURN_TIME_LIMIT_MS)) : 1;
+    const ringColor = isTurn ? (timeRemaining < 10000 ? '#ef4444' : '#22c55e') : '#334155';
+    const ringStyle: React.CSSProperties = {
+      background: `conic-gradient(${ringColor} ${progress * 360}deg, rgba(255,255,255,0.14) 0deg)`,
+    };
+
+    const avatarUrl = getAvatarForPlayer(p.id);
+    const reaction = activeReactions[p.id];
+
+    return (
+      <div className={`flex items-center gap-3 px-3 py-2 rounded-2xl border ${isTurn ? 'bg-white/10 border-white/20 shadow-[0_0_18px_rgba(34,211,238,0.15)]' : 'bg-black/35 border-white/10'}`}>
+        <div className="relative shrink-0">
+          {reaction && (
+            <div key={reaction.nonce} className="absolute -top-4 left-1/2 -translate-x-1/2 text-2xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-bounce">
+              {reaction.emoji}
+            </div>
+          )}
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-[3px]" style={ringStyle}>
+            <div className="w-full h-full rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-lg md:text-xl font-black text-casino-gold">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+              ) : (
+                (p.name?.charAt(0)?.toUpperCase() || '?')
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs md:text-sm font-black text-white truncate max-w-[120px]" title={p.name}>
+              {p.name}
+            </span>
+            {p.id === localPlayerId && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold uppercase tracking-wider">
+                Tu
+              </span>
+            )}
+          </div>
+          <div className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${isTurn ? 'text-cyan-200' : 'text-gray-400'}`}>
+            {isTurn ? 'Turno' : 'Espera'}
+          </div>
+          <div className="text-[10px] md:text-xs text-yellow-300/90 font-bold">
+            Recogidas: {p.collectedCards.length}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
@@ -545,7 +674,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         )}
 
-        <div className="flex flex-col h-full max-w-6xl mx-auto p-4 gap-4 relative z-10 pointer-events-auto">
+        <div className="flex flex-col h-full max-w-6xl mx-auto p-2 md:p-4 gap-3 md:gap-4 relative z-10 pointer-events-auto">
           {/* Top Header */}
         <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
           {viradoBanner && (
@@ -605,26 +734,22 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               </div>
             </div>
             
-            <div className="flex gap-2 md:gap-4 w-full md:w-auto justify-center mt-2 md:mt-0 order-3 md:order-none">
-              {gameState.players.map((p, i) => (
-                <div key={p.id} className={`flex-1 md:flex-none text-center px-2 md:px-6 py-1.5 md:py-2 rounded-xl md:rounded-2xl border transition-all ${i === gameState.currentTurnPlayerIndex ? 'bg-blue-600/80 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.6)] md:scale-110 z-10' : 'bg-black/40 border-white/10 opacity-70'}`}>
-                  <div className="font-bold text-white text-xs md:text-base truncate max-w-[80px] md:max-w-none mx-auto" title={p.name}>{p.name} {p.id === localPlayerId ? '(Tú)' : ''}</div>
-                  <div className={`text-[9px] md:text-xs font-black uppercase mt-0.5 md:mt-1 ${i === gameState.currentTurnPlayerIndex ? 'text-white' : 'text-gray-400'}`}>
-                    {i === gameState.currentTurnPlayerIndex ? 'TURNO' : 'Espera...'}
+            <div className="w-full md:w-auto flex justify-center mt-2 md:mt-0 order-3 md:order-none">
+              {gameState.mode === '1v1' && gameState.players.length === 2 ? (
+                <div className="w-full flex items-center justify-between gap-3 md:gap-6">
+                  <div className="flex-1 min-w-0">{renderTurnPlayer(gameState.players[0], 0)}</div>
+                  <div className="shrink-0 text-yellow-300/90 font-black tracking-widest text-lg md:text-2xl drop-shadow-sm">
+                    VS
                   </div>
-                  <div className="hidden md:block text-xs text-yellow-400 mt-1 font-bold">Recogidas: {p.collectedCards.length}</div>
-                  
-                  {/* Timer display for current turn */}
-                  {i === gameState.currentTurnPlayerIndex && (
-                    <div className="mt-1 md:mt-2 w-full bg-black/50 rounded-full h-1 md:h-1.5 overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-1000 linear ${timeRemaining < 10000 ? 'bg-red-500' : 'bg-green-400'}`}
-                        style={{ width: `${(timeRemaining / 30000) * 100}%` }}
-                      />
-                    </div>
-                  )}
+                  <div className="flex-1 min-w-0 flex justify-end">{renderTurnPlayer(gameState.players[1], 1)}</div>
                 </div>
-              ))}
+              ) : (
+                <div className="flex flex-wrap gap-2 md:gap-4 w-full justify-center">
+                  {gameState.players.map((p, i) => (
+                    <div key={p.id}>{renderTurnPlayer(p, i)}</div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="hidden md:flex items-center gap-3">
               <AudioControlButton compact />
@@ -711,21 +836,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         )}
 
-        {!isSpectator && (
-          <div className="self-center bg-black/35 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-lg">
-            {quickEmojis.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => handleQuickEmoji(emoji)}
-                className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition-colors text-lg"
-                title={`Enviar ${emoji}`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* Player Hand */}
         <footer className={`mt-auto bg-black/40 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-3 md:gap-6 relative overflow-hidden transition-all duration-300 w-full`}>
           {isSpectator && (
@@ -736,6 +846,26 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           {!isCurrentTurn && !isSpectator && (
             <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
               <span className="text-gray-300 font-black tracking-widest text-sm md:text-lg animate-pulse">ESPERANDO TURNO...</span>
+            </div>
+          )}
+          {!isSpectator && (
+            <div className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
+              <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                {quickEmojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleQuickEmoji(emoji)}
+                    className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition-colors text-lg shrink-0"
+                    title={`Enviar ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-300">
+                <span className="text-gray-500">🙂</span>
+                Emoticonos
+              </div>
             </div>
           )}
           <HandView 

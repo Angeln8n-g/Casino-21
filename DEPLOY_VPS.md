@@ -127,7 +127,7 @@ pm2 startup
 Comandos útiles:
 ```bash
 pm2 status
-pm2 logs casino21-server
+pm2 logs casino-pro
 ```
 
 ## 7. Configurar Nginx
@@ -175,7 +175,7 @@ git pull
 npm ci
 npm --prefix server ci
 npm run build:prod
-pm2 restart casino21-server
+pm2 restart casino-pro
 sudo systemctl reload nginx
 ```
 

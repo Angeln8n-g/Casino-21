@@ -32,7 +32,7 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
           </div>
         </div>
         
-        <div className="flex justify-center gap-2 md:gap-4 h-[24vw] min-h-[4.5rem] max-h-[9rem] md:h-40 w-full overflow-visible">
+        <div className="flex justify-start md:justify-center gap-2 md:gap-4 h-[24vw] min-h-[4.5rem] max-h-[9rem] md:h-40 w-full overflow-x-auto overflow-y-visible overscroll-contain custom-scrollbar px-1">
           {hand.map((card, index) => {
             if (!card) return null;
             return (

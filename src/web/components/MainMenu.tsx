@@ -431,26 +431,31 @@ export function MainMenu() {
 
   // ─── Waiting Room View ───
   if (view === 'waiting') {
+    const qrSize =
+      typeof window !== 'undefined'
+        ? Math.min(170, Math.max(120, Math.round(window.innerWidth * 0.36)))
+        : 140;
+
     return (
-      <div className="flex items-center justify-center min-h-screen p-6 relative z-10">
-        <div className="glass-panel-strong p-8 max-w-md w-full text-center animate-fade-in">
+      <div className="flex items-center justify-center min-h-screen p-4 md:p-6 relative z-10">
+        <div className="glass-panel-strong p-5 md:p-8 max-w-md w-full text-center animate-fade-in">
           <div className="flex justify-end mb-4">
             <AudioControlButton compact />
           </div>
           {/* Room Code */}
           <div className="mb-4">
             <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Código de Sala</p>
-            <h2 className="text-4xl font-display font-black text-casino-gold tracking-widest animate-glow-pulse inline-block">
+            <h2 className="text-3xl sm:text-4xl font-display font-black text-casino-gold tracking-widest animate-glow-pulse inline-block">
               {currentRoomId}
             </h2>
           </div>
 
           {/* ─── QR Code & Share Section ─── */}
           <div className="mb-6 flex flex-col items-center gap-4">
-            <div className="relative p-3 bg-white rounded-2xl shadow-[0_0_30px_rgba(251,191,36,0.15)] group">
+            <div className="relative p-2.5 bg-white rounded-2xl shadow-[0_0_30px_rgba(251,191,36,0.15)] group">
               <QRCodeSVG
                 value={getJoinUrl()}
-                size={140}
+                size={qrSize}
                 level="M"
                 bgColor="#ffffff"
                 fgColor="#0f172a"

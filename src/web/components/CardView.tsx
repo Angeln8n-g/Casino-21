@@ -28,10 +28,10 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(({ card, selec
       ref={ref}
       onClick={disabled ? undefined : onClick}
       className={`
-        relative w-[15vw] h-[22.5vw] min-w-[3rem] min-h-[4.5rem] max-w-[6rem] max-h-[9rem] md:w-24 md:h-36 rounded-2xl flex flex-col justify-between p-1.5 md:p-3 
+        relative w-[clamp(2.6rem,14vw,5.2rem)] h-[clamp(3.9rem,21vw,7.8rem)] md:w-24 md:h-36 rounded-2xl flex flex-col justify-between p-1.5 md:p-3 
         select-none transition-all duration-300 transform-gpu touch-manipulation
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1.5 md:hover:-translate-y-3 hover:shadow-2xl'}
-        ${selected ? 'ring-2 md:ring-4 ring-yellow-300 scale-[1.07] -translate-y-2 md:-translate-y-4 shadow-2xl' : 'shadow-xl'}
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 md:hover:-translate-y-3 hover:shadow-2xl'}
+        ${selected ? 'ring-2 md:ring-4 ring-yellow-300 scale-[1.03] md:scale-[1.07] -translate-y-1 md:-translate-y-4 shadow-2xl' : 'shadow-xl'}
         ${colorClass}
         ${className}
       `}
