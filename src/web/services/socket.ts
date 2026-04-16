@@ -9,10 +9,19 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (
 
 class SocketService {
   private socket: Socket | null = null;
+  private connectingPromise: Promise<Socket> | null = null;
   /** Tracks the current room the user is in (for presence) */
   public currentRoomId: string | null = null;
 
   async connect() {
+    if (this.socket?.connected) {
+      return this.socket;
+    }
+
+    if (this.connectingPromise) {
+      return this.connectingPromise;
+    }
+
     if (!this.socket || !this.socket.connected) {
       // Obtener el token JWT de Supabase
       const { data } = await supabase.auth.getSession();
@@ -23,12 +32,14 @@ class SocketService {
         throw new Error("No autenticado");
       }
 
-      // Si ya hay un socket pero está desconectado, lo limpiamos
+      // Si ya hay un socket pero está desconectado, lo limpiamos (sin forzar si hay conexión en curso)
       if (this.socket) {
-        this.socket.disconnect();
+        try {
+          this.socket.disconnect();
+        } catch {}
       }
 
-      return new Promise<Socket>((resolve, reject) => {
+      this.connectingPromise = new Promise<Socket>((resolve, reject) => {
         this.socket = io(SOCKET_URL, {
           auth: {
             token
@@ -39,6 +50,7 @@ class SocketService {
         });
 
         this.socket.on('connect', () => {
+          this.connectingPromise = null;
           resolve(this.socket!);
         });
 
@@ -66,11 +78,12 @@ class SocketService {
 
         this.socket.on('connect_error', (err) => {
           console.error("Error conectando el socket:", err.message);
+          this.connectingPromise = null;
           reject(err);
         });
       });
     }
-    return this.socket;
+    return this.connectingPromise || this.socket!;
   }
 
   getSocket() {

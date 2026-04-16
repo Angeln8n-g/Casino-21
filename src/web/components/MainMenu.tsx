@@ -24,7 +24,7 @@ import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
 
 export function MainMenu() {
-  const { setGameState, setLocalPlayerId } = useGame();
+  const { gameState, setGameState, setLocalPlayerId } = useGame();
   const { profile, signOut } = useAuth();
   const { toast, dismissToast, totalPending, appNotifications, unreadCount, markAllAsRead, markNotificationAsRead, deleteReadNotifications, deleteNotification, handleGameInvite, activeGameInvitation, setActiveGameInvitation } = useNotifications();
   const { playSfx } = useAudio();
@@ -68,6 +68,7 @@ export function MainMenu() {
   const previousPlayersInRoomRef = useRef(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const joinParamHandled = useRef(false);
+  const hasRequestedStateRef = useRef(false);
 
   const showLobbyDesktop = desktopTab === 'all' || desktopTab === 'lobby';
 
@@ -86,6 +87,7 @@ export function MainMenu() {
   useEffect(() => {
     if (view !== 'waiting') {
       previousPlayersInRoomRef.current = 0;
+      hasRequestedStateRef.current = false;
       return;
     }
 
@@ -95,6 +97,26 @@ export function MainMenu() {
 
     previousPlayersInRoomRef.current = playersInRoom.length;
   }, [playersInRoom.length, playSfx, view]);
+
+  useEffect(() => {
+    if (view !== 'waiting') return;
+    if (gameState) return;
+    if (!currentRoomId) return;
+
+    const expectedPlayers = mode === '1v1' ? 2 : 4;
+    if (playersInRoom.length !== expectedPlayers) return;
+    if (hasRequestedStateRef.current) return;
+
+    hasRequestedStateRef.current = true;
+    const timer = setTimeout(() => {
+      try {
+        const socket = socketService.getSocket();
+        socket.emit('request_game_state', { roomId: currentRoomId });
+      } catch {}
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [currentRoomId, gameState, mode, playersInRoom.length, view]);
 
   // ─── Desktop Invitation & Spectator Listener ───
   useEffect(() => {

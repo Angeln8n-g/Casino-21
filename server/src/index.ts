@@ -387,6 +387,37 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('request_game_state', ({ roomId }: { roomId: string }) => {
+    const room = rooms[roomId];
+    if (!room || !room.state) return;
+
+    const isPlayer = room.players?.some((p: any) => p.userId === userId);
+    const isSpectator = room.spectators?.some((s: any) => s.userId === userId);
+    if (!isPlayer && !isSpectator) return;
+
+    if (isSpectator) {
+      const spectatorSafeState: GameState = JSON.parse(JSON.stringify(room.state));
+      spectatorSafeState.players.forEach((statePlayer: any) => {
+        statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({
+          id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0
+        }));
+      });
+      io.to(socket.id).emit('game_state_update', spectatorSafeState);
+      return;
+    }
+
+    const playerEntry = room.players.find((p: any) => p.userId === userId);
+    const safeState: GameState = JSON.parse(JSON.stringify(room.state));
+    safeState.players.forEach((statePlayer: any) => {
+      if (statePlayer.id !== playerEntry.playerId) {
+        statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({
+          id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0
+        }));
+      }
+    });
+    io.to(socket.id).emit('game_state_update', safeState);
+  });
+
   // 3. Cancelar Sala
   socket.on('cancel_room', ({ roomId }: { roomId: string }) => {
     const room = rooms[roomId];
