@@ -13,6 +13,7 @@ interface QuestItem {
   quest_type: string;
   difficulty: 'easy' | 'medium' | 'hard' | 'elite';
   is_active: boolean;
+  board_theme_url?: string;
 }
 
 const ELO_SUGGESTIONS = {
@@ -26,6 +27,7 @@ export function QuestManager() {
   const [quests, setQuests] = useState<QuestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   
   // Form State
   const [isEditing, setIsEditing] = useState(false);
@@ -39,7 +41,8 @@ export function QuestManager() {
     reward_elo: 1,
     quest_type: 'play_match',
     difficulty: 'easy',
-    is_active: true
+    is_active: true,
+    board_theme_url: ''
   });
 
   useEffect(() => {
@@ -66,6 +69,37 @@ export function QuestManager() {
     });
   };
 
+  const handleThemeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event_assets')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event_assets')
+        .getPublicUrl(filePath);
+
+      setCurrentQuest({ ...currentQuest, board_theme_url: publicUrl });
+    } catch (err: any) {
+      console.error('Error uploading quest board theme:', err);
+      setError('Error al subir el tapete: ' + err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -84,7 +118,8 @@ export function QuestManager() {
           p_reward_elo: currentQuest.reward_elo,
           p_quest_type: currentQuest.quest_type,
           p_difficulty: currentQuest.difficulty,
-          p_is_active: currentQuest.is_active
+          p_is_active: currentQuest.is_active,
+          p_board_theme_url: currentQuest.board_theme_url || null
         });
         if (error) throw error;
       } else {
@@ -98,7 +133,8 @@ export function QuestManager() {
           p_reward_xp: currentQuest.reward_xp,
           p_reward_elo: currentQuest.reward_elo,
           p_quest_type: currentQuest.quest_type,
-          p_difficulty: currentQuest.difficulty
+          p_difficulty: currentQuest.difficulty,
+          p_board_theme_url: currentQuest.board_theme_url || null
         });
         if (error) throw error;
       }
@@ -149,7 +185,8 @@ export function QuestManager() {
               reward_elo: 1,
               quest_type: 'play_match',
               difficulty: 'easy',
-              is_active: true
+              is_active: true,
+              board_theme_url: ''
             });
             setIsEditing(true);
           }}
@@ -182,6 +219,17 @@ export function QuestManager() {
               <div className="md:col-span-3">
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
                 <input required type="text" placeholder="Descripción detallada de la misión" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.description} onChange={e => setCurrentQuest({...currentQuest, description: e.target.value})} />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tapete de la Misión</label>
+                <div className="flex gap-2 items-center">
+                  <input type="text" placeholder="URL de textura del tapete" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" value={currentQuest.board_theme_url || ''} onChange={e => setCurrentQuest({...currentQuest, board_theme_url: e.target.value})} />
+                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                    {isUploading ? '...' : '🧵'}
+                    <input type="file" className="hidden" accept="image/*" onChange={handleThemeUpload} disabled={isUploading} />
+                  </label>
+                </div>
               </div>
 
               <div>
@@ -254,7 +302,10 @@ export function QuestManager() {
                   quests.map(quest => (
                     <tr key={quest.id} className={`border-b border-white/5 transition-colors ${!quest.is_active ? 'opacity-50 grayscale' : 'hover:bg-white/5'}`}>
                       <td className="p-4">
-                        <div className="font-bold">{quest.title}</div>
+                        <div className="font-bold flex items-center gap-2">
+                          {quest.title}
+                          {quest.board_theme_url && <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Tapete</span>}
+                        </div>
                         <div className="text-[10px] font-mono text-gray-500">{quest.code} • Objetiivo: {quest.target_amount}</div>
                       </td>
                       <td className="p-4 text-center">

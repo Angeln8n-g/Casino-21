@@ -28,32 +28,32 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(({ card, selec
       ref={ref}
       onClick={disabled ? undefined : onClick}
       className={`
-        relative w-[15vw] h-[22.5vw] min-w-[3rem] min-h-[4.5rem] max-w-[6rem] max-h-[9rem] md:w-24 md:h-36 rounded-xl flex flex-col justify-between p-1.5 md:p-3 
+        relative w-[15vw] h-[22.5vw] min-w-[3rem] min-h-[4.5rem] max-w-[6rem] max-h-[9rem] md:w-24 md:h-36 rounded-2xl flex flex-col justify-between p-1.5 md:p-3 
         select-none transition-all duration-300 transform-gpu touch-manipulation
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-2 md:hover:-translate-y-4 hover:rotate-y-12 hover:shadow-2xl'}
-        ${selected ? 'ring-2 md:ring-4 ring-yellow-400 scale-110 -translate-y-3 md:-translate-y-6 shadow-2xl' : 'shadow-xl'}
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1.5 md:hover:-translate-y-3 hover:shadow-2xl'}
+        ${selected ? 'ring-2 md:ring-4 ring-yellow-300 scale-[1.07] -translate-y-2 md:-translate-y-4 shadow-2xl' : 'shadow-xl'}
         ${colorClass}
         ${className}
       `}
       style={{
-        background: disabled ? '#e5e7eb' : 'linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%)',
+        background: disabled ? '#e5e7eb' : 'linear-gradient(165deg, #ffffff 0%, #f8fafc 35%, #e2e8f0 100%)',
         boxShadow: selected 
-          ? '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255,255,255,0.8)' 
-          : '0 10px 15px -3px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255,255,255,0.8)',
+          ? '0 22px 40px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.45) inset, inset 0 2px 6px rgba(255,255,255,0.9)' 
+          : '0 10px 20px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.45) inset, inset 0 2px 6px rgba(255,255,255,0.9)',
         transformStyle: 'preserve-3d',
-        border: '1px solid rgba(255,255,255,0.5)',
+        border: '1px solid rgba(255,255,255,0.55)',
         ...style
       }}
       {...props}
     >
       {/* 3D Inner Edge effect */}
-      <div className="absolute inset-0 rounded-xl border border-gray-200 pointer-events-none" style={{ transform: 'translateZ(-1px)' }}></div>
+      <div className="absolute inset-[3px] rounded-xl border border-slate-300/80 pointer-events-none" style={{ transform: 'translateZ(-1px)' }}></div>
       
-      <div className="text-xs md:text-lg font-bold leading-none">{displayRank}</div>
-      <div className="text-2xl md:text-5xl text-center flex-grow flex items-center justify-center filter drop-shadow-md">
+      <div className="text-xs md:text-lg font-semibold leading-none tracking-tight">{displayRank}</div>
+      <div className="text-2xl md:text-5xl text-center flex-grow flex items-center justify-center filter drop-shadow-lg">
         {suitSymbols[card.suit]}
       </div>
-      <div className="text-xs md:text-lg font-bold leading-none rotate-180">{displayRank}</div>
+      <div className="text-xs md:text-lg font-semibold leading-none rotate-180 tracking-tight">{displayRank}</div>
     </div>
   );
 });

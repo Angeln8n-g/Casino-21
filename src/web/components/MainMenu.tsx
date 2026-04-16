@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../hooks/useGame';
 import { GameMode } from '../../domain/types';
 import { socketService } from '../services/socket';
@@ -21,6 +21,7 @@ import { GameInvitationModal } from './GameInvitationModal';
 import { WelcomeModal } from './WelcomeModal';
 import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
+import { QRCodeSVG } from 'qrcode.react';
 
 export function MainMenu() {
   const { setGameState, setLocalPlayerId } = useGame();
@@ -65,6 +66,8 @@ export function MainMenu() {
   const [matchFound, setMatchFound] = useState<{roomId: string, players: any[]} | null>(null);
   const matchmakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previousPlayersInRoomRef = useRef(0);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const joinParamHandled = useRef(false);
 
   const showLobbyDesktop = desktopTab === 'all' || desktopTab === 'lobby';
 
@@ -117,6 +120,27 @@ export function MainMenu() {
       setPlayerName(profile.username);
     }
   }, [profile]);
+
+  // ─── Auto-join via ?join= query param ───
+  useEffect(() => {
+    if (joinParamHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const joinCode = params.get('join');
+    if (joinCode) {
+      joinParamHandled.current = true;
+      setRoomIdInput(joinCode.toUpperCase());
+      // Clean the URL without reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete('join');
+      window.history.replaceState({}, '', url.pathname + url.search);
+      // Auto-join once profile is ready
+      if (profile?.username) {
+        socketService.connect().then(socket => {
+          socket.emit('join_room', { roomId: joinCode.toUpperCase(), playerName: profile.username });
+        }).catch(err => setError(err.message || 'Error conectando al servidor...'));
+      }
+    }
+  }, [profile?.username]);
 
   // ─── Socket Logic (UNTOUCHED) ───
   useEffect(() => {
@@ -344,6 +368,45 @@ export function MainMenu() {
   };
   // ─── FIN FASE 8 ───
 
+  // ─── Share helpers ───
+  const getJoinUrl = useCallback(() => {
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?join=${currentRoomId}`;
+  }, [currentRoomId]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(getJoinUrl());
+      playSfx('cardPlay', { volumeMultiplier: 0.5 });
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback: select-copy
+      const ta = document.createElement('textarea');
+      ta.value = getJoinUrl();
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  }, [getJoinUrl, playSfx]);
+
+  const handleNativeShare = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Casino 21 — Únete a mi sala',
+          text: `¡Únete a mi sala en Casino 21! Código: ${currentRoomId}`,
+          url: getJoinUrl(),
+        });
+      } catch { /* user cancelled */ }
+    } else {
+      handleCopyLink();
+    }
+  }, [currentRoomId, getJoinUrl, handleCopyLink]);
+
   // ─── Waiting Room View ───
   if (view === 'waiting') {
     return (
@@ -353,14 +416,58 @@ export function MainMenu() {
             <AudioControlButton compact />
           </div>
           {/* Room Code */}
-          <div className="mb-6">
+          <div className="mb-4">
             <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Código de Sala</p>
             <h2 className="text-4xl font-display font-black text-casino-gold tracking-widest animate-glow-pulse inline-block">
               {currentRoomId}
             </h2>
           </div>
-          
-          <p className="text-gray-400 text-sm mb-8">Comparte este código con tus oponentes</p>
+
+          {/* ─── QR Code & Share Section ─── */}
+          <div className="mb-6 flex flex-col items-center gap-4">
+            <div className="relative p-3 bg-white rounded-2xl shadow-[0_0_30px_rgba(251,191,36,0.15)] group">
+              <QRCodeSVG
+                value={getJoinUrl()}
+                size={140}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                imageSettings={{
+                  src: '',
+                  height: 0,
+                  width: 0,
+                  excavate: false,
+                }}
+              />
+              {/* Subtle glow on hover */}
+              <div className="absolute inset-0 rounded-2xl border-2 border-casino-gold/0 group-hover:border-casino-gold/40 transition-all duration-500" />
+            </div>
+            <p className="text-gray-500 text-xs">Escanea para unirte al instante</p>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 w-full max-w-xs">
+              <button
+                onClick={handleCopyLink}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+                  linkCopied
+                    ? 'bg-casino-emerald/20 border-casino-emerald/50 text-casino-emerald'
+                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:border-white/20'
+                }`}
+              >
+                <span>{linkCopied ? '✓' : '🔗'}</span>
+                {linkCopied ? 'Copiado' : 'Copiar enlace'}
+              </button>
+              {'share' in navigator && (
+                <button
+                  onClick={handleNativeShare}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50"
+                >
+                  <span>📤</span>
+                  Compartir
+                </button>
+              )}
+            </div>
+          </div>
           
           {/* Player Slots */}
           <div className="space-y-3 mb-8">

@@ -19,15 +19,15 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
   const hand = player.hand || [];
 
   return (
-    <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl transition-colors backdrop-blur-md border flex flex-col md:flex-row gap-4 md:gap-8 items-center w-full max-w-full ${isCurrentTurn ? 'bg-blue-900/30 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-black/20 border-white/10'}`}>
+    <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl transition-all backdrop-blur-md border flex flex-col md:flex-row gap-4 md:gap-8 items-center w-full max-w-full ${isCurrentTurn ? 'bg-cyan-900/25 border-cyan-300/50 shadow-[0_0_20px_rgba(34,211,238,0.25)]' : 'bg-black/25 border-white/10'}`}>
       
       <div className="flex-grow w-full">
         <div className="flex justify-between items-center mb-2 md:mb-4">
           <h3 className="text-base md:text-2xl font-bold flex items-center gap-2 md:gap-3 drop-shadow-md">
             {player.name}
-            {isCurrentTurn && <span className="bg-gradient-to-r from-blue-500 to-blue-700 text-white text-[9px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 rounded-full animate-pulse shadow-lg">Tu Turno</span>}
+            {isCurrentTurn && <span className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[9px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 rounded-full animate-pulse shadow-lg">Tu Turno</span>}
           </h3>
-          <div className="text-[10px] md:text-sm text-gray-200 bg-black/30 px-2 md:px-4 py-1 md:py-2 rounded-full border border-white/10">
+          <div className="text-[10px] md:text-sm text-gray-100 bg-black/35 px-2 md:px-4 py-1 md:py-2 rounded-full border border-white/15">
             Virados: <span className="font-bold text-yellow-400">{player.virados}</span>
           </div>
         </div>

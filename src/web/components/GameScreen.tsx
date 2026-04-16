@@ -3,6 +3,7 @@ import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSe
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { supabase } from '../services/supabase';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
 import { ActionPanel, ActionPayload } from './ActionPanel';
@@ -33,8 +34,8 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 };
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
-  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage } = useGame();
-  const { profile } = useAuth();
+  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage } = useGame();
+  const { profile, user } = useAuth();
   const { playSfx } = useAudio();
   
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
@@ -44,7 +45,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const [viradoBanner, setViradoBanner] = useState<{ id: number; playerName: string | null } | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationSeed, setCelebrationSeed] = useState(0);
+  const [boardThemeUrl, setBoardThemeUrl] = useState<string | null>(null);
   const previousGameStateRef = useRef<GameState | null>(null);
+  const quickEmojis = ['😀', '😮', '🔥', '👏', '💀', '🎉'];
+  const roomId = localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || '';
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
@@ -164,6 +168,67 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const timer = setTimeout(() => setShowCelebration(false), 4200);
     return () => clearTimeout(timer);
   }, [showCelebration]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveBoardTheme = async () => {
+      const activeRoomId = roomId.toUpperCase();
+      if (!activeRoomId) {
+        if (isMounted) setBoardThemeUrl(null);
+        return;
+      }
+
+      try {
+        const { data: tMatch } = await supabase
+          .from('tournament_matches')
+          .select('event_id')
+          .eq('game_room_id', activeRoomId)
+          .maybeSingle();
+
+        if (tMatch?.event_id) {
+          const { data: eventData } = await supabase
+            .from('events')
+            .select('board_theme_url')
+            .eq('id', tMatch.event_id)
+            .maybeSingle();
+
+          if (eventData?.board_theme_url) {
+            if (isMounted) setBoardThemeUrl(eventData.board_theme_url);
+            return;
+          }
+        }
+
+        if (user?.id) {
+          const today = new Date().toISOString().split('T')[0];
+          const { data: questThemes } = await supabase
+            .from('player_daily_quests')
+            .select('catalog:quest_catalog(board_theme_url)')
+            .eq('player_id', user.id)
+            .eq('assigned_date', today);
+
+          const missionTheme = (questThemes || [])
+            .map((q: any) => (Array.isArray(q.catalog) ? q.catalog[0] : q.catalog))
+            .find((c: any) => c?.board_theme_url)?.board_theme_url;
+
+          if (missionTheme) {
+            if (isMounted) setBoardThemeUrl(missionTheme);
+            return;
+          }
+        }
+
+        if (isMounted) setBoardThemeUrl(null);
+      } catch (themeError) {
+        console.error('Error resolving board theme:', themeError);
+        if (isMounted) setBoardThemeUrl(null);
+      }
+    };
+
+    resolveBoardTheme();
+    return () => {
+      isMounted = false;
+    };
+  }, [roomId, user?.id]);
 
   if (!gameState) return null;
 
@@ -454,6 +519,11 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     window.location.reload();
   };
 
+  const handleQuickEmoji = (emoji: string) => {
+    if (!roomId) return;
+    sendMessage(roomId, emoji);
+  };
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
@@ -607,7 +677,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         {/* Main Board Area */}
         <main 
           className="flex-grow flex flex-col items-center justify-center relative bg-cover bg-center bg-no-repeat transition-all duration-1000"
-          style={profile?.equipped_board ? { backgroundImage: `url(/assets/store/${profile.equipped_board})` } : {}}
+          style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(/assets/store/${profile.equipped_board})` } : {}}
         >
           
           {/* Indicador visual de turno grande */}
@@ -623,6 +693,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             selectedFormationIds={selectedFormationIds}
             onCardClick={handleBoardCardClick}
             onFormationClick={handleFormationClick}
+            boardThemeUrl={boardThemeUrl}
           />
         </main>
 
@@ -637,6 +708,21 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               onPlayAction={handlePlayAction}
               onClearSelection={handleClearSelection}
             />
+          </div>
+        )}
+
+        {!isSpectator && (
+          <div className="self-center bg-black/35 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 flex items-center gap-2 shadow-lg">
+            {quickEmojis.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleQuickEmoji(emoji)}
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition-colors text-lg"
+                title={`Enviar ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
           </div>
         )}
 
@@ -715,7 +801,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
         {/* ─── FASE 9: Floating Chat ─── */}
         <GameChat 
-          roomId={localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || ''} 
+          roomId={roomId} 
           isSpectator={isSpectator} 
         />
         

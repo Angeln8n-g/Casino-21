@@ -20,6 +20,7 @@ interface EventData {
   min_elo: number;
   image_url: string;
   audio_url?: string;
+  board_theme_url?: string;
   participants_count: number;
   max_participants: number;
 }
@@ -51,7 +52,7 @@ export function AdminPanel() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<Partial<EventData>>({
     title: '', description: '', rules: '', type: 'torneo', status: 'draft', 
-    entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', max_participants: 16
+    entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', board_theme_url: '', max_participants: 16
   });
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export function AdminPanel() {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'audio' | 'boardTheme') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -99,8 +100,10 @@ export function AdminPanel() {
 
       if (type === 'image') {
         setCurrentEvent({ ...currentEvent, image_url: publicUrl });
-      } else {
+      } else if (type === 'audio') {
         setCurrentEvent({ ...currentEvent, audio_url: publicUrl });
+      } else {
+        setCurrentEvent({ ...currentEvent, board_theme_url: publicUrl });
       }
     } catch (err: any) {
       console.error('Error uploading file:', err);
@@ -448,7 +451,7 @@ export function AdminPanel() {
           {activeTab === 'events' && (
             <button 
               onClick={() => {
-                setCurrentEvent({ title: '', description: '', rules: '', type: 'torneo', status: 'draft', entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', max_participants: 16 });
+                setCurrentEvent({ title: '', description: '', rules: '', type: 'torneo', status: 'draft', entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', board_theme_url: '', max_participants: 16 });
                 setIsEditing(true);
               }}
               className="bg-casino-gold text-black px-4 py-2 rounded-xl font-bold hover:bg-yellow-400 transition whitespace-nowrap"
@@ -534,6 +537,17 @@ export function AdminPanel() {
                   </label>
                 </div>
               </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tapete del Evento</label>
+                  <div className="flex gap-2 items-center">
+                    <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL de textura del tapete" value={currentEvent.board_theme_url || ''} onChange={e => setCurrentEvent({...currentEvent, board_theme_url: e.target.value})} />
+                    <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                      {isUploading ? '...' : '🧵'}
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'boardTheme')} disabled={isUploading} />
+                    </label>
+                  </div>
+                </div>
+                
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
                 <textarea required rows={2} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.description} onChange={e => setCurrentEvent({...currentEvent, description: e.target.value})} />
