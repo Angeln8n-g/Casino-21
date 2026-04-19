@@ -11,7 +11,6 @@ import { Action } from '../../application/action-validator';
 import { DefaultActionValidator } from '../../application/action-validator';
 import { Card } from '../../domain/card';
 import { CardView } from './CardView';
-import { GameChat } from './GameChat';
 import { AudioControlButton } from './AudioControlButton';
 import { CelebrationConfetti } from './CelebrationConfetti';
 import { GameState } from '../../domain/game-state';
@@ -721,10 +720,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                 <p className="text-xs md:text-sm text-gray-300 mt-0.5 md:mt-1 font-medium">Ronda: {gameState.roundCount}</p>
               </div>
               <div className="flex gap-2 items-center md:hidden">
-                <div className="text-right bg-black/40 px-3 py-1.5 rounded-xl border border-white/10">
-                  <p className="text-[10px] text-gray-300">Mazo</p>
-                  <p className="text-lg font-bold text-white leading-none">{gameState.deck.cards.length}</p>
-                </div>
                 <AudioControlButton compact />
                 <button 
                   onClick={() => {
@@ -757,10 +752,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
             <div className="hidden md:flex items-center gap-3">
               <AudioControlButton compact />
-              <div className="text-right bg-black/40 px-6 py-2 rounded-2xl border border-white/10">
-                <p className="text-sm text-gray-300">Cartas en Mazo</p>
-                <p className="text-3xl font-bold text-white">{gameState.deck.cards.length}</p>
-              </div>
             </div>
             
             <button 
@@ -932,13 +923,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         )}
         </div>
-
-        {/* ─── FASE 9: Floating Chat ─── */}
-        <GameChat 
-          roomId={roomId} 
-          isSpectator={isSpectator} 
-        />
-        
       </div>
     </DndContext>
   );
