@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
@@ -73,11 +73,34 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150,
-        tolerance: 8,
+        delay: 70,
+        tolerance: 6,
       },
     })
   );
+
+  // Prevent accidental browser zoom on mobile (pinch-to-zoom / double-tap)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const existingMeta = document.querySelector('meta[name="viewport"]');
+    const content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+
+    if (existingMeta) {
+      const prev = existingMeta.getAttribute('content') || '';
+      existingMeta.setAttribute('content', content);
+      return () => { existingMeta.setAttribute('content', prev); };
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = content;
+      document.head.appendChild(meta);
+      return () => { document.head.removeChild(meta); };
+    }
+  }, []);
+
+  // Detect mobile for layout decisions
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   
   // Track total number of turns specifically to detect mid-round deals
   // The sum of all hands goes up when a new deal happens
@@ -381,16 +404,20 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     clearError();
   };
 
-  const handleDragStart = (event: any) => {
+  const handleDragStart = useCallback((event: any) => {
     // Si no es el turno, cancelar el drag
     if (!isCurrentTurn) {
       return;
     }
     if (event.active.data.current?.type === 'handCard') {
+      // Haptic feedback on mobile if available
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(10);
+      }
       playSfx('cardPlay', { volumeMultiplier: 0.4, playbackRate: 1.12 });
       setActiveDragCard(event.active.data.current.card);
     }
-  };
+  }, [isCurrentTurn, playSfx]);
 
   const handleDragEnd = (event: any) => {
     setActiveDragCard(null);
@@ -674,7 +701,14 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         )}
 
-        <div className="flex flex-col h-full max-w-6xl mx-auto p-2 md:p-4 gap-3 md:gap-4 relative z-10 pointer-events-auto">
+        {/* Main game layout — uses flex column with sticky footer on mobile */}
+        <div
+          className="flex flex-col h-full max-w-6xl mx-auto p-2 md:p-4 gap-2 md:gap-4 relative z-10 pointer-events-auto"
+          style={{
+            /* Account for safe area on top (notch) */
+            paddingTop: isMobile ? 'env(safe-area-inset-top, 0.5rem)' : undefined,
+          }}
+        >
           {/* Top Header */}
         <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
           {viradoBanner && (
@@ -794,15 +828,18 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         )}
 
-        {/* Main Board Area */}
-        <main 
-          className="flex-grow flex flex-col items-center justify-center relative bg-cover bg-center bg-no-repeat transition-all duration-1000"
+        {/* ===== ZONA CENTRAL — Tablero de juego ===== */}
+        <main
+          className={`
+            flex-grow flex flex-col items-center justify-center relative
+            bg-cover bg-center bg-no-repeat transition-all duration-1000
+            ${isMobile ? 'min-h-0 overflow-y-auto' : ''}
+          `}
           style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(/assets/store/${profile.equipped_board})` } : {}}
         >
-          
           {/* Indicador visual de turno grande */}
           {!isCurrentTurn && (
-            <div className="absolute top-4 bg-black/60 px-6 py-2 rounded-full border border-white/10 text-gray-300 font-bold tracking-widest z-0 pointer-events-none animate-pulse">
+            <div className={`absolute ${isMobile ? 'top-2 px-4 py-1.5 text-xs' : 'top-4 px-6 py-2 text-base'} bg-black/60 rounded-full border border-white/10 text-gray-300 font-bold tracking-widest z-0 pointer-events-none animate-pulse`}>
               ESPERANDO AL OPONENTE...
             </div>
           )}
@@ -816,6 +853,15 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             boardThemeUrl={boardThemeUrl}
           />
         </main>
+
+        {/* ===== Separador visual zona central / zona jugador ===== */}
+        {isMobile && (
+          <div className="w-full flex items-center gap-2 px-4 opacity-40">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
+            <span className="text-[8px] text-yellow-300/50 font-bold tracking-[0.3em] uppercase shrink-0">Tu zona</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
+          </div>
+        )}
 
         {/* Action Panel */}
         {!isSpectator && (
@@ -831,8 +877,22 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         )}
 
-        {/* Player Hand */}
-        <footer className={`mt-auto bg-black/40 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'} flex flex-col items-center gap-3 md:gap-6 relative overflow-hidden transition-all duration-300 w-full`}>
+        {/* ===== ZONA JUGADOR — Mano del jugador (sticky bottom en móvil) ===== */}
+        <footer
+          className={`
+            bg-black/40 backdrop-blur-md rounded-2xl md:rounded-3xl border
+            ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'}
+            flex flex-col items-center gap-2 md:gap-6 relative overflow-hidden
+            transition-all duration-300 w-full
+            ${isMobile
+              ? 'mt-auto p-2 sticky bottom-0 z-30'
+              : 'mt-auto p-6'
+            }
+          `}
+          style={isMobile ? {
+            paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))',
+          } : {}}
+        >
           {isSpectator && (
             <div className="absolute inset-0 bg-blue-900/40 z-20 flex items-center justify-center backdrop-blur-sm border-t border-blue-500/50">
               <span className="text-blue-300 font-black tracking-widest text-sm md:text-xl drop-shadow-md">MODO ESPECTADOR</span>
@@ -874,9 +934,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
         {/* Drag Overlay */}
         {!isSpectator && (
-          <DragOverlay dropAnimation={{ duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+          <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
             {activeDragCard ? (
-              <div className="rotate-3 md:rotate-6 scale-105 md:scale-110 shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95">
+              <div className={`${isMobile ? 'rotate-2 scale-110' : 'rotate-6 scale-110'} shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95`}>
                 <CardView card={activeDragCard} />
               </div>
             ) : null}
