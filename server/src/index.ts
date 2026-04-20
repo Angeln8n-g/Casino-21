@@ -446,6 +446,7 @@ io.on('connection', (socket) => {
     }
   });
 
+
   socket.on('leave_matchmaking', () => {
     const p = matchmakingQueue.find(p => p.userId === userId);
     if (p) {
@@ -506,6 +507,40 @@ io.on('connection', (socket) => {
     } else {
       socket.emit('action_error', (result as any).error || 'Acción inválida');
     }
+  });
+
+  // 3.5 Abandono de partida (Abandon Match)
+  socket.on('abandon_match', ({ roomId }) => {
+    const room = rooms[roomId];
+    if (!room || !room.state || room.state.phase === 'completed') return;
+
+    const abandonerIndex = room.players.findIndex(p => p.socketId === socket.id);
+    if (abandonerIndex === -1) return;
+
+    const abandoner = room.state.players.find(p => p.id === room.players[abandonerIndex].userId);
+    const opponent = room.state.players.find(p => p.id !== abandoner?.id);
+
+    if (!abandoner || !opponent) return;
+
+    room.state = {
+      ...room.state,
+      phase: 'completed',
+      winnerId: opponent.id
+    };
+
+    const betAmount = room.betAmount || 0;
+    const coinsEarned = betAmount > 0 ? betAmount * 2 : 50;
+    const eloEarned = 25;
+
+    // Save result mapping rewards to winner
+    saveMatchResult(roomId, room);
+
+    // Notify room
+    io.to(roomId).emit('match_abandoned', {
+      winnerId: opponent.id,
+      coinsEarned,
+      eloEarned
+    });
   });
 
   // 4. Continuar a la siguiente ronda

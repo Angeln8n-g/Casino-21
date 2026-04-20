@@ -27,6 +27,8 @@ interface GameContextType {
   disconnectionMessage: string | null;
   chatMessages: ChatMessage[];
   sendMessage: (roomId: string, text: string) => void;
+  abandonMatch: (roomId: string) => void;
+  matchAbandonedData: { winnerId: string, coinsEarned: number, eloEarned: number } | null;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -38,6 +40,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [timeRemaining, setTimeRemaining] = useState<number>(30000);
   const [disconnectionMessage, setDisconnectionMessage] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [matchAbandonedData, setMatchAbandonedData] = useState<{ winnerId: string, coinsEarned: number, eloEarned: number } | null>(null);
 
   // Escuchar eventos del servidor
   React.useEffect(() => {
@@ -55,6 +58,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('game_state_update');
       socket.off('receive_message');
       socket.off('chat_history');
+      socket.off('match_abandoned');
 
       socket.on('action_error', (msg: string) => {
         setError(msg);
@@ -90,6 +94,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.on('chat_history', (history: ChatMessage[]) => {
         setChatMessages(history || []);
       });
+
+      socket.on('match_abandoned', (data: any) => {
+        setMatchAbandonedData(data);
+      });
     };
 
     const setupSocket = async () => {
@@ -122,6 +130,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('game_state_update');
         currentSocket.off('receive_message');
         currentSocket.off('chat_history');
+        currentSocket.off('match_abandoned');
       }
     };
   }, []);
@@ -156,6 +165,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.emit('send_message', { roomId, text });
   }, []);
 
+  const abandonMatch = useCallback((roomId: string) => {
+    const socket = socketService.getSocket();
+    socket.emit('abandon_match', { roomId });
+  }, []);
+
   return (
     <GameContext.Provider 
       value={{ 
@@ -170,7 +184,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         timeRemaining,
         disconnectionMessage,
         chatMessages,
-        sendMessage
+        sendMessage,
+        abandonMatch,
+        matchAbandonedData
       }}
     >
       {children}

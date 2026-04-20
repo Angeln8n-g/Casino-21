@@ -36,8 +36,9 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 };
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
-  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages } = useGame();
+  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData } = useGame();
   const { profile, user } = useAuth();
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const { playSfx } = useAudio();
   
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
@@ -551,6 +552,46 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     );
   }
 
+  if (matchAbandonedData && !isSpectator) {
+    const isWinner = matchAbandonedData.winnerId === localPlayerId;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-transparent relative z-10">
+        <CelebrationConfetti active={isWinner} seed={celebrationSeed} />
+        <div className="bg-black/60 backdrop-blur-md p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
+          <h1 className="text-4xl md:text-5xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg uppercase">
+            {isWinner ? '¡Tu oponente ha abandonado!' : '¡Alguien abandonó la partida!'}
+          </h1>
+          <h2 className="text-xl md:text-2xl font-bold mb-8 text-white">
+            {isWinner ? 'Has ganado la partida automáticamente.' : 'La partida ha concluido.'}
+          </h2>
+          {isWinner && (
+            <div className="bg-gray-800/80 p-6 rounded-2xl border border-gray-600 shadow-inner mb-8 text-left">
+              <ul className="space-y-4 text-lg font-bold">
+                <li className="flex justify-between items-center">
+                  <span className="text-gray-300">Monedas ganadas:</span> 
+                  <span className="text-yellow-400 text-2xl">+{matchAbandonedData.coinsEarned}</span>
+                </li>
+                <li className="flex justify-between items-center">
+                  <span className="text-gray-300">Puntos ELO:</span> 
+                  <span className="text-green-400 text-2xl">+{matchAbandonedData.eloEarned} ▲</span>
+                </li>
+              </ul>
+            </div>
+          )}
+          <button 
+            onClick={() => {
+              localStorage.removeItem('casino21_roomId');
+              window.location.reload();
+            }} 
+            className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-12 py-4 rounded-xl font-black text-xl transition transform hover:scale-105 shadow-xl w-full max-w-md"
+          >
+            VOLVER AL MENÚ PRINCIPAL
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (gameState.phase === 'completed') {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-transparent relative z-10">
@@ -756,10 +797,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               <div className="flex gap-2 items-center md:hidden">
                 <AudioControlButton compact />
                 <button 
-                  onClick={() => {
-                    localStorage.removeItem('casino21_roomId');
-                    window.location.reload();
-                  }}
+                  onClick={() => setShowAbandonConfirm(true)}
                   className="text-[10px] bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-1.5 rounded border border-red-500/30 transition cursor-pointer"
                 >
                   Salir
@@ -789,10 +827,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
             
             <button 
-              onClick={() => {
-                localStorage.removeItem('casino21_roomId');
-                window.location.reload();
-              }}
+              onClick={() => setShowAbandonConfirm(true)}
               className="hidden md:block text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-500/30 transition cursor-pointer order-last"
             >
               Abandonar Partida
@@ -931,6 +966,37 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             isDealing={isDealing}
           />
         </footer>
+
+        {/* Abandon Confirm Modal */}
+        {showAbandonConfirm && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in pointer-events-auto">
+            <div className="bg-gray-900 p-6 md:p-8 rounded-3xl border border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.3)] max-w-md w-full text-center">
+              <span className="text-5xl mb-4 block animate-bounce">⚠️</span>
+              <h2 className="text-2xl font-black text-red-400 mb-4 uppercase">¿Abandonar Partida?</h2>
+              <p className="text-gray-300 font-bold mb-8 leading-relaxed">
+                Si sales ahora, la partida terminará y perderás todas tus monedas apostadas y puntos ELO. El jugador oponente obtendrá la victoria.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  className="w-full py-4 rounded-xl font-black text-white bg-red-600 hover:bg-red-500 transition-colors uppercase tracking-wider shadow-lg"
+                  onClick={() => {
+                    if (roomId) abandonMatch(roomId);
+                    localStorage.removeItem('casino21_roomId');
+                    window.location.reload();
+                  }}
+                >
+                  Sí, Abandonar
+                </button>
+                <button
+                  className="w-full py-4 rounded-xl font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors uppercase tracking-wider"
+                  onClick={() => setShowAbandonConfirm(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Drag Overlay */}
         {!isSpectator && (
