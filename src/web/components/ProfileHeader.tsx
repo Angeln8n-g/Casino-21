@@ -180,7 +180,7 @@ export function ProfileHeader({
             onClose={() => setShowAvatarGallery(false)} 
             onAvatarSelected={(url) => {
               console.log('Avatar actualizado:', url);
-              window.location.reload();
+              window.dispatchEvent(new Event('profile_updated'));
             }}
             currentAvatarUrl={profile?.avatar_url}
           />
@@ -544,7 +544,7 @@ export function ProfileHeader({
           onClose={() => setShowAvatarGallery(false)} 
           onAvatarSelected={(url) => {
             console.log('Avatar actualizado:', url);
-            window.location.reload(); 
+            window.dispatchEvent(new Event('profile_updated'));
           }}
           currentAvatarUrl={profile?.avatar_url}
         />

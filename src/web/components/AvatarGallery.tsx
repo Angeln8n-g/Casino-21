@@ -33,7 +33,10 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ avatar_url: selectedAvatar })
+        .update({ 
+          avatar_url: selectedAvatar,
+          equipped_avatar: null // Clear equipped store avatar so the free one shows
+        })
         .eq('id', user.id);
         
       if (error) throw error;

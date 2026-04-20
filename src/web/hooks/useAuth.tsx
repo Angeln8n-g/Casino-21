@@ -209,6 +209,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  useEffect(() => {
+    if (!user) return;
+    const handleProfileUpdated = () => {
+      fetchProfile(user.id);
+    };
+    
+    // Listen to global events to refetch profile
+    window.addEventListener('profile_updated', handleProfileUpdated);
+    window.addEventListener('coins_updated', handleProfileUpdated);
+    window.addEventListener('elo_updated', handleProfileUpdated);
+    
+    return () => {
+      window.removeEventListener('profile_updated', handleProfileUpdated);
+      window.removeEventListener('coins_updated', handleProfileUpdated);
+      window.removeEventListener('elo_updated', handleProfileUpdated);
+    };
+  }, [user?.id]);
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
