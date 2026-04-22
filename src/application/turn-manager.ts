@@ -32,11 +32,17 @@ export class DefaultTurnManager implements TurnManager {
       };
     });
 
+    // El jugador que inicia la nueva ronda alterna con cada ronda.
+    const newRoundCount = state.roundCount + 1;
+    const nextStartPlayerIndex = (state.roundStartPlayerIndex + 1) % state.players.length;
+
     return {
       ...state,
       deck: currentDeck,
       players: newPlayers,
-      roundCount: state.roundCount + 1
+      roundCount: newRoundCount,
+      roundStartPlayerIndex: nextStartPlayerIndex,
+      currentTurnPlayerIndex: nextStartPlayerIndex
     };
   }
 }

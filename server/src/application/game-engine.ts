@@ -127,6 +127,8 @@ export class DefaultGameEngine implements GameEngine {
     deck = remainingDeck;
     const board = createBoard(boardCards);
 
+    const initialPlayerIndex = Math.floor(Math.random() * players.length);
+
     const state: GameState = {
       id: Math.random().toString(36).substring(2, 9),
       mode,
@@ -135,9 +137,10 @@ export class DefaultGameEngine implements GameEngine {
       teams,
       board,
       deck,
-      currentTurnPlayerIndex: Math.floor(Math.random() * players.length),
+      currentTurnPlayerIndex: initialPlayerIndex,
       turnCount: 0,
-      roundCount: 1,
+      roundCount: 0, // Las rondas empiezan en 0 para que el index coincida en el turn manager
+      roundStartPlayerIndex: initialPlayerIndex,
     };
 
     this.currentState = state;
@@ -561,6 +564,9 @@ export class DefaultGameEngine implements GameEngine {
     deck = remainingDeck;
     const board = createBoard(boardCards);
 
+    const newRoundCount = state.roundCount + 1;
+    const nextStartPlayerIndex = (state.roundStartPlayerIndex + 1) % state.players.length;
+
     return {
       ...state,
       phase: 'playing',
@@ -568,9 +574,9 @@ export class DefaultGameEngine implements GameEngine {
       teams,
       board,
       deck,
-      roundCount: state.roundCount + 1,
-      // We keep the turn index where it was or advance it for the next dealer
-      currentTurnPlayerIndex: (state.currentTurnPlayerIndex + 1) % state.players.length,
+      roundCount: newRoundCount,
+      roundStartPlayerIndex: nextStartPlayerIndex,
+      currentTurnPlayerIndex: nextStartPlayerIndex,
       turnCount: 0,
       lastAction: undefined,
       lastScoreBreakdown: undefined

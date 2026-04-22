@@ -32,17 +32,17 @@ export class DefaultTurnManager implements TurnManager {
       };
     });
 
-    // IMPORTANTE: Al iniciar un nuevo reparto (mano) dentro de la misma ronda, 
-    // el turno DEBE avanzar al siguiente jugador, como si hubiera jugado una carta.
-    // Si no avanza, el jugador que tiró la última carta jugaría dos veces seguidas.
-    const nextTurnIndex = this.getNextPlayer(state);
+    // El jugador que inicia la nueva ronda alterna con cada ronda.
+    const newRoundCount = state.roundCount + 1;
+    const nextStartPlayerIndex = (state.roundStartPlayerIndex + 1) % state.players.length;
 
     return {
       ...state,
       deck: currentDeck,
       players: newPlayers,
-      roundCount: state.roundCount + 1,
-      currentTurnPlayerIndex: nextTurnIndex
+      roundCount: newRoundCount,
+      roundStartPlayerIndex: nextStartPlayerIndex,
+      currentTurnPlayerIndex: nextStartPlayerIndex
     };
   }
 }

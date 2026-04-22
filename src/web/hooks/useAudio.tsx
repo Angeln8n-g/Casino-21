@@ -14,6 +14,7 @@ import errorSrc from '../../Public/error_play.mp3';
 import matchFoundSrc from '../../Public/Steel_Over_Stone.mp3';
 import victorySrc from '../../Public/victory.mp3';
 import viradoSrc from '../../Public/virado.mp3';
+import turnChangeSrc from '../../Public/sfx-impact22.mp3';
 
 export type AudioCue =
   | 'cardDeal'
@@ -24,7 +25,8 @@ export type AudioCue =
   | 'victory'
   | 'defeat'
   | 'error'
-  | 'alert';
+  | 'alert'
+  | 'turnChange';
 
 interface PlaySfxOptions {
   playbackRate?: number;
@@ -63,6 +65,7 @@ const AUDIO_CATALOG: Record<
   defeat: { src: errorSrc, baseVolume: 0.6, cooldownMs: 1000 },
   error: { src: errorSrc, baseVolume: 0.45, cooldownMs: 180 },
   alert: { src: matchFoundSrc, baseVolume: 0.35, cooldownMs: 400 },
+  turnChange: { src: turnChangeSrc, baseVolume: 0.6, cooldownMs: 500 },
 };
 
 const AudioContext = createContext<AudioContextValue | undefined>(undefined);

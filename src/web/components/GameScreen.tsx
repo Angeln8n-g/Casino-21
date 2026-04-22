@@ -15,6 +15,10 @@ import { AudioControlButton } from './AudioControlButton';
 import { CelebrationConfetti } from './CelebrationConfetti';
 import { GameState } from '../../domain/game-state';
 import brand21Icon from '../../Public/Icon (2).png';
+import casinoBackground from '../../Public/background.jpg';
+import k21Logo from '../../Public/brand21Icon.png';
+import titleImage from '../../Public/Reultados de la ronda.png';
+import { MatchPointHUD } from './MatchPointHUD';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -138,6 +142,11 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const previousState = previousGameStateRef.current;
 
     if (previousState) {
+      // Play sound when turn changes
+      if (gameState.currentTurnPlayerIndex !== previousState.currentTurnPlayerIndex && gameState.phase === 'playing') {
+        playSfx('turnChange');
+      }
+
       if (gameState.turnCount > previousState.turnCount && gameState.phase === 'playing') {
         switch (gameState.lastAction) {
           case 'colocar':
@@ -497,57 +506,102 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   if (gameState.phase === 'scoring') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-green-900">
-        <h1 className="text-4xl font-bold mb-6 text-yellow-400">Resumen de la Ronda</h1>
+      <div 
+        className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 relative z-10 w-full"
+        style={{
+          backgroundImage: `url(${casinoBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] z-0"></div>
         
-        {/* Progress Bars in Scoring */}
-        <div className="flex gap-4 w-full max-w-4xl mb-8">
-          {getEntities().map(entity => {
-            const progress = Math.min((entity.score / 21) * 100, 100);
-            return (
-              <div key={entity.id} className="flex-1 bg-gray-900/50 p-4 rounded-xl">
-                <div className="flex justify-between text-sm mb-2 font-bold text-white">
-                  <span>{(entity as any).name || `Equipo ${entity.id}`}</span>
-                  <span>{entity.score} / 21 pts</span>
+        <div className="relative z-10 flex flex-col items-center w-full max-w-4xl bg-[#08111e]/90 border border-yellow-500/40 rounded-[2rem] p-6 md:p-10 shadow-[0_0_60px_rgba(234,179,8,0.15)] backdrop-blur-xl overflow-hidden">
+          {/* Inner golden border effect */}
+          <div className="absolute inset-2 border-2 border-yellow-600/20 rounded-[1.5rem] pointer-events-none"></div>
+          
+          <img src={k21Logo} alt="K21 Logo" className="h-20 md:h-28 w-auto mb-2 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.4)] animate-[pulse_3s_ease-in-out_infinite]" />
+          
+          <img src={titleImage} alt="Resumen de la Ronda" className="h-8 md:h-10 w-auto mb-8 object-contain drop-shadow-xl" />
+          
+          {/* Progress Bars in Scoring */}
+          <div className="flex flex-col md:flex-row gap-4 md:gap-8 w-full mb-8">
+            {getEntities().map(entity => {
+              const progress = Math.min((entity.score / 21) * 100, 100);
+              return (
+                <div key={entity.id} className="flex-1 bg-black/40 border border-yellow-600/30 p-4 md:p-5 rounded-2xl shadow-inner relative overflow-hidden">
+                  <div className="flex justify-between text-sm md:text-base mb-3 font-bold text-white items-center">
+                    <span className="text-gray-200">{(entity as any).name || `Equipo ${entity.id}`}</span>
+                    <span className="text-yellow-400 font-mono tracking-widest">{entity.score} <span className="text-gray-500 text-xs">/ 21 pts</span></span>
+                  </div>
+                  <div className="w-full bg-[#111A28] rounded-full h-3 md:h-4 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] border border-white/5">
+                    <div 
+                      className="bg-gradient-to-r from-green-600 to-green-400 h-full transition-all duration-1000 ease-in-out relative" 
+                      style={{ width: `${progress}%`, boxShadow: '0 0 10px rgba(74,222,128,0.5)' }}
+                    >
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden shadow-inner">
-                  <div 
-                    className="bg-green-500 h-4 transition-all duration-1000 ease-in-out" 
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <div className="grid grid-cols-2 gap-8 w-full max-w-4xl mb-8">
-          {gameState.lastScoreBreakdown?.map(b => {
-            const entity = gameState.players.find(p => p.id === b.id) || gameState.teams.find(t => t.id === b.id);
-            return (
-              <div key={b.id} className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 text-left">
-                <h3 className="text-2xl font-bold mb-4 text-center border-b border-gray-600 pb-2">{(entity as any)?.name || (entity ? `Equipo ${entity.id}` : b.id)}</h3>
-                <ul className="space-y-2 text-lg text-gray-300">
-                  <li className="flex justify-between"><span>Mayoría de Cartas:</span> <span className="text-white">+{b.points.cards}</span></li>
-                  <li className="flex justify-between"><span>Mayoría de Picas:</span> <span className="text-white">+{b.points.spades}</span></li>
-                  <li className="flex justify-between"><span>10 de Diamantes:</span> <span className="text-white">+{b.points.tenOfDiamonds}</span></li>
-                  <li className="flex justify-between"><span>2 de Picas:</span> <span className="text-white">+{b.points.twoOfSpades}</span></li>
-                  <li className="flex justify-between"><span>Ases:</span> <span className="text-white">+{b.points.aces}</span></li>
-                  <li className="flex justify-between"><span>Virados:</span> <span className="text-white">+{b.points.virados}</span></li>
-                  <li className="flex justify-between font-bold text-yellow-400 pt-3 mt-2 border-t border-gray-600 text-xl">
-                    <span>Total Ronda:</span> <span>+{b.points.total}</span>
-                  </li>
-                </ul>
-              </div>
-            );
-          })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full mb-10 relative">
+            {gameState.lastScoreBreakdown?.map(b => {
+              const entity = gameState.players.find(p => p.id === b.id) || gameState.teams.find(t => t.id === b.id);
+              return (
+                <div key={b.id} className="bg-[#0b1525]/80 p-5 md:p-7 rounded-2xl shadow-2xl border border-yellow-600/30 text-left relative overflow-hidden group hover:border-yellow-500/50 transition-colors duration-300">
+                  <h3 className="text-xl md:text-2xl font-bold mb-5 text-center text-white border-b border-yellow-600/20 pb-3 tracking-wide">{(entity as any)?.name || (entity ? `Equipo ${entity.id}` : b.id)}</h3>
+                  <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-gray-300">
+                    <li className="flex justify-between items-center group/item">
+                      <span className="flex items-center gap-3"><span className="text-xl md:text-2xl group-hover/item:animate-bounce transition-all duration-300 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)] text-yellow-500">👑</span> Mayoría de Cartas:</span> 
+                      <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">+{b.points.cards}</span>
+                    </li>
+                    <li className="flex justify-between items-center group/item">
+                      <span className="flex items-center gap-3"><span className="text-xl md:text-2xl text-gray-300 group-hover/item:animate-bounce transition-all duration-300 drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">♠️</span> Mayoría de Picas:</span> 
+                      <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">+{b.points.spades}</span>
+                    </li>
+                    <li className="flex justify-between items-center group/item">
+                      <span className="flex items-center gap-3"><span className="text-xl md:text-2xl text-red-500 group-hover/item:animate-bounce transition-all duration-300 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">♦️</span> 10 de Diamantes:</span> 
+                      <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">+{b.points.tenOfDiamonds}</span>
+                    </li>
+                    <li className="flex justify-between items-center group/item">
+                      <span className="flex items-center gap-3">
+                        <span className="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center bg-gray-300 text-black font-black rounded-full text-xs md:text-sm group-hover/item:scale-110 group-hover/item:rotate-12 transition-all duration-300 shadow-[0_0_8px_rgba(255,255,255,0.4)]">2</span> 
+                        2 de Picas:
+                      </span> 
+                      <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">+{b.points.twoOfSpades}</span>
+                    </li>
+                    <li className="flex justify-between items-center group/item">
+                      <span className="flex items-center gap-3">
+                        <span className="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center border border-yellow-400 text-yellow-400 font-serif font-black rounded-full text-xs md:text-sm group-hover/item:scale-110 group-hover/item:-rotate-12 transition-all duration-300 shadow-[0_0_5px_rgba(251,191,36,0.4)]">A</span> 
+                        Ases:
+                      </span> 
+                      <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">+{b.points.aces}</span>
+                    </li>
+                    <li className="flex justify-between items-center group/item">
+                      <span className="flex items-center gap-3"><span className="text-xl md:text-2xl text-yellow-200 group-hover/item:animate-[spin_1s_ease-in-out] transition-all duration-300">🔄</span> Virados:</span> 
+                      <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">+{b.points.virados}</span>
+                    </li>
+                    <li className="flex justify-between items-center font-bold text-yellow-400 pt-5 mt-5 border-t border-yellow-600/20 text-lg md:text-xl">
+                      <span className="tracking-widest uppercase">Total Ronda:</span> 
+                      <span className="text-2xl md:text-3xl drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">+{b.points.total}</span>
+                    </li>
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+          <button 
+            onClick={continueToNextRound} 
+            className="relative overflow-hidden group bg-transparent border border-yellow-500/50 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 px-10 py-3 md:px-14 md:py-4 rounded-xl font-bold text-lg md:text-xl tracking-[0.15em] uppercase transition-all duration-300 shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:shadow-[0_0_40px_rgba(234,179,8,0.4)] hover:-translate-y-1"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/0 via-yellow-500/10 to-yellow-600/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+            Siguiente Ronda
+            <span className="absolute w-2 h-2 bg-yellow-400 rotate-45 -left-1 top-1/2 -translate-y-1/2"></span>
+            <span className="absolute w-2 h-2 bg-yellow-400 rotate-45 -right-1 top-1/2 -translate-y-1/2"></span>
+          </button>
         </div>
-        <button 
-          onClick={continueToNextRound} 
-          className="bg-blue-600 hover:bg-blue-500 px-10 py-4 rounded-xl font-bold text-2xl transition shadow-lg hover:scale-105"
-        >
-          Siguiente Ronda
-        </button>
       </div>
     );
   }
@@ -887,6 +941,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             onFormationClick={handleFormationClick}
             boardThemeUrl={boardThemeUrl}
           />
+
+          {!isSpectator && currentPlayer && (
+            <MatchPointHUD score={currentPlayer.score} />
+          )}
         </main>
 
         {/* ===== Separador visual zona central / zona jugador ===== */}

@@ -28,6 +28,8 @@ export interface GameState {
   readonly turnCount: number;
   /** Total number of rounds played */
   readonly roundCount: number;
+  /** Index of the player who started the current round (alternates each round) */
+  readonly roundStartPlayerIndex: number;
   /** Description of the last action taken (for display purposes) */
   readonly lastAction?: string;
   /** ID of the last player who took cards (llevar) */
