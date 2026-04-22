@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor, MouseSensor } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
@@ -7,18 +7,22 @@ import { supabase } from '../services/supabase';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
 import { ActionPanel, ActionPayload } from './ActionPanel';
-import { Action } from '../../application/action-validator';
-import { DefaultActionValidator } from '../../application/action-validator';
+import { Action, DefaultActionValidator } from '../../application/action-validator';
 import { Card } from '../../domain/card';
 import { CardView } from './CardView';
 import { AudioControlButton } from './AudioControlButton';
 import { CelebrationConfetti } from './CelebrationConfetti';
 import { GameState } from '../../domain/game-state';
 import brand21Icon from '../../Public/Icon (2).png';
-import casinoBackground from '../../Public/background.jpg';
-import k21Logo from '../../Public/brand21Icon.png';
-import titleImage from '../../Public/Reultados de la ronda.png';
 import { MatchPointHUD } from './MatchPointHUD';
+import {
+  RoundSummaryScreen,
+  MatchCompletedScreen,
+  MatchAbandonedScreen,
+  AbandonConfirmModal,
+  DragActionModal,
+} from './game';
+import type { DragModalData } from './game';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -63,12 +67,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
-  const [dragModalData, setDragModalData] = useState<{
-    handCard: Card;
-    targetId?: string;
-    targetType: 'boardCard' | 'formation' | 'board';
-    validActions: ActionPayload[];
-  } | null>(null);
+  const [dragModalData, setDragModalData] = useState<DragModalData | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -505,208 +504,32 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const getEntities = () => gameState.mode === '1v1' ? gameState.players : gameState.teams;
 
   if (gameState.phase === 'scoring') {
-    return (
-      <div 
-        className="flex flex-col items-center justify-center min-h-screen p-2 sm:p-4 md:p-8 relative z-10 w-full"
-        style={{
-          backgroundImage: `url(${casinoBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] z-0"></div>
-        
-        <div className="relative z-10 flex flex-col items-center w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] bg-[#08111e]/90 border border-yellow-500/40 rounded-[1.5rem] md:rounded-[2rem] p-4 sm:p-6 md:p-10 shadow-[0_0_60px_rgba(234,179,8,0.15)] backdrop-blur-xl overflow-y-auto overflow-x-hidden custom-scrollbar">
-          {/* Inner golden border effect */}
-          <div className="absolute inset-2 border-2 border-yellow-600/20 rounded-[1.25rem] md:rounded-[1.5rem] pointer-events-none"></div>
-          
-          <img src={k21Logo} alt="K21 Logo" className="h-16 sm:h-20 md:h-28 w-auto mb-2 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.4)] animate-[pulse_3s_ease-in-out_infinite]" />
-          
-          <img src={titleImage} alt="Resumen de la Ronda" className="h-6 sm:h-8 md:h-10 w-auto mb-4 sm:mb-6 md:mb-8 object-contain drop-shadow-xl" />
-          
-          {/* Progress Bars in Scoring */}
-          <div className="flex flex-col md:flex-row gap-3 sm:gap-4 md:gap-8 w-full mb-4 sm:mb-6 md:mb-8">
-            {getEntities().map(entity => {
-              const progress = Math.min((entity.score / 21) * 100, 100);
-              return (
-                <div key={entity.id} className="flex-1 bg-black/40 border border-yellow-600/30 p-3 sm:p-4 md:p-5 rounded-xl md:rounded-2xl shadow-inner relative overflow-hidden">
-                  <div className="flex justify-between text-xs sm:text-sm md:text-base mb-2 md:mb-3 font-bold text-white items-center">
-                    <span className="text-gray-200">{(entity as any).name || `Equipo ${entity.id}`}</span>
-                    <span className="text-yellow-400 font-mono tracking-widest">{entity.score} <span className="text-gray-500 text-[10px] sm:text-xs">/ 21 pts</span></span>
-                  </div>
-                  <div className="w-full bg-[#111A28] rounded-full h-2 sm:h-3 md:h-4 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] border border-white/5">
-                    <div 
-                      className="bg-gradient-to-r from-green-600 to-green-400 h-full transition-all duration-1000 ease-in-out relative" 
-                      style={{ width: `${progress}%`, boxShadow: '0 0 10px rgba(74,222,128,0.5)' }}
-                    >
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8 w-full mb-6 sm:mb-8 md:mb-10 relative">
-            {gameState.lastScoreBreakdown?.map(b => {
-              const entity = gameState.players.find(p => p.id === b.id) || gameState.teams.find(t => t.id === b.id);
-              return (
-                <div key={b.id} className="bg-[#0b1525]/80 p-4 sm:p-5 md:p-7 rounded-xl md:rounded-2xl shadow-2xl border border-yellow-600/30 text-left relative overflow-hidden group hover:border-yellow-500/50 transition-colors duration-300">
-                  <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 md:mb-5 text-center text-white border-b border-yellow-600/20 pb-2 md:pb-3 tracking-wide">{(entity as any)?.name || (entity ? `Equipo ${entity.id}` : b.id)}</h3>
-                  <ul className="space-y-2 sm:space-y-3 md:space-y-4 text-xs sm:text-sm md:text-base text-gray-300">
-                    <li className="flex justify-between items-center group/item">
-                      <span className="flex items-center gap-2 sm:gap-3"><span className="text-lg sm:text-xl md:text-2xl group-hover/item:animate-bounce transition-all duration-300 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)] text-yellow-500">👑</span> Mayoría de Cartas:</span> 
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 sm:py-1 rounded">+{b.points.cards}</span>
-                    </li>
-                    <li className="flex justify-between items-center group/item">
-                      <span className="flex items-center gap-2 sm:gap-3"><span className="text-lg sm:text-xl md:text-2xl text-gray-300 group-hover/item:animate-bounce transition-all duration-300 drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">♠️</span> Mayoría de Picas:</span> 
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 sm:py-1 rounded">+{b.points.spades}</span>
-                    </li>
-                    <li className="flex justify-between items-center group/item">
-                      <span className="flex items-center gap-2 sm:gap-3"><span className="text-lg sm:text-xl md:text-2xl text-red-500 group-hover/item:animate-bounce transition-all duration-300 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">♦️</span> 10 de Diamantes:</span> 
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 sm:py-1 rounded">+{b.points.tenOfDiamonds}</span>
-                    </li>
-                    <li className="flex justify-between items-center group/item">
-                      <span className="flex items-center gap-2 sm:gap-3">
-                        <span className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex items-center justify-center bg-gray-300 text-black font-black rounded-full text-[10px] sm:text-xs md:text-sm group-hover/item:scale-110 group-hover/item:rotate-12 transition-all duration-300 shadow-[0_0_8px_rgba(255,255,255,0.4)]">2</span> 
-                        2 de Picas:
-                      </span> 
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 sm:py-1 rounded">+{b.points.twoOfSpades}</span>
-                    </li>
-                    <li className="flex justify-between items-center group/item">
-                      <span className="flex items-center gap-2 sm:gap-3">
-                        <span className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex items-center justify-center border border-yellow-400 text-yellow-400 font-serif font-black rounded-full text-[10px] sm:text-xs md:text-sm group-hover/item:scale-110 group-hover/item:-rotate-12 transition-all duration-300 shadow-[0_0_5px_rgba(251,191,36,0.4)]">A</span> 
-                        Ases:
-                      </span> 
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 sm:py-1 rounded">+{b.points.aces}</span>
-                    </li>
-                    <li className="flex justify-between items-center group/item">
-                      <span className="flex items-center gap-2 sm:gap-3"><span className="text-lg sm:text-xl md:text-2xl text-yellow-200 group-hover/item:animate-[spin_1s_ease-in-out] transition-all duration-300">🔄</span> Virados:</span> 
-                      <span className="text-white font-mono bg-white/5 px-2 py-0.5 sm:py-1 rounded">+{b.points.virados}</span>
-                    </li>
-                    <li className="flex justify-between items-center font-bold text-yellow-400 pt-3 sm:pt-4 md:pt-5 mt-3 sm:mt-4 md:mt-5 border-t border-yellow-600/20 text-base sm:text-lg md:text-xl">
-                      <span className="tracking-widest uppercase">Total Ronda:</span> 
-                      <span className="text-xl sm:text-2xl md:text-3xl drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">+{b.points.total}</span>
-                    </li>
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-          <button 
-            onClick={continueToNextRound} 
-            className="relative overflow-hidden group bg-transparent border border-yellow-500/50 hover:border-yellow-400 text-yellow-400 hover:text-yellow-300 px-6 sm:px-8 py-2.5 sm:py-3 md:px-14 md:py-4 rounded-xl font-bold text-sm sm:text-base md:text-xl tracking-[0.15em] uppercase transition-all duration-300 shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:shadow-[0_0_40px_rgba(234,179,8,0.4)] hover:-translate-y-1 shrink-0"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/0 via-yellow-500/10 to-yellow-600/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-            Siguiente Ronda
-            <span className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rotate-45 -left-1 top-1/2 -translate-y-1/2"></span>
-            <span className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rotate-45 -right-1 top-1/2 -translate-y-1/2"></span>
-          </button>
-        </div>
-      </div>
-    );
+    return <RoundSummaryScreen gameState={gameState} onContinue={continueToNextRound} />;
   }
 
   if (matchAbandonedData && !isSpectator) {
-    const isWinner = matchAbandonedData.winnerId === localPlayerId;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-transparent relative z-10">
-        <CelebrationConfetti active={isWinner} seed={celebrationSeed} />
-        <div className="bg-black/60 backdrop-blur-md p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
-          <h1 className="text-4xl md:text-5xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg uppercase">
-            {isWinner ? '¡Tu oponente ha abandonado!' : '¡Alguien abandonó la partida!'}
-          </h1>
-          <h2 className="text-xl md:text-2xl font-bold mb-8 text-white">
-            {isWinner ? 'Has ganado la partida automáticamente.' : 'La partida ha concluido.'}
-          </h2>
-          {isWinner && (
-            <div className="bg-gray-800/80 p-6 rounded-2xl border border-gray-600 shadow-inner mb-8 text-left">
-              <ul className="space-y-4 text-lg font-bold">
-                <li className="flex justify-between items-center">
-                  <span className="text-gray-300">Monedas ganadas:</span> 
-                  <span className="text-yellow-400 text-2xl">+{matchAbandonedData.coinsEarned}</span>
-                </li>
-                <li className="flex justify-between items-center">
-                  <span className="text-gray-300">Puntos ELO:</span> 
-                  <span className="text-green-400 text-2xl">+{matchAbandonedData.eloEarned} ▲</span>
-                </li>
-              </ul>
-            </div>
-          )}
-          <button 
-            onClick={() => {
-              localStorage.removeItem('casino21_roomId');
-              window.location.reload();
-            }} 
-            className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-12 py-4 rounded-xl font-black text-xl transition transform hover:scale-105 shadow-xl w-full max-w-md"
-          >
-            VOLVER AL MENÚ PRINCIPAL
-          </button>
-        </div>
-      </div>
+      <MatchAbandonedScreen
+        data={matchAbandonedData}
+        localPlayerId={localPlayerId}
+        celebrationSeed={celebrationSeed}
+      />
     );
   }
 
   if (gameState.phase === 'completed') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-transparent relative z-10">
-        <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
-        <div className="bg-black/60 backdrop-blur-md p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
-          <h1 className="text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg">
-            ¡PARTIDA TERMINADA!
-          </h1>
-          
-          <h2 className="text-3xl font-bold mb-10 text-white">
-            {gameState.winnerId 
-              ? `Ganador: ${gameState.players.find(p => p.id === gameState.winnerId)?.name || gameState.winnerId}`
-              : '¡EMPATE!'}
-          </h2>
-
-          <div className="grid grid-cols-2 gap-8 w-full mb-10">
-            {gameState.players.map(p => (
-              <div key={p.id} className={`p-6 rounded-2xl border ${p.id === gameState.winnerId ? 'bg-yellow-900/20 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'bg-white/5 border-white/10'}`}>
-                <h3 className="text-2xl font-bold mb-4 text-white flex items-center justify-center gap-2">
-                  {p.id === gameState.winnerId && <span className="text-yellow-400 text-3xl">👑</span>}
-                  {p.name}
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between bg-black/30 p-3 rounded-lg">
-                    <span className="text-gray-400 font-bold">Puntuación</span>
-                    <span className="text-blue-400 font-black text-xl">{p.score} pts</span>
-                  </div>
-                  <div className="flex justify-between bg-black/30 p-3 rounded-lg">
-                    <span className="text-gray-400 font-bold">Cartas Recogidas</span>
-                    <span className="text-white font-bold">{p.collectedCards.length}</span>
-                  </div>
-                  <div className="flex justify-between bg-black/30 p-3 rounded-lg">
-                    <span className="text-gray-400 font-bold">Virados</span>
-                    <span className="text-yellow-400 font-bold">{p.virados}</span>
-                  </div>
-                  
-                  {/* Fake ELO calculation feedback for visual polish */}
-                  <div className="flex justify-between p-2 mt-4 border-t border-white/10">
-                    <span className="text-gray-400 font-bold text-sm">Rango ELO</span>
-                    <span className={`font-black text-sm ${p.id === gameState.winnerId ? 'text-green-400' : p.score === gameState.players.find(o => o.id !== p.id)?.score ? 'text-gray-400' : 'text-red-400'}`}>
-                      {p.id === gameState.winnerId ? '+25 ▲' : p.score === gameState.players.find(o => o.id !== p.id)?.score ? '+0 ▬' : '-25 ▼'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button 
-            onClick={() => {
-              localStorage.removeItem('casino21_roomId');
-              window.location.reload();
-            }} 
-            className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-12 py-4 rounded-xl font-black text-xl transition transform hover:scale-105 shadow-xl w-full max-w-md"
-          >
-            VOLVER AL MENÚ PRINCIPAL
-          </button>
-        </div>
-      </div>
+      <MatchCompletedScreen
+        gameState={gameState}
+        showCelebration={showCelebration}
+        celebrationSeed={celebrationSeed}
+      />
     );
   }
+
+
+
+
 
   // Si es tu turno pero no tienes cartas y el tiempo sigue corriendo, el servidor debería botar por ti
   // o avanzar, pero el UI no debe mostrar tus cartas si no hay.
@@ -1027,33 +850,11 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
         {/* Abandon Confirm Modal */}
         {showAbandonConfirm && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in pointer-events-auto">
-            <div className="bg-gray-900 p-6 md:p-8 rounded-3xl border border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.3)] max-w-md w-full text-center">
-              <span className="text-5xl mb-4 block animate-bounce">⚠️</span>
-              <h2 className="text-2xl font-black text-red-400 mb-4 uppercase">¿Abandonar Partida?</h2>
-              <p className="text-gray-300 font-bold mb-8 leading-relaxed">
-                Si sales ahora, la partida terminará y perderás todas tus monedas apostadas y puntos ELO. El jugador oponente obtendrá la victoria.
-              </p>
-              <div className="flex flex-col gap-3">
-                <button
-                  className="w-full py-4 rounded-xl font-black text-white bg-red-600 hover:bg-red-500 transition-colors uppercase tracking-wider shadow-lg"
-                  onClick={() => {
-                    if (roomId) abandonMatch(roomId);
-                    localStorage.removeItem('casino21_roomId');
-                    window.location.reload();
-                  }}
-                >
-                  Sí, Abandonar
-                </button>
-                <button
-                  className="w-full py-4 rounded-xl font-bold text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors uppercase tracking-wider"
-                  onClick={() => setShowAbandonConfirm(false)}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
+          <AbandonConfirmModal
+            roomId={roomId}
+            onConfirm={abandonMatch}
+            onCancel={() => setShowAbandonConfirm(false)}
+          />
         )}
 
         {/* Drag Overlay */}
@@ -1069,42 +870,17 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
         {/* Drag Action Modal */}
         {dragModalData && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-gradient-to-b from-gray-800 to-gray-950 p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] max-w-md w-full text-center animate-scale-up">
-              <h2 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 mb-6 drop-shadow-md">¿Qué jugada deseas realizar?</h2>
-              
-              <div className="flex flex-col gap-3 md:gap-4">
-                {dragModalData.validActions.map((action, idx) => (
-                  <button
-                    key={idx}
-                    className={`w-full py-3 md:py-4 rounded-xl font-bold text-lg md:text-xl transition-all shadow-lg border border-white/10 uppercase tracking-widest text-white hover:scale-105 active:scale-95 touch-manipulation
-                      ${action.type === 'llevar' ? 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400' : ''}
-                      ${action.type === 'formar' ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black' : ''}
-                      ${action.type === 'formarPar' ? 'bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400' : ''}
-                      ${action.type === 'aumentarFormacion' ? 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400' : ''}
-                      ${action.type === 'colocar' ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400' : ''}
-                      ${action.type === 'cantar' ? 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400' : ''}
-                    `}
-                    onClick={() => {
-                      playCard({ ...action, playerId: currentPlayer.id, cardId: dragModalData.handCard.id } as Action);
-                      setDragModalData(null);
-                      setSelectedBoardCardIds(new Set());
-                      setSelectedFormationIds(new Set());
-                    }}
-                  >
-                    {action.type === 'aumentarFormacion' ? 'Aumentar' : action.type === 'formarPar' ? 'Agrupar' : action.type}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                className="mt-6 w-full py-3 rounded-xl font-bold text-gray-300 bg-white/10 hover:bg-white/20 transition-all border border-white/10"
-                onClick={() => setDragModalData(null)}
-              >
-                CANCELAR
-              </button>
-            </div>
-          </div>
+          <DragActionModal
+            data={dragModalData}
+            playerId={currentPlayer.id}
+            onSelect={(action) => {
+              playCard(action);
+              setDragModalData(null);
+              setSelectedBoardCardIds(new Set());
+              setSelectedFormationIds(new Set());
+            }}
+            onCancel={() => setDragModalData(null)}
+          />
         )}
         </div>
       </div>
