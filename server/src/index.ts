@@ -8,6 +8,7 @@ import { GameState } from './domain/game-state';
 import { Action } from './application/action-validator';
 import dotenv from 'dotenv';
 import { supabase } from './supabase';
+import { BOT_USER_ID, BOT_NAME, BOT_THINK_DELAY_MS } from './bot/bot-player';
 
 dotenv.config();
 
@@ -121,6 +122,7 @@ io.use(async (socket, next) => {
     isTournament?: boolean;
     chatHistory: ChatMessage[];
     betAmount?: number;
+    isBot?: boolean;
   }> = {};
 
 // ─── FASE 8: Matchmaking Queue ───
@@ -232,6 +234,31 @@ function closeRoom(roomId: string, reason: string = 'room_closed') {
   console.log(`Sala ${roomId} cerrada. Motivo: ${reason}`);
 }
 
+function scheduleBotTurnIfNeeded(roomId: string, room: any) {
+  if (!room.isBot || !room.state) return;
+  const currentPlayer = room.state.players[room.state.currentTurnPlayerIndex];
+  if (currentPlayer && currentPlayer.id === BOT_USER_ID) {
+    setTimeout(() => {
+      if (!rooms[roomId] || !rooms[roomId].state) return;
+      const action = rooms[roomId].engine.getTimeoutAction(rooms[roomId].state, BOT_USER_ID);
+      if (action) {
+        const result = rooms[roomId].engine.playCard(rooms[roomId].state, action);
+        if (result.success) {
+          rooms[roomId].state = result.value;
+          startTurnTimer(roomId, rooms[roomId]);
+          broadcastGameState(roomId, rooms[roomId]);
+          if (rooms[roomId].state.phase === 'completed') {
+            if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
+            saveMatchResult(roomId, rooms[roomId]);
+          } else {
+            scheduleBotTurnIfNeeded(roomId, rooms[roomId]);
+          }
+        }
+      }
+    }, BOT_THINK_DELAY_MS);
+  }
+}
+
 io.on('connection', (socket) => {
   const userId = (socket as any).userId || (socket as any).user?.sub;
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
@@ -258,6 +285,46 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.emit('room_created', { roomId, playerId: userId, betAmount: rooms[roomId].betAmount, mode });
     console.log(`Sala ${roomId} creada por ${playerName} con apuesta ${rooms[roomId].betAmount}`);
+  });
+
+  // 1.5 Crear Sala vs Bot
+  socket.on('create_bot_room', (data: { playerName: string }) => {
+    const { playerName } = data;
+    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    rooms[roomId] = {
+      engine: new DefaultGameEngine(),
+      state: null,
+      players: [
+        { socketId: socket.id, playerId: userId, name: playerName, userId },
+        { socketId: 'bot', playerId: BOT_USER_ID, name: BOT_NAME, userId: BOT_USER_ID }
+      ],
+      spectators: [],
+      maxPlayers: 2,
+      chatHistory: [],
+      betAmount: 0,
+      isBot: true
+    };
+
+    socket.join(roomId);
+    socket.emit('room_created', { roomId, playerId: userId, betAmount: 0, mode: '1v1' });
+
+    // Iniciar partida inmediatamente (la sala ya tiene 2 "jugadores")
+    const result = rooms[roomId].engine.startNewGame('1v1', [playerName, BOT_NAME]);
+    if (result.success && result.value) {
+      rooms[roomId].state = result.value;
+      // Asignar IDs reales
+      (rooms[roomId].state!.players[0] as any).id = userId;     // Humano
+      (rooms[roomId].state!.players[1] as any).id = BOT_USER_ID; // Bot
+
+      startTurnTimer(roomId, rooms[roomId]);
+      broadcastGameState(roomId, rooms[roomId]);
+
+      // Si el bot empieza primero, ejecutar su turno
+      scheduleBotTurnIfNeeded(roomId, rooms[roomId]);
+    }
+
+    console.log(`Sala Bot ${roomId} creada por ${playerName}`);
   });
 
   // 2. Unirse a Sala
@@ -503,6 +570,9 @@ io.on('connection', (socket) => {
       if (room.state.phase === 'completed') {
         if (room.timerInterval) clearInterval(room.timerInterval);
         saveMatchResult(roomId, room);
+      } else {
+        // Si es partida vs bot, verificar si le toca al bot
+        scheduleBotTurnIfNeeded(roomId, room);
       }
     } else {
       socket.emit('action_error', (result as any).error || 'Acción inválida');
@@ -563,6 +633,8 @@ io.on('connection', (socket) => {
       } else {
         startTurnTimer(roomId, room);
         broadcastGameState(roomId, room);
+        // Si es partida vs bot, verificar si le toca al bot en la nueva ronda
+        scheduleBotTurnIfNeeded(roomId, room);
       }
     }
   });
@@ -596,7 +668,6 @@ io.on('connection', (socket) => {
       room.chatHistory.shift();
     }
     room.chatHistory.push(message);
-
     if (isSpectator) {
       // Solo a espectadores
       room.spectators.forEach(s => {
@@ -611,22 +682,14 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`Usuario desconectado: ${socket.id}`);
-    
-    // Quitar de cola de matchmaking
     matchmakingQueue = matchmakingQueue.filter(p => p.socketId !== socket.id);
-
-    // Buscar si el jugador estaba en una sala
     const roomId = Object.keys(rooms).find(id => rooms[id]?.players.some(p => p.socketId === socket.id));
     if (roomId) {
       const room = rooms[roomId];
-      
-      // Notificar a los demás
       io.to(roomId).emit('player_disconnected', { 
         userId: userId, 
         message: 'El oponente se ha desconectado. Esperando reconexión...' 
       });
-
-      // If this is still a pre-game room (challenge waiting room), close it immediately
       if (room && !room.state) {
         closeRoom(roomId, 'creator_disconnected');
       }
@@ -636,47 +699,36 @@ io.on('connection', (socket) => {
 
 function startTurnTimer(roomId: string, room: any) {
   if (room.timerInterval) clearInterval(room.timerInterval);
-  
   room.lastActionTime = Date.now();
-  
   room.timerInterval = setInterval(() => {
     if (!room.state) return;
-    
     const now = Date.now();
     const elapsed = now - (room.lastActionTime || now);
     const remaining = Math.max(0, TURN_TIME_LIMIT_MS - elapsed);
-    
     io.to(roomId).emit('timer_update', { remaining });
-
     if (remaining <= 0) {
       clearInterval(room.timerInterval);
-      
       const currentPlayerIndex = room.state.currentTurnPlayerIndex;
       const currentPlayer = room.state.players[currentPlayerIndex];
-
-      if (!currentPlayer || !Array.isArray(currentPlayer.hand)) {
-        return;
-      }
-      
+      if (!currentPlayer || !Array.isArray(currentPlayer.hand)) return;
       if (currentPlayer.hand.length === 0) {
         room.state.currentTurnPlayerIndex = (room.state.currentTurnPlayerIndex + 1) % room.state.players.length;
         startTurnTimer(roomId, room);
         broadcastGameState(roomId, room);
         return;
       }
-      
       try {
         const action = room.engine.getTimeoutAction(room.state, currentPlayer.id);
         const result = room.engine.playCard(room.state, action);
-
         if (result.success) {
           room.state = result.value;
           startTurnTimer(roomId, room);
           broadcastGameState(roomId, room);
-          
           if (room.state.phase === 'completed') {
             if (room.timerInterval) clearInterval(room.timerInterval);
             saveMatchResult(roomId, room);
+          } else {
+            scheduleBotTurnIfNeeded(roomId, room);
           }
         } else {
           console.error(`Error al aplicar jugada automática por timeout:`, result.error);
@@ -691,19 +743,20 @@ function startTurnTimer(roomId: string, room: any) {
 async function saveMatchResult(roomId: string, room: any) {
   if (!room.state || room.state.phase !== 'completed') return;
 
-  // Determinar ganador (el que tenga mayor puntaje, o el primero si hay empate por ahora)
+  // Partidas vs bot no afectan ELO ni se guardan en historial
+  if (room.isBot) {
+    console.log(`Partida vs Bot ${roomId} finalizada — no se guardan estadísticas`);
+    return;
+  }
+
   let winnerId = room.state.winnerId || null;
   const p1 = room.state.players[0];
   const p2 = room.state.players[1];
 
   if (!winnerId) {
-    if (p1.score > p2.score) {
-      winnerId = p1.id;
-    } else if (p2.score > p1.score) {
-      winnerId = p2.id;
-    }
+    if (p1.score > p2.score) winnerId = p1.id;
+    else if (p2.score > p1.score) winnerId = p2.id;
   }
-  // Si son iguales, winnerId se queda en null (empate)
 
   try {
     const betAmount = room.betAmount || 0;
@@ -711,44 +764,18 @@ async function saveMatchResult(roomId: string, room: any) {
     let coinsEarnedP2 = 0;
 
     if (betAmount > 0 && winnerId) {
-      if (winnerId === p1.id) {
-        coinsEarnedP1 = betAmount * 2;
-        coinsEarnedP2 = -betAmount;
-      } else {
-        coinsEarnedP2 = betAmount * 2;
-        coinsEarnedP1 = -betAmount;
-      }
-      
-      // Update wallets if there's a bet
-      if (coinsEarnedP1 !== 0) {
-        await supabase.rpc('update_wallet', { user_id: p1.id, amount: coinsEarnedP1, reason: `Match result: ${roomId}` });
-      }
-      if (coinsEarnedP2 !== 0) {
-        await supabase.rpc('update_wallet', { user_id: p2.id, amount: coinsEarnedP2, reason: `Match result: ${roomId}` });
-      }
+      if (winnerId === p1.id) { coinsEarnedP1 = betAmount * 2; coinsEarnedP2 = -betAmount; }
+      else { coinsEarnedP2 = betAmount * 2; coinsEarnedP1 = -betAmount; }
+      if (coinsEarnedP1 !== 0) await supabase.rpc('update_wallet', { user_id: p1.id, amount: coinsEarnedP1, reason: `Match result: ${roomId}` });
+      if (coinsEarnedP2 !== 0) await supabase.rpc('update_wallet', { user_id: p2.id, amount: coinsEarnedP2, reason: `Match result: ${roomId}` });
     } else {
-      // Default non-bet rewards
       coinsEarnedP1 = winnerId === p1.id ? 50 : 10;
       coinsEarnedP2 = winnerId === p2.id ? 50 : 10;
     }
 
-    // ─── FASE 10: Guardar en Historial de Partidas ───
-    // Crear el arreglo de metadatos
     const metadata = [
-      {
-        id: p1.id,
-        name: room.players[0].name,
-        score: p1.score,
-        elo_change: winnerId === p1.id ? 25 : (winnerId ? -25 : 0),
-        coins_earned: coinsEarnedP1
-      },
-      {
-        id: p2.id,
-        name: room.players[1].name,
-        score: p2.score,
-        elo_change: winnerId === p2.id ? 25 : (winnerId ? -25 : 0),
-        coins_earned: coinsEarnedP2
-      }
+      { id: p1.id, name: room.players[0].name, score: p1.score, elo_change: winnerId === p1.id ? 25 : (winnerId ? -25 : 0), coins_earned: coinsEarnedP1 },
+      { id: p2.id, name: room.players[1].name, score: p2.score, elo_change: winnerId === p2.id ? 25 : (winnerId ? -25 : 0), coins_earned: coinsEarnedP2 }
     ];
 
     await supabase.from('match_history').insert({
@@ -757,154 +784,78 @@ async function saveMatchResult(roomId: string, room: any) {
       metadata: metadata
     });
     console.log(`Historial de partida guardado en DB para la sala ${roomId}`);
-    // ─── FIN FASE 10 ───
 
-    // 1. Guardar la partida en la tabla genérica
     await supabase.from('matches').insert({
-      player1_id: room.players[0].userId,
-      player2_id: room.players[1].userId,
-      winner_id: winnerId,
-      status: 'completed'
+      player1_id: room.players[0].userId, player2_id: room.players[1].userId,
+      winner_id: winnerId, status: 'completed'
     });
     console.log('Resultado de partida guardado en DB');
 
-    // 1.5 Update tournament match if applicable
     if (room.isTournament && winnerId) {
       const { data: tMatch, error: tError } = await supabase
-        .from('tournament_matches')
-        .update({
-          status: 'completed',
-          winner_id: winnerId
-        })
-        .eq('game_room_id', roomId)
-        .select()
-        .single();
-        
+        .from('tournament_matches').update({ status: 'completed', winner_id: winnerId })
+        .eq('game_room_id', roomId).select().single();
       if (tError) console.error('Error actualizando torneo:', tError);
-      
       if (tMatch) {
-        // If there's a next match, we need to advance the winner
-        // Logic for advancing in the bracket (Phase 2)
-        // Find next match: same event_id, round_number = current + 1, match_order = Math.ceil(current_order / 2)
         const nextRound = tMatch.round_number + 1;
         const nextOrder = Math.ceil(tMatch.match_order / 2);
-        
-        // Find the next match node
-        const { data: nextMatch } = await supabase
-          .from('tournament_matches')
-          .select('id, player1_id, player2_id')
-          .eq('event_id', tMatch.event_id)
-          .eq('round_number', nextRound)
-          .eq('match_order', nextOrder)
-          .single();
-          
+        const { data: nextMatch } = await supabase.from('tournament_matches')
+          .select('id, player1_id, player2_id').eq('event_id', tMatch.event_id)
+          .eq('round_number', nextRound).eq('match_order', nextOrder).single();
         if (nextMatch) {
           const updateData: any = {};
-          // If match_order is odd, the winner of this match goes to player1_id of the next match.
-          // If even, goes to player2_id.
-          if (tMatch.match_order % 2 !== 0) {
-            updateData.player1_id = winnerId;
-          } else {
-            updateData.player2_id = winnerId;
-          }
-          
-          await supabase
-            .from('tournament_matches')
-            .update(updateData)
-            .eq('id', nextMatch.id);
-            
+          if (tMatch.match_order % 2 !== 0) updateData.player1_id = winnerId;
+          else updateData.player2_id = winnerId;
+          await supabase.from('tournament_matches').update(updateData).eq('id', nextMatch.id);
           console.log(`Ganador ${winnerId} avanzado a la ronda ${nextRound}`);
         } else {
-          // If there is no next match, this was the Final!
           console.log(`¡Ganador del Torneo! ${winnerId} ha ganado el evento ${tMatch.event_id}`);
-          
-          // Entregar el premio llamando al RPC
-          const prizeAmount = 1000; // Podríamos leerlo de la tabla events, pero lo dejamos hardcodeado por simplicidad MVP o buscarlo:
           const { data: eventData } = await supabase.from('events').select('prize_pool').eq('id', tMatch.event_id).single();
-          
-          // Extract numbers from prize_pool string (e.g. "10,000 Monedas" -> 10000)
           let finalPrize = 0;
           if (eventData && eventData.prize_pool) {
-            const match = eventData.prize_pool.replace(/,/g, '').match(/(\d+)/);
-            if (match) {
-              finalPrize = parseInt(match[0], 10);
-            }
+            const m = eventData.prize_pool.replace(/,/g, '').match(/(\d+)/);
+            if (m) finalPrize = parseInt(m[0], 10);
           }
-          
           if (finalPrize > 0) {
             const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
-              event_id_param: tMatch.event_id,
-              winner_id_param: winnerId,
-              prize_amount: finalPrize
+              event_id_param: tMatch.event_id, winner_id_param: winnerId, prize_amount: finalPrize
             });
-            
-            if (rewardError) {
-              console.error('Error entregando premio al ganador del torneo:', rewardError);
-            } else {
-              console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
-            }
+            if (rewardError) console.error('Error entregando premio:', rewardError);
+            else console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
           }
         }
       }
     }
 
-    // 2. Actualizar ELO y Estadísticas de los jugadores
     if (winnerId) {
       const loserId = winnerId === p1.id ? p2.id : p1.id;
-      
-      // Función helper para actualizar un jugador en Supabase (requiere RPC o lectura previa)
-      // Para simplificar, leemos el perfil, calculamos el nuevo ELO y actualizamos.
       const updateProfile = async (id: string, isWinner: boolean) => {
         const { data: profile } = await supabase.from('profiles').select('elo, wins, losses').eq('id', id).single();
         if (profile) {
-          const eloChange = 25; // ELO fijo por ahora
+          const eloChange = 25;
           await supabase.from('profiles').update({
             elo: profile.elo + (isWinner ? eloChange : -eloChange),
             wins: profile.wins + (isWinner ? 1 : 0),
             losses: profile.losses + (isWinner ? 0 : 1)
           }).eq('id', id);
         }
-
-        // FASE 5: Actualizar Misiones Diarias
         try {
-          // Obtener misiones activas de hoy
           const today = new Date().toISOString().split('T')[0];
-          const { data: quests } = await supabase
-            .from('player_daily_quests')
-            .select(`
-              id, progress, is_completed,
-              catalog:quest_catalog (target_amount, quest_type)
-            `)
-            .eq('player_id', id)
-            .eq('assigned_date', today)
-            .eq('is_completed', false);
-
+          const { data: quests } = await supabase.from('player_daily_quests')
+            .select(`id, progress, is_completed, catalog:quest_catalog (target_amount, quest_type)`)
+            .eq('player_id', id).eq('assigned_date', today).eq('is_completed', false);
           if (quests && quests.length > 0) {
             for (const quest of quests) {
-              // Manejo de catalog como array o como objeto dependiendo de la configuración de Supabase
               const catalog = Array.isArray(quest.catalog) ? quest.catalog[0] : quest.catalog;
               if (!catalog) continue;
-
               const { target_amount, quest_type } = catalog;
-              
               let increment = false;
-              if (quest_type === 'play_match') {
-                increment = true;
-              } else if (quest_type === 'win_match' && isWinner) {
-                increment = true;
-              }
-
+              if (quest_type === 'play_match') increment = true;
+              else if (quest_type === 'win_match' && isWinner) increment = true;
               if (increment) {
                 const newProgress = quest.progress + 1;
                 const isCompleted = newProgress >= target_amount;
-                
-                await supabase
-                  .from('player_daily_quests')
-                  .update({
-                    progress: newProgress,
-                    is_completed: isCompleted
-                  })
-                  .eq('id', quest.id);
+                await supabase.from('player_daily_quests').update({ progress: newProgress, is_completed: isCompleted }).eq('id', quest.id);
               }
             }
           }
@@ -912,52 +863,38 @@ async function saveMatchResult(roomId: string, room: any) {
           console.error('Error actualizando misiones diarias:', questErr);
         }
       };
-
       await updateProfile(winnerId, true);
       await updateProfile(loserId, false);
       console.log('Estadísticas, ELO y Misiones actualizados');
     }
-
   } catch (err) {
     console.error('Error guardando partida:', err);
   }
 }
 
-// Función para enviar el estado del juego ocultando información sensible
 function broadcastGameState(roomId: string, room: any) {
   if (!room.state) return;
   const fullState = room.state;
 
-  // 1. Enviar estado a los Jugadores Activos
   room.players.forEach((p: any) => {
-    // Clonamos el estado para este jugador específico
     const safeState: GameState = JSON.parse(JSON.stringify(fullState));
-
-    // Ocultamos las manos de los rivales
     safeState.players.forEach((statePlayer: any) => {
       if (statePlayer.id !== p.playerId) {
-        // Solo mandamos el conteo de cartas, no los valores
-        statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({ 
+        statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_: any, i: number) => ({ 
           id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
         }));
       }
     });
-
-    // Enviar a cada socket su versión segura del estado
     io.to(p.socketId).emit('game_state_update', safeState);
   });
 
-  // 2. Enviar estado saneado a los Espectadores
   if (room.spectators && room.spectators.length > 0) {
     const spectatorSafeState: GameState = JSON.parse(JSON.stringify(fullState));
-    
-    // Ocultar TODAS las manos para los espectadores
     spectatorSafeState.players.forEach((statePlayer: any) => {
-      statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({ 
+      statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_: any, i: number) => ({ 
         id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
       }));
     });
-
     room.spectators.forEach((s: any) => {
       io.to(s.socketId).emit('game_state_update', spectatorSafeState);
     });
