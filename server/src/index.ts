@@ -8,7 +8,8 @@ import { GameState } from './domain/game-state';
 import { Action } from './application/action-validator';
 import dotenv from 'dotenv';
 import { supabase } from './supabase';
-import { BOT_USER_ID, BOT_NAME, BOT_THINK_DELAY_MS } from './bot/bot-player';
+import { BOT_USER_ID, BOT_NAMES, BOT_THINK_DELAY_MS, getBotAction } from './bot/bot-player';
+import type { BotDifficulty } from './bot/bot-player';
 
 dotenv.config();
 
@@ -123,6 +124,7 @@ io.use(async (socket, next) => {
     chatHistory: ChatMessage[];
     betAmount?: number;
     isBot?: boolean;
+    botDifficulty?: BotDifficulty;
   }> = {};
 
 // ─── FASE 8: Matchmaking Queue ───
@@ -240,7 +242,8 @@ function scheduleBotTurnIfNeeded(roomId: string, room: any) {
   if (currentPlayer && currentPlayer.id === BOT_USER_ID) {
     setTimeout(() => {
       if (!rooms[roomId] || !rooms[roomId].state) return;
-      const action = rooms[roomId].engine.getTimeoutAction(rooms[roomId].state, BOT_USER_ID);
+      const difficulty: BotDifficulty = rooms[roomId].botDifficulty || 'easy';
+      const action = getBotAction(rooms[roomId].engine, rooms[roomId].state, BOT_USER_ID, difficulty);
       if (action) {
         const result = rooms[roomId].engine.playCard(rooms[roomId].state, action);
         if (result.success) {
@@ -288,8 +291,10 @@ io.on('connection', (socket) => {
   });
 
   // 1.5 Crear Sala vs Bot
-  socket.on('create_bot_room', (data: { playerName: string }) => {
+  socket.on('create_bot_room', (data: { playerName: string, difficulty?: BotDifficulty }) => {
     const { playerName } = data;
+    const difficulty: BotDifficulty = data.difficulty || 'easy';
+    const botName = BOT_NAMES[difficulty];
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
 
     rooms[roomId] = {
@@ -297,20 +302,21 @@ io.on('connection', (socket) => {
       state: null,
       players: [
         { socketId: socket.id, playerId: userId, name: playerName, userId },
-        { socketId: 'bot', playerId: BOT_USER_ID, name: BOT_NAME, userId: BOT_USER_ID }
+        { socketId: 'bot', playerId: BOT_USER_ID, name: botName, userId: BOT_USER_ID }
       ],
       spectators: [],
       maxPlayers: 2,
       chatHistory: [],
       betAmount: 0,
-      isBot: true
+      isBot: true,
+      botDifficulty: difficulty
     };
 
     socket.join(roomId);
     socket.emit('room_created', { roomId, playerId: userId, betAmount: 0, mode: '1v1' });
 
     // Iniciar partida inmediatamente (la sala ya tiene 2 "jugadores")
-    const result = rooms[roomId].engine.startNewGame('1v1', [playerName, BOT_NAME]);
+    const result = rooms[roomId].engine.startNewGame('1v1', [playerName, botName]);
     if (result.success && result.value) {
       rooms[roomId].state = result.value;
       // Asignar IDs reales
@@ -324,7 +330,7 @@ io.on('connection', (socket) => {
       scheduleBotTurnIfNeeded(roomId, rooms[roomId]);
     }
 
-    console.log(`Sala Bot ${roomId} creada por ${playerName}`);
+    console.log(`Sala Bot [${difficulty}] ${roomId} creada por ${playerName}`);
   });
 
   // 2. Unirse a Sala

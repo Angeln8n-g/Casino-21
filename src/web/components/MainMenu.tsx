@@ -336,12 +336,12 @@ export function MainMenu() {
     } catch (e) {}
   };
 
-  const handlePlayVsBot = async () => {
+  const handlePlayVsBot = async (difficulty: 'easy' | 'medium' | 'hard' = 'easy') => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
     try {
       const socket = await socketService.connect();
       playSfx('cardPlay', { volumeMultiplier: 0.65, playbackRate: 0.9 });
-      socket.emit('create_bot_room', { playerName });
+      socket.emit('create_bot_room', { playerName, difficulty });
     } catch (e: any) {
       console.error('Error creando sala vs bot:', e);
       setError(e.message || 'Error conectando al servidor...');
@@ -851,25 +851,40 @@ export function MainMenu() {
                 </div>
               </div>
 
-              {/* VS BOT Card */}
-              <button
-                onClick={handlePlayVsBot}
-                className="flex-1 group relative overflow-hidden rounded-2xl border border-emerald-500/30 hover:border-emerald-500 transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_10px_30px_rgba(16,185,129,0.2)] text-left"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/30 to-black/80 z-0"></div>
-                <div className="relative z-10 p-5 flex items-center gap-4 h-full">
-                  <div className="text-3xl drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]">🤖</div>
-                  <div>
-                    <h3 className="font-display font-black text-xl text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
-                      VS BOT
-                    </h3>
-                    <p className="text-gray-400 text-xs">Practica sin afectar tu ELO</p>
-                  </div>
-                  <div className="ml-auto bg-emerald-500/20 text-emerald-400 text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
-                    Fácil
-                  </div>
-                </div>
-              </button>
+              {/* VS BOT Cards — Difficulty Selection */}
+              <div className="flex gap-3">
+                {[
+                  { key: 'easy' as const, label: 'Fácil', emoji: '🤖', color: 'emerald', desc: 'Para aprender' },
+                  { key: 'medium' as const, label: 'Medio', emoji: '🧠', color: 'amber', desc: 'Desafiante' },
+                  { key: 'hard' as const, label: 'Difícil', emoji: '👑', color: 'rose', desc: 'Sin piedad' },
+                ].map(({ key, label, emoji, color, desc }) => {
+                  const colorMap: Record<string, { border: string, borderHover: string, bg: string, text: string, badge: string, shadow: string }> = {
+                    emerald: { border: 'border-emerald-500/30', borderHover: 'hover:border-emerald-500', bg: 'from-emerald-900/30', text: 'group-hover:text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-400', shadow: 'hover:shadow-[0_10px_30px_rgba(16,185,129,0.2)]' },
+                    amber:   { border: 'border-amber-500/30',   borderHover: 'hover:border-amber-500',   bg: 'from-amber-900/30',   text: 'group-hover:text-amber-400',   badge: 'bg-amber-500/20 text-amber-400',   shadow: 'hover:shadow-[0_10px_30px_rgba(245,158,11,0.2)]' },
+                    rose:    { border: 'border-rose-500/30',    borderHover: 'hover:border-rose-500',    bg: 'from-rose-900/30',    text: 'group-hover:text-rose-400',    badge: 'bg-rose-500/20 text-rose-400',    shadow: 'hover:shadow-[0_10px_30px_rgba(244,63,94,0.2)]' },
+                  };
+                  const c = colorMap[color];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handlePlayVsBot(key)}
+                      className={`flex-1 group relative overflow-hidden rounded-2xl border ${c.border} ${c.borderHover} transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${c.shadow} text-left`}
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-r ${c.bg} to-black/80 z-0`}></div>
+                      <div className="relative z-10 p-4 flex flex-col items-center gap-2 h-full">
+                        <div className="text-2xl drop-shadow-lg">{emoji}</div>
+                        <h3 className={`font-display font-black text-sm text-white uppercase tracking-wider ${c.text} transition-colors`}>
+                          {label}
+                        </h3>
+                        <p className="text-gray-500 text-[10px] text-center">{desc}</p>
+                        <div className={`${c.badge} text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest mt-auto`}>
+                          VS BOT
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             
           </div>
