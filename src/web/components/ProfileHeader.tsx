@@ -127,7 +127,9 @@ export function ProfileHeader({
             className="w-10 h-10 rounded-lg bg-casino-surface-light flex items-center justify-center text-lg font-black text-casino-gold border border-casino-gold/20 cursor-pointer hover:border-casino-gold/60 transition-colors overflow-hidden"
             title="Cambiar Avatar"
           >
-            {profile?.avatar_url ? (
+            {profile?.equipped_avatar ? (
+              <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               profile?.username?.charAt(0).toUpperCase() || 'P'

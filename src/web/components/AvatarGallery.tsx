@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -112,8 +113,8 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
   // Check if current equipped is from store or free
   const currentEquipped = profile?.equipped_avatar || currentAvatarUrl;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+  const content = (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="glass-panel-strong w-full max-w-2xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
@@ -242,4 +243,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return content;
+  return createPortal(content, document.body);
 }
