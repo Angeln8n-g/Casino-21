@@ -223,29 +223,27 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
     const resolveBoardTheme = async () => {
       const activeRoomId = roomId.toUpperCase();
-      if (!activeRoomId) {
-        if (isMounted) { setBoardThemeUrl(null); setHostBoardTheme(null); }
-        return;
-      }
 
       try {
         // ── 1. Tournament theme (highest priority) ──
-        const { data: tMatch } = await supabase
-          .from('tournament_matches')
-          .select('event_id')
-          .eq('game_room_id', activeRoomId)
-          .maybeSingle();
-
-        if (tMatch?.event_id) {
-          const { data: eventData } = await supabase
-            .from('events')
-            .select('board_theme_url')
-            .eq('id', tMatch.event_id)
+        if (activeRoomId) {
+          const { data: tMatch } = await supabase
+            .from('tournament_matches')
+            .select('event_id')
+            .eq('game_room_id', activeRoomId)
             .maybeSingle();
 
-          if (eventData?.board_theme_url) {
-            if (isMounted) { setBoardThemeUrl(eventData.board_theme_url); setHostBoardTheme(null); }
-            return;
+          if (tMatch?.event_id) {
+            const { data: eventData } = await supabase
+              .from('events')
+              .select('board_theme_url')
+              .eq('id', tMatch.event_id)
+              .maybeSingle();
+
+            if (eventData?.board_theme_url) {
+              if (isMounted) { setBoardThemeUrl(eventData.board_theme_url); setHostBoardTheme(null); }
+              return;
+            }
           }
         }
 
@@ -269,18 +267,15 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         }
 
         // ── 3. Host's equipped store theme ──
-        // Find the host of this room by looking up who created it
-        const { data: roomData } = await supabase
-          .from('game_rooms')
-          .select('host_id')
-          .eq('id', activeRoomId)
-          .maybeSingle();
-
-        if (roomData?.host_id) {
+        // The host is always players[0] — the room creator.
+        // We read directly from gameState instead of querying game_rooms
+        // (rooms live only in server memory and are never persisted to Supabase).
+        const hostId = gameState?.players?.[0]?.id;
+        if (hostId) {
           const { data: hostProfile } = await supabase
             .from('profiles')
             .select('equipped_theme')
-            .eq('id', roomData.host_id)
+            .eq('id', hostId)
             .maybeSingle();
 
           if (hostProfile?.equipped_theme) {
@@ -301,7 +296,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     return () => {
       isMounted = false;
     };
-  }, [roomId, user?.id]);
+    // Re-run when gameState becomes available (first render may fire before game starts)
+  }, [roomId, user?.id, gameState?.players?.[0]?.id]);
 
   useEffect(() => {
     if (!gameState?.players?.length) return;
@@ -631,6 +627,27 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
+        {/* ── Full-screen theme background ── */}
+        {(hostBoardTheme || boardThemeUrl) && (
+          <div
+            className="absolute inset-0 z-0"
+            style={
+              boardThemeUrl
+                ? {
+                    backgroundImage: `url(${boardThemeUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    opacity: 0.25,
+                  }
+                : hostBoardTheme
+                ? {
+                    backgroundImage: hostBoardTheme.background,
+                    opacity: 0.35,
+                  }
+                : undefined
+            }
+          />
+        )}
         <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
         
         {/* Spectator Banner & Leave Button */}
