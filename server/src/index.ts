@@ -238,22 +238,52 @@ function closeRoom(roomId: string, reason: string = 'room_closed') {
 
 function scheduleBotTurnIfNeeded(roomId: string, room: any) {
   if (!room.isBot || !room.state) return;
+
+  // ── Scoring phase: auto-continue after a delay ──
+  if (room.state.phase === 'scoring') {
+    if (room.timerInterval) clearInterval(room.timerInterval);
+    setTimeout(() => {
+      if (!rooms[roomId] || !rooms[roomId].state) return;
+      if (rooms[roomId].state.phase !== 'scoring') return; // human already clicked continue
+      const result = rooms[roomId].engine.continueToNextRound(rooms[roomId].state);
+      if (result.success && result.value) {
+        rooms[roomId].state = result.value;
+        broadcastGameState(roomId, rooms[roomId]);
+        if (rooms[roomId].state.phase === 'completed') {
+          if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
+          saveMatchResult(roomId, rooms[roomId]);
+        } else {
+          startTurnTimer(roomId, rooms[roomId]);
+          scheduleBotTurnIfNeeded(roomId, rooms[roomId]);
+        }
+      }
+    }, BOT_THINK_DELAY_MS * 2); // 3s — let human see the score screen
+    return;
+  }
+
+  // ── Only play during the 'playing' phase ──
+  if (room.state.phase !== 'playing') return;
+
   const currentPlayer = room.state.players[room.state.currentTurnPlayerIndex];
   if (currentPlayer && currentPlayer.id === BOT_USER_ID) {
     setTimeout(() => {
       if (!rooms[roomId] || !rooms[roomId].state) return;
+      if (rooms[roomId].state.phase !== 'playing') return;
       const difficulty: BotDifficulty = rooms[roomId].botDifficulty || 'easy';
       const action = getBotAction(rooms[roomId].engine, rooms[roomId].state, BOT_USER_ID, difficulty);
       if (action) {
         const result = rooms[roomId].engine.playCard(rooms[roomId].state, action);
         if (result.success) {
           rooms[roomId].state = result.value;
-          startTurnTimer(roomId, rooms[roomId]);
           broadcastGameState(roomId, rooms[roomId]);
           if (rooms[roomId].state.phase === 'completed') {
             if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
             saveMatchResult(roomId, rooms[roomId]);
+          } else if (rooms[roomId].state.phase === 'scoring') {
+            if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
+            scheduleBotTurnIfNeeded(roomId, rooms[roomId]); // triggers auto-continue
           } else {
+            startTurnTimer(roomId, rooms[roomId]);
             scheduleBotTurnIfNeeded(roomId, rooms[roomId]);
           }
         }
@@ -566,17 +596,19 @@ io.on('connection', (socket) => {
     
     if (result.success) {
       room.state = result.value;
-      
-      // Reiniciar timer
-      startTurnTimer(roomId, room);
-
       broadcastGameState(roomId, room);
       
-      // Comprobar si el juego terminó y guardar en DB
+      // Comprobar fase del juego
       if (room.state.phase === 'completed') {
         if (room.timerInterval) clearInterval(room.timerInterval);
         saveMatchResult(roomId, room);
+      } else if (room.state.phase === 'scoring') {
+        // No iniciar timer durante scoring — el humano verá el resumen
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        // En partidas vs bot, auto-continuar después del delay
+        scheduleBotTurnIfNeeded(roomId, room);
       } else {
+        startTurnTimer(roomId, room);
         // Si es partida vs bot, verificar si le toca al bot
         scheduleBotTurnIfNeeded(roomId, room);
       }

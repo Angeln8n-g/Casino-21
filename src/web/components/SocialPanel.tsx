@@ -394,7 +394,7 @@ export function SocialPanel() {
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/40 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0 border border-casino-gold/30 overflow-hidden">
                             {req.equipped_avatar ? (
                               <img 
-                                src={`/assets/store/${req.equipped_avatar}`} 
+                                src={req.equipped_avatar} 
                                 alt="Avatar" 
                                 className="w-full h-full object-cover" 
                                 onError={(e) => {
@@ -485,7 +485,7 @@ export function SocialPanel() {
                           }`}>
                             {friend.equipped_avatar ? (
                               <img 
-                                src={`/assets/store/${friend.equipped_avatar}`} 
+                                src={friend.equipped_avatar} 
                                 alt="Avatar" 
                                 className="w-full h-full object-cover" 
                                 onError={(e) => {

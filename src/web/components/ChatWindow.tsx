@@ -342,7 +342,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
                 <div className={`flex items-end gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
                     {profile.equipped_avatar ? (
-                      <img src={`/assets/store/${profile.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                      <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
                     ) : profile.avatar_url ? (
                       <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (

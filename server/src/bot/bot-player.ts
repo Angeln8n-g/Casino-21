@@ -323,18 +323,28 @@ function scoreHardAction(action: Action, state: GameState, playerId: string, opp
     }
 
     case 'formar': {
-      let score = 80;
+      let score = 100; // Forming is strategically important
       const handCard = player.hand.find(c => c.id === action.cardId);
       if (handCard) {
         score += handCard.value * 3;
         // Prefer forming with high-value targets for bigger payoff later
-        if (handCard.value >= 10) score += 15;
+        if (handCard.value >= 10) score += 20;
       }
 
       // Check if this blocks opponent from taking the same cards
       const boardCards = action.boardCardIds?.map(id => state.board.cards.find(c => c.id === id)).filter(Boolean) || [];
       const hasHighValueCards = boardCards.some(c => c && (c.rank === 'A' || (c.suit === 'diamonds' && c.rank === '10')));
-      if (hasHighValueCards) score += 20; // Protecting high-value cards from opponent
+      if (hasHighValueCards) score += 25; // Protecting high-value cards from opponent
+
+      // Prefer formations that lock more cards (more board cards = better)
+      score += (boardCards.length) * 8;
+
+      // Bonus: if opponent could take these board cards on their turn, forming protects them
+      if (opponentId && opponent) {
+        const opponentHand = opponent.hand || [];
+        const wouldBeVulnerable = boardCards.some(bc => bc && opponentHand.some(oh => oh.value === bc.value));
+        if (wouldBeVulnerable) score += 20; // Prevent opponent from taking these cards
+      }
 
       return score;
     }

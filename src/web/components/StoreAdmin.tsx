@@ -18,6 +18,8 @@ export function StoreAdmin() {
   
   // Form State
   const [isEditing, setIsEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [currentItem, setCurrentItem] = useState<Partial<StoreItem>>({
     name: '',
@@ -42,6 +44,47 @@ export function StoreAdmin() {
     if (error) setError(error.message);
     else setItems(data || []);
     setLoading(false);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    
+    setUploading(true);
+    setError('');
+
+    try {
+      // Generate unique filename
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const safeName = (currentItem.name || 'item')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_');
+      const fileName = `${safeName}_${Date.now()}.${ext}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('store_assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('store_assets')
+        .getPublicUrl(fileName);
+
+      if (urlData?.publicUrl) {
+        setCurrentItem(prev => ({ ...prev, image_url: urlData.publicUrl }));
+      }
+    } catch (err: any) {
+      setError(`Error al subir archivo: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -133,31 +176,82 @@ export function StoreAdmin() {
                 <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentItem.description} onChange={e => setCurrentItem({...currentItem, description: e.target.value})} />
               </div>
               
+              {/* Image Upload Section */}
               <div className="md:col-span-2 border border-white/10 p-4 rounded-xl bg-black/20">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">URL de la Imagen / GIF (Opcional para Títulos)</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-3">Imagen / GIF (Opcional para Títulos)</label>
                 
                 <div className="flex flex-col gap-4">
-                  <input 
-                    type="url" 
-                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" 
-                    placeholder="https://ejemplo.com/imagen.gif"
-                    value={currentItem.image_url || ''} 
-                    onChange={e => setCurrentItem({...currentItem, image_url: e.target.value})} 
-                  />
+                  {/* File Upload */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className={`px-4 py-2.5 rounded-lg font-bold text-sm border transition-all flex items-center gap-2 ${
+                        uploading 
+                          ? 'bg-purple-500/10 text-purple-300 border-purple-500/20 cursor-wait' 
+                          : 'bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/40'
+                      }`}
+                    >
+                      {uploading ? (
+                        <>
+                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Subiendo...
+                        </>
+                      ) : (
+                        <>
+                          📤 Subir al Storage
+                        </>
+                      )}
+                    </button>
+                    <span className="text-[10px] text-gray-500 self-center">PNG, JPG, GIF, WebP, SVG — Máx. 5MB</span>
+                  </div>
+
+                  {/* Manual URL input */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">O pegar URL directa</label>
+                    <input 
+                      type="url" 
+                      className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" 
+                      placeholder="https://example.com/image.gif"
+                      value={currentItem.image_url || ''} 
+                      onChange={e => setCurrentItem({...currentItem, image_url: e.target.value})} 
+                    />
+                  </div>
                   
+                  {/* Image preview */}
                   {currentItem.image_url && (
-                    <div className="relative w-full max-w-xs h-32 bg-black/50 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={currentItem.image_url} 
-                        alt="Preview" 
-                        className="max-w-full max-h-full object-contain"
-                        onError={(e) => {
-                          // Si falla la URL absoluta, intentamos la ruta local por si es un seed antiguo
-                          if (!(e.target as HTMLImageElement).src.includes('/assets/store/')) {
-                            (e.target as HTMLImageElement).src = `/assets/store/${currentItem.image_url}`;
-                          }
-                        }}
-                      />
+                    <div className="relative w-full max-w-xs">
+                      <div className="h-32 bg-black/50 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={currentItem.image_url} 
+                          alt="Preview" 
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentItem({...currentItem, image_url: ''})}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-gray-400 hover:text-red-400 flex items-center justify-center text-xs transition-colors"
+                      >
+                        ✕
+                      </button>
+                      <p className="text-[9px] text-gray-600 mt-1 truncate max-w-xs" title={currentItem.image_url}>
+                        {currentItem.image_url}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -197,11 +291,6 @@ export function StoreAdmin() {
                           <div className="w-10 h-10 bg-black/30 rounded flex items-center justify-center p-1 overflow-hidden">
                             <img 
                               src={item.image_url}
-                              onError={(e) => { 
-                                if (!(e.target as HTMLImageElement).src.includes('/assets/store/')) {
-                                  (e.target as HTMLImageElement).src = `/assets/store/${item.image_url}`; 
-                                }
-                              }}
                               alt="" className="max-w-full max-h-full object-contain" 
                             />
                           </div>

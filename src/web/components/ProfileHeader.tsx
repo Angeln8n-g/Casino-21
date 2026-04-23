@@ -324,7 +324,7 @@ export function ProfileHeader({
               title="Cambiar Avatar"
             >
               {profile?.equipped_avatar ? (
-                <img src={`/assets/store/${profile.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
               ) : (

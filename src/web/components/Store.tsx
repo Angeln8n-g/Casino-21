@@ -152,10 +152,10 @@ export function Store() {
         {filteredItems.map(item => {
           const isOwned = inventory.includes(item.id);
           const canAfford = (profile?.coins || 0) >= item.price;
-          const isEquipped = profile?.equipped_avatar === item.id || 
-                             profile?.equipped_card_back === item.id || 
-                             profile?.equipped_title === item.id || 
-                             profile?.equipped_board === item.id;
+          const isEquipped = (item.item_type === 'avatar' && profile?.equipped_avatar === item.image_url) || 
+                             (item.item_type === 'card_back' && profile?.equipped_card_back === item.image_url) || 
+                             (item.item_type === 'title' && profile?.equipped_title === item.name) || 
+                             (item.item_type === 'board' && profile?.equipped_board === item.image_url);
           
           return (
             <div 

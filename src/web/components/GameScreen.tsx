@@ -292,7 +292,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
       const next: Record<string, string | null> = {};
       for (const row of data as any[]) {
-        const url = row.equipped_avatar ? `/assets/store/${row.equipped_avatar}` : row.avatar_url;
+        const url = row.equipped_avatar || row.avatar_url;
         next[row.id] = url || null;
       }
       setPlayerAvatarUrls(next);
@@ -747,7 +747,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             bg-cover bg-center bg-no-repeat transition-all duration-1000
             ${isMobile ? 'min-h-0 overflow-y-auto' : ''}
           `}
-          style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(/assets/store/${profile.equipped_board})` } : {}}
+          style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(${profile.equipped_board})` } : {}}
         >
           {/* Indicador visual de turno grande */}
           {!isCurrentTurn && (

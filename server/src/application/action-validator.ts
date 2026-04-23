@@ -520,11 +520,27 @@ export class DefaultActionValidator implements ActionValidator {
       }
     }
 
-    // Formar (Simple combinations)
-    // For simplicity in suggestion, we can just suggest pairs that sum to the card
+    // Formar (Single board card + hand card → formation)
     for (const card of player.hand) {
-      // Find all subsets of board cards that sum to card.value
-      // This could be expensive, so we just do pairs for getValidActions MVP
+      const possibleHandVals = card.rank === 'A' ? [1, 14] : [card.value];
+      for (const boardCard of state.board.cards) {
+        const isCantedByOther = state.board.cantedCards.some(cc => cc.card.id === boardCard.id && cc.playerId !== playerId);
+        if (isCantedByOther) continue;
+        for (const hv of possibleHandVals) {
+          const sum = hv + boardCard.value;
+          if (sum > 14) continue;
+          const hasTarget = player.hand.some(c => c.id !== card.id && (c.value === sum || (c.rank === 'A' && sum === 14)));
+          if (hasTarget) {
+            validActions.push({ type: 'formar', playerId, cardId: card.id, boardCardIds: [boardCard.id] });
+          }
+        }
+      }
+    }
+
+    // Formar (Pair combinations)
+    // Two board cards that sum to the hand card value
+    for (const card of player.hand) {
+
       for (let i = 0; i < state.board.cards.length; i++) {
         for (let j = i + 1; j < state.board.cards.length; j++) {
           const c1 = state.board.cards[i];

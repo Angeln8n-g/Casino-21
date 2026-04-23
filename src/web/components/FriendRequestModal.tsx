@@ -106,7 +106,7 @@ export function FriendRequestModal({
             isHighElo ? 'text-casino-gold' : 'text-gray-300'
           }`}>
             {request.equipped_avatar ? (
-              <img src={`/assets/store/${request.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+              <img src={request.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : request.avatar_url ? (
               <img src={request.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (

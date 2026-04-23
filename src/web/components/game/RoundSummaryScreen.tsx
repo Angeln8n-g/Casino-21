@@ -98,11 +98,6 @@ export function RoundSummaryScreen({ gameState, onContinue }: RoundSummaryScreen
               alt="K21 Logo"
               className="h-12 sm:h-16 md:h-24 lg:h-28 w-auto mb-1 sm:mb-2 object-contain drop-shadow-[0_0_12px_rgba(251,191,36,0.4)] animate-[pulse_3s_ease-in-out_infinite]"
             />
-            <img
-              src={titleImage}
-              alt="Resumen de la Ronda"
-              className="h-4 sm:h-6 md:h-8 lg:h-10 w-auto object-contain drop-shadow-xl"
-            />
           </div>
 
           {/* ---- Progress Bars ---- */}

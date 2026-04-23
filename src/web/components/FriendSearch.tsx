@@ -282,7 +282,7 @@ export function FriendSearch() {
               <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedPlayer(r)}>
                 <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0 overflow-hidden shadow-inner border border-white/10">
                   {r.equipped_avatar ? (
-                    <img src={`/assets/store/${r.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={r.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : r.avatar_url ? (
                     <img src={r.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -446,7 +446,7 @@ function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose
                 player.elo >= 1500 ? 'text-casino-gold' : 'text-gray-300'
               }`}>
                 {player.equipped_avatar ? (
-                  <img src={`/assets/store/${player.equipped_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={player.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : player.avatar_url ? (
                   <img src={player.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (

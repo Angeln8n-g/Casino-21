@@ -250,7 +250,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
             }`}>
               {friend.equipped_avatar ? (
                 <img 
-                  src={`/assets/store/${friend.equipped_avatar}`} 
+                  src={friend.equipped_avatar} 
                   alt="Avatar" 
                   className="w-full h-full object-cover" 
                   onError={(e) => {

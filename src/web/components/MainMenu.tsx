@@ -813,7 +813,7 @@ export function MainMenu() {
             </button>
 
             {/* Custom / Friend Room Card */}
-            <div className="flex flex-col gap-4 h-64">
+            <div className="flex flex-col gap-3 sm:gap-4">
               <button 
                 onClick={handleCreateRoomClick}
                 className="flex-1 group relative overflow-hidden rounded-2xl border border-blue-500/30 hover:border-blue-500 transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_10px_30px_rgba(59,130,246,0.2)] text-left"
@@ -852,7 +852,7 @@ export function MainMenu() {
               </div>
 
               {/* VS BOT Cards — Difficulty Selection */}
-              <div className="flex gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {[
                   { key: 'easy' as const, label: 'Fácil', emoji: '🤖', color: 'emerald', desc: 'Para aprender' },
                   { key: 'medium' as const, label: 'Medio', emoji: '🧠', color: 'amber', desc: 'Desafiante' },
@@ -868,16 +868,16 @@ export function MainMenu() {
                     <button
                       key={key}
                       onClick={() => handlePlayVsBot(key)}
-                      className={`flex-1 group relative overflow-hidden rounded-2xl border ${c.border} ${c.borderHover} transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${c.shadow} text-left`}
+                      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl border ${c.border} ${c.borderHover} transition-all duration-500 transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${c.shadow} text-left`}
                     >
                       <div className={`absolute inset-0 bg-gradient-to-r ${c.bg} to-black/80 z-0`}></div>
-                      <div className="relative z-10 p-4 flex flex-col items-center gap-2 h-full">
-                        <div className="text-2xl drop-shadow-lg">{emoji}</div>
-                        <h3 className={`font-display font-black text-sm text-white uppercase tracking-wider ${c.text} transition-colors`}>
+                      <div className="relative z-10 p-2.5 sm:p-4 flex flex-col items-center gap-1 sm:gap-2 h-full">
+                        <div className="text-xl sm:text-2xl drop-shadow-lg">{emoji}</div>
+                        <h3 className={`font-display font-black text-[11px] sm:text-sm text-white uppercase tracking-wider ${c.text} transition-colors`}>
                           {label}
                         </h3>
-                        <p className="text-gray-500 text-[10px] text-center">{desc}</p>
-                        <div className={`${c.badge} text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest mt-auto`}>
+                        <p className="text-gray-500 text-[9px] sm:text-[10px] text-center hidden sm:block">{desc}</p>
+                        <div className={`${c.badge} text-[7px] sm:text-[8px] font-black px-1.5 sm:px-2 py-0.5 rounded-full uppercase tracking-widest mt-auto`}>
                           VS BOT
                         </div>
                       </div>
