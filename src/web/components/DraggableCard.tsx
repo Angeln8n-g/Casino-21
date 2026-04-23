@@ -3,15 +3,18 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { CardView } from './CardView';
 import { Card } from '../../domain/card';
+import { CardTheme } from '../themes/themeRegistry';
 
 interface DraggableCardProps {
   card: Card;
   disabled?: boolean;
   selected?: boolean;
   onClick?: () => void;
+  /** Card theme from the local player's equipped_theme */
+  theme?: CardTheme;
 }
 
-export function DraggableCard({ card, disabled, selected, onClick }: DraggableCardProps) {
+export function DraggableCard({ card, disabled, selected, onClick, theme }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `hand-card-${card.id}`,
     data: {
@@ -36,6 +39,7 @@ export function DraggableCard({ card, disabled, selected, onClick }: DraggableCa
       selected={selected}
       onClick={onClick}
       style={style}
+      theme={theme}
       {...listeners}
       {...attributes}
       className={isDragging ? 'opacity-50' : ''}

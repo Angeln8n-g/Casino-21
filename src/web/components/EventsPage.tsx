@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { logger } from '../utils/logger';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 
@@ -249,17 +250,17 @@ export function EventsPage() {
       
       let profiles: Record<string, any> = {};
       if (playerIds.length > 0) {
-        console.log('Buscando perfiles para IDs:', playerIds);
+        logger.debug('Buscando perfiles para IDs:', playerIds);
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, username, avatar_url')
           .in('id', playerIds);
           
         if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
+          logger.error('Error fetching profiles:', profilesError);
         }
           
-        console.log('Perfiles encontrados:', profilesData);
+        logger.debug('Perfiles encontrados:', profilesData);
           
         if (profilesData) {
           profilesData.forEach(p => {
@@ -331,7 +332,7 @@ export function EventsPage() {
           setEvents(MOCK_EVENTS);
           return;
         }
-        console.error('Error fetching events:', error);
+        logger.error('Error fetching events:', error);
         setEvents(MOCK_EVENTS);
       } finally {
         if (isMounted) setLoading(false);
@@ -369,7 +370,7 @@ export function EventsPage() {
     });
     
     if (error) {
-      console.error(error);
+      logger.error('join_event RPC error:', error);
       setEnrollmentStatus('error');
       // Hack to pass custom error message via status for simplicity in this MVP
       setEnrollmentEventTitle(title + ' - ' + (error.message.includes('Saldo insuficiente') ? 'Saldo Insuficiente' : 'Error de inscripción'));

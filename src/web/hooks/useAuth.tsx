@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 import { socketService } from '../services/socket';
+import { logger } from '../utils/logger';
 
 export interface PresenceEntry {
   online_at: string;
@@ -81,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           room_id: socketService.currentRoomId,
         });
       } catch (err) {
-        if (!isDisposed) console.error('Presence track error:', err);
+        if (!isDisposed) logger.error('Presence track error:', err);
       }
     };
 
@@ -157,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
         .eq('id', user.id);
       if (error && !disposed) {
-        console.warn('Heartbeat update failed:', error.message);
+        logger.warn('Heartbeat update failed:', error.message);
       }
     };
 
@@ -203,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       const message = String(error?.message || '');
       if (error?.name === 'TypeError' && message.includes('Failed to fetch')) return;
-      console.error('Error fetching profile:', error);
+      logger.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }

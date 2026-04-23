@@ -3,6 +3,7 @@ import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSenso
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { useGameTheme } from '../hooks/useGameTheme';
 import { supabase } from '../services/supabase';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
@@ -23,6 +24,7 @@ import {
   DragActionModal,
 } from './game';
 import type { DragModalData } from './game';
+import { getTheme, BoardTheme } from '../themes/themeRegistry';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -46,6 +48,8 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData } = useGame();
   const { profile, user } = useAuth();
+  // Local player's card theme (personal)
+  const localCardTheme = useGameTheme();
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const { playSfx } = useAudio();
   
@@ -57,6 +61,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationSeed, setCelebrationSeed] = useState(0);
   const [boardThemeUrl, setBoardThemeUrl] = useState<string | null>(null);
+  const [hostBoardTheme, setHostBoardTheme] = useState<BoardTheme | null>(null);
   const [playerAvatarUrls, setPlayerAvatarUrls] = useState<Record<string, string | null>>({});
   const [activeReactions, setActiveReactions] = useState<Record<string, { emoji: string; nonce: number }>>({});
   const previousGameStateRef = useRef<GameState | null>(null);
@@ -219,11 +224,12 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const resolveBoardTheme = async () => {
       const activeRoomId = roomId.toUpperCase();
       if (!activeRoomId) {
-        if (isMounted) setBoardThemeUrl(null);
+        if (isMounted) { setBoardThemeUrl(null); setHostBoardTheme(null); }
         return;
       }
 
       try {
+        // ── 1. Tournament theme (highest priority) ──
         const { data: tMatch } = await supabase
           .from('tournament_matches')
           .select('event_id')
@@ -238,11 +244,12 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             .maybeSingle();
 
           if (eventData?.board_theme_url) {
-            if (isMounted) setBoardThemeUrl(eventData.board_theme_url);
+            if (isMounted) { setBoardThemeUrl(eventData.board_theme_url); setHostBoardTheme(null); }
             return;
           }
         }
 
+        // ── 2. Daily quest theme ──
         if (user?.id) {
           const today = new Date().toISOString().split('T')[0];
           const { data: questThemes } = await supabase
@@ -256,15 +263,37 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             .find((c: any) => c?.board_theme_url)?.board_theme_url;
 
           if (missionTheme) {
-            if (isMounted) setBoardThemeUrl(missionTheme);
+            if (isMounted) { setBoardThemeUrl(missionTheme); setHostBoardTheme(null); }
             return;
           }
         }
 
-        if (isMounted) setBoardThemeUrl(null);
+        // ── 3. Host's equipped store theme ──
+        // Find the host of this room by looking up who created it
+        const { data: roomData } = await supabase
+          .from('game_rooms')
+          .select('host_id')
+          .eq('id', activeRoomId)
+          .maybeSingle();
+
+        if (roomData?.host_id) {
+          const { data: hostProfile } = await supabase
+            .from('profiles')
+            .select('equipped_theme')
+            .eq('id', roomData.host_id)
+            .maybeSingle();
+
+          if (hostProfile?.equipped_theme) {
+            const theme = getTheme(hostProfile.equipped_theme);
+            if (isMounted) { setBoardThemeUrl(null); setHostBoardTheme(theme.boardTheme); }
+            return;
+          }
+        }
+
+        if (isMounted) { setBoardThemeUrl(null); setHostBoardTheme(null); }
       } catch (themeError) {
         console.error('Error resolving board theme:', themeError);
-        if (isMounted) setBoardThemeUrl(null);
+        if (isMounted) { setBoardThemeUrl(null); setHostBoardTheme(null); }
       }
     };
 
@@ -277,7 +306,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   useEffect(() => {
     if (!gameState?.players?.length) return;
 
-    const ids = Array.from(new Set(gameState.players.map((p) => p.id).filter(Boolean)));
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ids = Array.from(new Set(gameState.players.map((p) => p.id).filter((id) => id && UUID_RE.test(id))));
     if (ids.length === 0) return;
 
     let cancelled = false;
@@ -763,6 +793,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             onCardClick={handleBoardCardClick}
             onFormationClick={handleFormationClick}
             boardThemeUrl={boardThemeUrl}
+            boardTheme={hostBoardTheme}
           />
 
           {!isSpectator && currentPlayer && (
@@ -845,6 +876,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             selectedCardId={selectedHandCardId}
             onCardClick={handleCardClick}
             isDealing={isDealing}
+            cardTheme={localCardTheme.cardTheme}
           />
         </footer>
 
@@ -862,7 +894,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
             {activeDragCard ? (
               <div className={`${isMobile ? 'rotate-2 scale-110' : 'rotate-6 scale-110'} shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95`}>
-                <CardView card={activeDragCard} />
+                <CardView card={activeDragCard} theme={localCardTheme.cardTheme} />
               </div>
             ) : null}
           </DragOverlay>

@@ -30,7 +30,7 @@ export function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests'>('events');
   
   useEffect(() => {
-    console.log('AdminPanel renderizado, pestaña activa:', activeTab);
+    // Tab tracking — only for dev diagnostics
   }, [activeTab]);
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);

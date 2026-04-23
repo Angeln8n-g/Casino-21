@@ -781,9 +781,20 @@ function startTurnTimer(roomId: string, room: any) {
 async function saveMatchResult(roomId: string, room: any) {
   if (!room.state || room.state.phase !== 'completed') return;
 
-  // Partidas vs bot no afectan ELO ni se guardan en historial
+  // Partidas vs bot: otorgar XP reducido al humano pero NO afectan ELO ni historial
   if (room.isBot) {
-    console.log(`Partida vs Bot ${roomId} finalizada — no se guardan estadísticas`);
+    const humanPlayer = room.players.find((p: any) => p.userId !== BOT_USER_ID);
+    if (humanPlayer) {
+      const humanState = room.state.players.find((p: any) => p.id === humanPlayer.userId);
+      const botState   = room.state.players.find((p: any) => p.id === BOT_USER_ID);
+      const humanWon   = room.state.winnerId === humanPlayer.userId ||
+                         (!room.state.winnerId && humanState && botState && humanState.score > botState.score);
+      const xpGain = humanWon ? 20 : 5;
+      const { error: xpErr } = await supabase.rpc('add_player_xp', { p_player_id: humanPlayer.userId, p_xp: xpGain });
+      if (xpErr) console.error('Error otorgando XP (bot):', xpErr);
+      else console.log(`XP vs Bot: +${xpGain} XP → ${humanPlayer.name}`);
+    }
+    console.log(`Partida vs Bot ${roomId} finalizada — ELO e historial no se guardan`);
     return;
   }
 
@@ -867,6 +878,20 @@ async function saveMatchResult(roomId: string, room: any) {
 
     if (winnerId) {
       const loserId = winnerId === p1.id ? p2.id : p1.id;
+
+      // ─── XP Awards ───
+      // Winner: +50 XP  |  Loser: +15 XP (siempre se aprende algo)
+      const XP_WIN  = 50;
+      const XP_LOSS = 15;
+      const [xpWinner, xpLoser] = await Promise.all([
+        supabase.rpc('add_player_xp', { p_player_id: winnerId, p_xp: XP_WIN }),
+        supabase.rpc('add_player_xp', { p_player_id: loserId,  p_xp: XP_LOSS }),
+      ]);
+      if (xpWinner.error) console.error('Error otorgando XP al ganador:', xpWinner.error);
+      if (xpLoser.error)  console.error('Error otorgando XP al perdedor:', xpLoser.error);
+      console.log(`XP otorgado — Ganador (${winnerId}): +${XP_WIN} | Perdedor (${loserId}): +${XP_LOSS}`);
+      // ─────────────────
+
       const updateProfile = async (id: string, isWinner: boolean) => {
         const { data: profile } = await supabase.from('profiles').select('elo, wins, losses').eq('id', id).single();
         if (profile) {

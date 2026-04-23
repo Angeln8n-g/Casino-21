@@ -5,6 +5,7 @@ import { DroppableBoardCard } from './DroppableBoardCard';
 import { DroppableFormation } from './DroppableFormation';
 import { Card } from '../../domain/card';
 import splashBoard from '../../Public/splash.png';
+import { BoardTheme } from '../themes/themeRegistry';
 
 interface BoardViewProps {
   board: Board;
@@ -12,13 +13,16 @@ interface BoardViewProps {
   selectedFormationIds: Set<string>;
   onCardClick: (card: Card) => void;
   onFormationClick: (formationId: string) => void;
+  /** Legacy URL-based board theme (tournaments, quests). Takes priority over boardTheme. */
   boardThemeUrl?: string | null;
+  /** Store-based visual board theme from the host's equipped_theme */
+  boardTheme?: BoardTheme | null;
 }
 
 const DEFAULT_BOARD_THEME =
   'radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.2) 0%, rgba(15, 23, 42, 0) 38%), radial-gradient(circle at 50% 100%, rgba(14, 116, 144, 0.25) 0%, rgba(8, 47, 73, 0.05) 45%), linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)';
 
-export function BoardView({ board, selectedCardIds, selectedFormationIds, onCardClick, onFormationClick, boardThemeUrl }: BoardViewProps) {
+export function BoardView({ board, selectedCardIds, selectedFormationIds, onCardClick, onFormationClick, boardThemeUrl, boardTheme }: BoardViewProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'board-area',
     data: {
@@ -37,14 +41,25 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
     return Math.max(0.88, Math.min(1, 0.88 + (w - 320) * (0.12 / (768 - 320))));
   }, []);
 
+  // URL theme takes priority (tournaments/quests), then store theme, then default
+  const boardBorderColor = boardTheme?.borderColor ?? '#2A1810';
+  const boardGlowColor = boardTheme?.glowColor ?? 'rgba(34,211,238,0.4)';
+  const boardInnerRing = boardTheme?.innerRingColor ?? 'rgba(253,224,71,0.35)';
+  const watermarkOpacity = boardTheme?.watermarkOpacity ?? 0.1;
+
   const boardBackgroundStyle: React.CSSProperties = boardThemeUrl
     ? {
         backgroundImage: `linear-gradient(160deg, rgba(4, 13, 24, 0.82), rgba(2, 8, 16, 0.8)), url(${boardThemeUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
+    : boardTheme
+    ? {
+        backgroundImage: boardTheme.background,
+      }
     : {
-        backgroundImage: DEFAULT_BOARD_THEME,
+        backgroundImage:
+          'radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.2) 0%, rgba(15, 23, 42, 0) 38%), radial-gradient(circle at 50% 100%, rgba(14, 116, 144, 0.25) 0%, rgba(8, 47, 73, 0.05) 45%), linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
       };
 
   return (
@@ -55,6 +70,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
         /* Auto-scale board on narrow viewports */
         transform: isMobile ? `scale(${boardScale})` : undefined,
         transformOrigin: 'top center',
+        borderColor: boardBorderColor,
       }}
       className={`
         relative flex flex-col items-center justify-center
@@ -62,17 +78,18 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
         rounded-2xl md:rounded-[4rem]
         shadow-[0_8px_20px_rgba(0,0,0,0.5),inset_0_3px_10px_rgba(0,0,0,0.7)]
         md:shadow-[0_30px_60px_rgba(0,0,0,0.7),inset_0_10px_30px_rgba(0,0,0,0.9)]
-        border-[6px] md:border-[16px] border-[#2A1810]
+        border-[6px] md:border-[16px]
         ring-2 md:ring-8 ring-black/50
         transition-all flex-1 overflow-hidden
         ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[400px]'}
-        ${isOver ? 'brightness-110 ring-cyan-300/40' : ''}
+        ${isOver ? `brightness-110` : ''}
       `}
     >
-      {!boardThemeUrl && (
+      {!boardThemeUrl && !boardTheme && (
         <div
-          className="absolute inset-0 pointer-events-none opacity-[0.10]"
+          className="absolute inset-0 pointer-events-none"
           style={{
+            opacity: watermarkOpacity,
             backgroundImage: `url(${splashBoard})`,
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
@@ -80,13 +97,28 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
           }}
         />
       )}
+      {/* Optional store-theme overlay gradient */}
+      {boardTheme?.overlayGradient && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ backgroundImage: boardTheme.overlayGradient }}
+        />
+      )}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
-      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(251,191,36,0.18),transparent_30%,transparent_70%,rgba(251,191,36,0.12))]" />
-      <div className="absolute inset-1 md:inset-2 rounded-xl md:rounded-[3rem] border border-yellow-300/35 pointer-events-none" />
-      <div className="absolute inset-2 md:inset-5 rounded-xl md:rounded-[2.5rem] border border-yellow-200/20 pointer-events-none" />
-      <div className="absolute inset-3 md:inset-8 rounded-lg md:rounded-[2rem] border border-yellow-100/10 pointer-events-none" />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${boardInnerRing.replace('0.35', '0.18')}, transparent 30%, transparent 70%, ${boardInnerRing.replace('0.35', '0.12')})`,
+        }}
+      />
+      <div className="absolute inset-1 md:inset-2 rounded-xl md:rounded-[3rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing}` }} />
+      <div className="absolute inset-2 md:inset-5 rounded-xl md:rounded-[2.5rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.2')}` }} />
+      <div className="absolute inset-3 md:inset-8 rounded-lg md:rounded-[2rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.1')}` }} />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl md:rounded-[3rem]">
-        <span className="text-3xl md:text-8xl font-black text-yellow-200/10 tracking-[0.2em] uppercase transform -rotate-12 select-none">
+        <span
+          className="text-3xl md:text-8xl font-black tracking-[0.2em] uppercase transform -rotate-12 select-none"
+          style={{ color: `rgba(255,255,255,${watermarkOpacity})` }}
+        >
           Kasino21
         </span>
       </div>

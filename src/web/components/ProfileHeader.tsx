@@ -118,6 +118,13 @@ export function ProfileHeader({
     };
   }, [showNotifications]);
 
+  // Auto-mark all as read when the panel is opened
+  useEffect(() => {
+    if (showNotifications && unreadCount > 0) {
+      onMarkAllAsRead?.();
+    }
+  }, [showNotifications]);
+
   if (compact) {
     return (
       <div className="relative flex items-center gap-2 glass-panel p-2 rounded-xl border border-white/10">
@@ -180,8 +187,7 @@ export function ProfileHeader({
         {showAvatarGallery && (
           <AvatarGallery 
             onClose={() => setShowAvatarGallery(false)} 
-            onAvatarSelected={(url) => {
-              console.log('Avatar actualizado:', url);
+            onAvatarSelected={() => {
               window.dispatchEvent(new Event('profile_updated'));
             }}
             currentAvatarUrl={profile?.avatar_url}
@@ -313,94 +319,101 @@ export function ProfileHeader({
   }
 
   return (
-    <div className="relative overflow-visible glass-panel-strong p-3 md:p-5 rounded-2xl border border-casino-gold/10 group animate-fade-in shadow-2xl">
-      {/* ─── Header Row ─── */}
-      <div className="flex justify-between items-center gap-4 relative z-20">
-        
-        {/* Lado Izquierdo: Perfil e Info */}
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="relative shrink-0">
-            <div 
-              onClick={() => setShowAvatarGallery(true)}
-              className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-2xl font-black text-casino-gold shadow-lg transform group-hover:rotate-1 transition-all duration-500 cursor-pointer hover:border-casino-gold/80 overflow-hidden"
-              title="Cambiar Avatar"
-            >
-              {profile?.equipped_avatar ? (
-                <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                profile?.username?.charAt(0).toUpperCase() || 'P'
-              )}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in relative z-20">
+      
+      {/* ─── BENTO CELL 1: Identity (Spans 2 on MD) ─── */}
+      <div className="md:col-span-2 glass-panel p-5 rounded-3xl border border-white/10 flex items-center gap-5 hover:border-casino-gold/30 transition-all bg-black/40 backdrop-blur-md shadow-lg">
+        <div 
+          onClick={() => setShowAvatarGallery(true)}
+          className="w-16 h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-3xl font-black text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.2)] cursor-pointer hover:border-casino-gold transition-colors overflow-hidden shrink-0 group-hover:scale-105"
+          title="Cambiar Avatar"
+        >
+          {profile?.equipped_avatar ? (
+            <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+          ) : profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            profile?.username?.charAt(0).toUpperCase() || 'P'
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl md:text-2xl font-display font-black text-white leading-tight truncate">
+            {profile?.username || 'Jugador'}
+          </h2>
+          {profile?.equipped_title && (
+            <div className="text-xs text-purple-400 font-bold uppercase tracking-widest mt-1">
+              {profile.equipped_title}
             </div>
-            <div className="absolute -bottom-1 -right-1 bg-casino-surface border border-casino-gold/20 px-2 py-0.5 rounded-lg shadow-xl z-30">
-              <span className="text-[8px] font-black uppercase text-casino-gold tracking-tighter whitespace-nowrap">
-                {div.label}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-display font-black text-white leading-tight truncate pr-1 flex flex-col" title={profile?.username}>
-              <span>{profile?.username || 'Jugador'}</span>
-              {profile?.equipped_title && (
-                <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest leading-none mt-1">
-                  {profile.equipped_title}
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
-                <Shield className="w-3 h-3 text-casino-gold" />
-                <span className="text-[10px] font-black text-gray-400">LVL {level}</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/5 shadow-inner">
-                <TrendingUp className="w-3 h-3 text-emerald-400" />
-                <span className="text-[10px] font-black text-emerald-400">{elo} ELO</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-yellow-900/30 border border-yellow-500/20 shadow-inner">
-                <span className="text-[10px]">🪙</span>
-                <span className="text-[10px] font-black text-yellow-400">{localCoins}</span>
-              </div>
-            </div>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border bg-black/50 ${div.cssClass.replace('division-', 'border-').replace('text-', '')}`}>
+              {div.icon} {div.label}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Lado Derecho: Iconos y Dropdown Anchor (REGLA 1 y 3) */}
-        <div className="flex items-center gap-[8px] shrink-0 relative">
-          
-          {/* BOTÓN CAMPANA */}
+      {/* ─── BENTO CELL 2: Progress (Spans 1 on MD) ─── */}
+      <div className="glass-panel p-5 rounded-3xl border border-white/10 flex flex-col justify-center gap-3 hover:border-casino-gold/30 transition-all bg-black/40 backdrop-blur-md shadow-lg relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-casino-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div className="flex justify-between items-end relative z-10">
+          <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Nivel {level}</span>
+          <span className="text-xs font-black text-casino-gold drop-shadow-sm">{xp} / {nextLevelXp} XP</span>
+        </div>
+        <div className="h-3 bg-black/60 rounded-full overflow-hidden border border-white/5 shadow-inner relative z-10">
+          <div 
+            className="h-full bg-gradient-to-r from-casino-gold-dark via-casino-gold to-yellow-200 rounded-full transition-all duration-1000 ease-out relative"
+            style={{ width: `${progress}%` }}
+          >
+             <div className="absolute inset-0 bg-white/20 animate-shimmer" />
+          </div>
+        </div>
+      </div>
+
+      {/* ─── BENTO CELL 3: Quick Stats & Actions (Spans 1 on MD) ─── */}
+      <div className="glass-panel p-5 rounded-3xl border border-white/10 flex items-center justify-between gap-2 hover:border-casino-gold/30 transition-all bg-black/40 backdrop-blur-md shadow-lg">
+        <div className="flex flex-col gap-3 flex-1">
+           <div className="flex items-center gap-3">
+             <span className="text-lg">🪙</span>
+             <span className="text-sm font-black text-yellow-400">{localCoins}</span>
+           </div>
+           <div className="flex items-center gap-3">
+             <TrendingUp className="w-4 h-4 text-emerald-400" />
+             <span className="text-sm font-black text-emerald-400">{elo} ELO</span>
+           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0 relative">
           <button 
             onClick={(e) => {
               e.stopPropagation();
               setShowNotifications(!showNotifications);
             }}
             className={`
-              relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
-              border border-white/10 bg-white/[0.03]
-              ${showNotifications ? 'bg-casino-gold/20 border-casino-gold text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'}
+              relative w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300
+              border border-white/10 bg-black/50
+              ${showNotifications ? 'bg-casino-gold/20 border-casino-gold text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20'}
             `}
+            title="Notificaciones"
           >
             <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'animate-swing' : ''}`} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-600 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-casino-surface-light animate-bounce shadow-lg">
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-[#020617] animate-bounce shadow-lg">
                 {unreadCount}
               </span>
             )}
           </button>
 
-          {/* BOTÓN LOGOUT */}
           <button 
             onClick={signOut}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 transition-all duration-300"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 bg-black/50 transition-all duration-300"
             title="Cerrar Sesión"
           >
-            <LogOut className="w-4 h-4 translate-x-0.5" />
+            <LogOut className="w-5 h-5 translate-x-0.5" />
           </button>
-
-          {/* ══════════════════════════════════════════════════════════════════
-               DROPDOWN DE NOTIFICACIONES (REGLA 2 y 5)
-               ══════════════════════════════════════════════════════════════════ */}
+          
+          {/* Notificaciones Dropdown */}
           {showNotifications && (
             <div 
               ref={dropdownRef}
@@ -408,7 +421,7 @@ export function ProfileHeader({
                 absolute top-[calc(100%+10px)] right-0 lg:-right-4 xl:-right-6 2xl:-right-8
                 w-[90vw] md:w-[350px] max-h-[480px]
                 bg-[#020617]/95 backdrop-blur-[12px]
-                border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
+                border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
                 overflow-hidden z-[1000] animate-scale-up origin-top-right
               "
             >
@@ -478,7 +491,7 @@ export function ProfileHeader({
                         }
                       }}
                       className={`
-                        w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer relative
+                        w-full text-left p-3.5 rounded-2xl transition-all duration-300 group/notif cursor-pointer relative
                         border border-transparent hover:border-white/10
                         ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
                       `}
@@ -524,28 +537,11 @@ export function ProfileHeader({
         </div>
       </div>
 
-      {/* Progress Bar Row */}
-      <div className="mt-5 space-y-2 relative z-10">
-        <div className="flex justify-between items-end px-1">
-          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest italic">Nivel {level}</span>
-          <span className="text-[10px] font-black text-casino-gold drop-shadow-sm">{xp} / {nextLevelXp} XP</span>
-        </div>
-        <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-inner">
-          <div 
-            className="h-full bg-gradient-to-r from-casino-gold-dark via-casino-gold to-yellow-200 rounded-full transition-all duration-1000 ease-out relative"
-            style={{ width: `${progress}%` }}
-          >
-             <div className="absolute inset-0 bg-white/20 animate-shimmer" />
-          </div>
-        </div>
-      </div>
-
       {/* Avatar Gallery Modal */}
       {showAvatarGallery && (
         <AvatarGallery 
           onClose={() => setShowAvatarGallery(false)} 
-          onAvatarSelected={(url) => {
-            console.log('Avatar actualizado:', url);
+          onAvatarSelected={() => {
             window.dispatchEvent(new Event('profile_updated'));
           }}
           currentAvatarUrl={profile?.avatar_url}

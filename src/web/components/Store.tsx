@@ -2,14 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { CardView } from './CardView';
+import { getTheme, ALL_THEMES } from '../themes/themeRegistry';
+import { createCard } from '../../domain/card';
 
 interface StoreItem {
   id: string;
   name: string;
   description: string;
-  item_type: 'avatar' | 'card_back' | 'title' | 'board';
+  item_type: 'avatar' | 'card_back' | 'title' | 'board' | 'theme';
   price: number;
   image_url: string | null;
+  theme_key?: string | null;
+}
+
+// Mini preview card used inside the store for theme items
+const PREVIEW_CARD = createCard('hearts', 'A');
+
+function ThemeCardPreview({ themeKey }: { themeKey: string }) {
+  const theme = getTheme(themeKey);
+  return (
+    <div
+      className="relative flex items-center justify-center w-full h-full overflow-hidden rounded-xl"
+      style={{ background: theme.boardTheme.background }}
+    >
+      {/* Board mini-preview background */}
+      <div className="absolute inset-0 opacity-60" style={{ backgroundImage: theme.boardTheme.background }} />
+      {/* Overlay gradient */}
+      {theme.boardTheme.overlayGradient && (
+        <div className="absolute inset-0" style={{ backgroundImage: theme.boardTheme.overlayGradient }} />
+      )}
+      {/* Inner ring */}
+      <div
+        className="absolute inset-2 rounded-lg pointer-events-none"
+        style={{ border: `1px solid ${theme.boardTheme.innerRingColor}` }}
+      />
+      {/* Sample card */}
+      <div className="relative z-10 transform scale-90 drop-shadow-2xl">
+        <CardView card={PREVIEW_CARD} theme={theme.cardTheme} />
+      </div>
+    </div>
+  );
 }
 
 export function Store() {
@@ -18,7 +51,7 @@ export function Store() {
   const [items, setItems] = useState<StoreItem[]>([]);
   const [inventory, setInventory] = useState<string[]>([]); // item_ids
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'card_back' | 'title' | 'board'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'card_back' | 'title' | 'board' | 'theme'>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<StoreItem | null>(null);
 
@@ -69,10 +102,8 @@ export function Store() {
         const { error } = await supabase.rpc('buy_store_item', { p_item_id: item.id });
         if (error) throw error;
         
-        // Update local inventory
         setInventory(prev => [...prev, item.id]);
         playSfx('chipsClink', { volumeMultiplier: 1.15 });
-        // Disparar evento para actualizar el header
         window.dispatchEvent(new CustomEvent('coins_updated'));
       } catch (err: any) {
         console.error('Error buying item:', err);
@@ -90,10 +121,7 @@ export function Store() {
       const { error } = await supabase.rpc('equip_store_item', { p_item_id: item.id });
       if (error) throw error;
       
-      // Disparar evento global para recargar perfil (si tienes algo escuchando) o alertar
       playSfx('cardPlay', { volumeMultiplier: 0.8, playbackRate: 1.08 });
-      alert(`¡${item.name} equipado con éxito!`);
-      // Opcional: trigger profile reload
       window.dispatchEvent(new Event('profile_updated'));
     } catch (err: any) {
       console.error('Error equipping item:', err);
@@ -104,16 +132,38 @@ export function Store() {
     }
   };
 
+  const isItemEquipped = (item: StoreItem): boolean => {
+    switch (item.item_type) {
+      case 'avatar':    return profile?.equipped_avatar === item.image_url;
+      case 'card_back': return profile?.equipped_card_back === item.image_url;
+      case 'title':     return profile?.equipped_title === item.name;
+      case 'board':     return profile?.equipped_board === item.image_url;
+      case 'theme':     return profile?.equipped_theme === item.theme_key;
+      default: return false;
+    }
+  };
+
   const filteredItems = items.filter(item => activeCategory === 'all' || item.item_type === activeCategory);
 
   const getCategoryLabel = (type: string) => {
     switch(type) {
-      case 'avatar': return '👤 Avatar';
+      case 'avatar':    return '👤 Avatar';
       case 'card_back': return '🃏 Reverso';
-      case 'title': return '🏷️ Título';
-      case 'board': return '🎲 Tapete';
+      case 'title':     return '🏷️ Título';
+      case 'board':     return '🎲 Tapete';
+      case 'theme':     return '🎨 Tema';
       default: return 'Otro';
     }
+  };
+
+  const getRarityStyle = (item: StoreItem) => {
+    if (item.item_type !== 'theme') return '';
+    const key = item.theme_key ?? '';
+    if (key === 'tactile_vegas') return 'from-purple-500/20 to-pink-500/10 border-purple-500/30';
+    if (key === 'neon_dealer')   return 'from-cyan-500/20 to-blue-500/10 border-cyan-500/30';
+    if (key === 'gold_rush')     return 'from-yellow-500/20 to-amber-500/10 border-yellow-500/30';
+    if (key === 'vault_noir')    return 'from-amber-900/20 to-yellow-900/10 border-amber-800/30';
+    return 'from-slate-500/20 to-slate-600/10 border-slate-500/30';
   };
 
   if (loading) {
@@ -126,64 +176,73 @@ export function Store() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md flex flex-col md:flex-row items-center justify-between gap-4 animate-slide-down">
         <div>
           <h2 className="text-2xl font-display font-black text-purple-400 uppercase tracking-widest drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">
             Tienda In-Game
           </h2>
-          <p className="text-gray-400 text-sm">Personaliza tu experiencia con tus monedas.</p>
+          <p className="text-gray-400 text-sm mt-1 font-medium">Personaliza tu experiencia con tus monedas.</p>
         </div>
-        <div className="bg-black/40 p-1.5 rounded-xl border border-white/5 flex gap-1 overflow-x-auto max-w-full">
-          {(['all', 'avatar', 'card_back', 'title', 'board'] as const).map(cat => (
+        <div className="bg-black/40 p-1.5 rounded-2xl border border-white/5 flex gap-1 overflow-x-auto max-w-full custom-scrollbar">
+          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors ${
-                activeCategory === cat ? 'bg-purple-500/20 text-purple-300' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all ${
+                activeCategory === cat ? 'bg-purple-500/20 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
               }`}
             >
-              {cat === 'all' ? 'Todo' : getCategoryLabel(cat).split(' ')[1]}
+              {cat === 'all' ? 'Todo' : getCategoryLabel(cat)}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map(item => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredItems.map((item, index) => {
           const isOwned = inventory.includes(item.id);
           const canAfford = (profile?.coins || 0) >= item.price;
-          const isEquipped = (item.item_type === 'avatar' && profile?.equipped_avatar === item.image_url) || 
-                             (item.item_type === 'card_back' && profile?.equipped_card_back === item.image_url) || 
-                             (item.item_type === 'title' && profile?.equipped_title === item.name) || 
-                             (item.item_type === 'board' && profile?.equipped_board === item.image_url);
+          const isEquipped = isItemEquipped(item);
+          const isTheme = item.item_type === 'theme';
           
           return (
             <div 
               key={item.id} 
               onClick={() => setPreviewItem(item)}
-              className="glass-panel p-4 rounded-2xl relative overflow-hidden group border border-white/5 hover:border-purple-500/30 transition-all cursor-pointer"
+              className={`glass-panel p-5 rounded-3xl relative overflow-hidden group border transition-all duration-300 cursor-pointer bg-black/40 backdrop-blur-md shadow-lg animate-slide-up hover:-translate-y-1 ${
+                isTheme
+                  ? `bg-gradient-to-br ${getRarityStyle(item)} hover:border-purple-400/60 hover:shadow-[0_10px_30px_rgba(168,85,247,0.2)]`
+                  : 'border-white/10 hover:border-purple-500/50 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)]'
+              }`}
+              style={{ animationDelay: `${(index % 10) * 50}ms` }}
             >
-              <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+              <div className="absolute -right-6 -top-6 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-500"></div>
+              <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-500"></div>
               
-              <div className="flex justify-between items-start mb-3 relative z-10">
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold bg-black/40 px-2 py-1 rounded-md">
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <span className="text-[10px] text-gray-300 uppercase tracking-widest font-bold bg-white/5 border border-white/10 px-2 py-1 rounded-lg">
                   {getCategoryLabel(item.item_type)}
                 </span>
                 {isOwned ? (
-                  <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-1 rounded-md">✓ En Inventario</span>
+                  <span className={`text-[10px] uppercase tracking-widest font-black px-2 py-1 rounded-lg border ${isEquipped ? 'text-casino-gold bg-casino-gold/10 border-casino-gold/30' : 'text-green-400 bg-green-400/10 border-green-400/20'}`}>
+                    {isEquipped ? '★ Equipado' : '✓ Comprado'}
+                  </span>
                 ) : (
-                  <span className={`text-xs font-black font-mono flex items-center gap-1 ${canAfford ? 'text-casino-gold' : 'text-red-400'}`}>
+                  <span className={`text-xs font-black font-mono flex items-center gap-1.5 px-2 py-1 rounded-lg border bg-black/40 ${canAfford ? 'text-yellow-400 border-yellow-400/30' : 'text-red-400 border-red-400/30'}`}>
                     🪙 {item.price.toLocaleString()}
                   </span>
                 )}
               </div>
 
-              <div className="text-center py-6 mb-4 bg-black/20 rounded-xl relative z-10 min-h-[120px] flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                {item.image_url ? (
+              {/* Preview area */}
+              <div className="text-center py-2 mb-5 bg-black/30 border border-white/5 rounded-2xl relative z-10 min-h-[140px] flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-500 shadow-inner overflow-hidden">
+                {isTheme && item.theme_key ? (
+                  <ThemeCardPreview themeKey={item.theme_key} />
+                ) : item.image_url ? (
                   <img 
                     src={item.image_url} 
                     alt={item.name} 
-                    className="max-h-20 object-contain drop-shadow-lg" 
+                    className="max-h-24 object-contain drop-shadow-[0_10px_15px_rgba(0,0,0,0.5)] transition-all duration-500 group-hover:drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" 
                     onError={(e) => { 
                       const target = e.target as HTMLImageElement;
                       if (!target.src.includes('/assets/store/')) {
@@ -192,18 +251,18 @@ export function Store() {
                     }}
                   />
                 ) : (
-                  <div className="text-4xl">✨</div>
+                  <div className="text-4xl animate-pulse opacity-50">✨</div>
                 )}
               </div>
 
-              <h3 className="font-display font-bold text-white text-lg leading-tight mb-1 relative z-10 group-hover:text-purple-300 transition-colors">{item.name}</h3>
-              <p className="text-gray-400 text-xs mb-4 line-clamp-2 relative z-10">{item.description}</p>
+              <h3 className="font-display font-black text-white text-lg leading-tight mb-2 relative z-10 group-hover:text-purple-300 transition-colors drop-shadow-sm">{item.name}</h3>
+              <p className="text-gray-400 text-xs mb-5 line-clamp-2 relative z-10 font-medium">{item.description}</p>
 
               <div className="relative z-10 mt-auto">
                 <button 
-                  className="w-full py-2 font-bold text-xs uppercase tracking-widest rounded-xl transition-all border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300"
+                  className="w-full py-2.5 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all border border-white/10 bg-white/5 group-hover:bg-purple-500/20 group-hover:border-purple-500/40 group-hover:text-purple-300 text-gray-300"
                 >
-                  Ver Detalles
+                  {isOwned ? (isEquipped ? '★ Equipado' : 'Equipar / Ver') : 'Ver Detalles'}
                 </button>
               </div>
             </div>
@@ -212,8 +271,9 @@ export function Store() {
       </div>
 
       {filteredItems.length === 0 && (
-        <div className="text-center py-12 glass-panel rounded-2xl">
-          <p className="text-gray-500">No hay artículos en esta categoría.</p>
+        <div className="text-center py-16 glass-panel rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="text-4xl mb-4 opacity-50">🏪</div>
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">No hay artículos en esta categoría</p>
         </div>
       )}
 
@@ -227,12 +287,10 @@ export function Store() {
             className="glass-panel-strong w-full max-w-lg rounded-3xl border border-purple-500/30 shadow-[0_0_50px_rgba(168,85,247,0.3)] overflow-hidden flex flex-col relative"
             onClick={e => e.stopPropagation()}
           >
-            {/* Background blur effect */}
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-purple-500/20 to-transparent z-0 pointer-events-none" />
             <div className="absolute -top-20 -right-20 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl z-0 pointer-events-none" />
             <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl z-0 pointer-events-none" />
 
-            {/* Header */}
             <div className="p-4 flex justify-end relative z-10">
               <button 
                 onClick={() => setPreviewItem(null)}
@@ -242,16 +300,19 @@ export function Store() {
               </button>
             </div>
 
-            {/* Content */}
             <div className="px-8 pb-8 flex flex-col items-center text-center relative z-10">
               <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold bg-white/5 border border-white/10 px-3 py-1 rounded-full mb-6 shadow-inner">
                 {getCategoryLabel(previewItem.item_type)}
               </span>
 
-              {/* Preview Image Container */}
-              <div className="w-48 h-48 bg-black/40 rounded-2xl border border-white/10 flex items-center justify-center mb-6 shadow-[inset_0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+              {/* Preview — live theme card for themes, image for others */}
+              <div className="w-full h-52 bg-black/40 rounded-2xl border border-white/10 flex items-center justify-center mb-6 shadow-[inset_0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                {previewItem.image_url ? (
+                {previewItem.item_type === 'theme' && previewItem.theme_key ? (
+                  <div className="absolute inset-0">
+                    <ThemeCardPreview themeKey={previewItem.theme_key} />
+                  </div>
+                ) : previewItem.image_url ? (
                   <img 
                     src={previewItem.image_url} 
                     alt={previewItem.name} 
@@ -270,6 +331,17 @@ export function Store() {
                 )}
               </div>
 
+              {/* Theme description row */}
+              {previewItem.item_type === 'theme' && previewItem.theme_key && (() => {
+                const themeData = ALL_THEMES.find(t => t.key === previewItem.theme_key);
+                return themeData ? (
+                  <div className="flex items-center gap-2 mb-3 text-xs text-gray-400 font-bold">
+                    <span className="text-xl">{themeData.emoji}</span>
+                    <span className="uppercase tracking-widest">{themeData.name}</span>
+                  </div>
+                ) : null;
+              })()}
+
               <h2 className="text-3xl font-display font-black text-white mb-2 tracking-wide drop-shadow-md">
                 {previewItem.name}
               </h2>
@@ -277,41 +349,33 @@ export function Store() {
                 {previewItem.description}
               </p>
 
+              {/* Note for theme items */}
+              {previewItem.item_type === 'theme' && (
+                <div className="text-[10px] text-purple-300/70 font-bold uppercase tracking-widest mb-4 bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-xl w-full">
+                  🃏 Tus cartas · 🎲 Mesa compartida con el anfitrión
+                </div>
+              )}
+
               {/* Actions */}
               <div className="w-full flex flex-col gap-3 mt-auto">
                 {inventory.includes(previewItem.id) ? (
                   <button 
                     onClick={() => {
-                      const isEquipped = profile?.equipped_avatar === previewItem.id || 
-                                         profile?.equipped_card_back === previewItem.id || 
-                                         profile?.equipped_title === previewItem.id || 
-                                         profile?.equipped_board === previewItem.id;
-                      if (!isEquipped) {
+                      if (!isItemEquipped(previewItem)) {
                         handleEquip(previewItem);
                         setPreviewItem(null);
                       }
                     }}
-                    disabled={processingId === previewItem.id || (
-                      profile?.equipped_avatar === previewItem.id || 
-                      profile?.equipped_card_back === previewItem.id || 
-                      profile?.equipped_title === previewItem.id || 
-                      profile?.equipped_board === previewItem.id
-                    )}
+                    disabled={processingId === previewItem.id || isItemEquipped(previewItem)}
                     className={`w-full py-4 font-black text-sm uppercase tracking-widest rounded-xl transition-all border shadow-lg ${
-                      (profile?.equipped_avatar === previewItem.id || 
-                       profile?.equipped_card_back === previewItem.id || 
-                       profile?.equipped_title === previewItem.id || 
-                       profile?.equipped_board === previewItem.id)
+                      isItemEquipped(previewItem)
                         ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default' 
                         : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]'
                     }`}
                   >
                     {processingId === previewItem.id 
                       ? 'PROCESANDO...' 
-                      : (profile?.equipped_avatar === previewItem.id || 
-                         profile?.equipped_card_back === previewItem.id || 
-                         profile?.equipped_title === previewItem.id || 
-                         profile?.equipped_board === previewItem.id) 
+                      : isItemEquipped(previewItem)
                         ? '★ EQUIPADO' 
                         : 'EQUIPAR AHORA'}
                   </button>
@@ -338,7 +402,6 @@ export function Store() {
                   </button>
                 )}
                 
-                {/* Balance warning if can't afford */}
                 {!inventory.includes(previewItem.id) && (profile?.coins || 0) < previewItem.price && (
                   <p className="text-xs text-red-400 font-bold mt-1">
                     Te faltan {(previewItem.price - (profile?.coins || 0)).toLocaleString()} monedas

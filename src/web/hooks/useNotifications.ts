@@ -421,15 +421,22 @@ export function useNotifications() {
 
   const markAllAsRead = async () => {
     if (!user) return;
+    // Update local state immediately so UI reacts without waiting for Realtime
+    setAppNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    // Persist to DB
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_read: true })
       .eq('player_id', user.id)
       .eq('is_read', false);
   };
 
   const deleteReadNotifications = async () => {
     if (!user) return;
+    // Remove from local state
+    setAppNotifications(prev => prev.filter(n => !n.is_read));
+    // Persist
     await supabase.from('notifications').delete().eq('player_id', user.id).eq('is_read', true);
   };
 

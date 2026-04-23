@@ -45,6 +45,8 @@ module.exports = {
         'fade-in': 'fadeIn 0.4s ease-out',
         'glow-pulse': 'glowPulse 2s ease-in-out infinite',
         'card-enter': 'cardEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'card-glow': 'cardGlow 1.6s ease-in-out infinite',
+        'card-shimmer': 'cardShimmer 2.2s linear infinite',
       },
       keyframes: {
         shimmer: {
@@ -74,6 +76,16 @@ module.exports = {
         cardEnter: {
           '0%': { transform: 'scale(0.8) rotateY(90deg)', opacity: '0' },
           '100%': { transform: 'scale(1) rotateY(0deg)', opacity: '1' },
+        },
+        // Pulsing outer glow for selected board cards
+        cardGlow: {
+          '0%, 100%': { boxShadow: '0 0 10px 2px rgba(250,204,21,0.45), 0 0 30px 6px rgba(250,204,21,0.18)' },
+          '50%':      { boxShadow: '0 0 22px 6px rgba(250,204,21,0.75), 0 0 55px 14px rgba(250,204,21,0.32)' },
+        },
+        // Diagonal light sweep across the card face
+        cardShimmer: {
+          '0%':   { backgroundPosition: '-250% 0' },
+          '100%': { backgroundPosition: '250% 0' },
         },
       },
       backdropBlur: {

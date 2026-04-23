@@ -5,13 +5,13 @@ import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
 import { ProfileHeader } from './ProfileHeader';
 import { SocialPanel } from './SocialPanel';
-import { TournamentList } from './TournamentList';
 import { RecentAchievements } from './RecentAchievements';
 import { QuickStats } from './QuickStats';
 import { ProfileHistory } from './ProfileHistory';
 import { DailyQuests } from './DailyQuests';
 import { Store } from './Store';
 import { TopNavbar } from './TopNavbar';
+import { Sidebar } from './Sidebar';
 import type { DesktopTab } from './TopNavbar';
 import { EventsPage } from './EventsPage';
 import { AdminPanel } from './AdminPanel';
@@ -473,12 +473,6 @@ export function MainMenu() {
                 level="M"
                 bgColor="#ffffff"
                 fgColor="#0f172a"
-                imageSettings={{
-                  src: '',
-                  height: 0,
-                  width: 0,
-                  excavate: false,
-                }}
               />
               {/* Subtle glow on hover */}
               <div className="absolute inset-0 rounded-2xl border-2 border-casino-gold/0 group-hover:border-casino-gold/40 transition-all duration-500" />
@@ -561,7 +555,7 @@ export function MainMenu() {
 
   // ─── Main 3-Column Layout ───
   return (
-    <div className="flex flex-col h-screen overflow-hidden relative z-10">
+    <div className="flex h-screen overflow-hidden relative z-10 bg-slate-950">
       <div
         className="absolute inset-0 pointer-events-none opacity-35"
         style={{
@@ -576,53 +570,41 @@ export function MainMenu() {
       <div className="ambient-orb ambient-orb-gold w-[400px] h-[400px] -top-40 -left-20" />
       <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10" />
 
-      <TopNavbar
-        appNotifications={appNotifications}
-        unreadCount={unreadCount}
-        onMarkAllAsRead={markAllAsRead}
-        onMarkAsRead={markNotificationAsRead}
-        onChallengeClick={setActiveGameInvitation}
-        onDeleteRead={deleteReadNotifications}
-        onDeleteNotification={deleteNotification}
-        activeTab={desktopTab}
-        onTabChange={setDesktopTab}
-        leftCollapsed={leftCollapsed}
-        rightCollapsed={rightCollapsed}
-        onToggleLeft={() => setLeftCollapsed(v => !v)}
-        onToggleRight={() => setRightCollapsed(v => !v)}
-        isAdmin={profile?.is_admin}
-      />
-      
-      {/* ═════ LEFT COLUMN — Social ═════ */}
-      <div className="flex flex-1 overflow-hidden">
-        <aside
-          className={`
-            shrink-0 border-r border-white/[0.04] hidden lg:flex flex-col relative z-20 overflow-visible transition-[width] duration-300
-            ${desktopTab === 'all' ? '' : 'lg:hidden'}
-            ${leftCollapsed ? 'w-14' : 'w-64'}
-          `}
-        >
-          {leftCollapsed ? (
-            <div className="flex-1 flex items-center justify-center text-gray-500 select-none">
-              <span className="text-xl">👥</span>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
-              <SocialPanel />
-            </div>
-          )}
-        </aside>
+      {/* ═════ DESKTOP SIDEBAR ═════ */}
+      <Sidebar activeTab={desktopTab} onTabChange={setDesktopTab} isAdmin={profile?.is_admin} />
 
-        {/* ═════ CENTER COLUMN — Main Lobby ═════ */}
-        <main className={`flex-1 overflow-y-auto pb-20 lg:pb-0 relative z-10 ${desktopTab === 'events' || desktopTab === 'store' || desktopTab === 'admin' ? 'w-full' : ''}`}>
-          <div className={`mx-auto p-4 md:p-6 space-y-6 overflow-visible h-full flex flex-col ${desktopTab === 'events' || desktopTab === 'store' || desktopTab === 'admin' ? 'max-w-7xl' : 'max-w-xl'}`}>
+      {/* ═════ MAIN CONTENT AREA ═════ */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+        
+        {/* ═════ MOBILE TOP HEADER ═════ */}
+        <div className="lg:hidden">
+          <TopNavbar
+            appNotifications={appNotifications}
+            unreadCount={unreadCount}
+            onMarkAllAsRead={markAllAsRead}
+            onMarkAsRead={markNotificationAsRead}
+            onChallengeClick={setActiveGameInvitation}
+            onDeleteRead={deleteReadNotifications}
+            onDeleteNotification={deleteNotification}
+            activeTab={desktopTab}
+            onTabChange={setDesktopTab}
+            leftCollapsed={leftCollapsed}
+            rightCollapsed={rightCollapsed}
+            onToggleLeft={() => setLeftCollapsed(v => !v)}
+            onToggleRight={() => setRightCollapsed(v => !v)}
+            isAdmin={profile?.is_admin}
+          />
+        </div>
 
-          {/* Mobile Tab Content */}
-          <div className="lg:hidden flex-1 flex flex-col">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0 custom-scrollbar relative z-10">
+          <div className="mx-auto p-4 md:p-6 lg:p-8 max-w-7xl space-y-6">
+
+          {/* ═══ MOBILE TAB CONTENT ═══ */}
+          <div className="lg:hidden">
             {mobileTab === 'social' && (
-              <div className="space-y-4 animate-fade-in overflow-visible relative">
+              <div className="space-y-4 animate-fade-in">
                 <div className="overflow-visible relative z-50">
-                  <ProfileHeader 
+                  <ProfileHeader
                     appNotifications={appNotifications}
                     unreadCount={unreadCount}
                     onMarkAllAsRead={markAllAsRead}
@@ -632,105 +614,92 @@ export function MainMenu() {
                     onDeleteNotification={deleteNotification}
                   />
                 </div>
-                <div className="relative z-10">
-                  <SocialPanel />
-                </div>
+                <SocialPanel />
               </div>
             )}
             {mobileTab === 'stats' && (
-              <div className="space-y-4 animate-fade-in pb-20">
-                <div>
-                  <h3 className="section-header">📊 Estadísticas</h3>
-                  <QuickStats />
-                </div>
-                <div>
-                  <ProfileHistory />
-                </div>
-                <div>
-                  <h3 className="section-header">🎯 Misiones Diarias</h3>
-                  <DailyQuests />
-                </div>
-                <div>
-                  <h3 className="section-header">🏅 Logros Recientes</h3>
-                  <RecentAchievements />
-                </div>
+              <div className="space-y-4 animate-fade-in pb-4">
+                <h3 className="section-header">📊 Estadísticas</h3>
+                <QuickStats />
+                <ProfileHistory />
+                <h3 className="section-header">🎯 Misiones Diarias</h3>
+                <DailyQuests />
+                <h3 className="section-header">🏅 Logros Recientes</h3>
+                <RecentAchievements />
               </div>
             )}
             {mobileTab === 'events' && (
-              <div className="animate-fade-in w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
+              <div className="animate-fade-in bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4">
                 <EventsPage />
               </div>
             )}
-            {mobileTab === 'admin' && profile?.is_admin && (
-              <div className="animate-fade-in w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
-                <AdminPanel />
-              </div>
-            )}
             {mobileTab === 'store' && (
-              <div className="animate-fade-in w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
+              <div className="animate-fade-in bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4">
                 <Store />
               </div>
             )}
+            {mobileTab === 'admin' && profile?.is_admin && (
+              <div className="animate-fade-in bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4">
+                <AdminPanel />
+              </div>
+            )}
           </div>
 
-          <div className={`hidden ${desktopTab === 'social' ? 'lg:block animate-fade-in' : 'lg:hidden'}`}>
-            <SocialPanel />
-          </div>
-
-          <div className={`hidden ${desktopTab === 'stats' ? 'lg:block animate-fade-in flex-1 overflow-y-auto custom-scrollbar' : 'lg:hidden'}`}>
-            <div className="space-y-4 max-w-4xl mx-auto pb-10">
-              <div>
+          {/* ═══ DESKTOP TAB CONTENT ═══ */}
+          <div className="hidden lg:block">
+            {desktopTab === 'social' && (
+              <div className="animate-fade-in max-w-2xl mx-auto">
+                <SocialPanel />
+              </div>
+            )}
+            {desktopTab === 'stats' && (
+              <div className="animate-fade-in space-y-6 max-w-4xl mx-auto">
                 <h3 className="section-header">📊 Estadísticas</h3>
                 <QuickStats />
-              </div>
-              <div>
                 <ProfileHistory />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="section-header">🎯 Misiones Diarias</h3>
-                  <DailyQuests />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="section-header">🎯 Misiones Diarias</h3>
+                    <DailyQuests />
+                  </div>
+                  <div>
+                    <h3 className="section-header">🏅 Logros Recientes</h3>
+                    <RecentAchievements />
+                  </div>
                 </div>
-                <div>
-                  <h3 className="section-header">🏅 Logros Recientes</h3>
-                  <RecentAchievements />
-                </div>
               </div>
-            </div>
+            )}
+            {desktopTab === 'events' && (
+              <div className="animate-fade-in bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-6">
+                <EventsPage />
+              </div>
+            )}
+            {desktopTab === 'store' && (
+              <div className="animate-fade-in bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-6">
+                <Store />
+              </div>
+            )}
+            {desktopTab === 'admin' && profile?.is_admin && (
+              <div className="animate-fade-in bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-6">
+                <AdminPanel />
+              </div>
+            )}
           </div>
 
-          <div className={`hidden ${desktopTab === 'events' ? 'lg:flex animate-fade-in flex-1' : 'lg:hidden'}`}>
-            <div className="w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
-              <EventsPage />
+          {/* ═══ LOBBY CONTENT (mobile lobby tab + desktop 'all' tab) ═══ */}
+          <div className={`space-y-4 md:space-y-8 ${mobileTab === 'lobby' ? 'block animate-fade-in' : 'hidden'} ${desktopTab === 'all' ? 'lg:block' : 'lg:hidden'}`}>
+            {/* Mobile-only Big Logo in Lobby */}
+            <div className="text-center pt-4 pb-2 lg:hidden">
+              <div className="flex items-center justify-center gap-2">
+                <img src={brand21Icon} alt="Kasino21 icono" className="w-9 h-9 rounded-lg object-cover border border-casino-gold/30" />
+                <h1 className="text-4xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg animate-fade-in select-none">
+                  KASINO21
+                </h1>
+              </div>
+              <p className="text-gray-500 text-[10px] mt-1 uppercase tracking-[0.3em] font-bold">
+                Juego de cartas competitivo
+              </p>
             </div>
-          </div>
-
-          <div className={`hidden ${desktopTab === 'store' ? 'lg:flex animate-fade-in flex-1' : 'lg:hidden'}`}>
-            <div className="w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
-              <Store />
-            </div>
-          </div>
-
-          <div className={`hidden ${desktopTab === 'admin' && profile?.is_admin ? 'lg:flex animate-fade-in flex-1' : 'lg:hidden'}`}>
-            <div className="w-full flex-1 flex flex-col bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl p-4 overflow-y-auto">
-              <AdminPanel />
-            </div>
-          </div>
-
-          {/* Desktop Content & Mobile Lobby Tab */}
-          <div className={`space-y-8 ${mobileTab === 'lobby' ? 'block animate-fade-in' : 'hidden'} ${showLobbyDesktop ? 'lg:block' : 'lg:hidden'}`}>
-            {/* Big Logo */}
-          <div className="text-center pt-8 pb-4 lg:hidden">
-            <div className="flex items-center justify-center gap-3">
-              <img src={brand21Icon} alt="Kasino21 icono" className="w-12 h-12 rounded-xl object-cover border border-casino-gold/30" />
-              <h1 className="text-6xl md:text-7xl font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-casino-gold via-casino-gold-dark to-yellow-800 drop-shadow-lg animate-fade-in select-none">
-                KASINO21
-              </h1>
-            </div>
-            <p className="text-gray-500 text-xs mt-2 uppercase tracking-[0.3em] font-bold">
-              Juego de cartas competitivo
-            </p>
-          </div>
 
           {/* Error */}
           {error && (
@@ -741,7 +710,7 @@ export function MainMenu() {
 
           {/* ─── Matchmaking Overlay (FASE 8) ─── */}
           {isMatchmaking && !matchFound && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#020617]/90 backdrop-blur-md rounded-3xl p-6 text-center animate-fade-in">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]/95 backdrop-blur-md p-6 text-center animate-fade-in">
               <div className="space-y-6">
                 <div className="relative w-24 h-24 mx-auto">
                   <div className="absolute inset-0 border-4 border-t-casino-gold border-r-casino-gold border-b-transparent border-l-transparent rounded-full animate-spin"></div>
@@ -766,7 +735,7 @@ export function MainMenu() {
           )}
 
           {matchFound && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-casino-gold/10 backdrop-blur-md rounded-3xl p-6 text-center animate-scale-up">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-casino-gold/10 backdrop-blur-md p-6 text-center animate-scale-up">
               <div className="space-y-4 bg-black/60 p-8 rounded-3xl border border-casino-gold/30 shadow-[0_0_50px_rgba(251,191,36,0.3)]">
                 <h3 className="text-4xl font-display font-black text-white uppercase tracking-widest text-shadow-gold animate-bounce" style={{ textShadow: '0 0 10px rgba(251,191,36,0.8)' }}>
                   ¡PARTIDA ENCONTRADA!
@@ -794,7 +763,7 @@ export function MainMenu() {
             {/* Ranked Card */}
             <button 
               onClick={startMatchmaking}
-              className="group relative overflow-hidden rounded-3xl border border-casino-gold/30 hover:border-casino-gold transition-all duration-500 transform hover:-translate-y-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_rgba(251,191,36,0.3)] text-left flex flex-col h-64"
+              className="group relative overflow-hidden rounded-3xl border border-casino-gold/30 hover:border-casino-gold transition-all duration-500 transform hover:-translate-y-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_rgba(251,191,36,0.3)] text-left flex flex-col h-44 md:h-64"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-900/40 to-black/80 z-0"></div>
               <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-casino-gold/20 rounded-full blur-3xl group-hover:bg-casino-gold/30 transition-colors z-0"></div>
@@ -886,51 +855,20 @@ export function MainMenu() {
                 })}
               </div>
             </div>
-            
+
           </div>
 
-          {/* ─── Tournaments Section ─── */}
-          <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <h2 className="section-header">🏆 Torneos Activos</h2>
-            <TournamentList />
-          </div>
+            {/* ─── Events & Tournaments Section ─── */}
+            <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <EventsPage />
+            </div>
 
-          {/* Bottom spacing */}
-          <div className="h-6" />
+            {/* Bottom spacing */}
+            <div className="h-6" />
           </div>
+          {/* ═══ END LOBBY CONTENT ═══ */}
         </div>
       </main>
-
-      {/* ═════ RIGHT COLUMN — Quick Stats ═════ */}
-        <aside
-          className={`
-            shrink-0 border-l border-white/[0.04] hidden xl:flex flex-col overflow-hidden transition-[width] duration-300
-            ${desktopTab === 'all' ? '' : 'xl:hidden'}
-            ${rightCollapsed ? 'w-14' : 'w-64'}
-          `}
-        >
-          {rightCollapsed ? (
-            <div className="flex-1 flex items-center justify-center text-gray-500 select-none">
-              <span className="text-xl">📊</span>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-              <div>
-                <h3 className="section-header">🎯 Misiones Diarias</h3>
-                <DailyQuests />
-              </div>
-              <div>
-                <h3 className="section-header">🏅 Logros Recientes</h3>
-                <RecentAchievements />
-              </div>
-              <div>
-                <h3 className="section-header">📊 Estadísticas</h3>
-                <QuickStats />
-              </div>
-            </div>
-          )}
-        </aside>
-      </div>
 
       {/* ═════ MOBILE BOTTOM NAVIGATION ═════ */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 glass-panel-strong border-t border-white/[0.05] flex justify-around items-center p-3 px-6 z-50">
@@ -1085,6 +1023,7 @@ export function MainMenu() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

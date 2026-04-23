@@ -3,6 +3,7 @@ import { Player } from '../../domain/player';
 import { DraggableCard } from './DraggableCard';
 import { Card } from '../../domain/card';
 import { CollectedCardsDeck } from './CollectedCardsDeck';
+import { CardTheme } from '../themes/themeRegistry';
 
 interface HandViewProps {
   player: Player;
@@ -10,9 +11,11 @@ interface HandViewProps {
   selectedCardId: string | null;
   onCardClick: (card: Card) => void;
   isDealing?: boolean;
+  /** Card theme from the local player's equipped_theme */
+  cardTheme?: CardTheme;
 }
 
-export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, isDealing }: HandViewProps) {
+export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, isDealing, cardTheme }: HandViewProps) {
   // Cuando el jugador local se reconecta, si el server envía el estado sin "esconder" sus propias cartas
   // (ya que el index.ts clona el estado pero no oculta la mano del jugador a sí mismo),
   // a veces se pierde el tipo y React DnD falla. Verificamos que las cartas sean válidas.
@@ -85,6 +88,7 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
                   selected={selectedCardId === card.id}
                   onClick={() => isCurrentTurn && onCardClick(card)}
                   disabled={!isCurrentTurn}
+                  theme={cardTheme}
                 />
               </div>
             );

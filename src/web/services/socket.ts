@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { supabase } from './supabase';
+import { logger } from '../utils/logger';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (
   import.meta.env.PROD && typeof window !== 'undefined'
@@ -28,7 +29,7 @@ class SocketService {
       const token = data.session?.access_token;
 
       if (!token) {
-        console.error("No se encontró token JWT. El usuario debe iniciar sesión.");
+        logger.error("No se encontró token JWT. El usuario debe iniciar sesión.");
         throw new Error("No autenticado");
       }
 
@@ -77,7 +78,7 @@ class SocketService {
         });
 
         this.socket.on('connect_error', (err) => {
-          console.error("Error conectando el socket:", err.message);
+          logger.error("Error conectando el socket:", err.message);
           this.connectingPromise = null;
           reject(err);
         });

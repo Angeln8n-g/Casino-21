@@ -303,3 +303,24 @@
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   animation-fill-mode: forwards;
 }
+
+/* ─── Card Selected Glow (used inline in CardView) ─── */
+@keyframes cardGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 10px 2px  rgba(250, 204, 21, 0.45),
+      0 0 30px 6px  rgba(250, 204, 21, 0.18),
+      0 22px 40px -10px rgba(0,0,0,0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 22px 7px  rgba(250, 204, 21, 0.78),
+      0 0 55px 16px rgba(250, 204, 21, 0.32),
+      0 22px 40px -10px rgba(0,0,0,0.55);
+  }
+}
+
+@keyframes cardShimmer {
+  0%   { background-position: -250% 0; }
+  100% { background-position:  250% 0; }
+}

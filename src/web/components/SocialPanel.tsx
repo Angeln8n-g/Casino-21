@@ -330,39 +330,39 @@ export function SocialPanel() {
 
   return (
     <>
-      <div className="flex flex-col h-full space-y-4">
+      <div className="flex flex-col h-full space-y-5 glass-panel p-4 md:p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md shadow-lg">
         {/* ── TABS ──────────────────────────────────────────── */}
-        <div className="flex bg-white/[0.03] p-1 rounded-xl border border-white/[0.05] shrink-0">
+        <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 shrink-0 overflow-x-auto custom-scrollbar shadow-inner">
           <button
             onClick={() => setActiveTab('friends')}
-            className={`flex-1 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-lg transition-all relative ${
-              activeTab === 'friends' ? 'bg-white/10 text-casino-gold shadow-sm border border-white/5' : 'text-gray-500 hover:text-gray-300'
+            className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all relative whitespace-nowrap px-4 ${
+              activeTab === 'friends' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
             Amigos
             {tabCount > 0 && (
-              <span className="absolute -top-1.5 -right-0.5 min-w-[16px] h-4 bg-red-500 rounded-full text-[9px] font-black text-white flex items-center justify-center px-1 animate-bounce">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-black text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-bounce">
                 {tabCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('search')}
-            className={`flex-1 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-lg transition-all ${
-              activeTab === 'search' ? 'bg-white/10 text-casino-gold shadow-sm border border-white/5' : 'text-gray-500 hover:text-gray-300'
+            className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all whitespace-nowrap px-4 ${
+              activeTab === 'search' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
             Buscar
           </button>
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-lg transition-all relative ${
-              activeTab === 'chat' ? 'bg-white/10 text-casino-gold shadow-sm border border-white/5' : 'text-gray-500 hover:text-gray-300'
+            className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all relative whitespace-nowrap px-4 ${
+              activeTab === 'chat' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
             Chat
             {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1.5 -right-0.5 min-w-[16px] h-4 bg-red-500 rounded-full text-[9px] font-black text-white flex items-center justify-center px-1 animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-black text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse">
                 {unreadMessagesCount}
               </span>
             )}
