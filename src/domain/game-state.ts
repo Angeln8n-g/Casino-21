@@ -38,6 +38,8 @@ export interface GameState {
   readonly winnerId?: string;
   /** Breakdown of the last round's score */
   readonly lastScoreBreakdown?: readonly ScoreBreakdown[];
+  /** Array of player IDs who have indicated they are ready for the next round */
+  readonly readyForNextRound?: string[];
 }
 
 /**

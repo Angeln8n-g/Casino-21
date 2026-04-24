@@ -529,7 +529,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const getEntities = () => gameState.mode === '1v1' ? gameState.players : gameState.teams;
 
   if (gameState.phase === 'scoring') {
-    return <RoundSummaryScreen gameState={gameState} onContinue={continueToNextRound} />;
+    return <RoundSummaryScreen gameState={gameState} localPlayerId={localPlayerId} onContinue={continueToNextRound} />;
   }
 
   if (matchAbandonedData && !isSpectator) {

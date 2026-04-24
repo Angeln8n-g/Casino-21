@@ -244,15 +244,17 @@ function scheduleBotTurnIfNeeded(roomId: string, room: any) {
     if (room.timerInterval) clearInterval(room.timerInterval);
     setTimeout(() => {
       if (!rooms[roomId] || !rooms[roomId].state) return;
-      if (rooms[roomId].state.phase !== 'scoring') return; // human already clicked continue
-      const result = rooms[roomId].engine.continueToNextRound(rooms[roomId].state);
+      if (rooms[roomId].state.phase !== 'scoring') return; // already advanced
+      
+      const result = rooms[roomId].engine.markPlayerReady(rooms[roomId].state, BOT_USER_ID);
       if (result.success && result.value) {
         rooms[roomId].state = result.value;
         broadcastGameState(roomId, rooms[roomId]);
+        
         if (rooms[roomId].state.phase === 'completed') {
           if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
           saveMatchResult(roomId, rooms[roomId]);
-        } else {
+        } else if (rooms[roomId].state.phase === 'playing') {
           startTurnTimer(roomId, rooms[roomId]);
           scheduleBotTurnIfNeeded(roomId, rooms[roomId]);
         }
@@ -658,9 +660,7 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room || !room.state || room.state.phase !== 'scoring') return;
 
-    // Solo un jugador necesita lanzar la acción para avanzar (o podríamos requerir que todos lo hagan)
-    // Para simplificar, el primero que le de al botón avanza la ronda
-    const result = room.engine.continueToNextRound(room.state);
+    const result = room.engine.markPlayerReady(room.state, userId);
     if (result.success && result.value) {
       room.state = result.value;
       
@@ -668,11 +668,14 @@ io.on('connection', (socket) => {
         if (room.timerInterval) clearInterval(room.timerInterval);
         broadcastGameState(roomId, room);
         saveMatchResult(roomId, room);
-      } else {
+      } else if (room.state.phase === 'playing') {
         startTurnTimer(roomId, room);
         broadcastGameState(roomId, room);
         // Si es partida vs bot, verificar si le toca al bot en la nueva ronda
         scheduleBotTurnIfNeeded(roomId, room);
+      } else {
+        // Still in scoring phase, just broadcast updated ready state
+        broadcastGameState(roomId, room);
       }
     }
   });

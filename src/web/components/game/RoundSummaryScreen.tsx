@@ -11,6 +11,7 @@ import titleImage from '../../../Public/Reultados de la ronda.png';
  */
 interface RoundSummaryScreenProps {
   gameState: GameState;
+  localPlayerId: string | null;
   onContinue: () => void;
 }
 
@@ -65,7 +66,9 @@ function ScoreRow({
  *  - Safe-area padding via `env()` for devices with notches.
  *  - Content capped at `max-w-4xl` and centered horizontally.
  */
-export function RoundSummaryScreen({ gameState, onContinue }: RoundSummaryScreenProps) {
+export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: RoundSummaryScreenProps) {
+  const isReady = localPlayerId ? gameState.readyForNextRound?.includes(localPlayerId) : false;
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden"
@@ -219,16 +222,27 @@ export function RoundSummaryScreen({ gameState, onContinue }: RoundSummaryScreen
           </div>
 
           {/* ---- Continue Button ---- */}
-          <div className="flex justify-center pt-1 sm:pt-2">
+          <div className="flex justify-center pt-1 sm:pt-2 h-[40px] sm:h-[44px] md:h-[52px]">
             <button
               onClick={onContinue}
-              className="relative overflow-hidden group bg-transparent border border-yellow-500/50 hover:border-yellow-400 active:border-yellow-300 text-yellow-400 hover:text-yellow-300 px-5 py-2 sm:px-7 sm:py-2.5 md:px-12 md:py-3.5 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm md:text-lg tracking-[0.12em] sm:tracking-[0.15em] uppercase transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:shadow-[0_0_30px_rgba(234,179,8,0.3)] active:scale-95 hover:-translate-y-0.5 touch-manipulation"
+              disabled={isReady}
+              className={`relative overflow-hidden group bg-transparent border text-xs sm:text-sm md:text-lg tracking-[0.12em] sm:tracking-[0.15em] uppercase transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.15)] rounded-lg sm:rounded-xl font-bold px-5 py-2 sm:px-7 sm:py-2.5 md:px-12 md:py-3.5
+                ${isReady 
+                  ? 'border-yellow-500/30 text-yellow-400/50 cursor-not-allowed scale-95' 
+                  : 'border-yellow-500/50 hover:border-yellow-400 active:border-yellow-300 text-yellow-400 hover:text-yellow-300 hover:shadow-[0_0_30px_rgba(234,179,8,0.3)] active:scale-95 hover:-translate-y-0.5 touch-manipulation'
+                }`}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/0 via-yellow-500/10 to-yellow-600/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-              Siguiente Ronda
-              {/* Decorative diamond accents */}
-              <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -left-0.5 sm:-left-1 top-1/2 -translate-y-1/2" />
-              <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -right-0.5 sm:-right-1 top-1/2 -translate-y-1/2" />
+              {!isReady && <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/0 via-yellow-500/10 to-yellow-600/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />}
+              {isReady ? (
+                <span className="animate-pulse block min-w-[150px] sm:min-w-[180px] md:min-w-[240px]">Esperando oponente...</span>
+              ) : (
+                <>
+                  Siguiente Ronda
+                  {/* Decorative diamond accents */}
+                  <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -left-0.5 sm:-left-1 top-1/2 -translate-y-1/2" />
+                  <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -right-0.5 sm:-right-1 top-1/2 -translate-y-1/2" />
+                </>
+              )}
             </button>
           </div>
         </div>

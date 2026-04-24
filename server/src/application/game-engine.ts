@@ -72,6 +72,8 @@ export interface GameEngine {
    * @returns A Result containing the loaded GameState or an error
    */
   loadGame(json: string): Result<GameState>;
+
+  markPlayerReady(state: GameState, playerId: string): Result<GameState>;
 }
 
 export class DefaultGameEngine implements GameEngine {
@@ -474,6 +476,29 @@ export class DefaultGameEngine implements GameEngine {
     return { success: true, value: newState };
   }
 
+  markPlayerReady(state: GameState, playerId: string): Result<GameState> {
+    if (state.phase !== 'scoring') {
+      return { success: false, error: ErrorCode.INVALID_STATE };
+    }
+
+    const readyList = state.readyForNextRound ? [...state.readyForNextRound] : [];
+    if (!readyList.includes(playerId)) {
+      readyList.push(playerId);
+    }
+
+    let newState = { ...state, readyForNextRound: readyList };
+
+    // Check if all players are ready
+    const allReady = newState.players.every(p => readyList.includes(p.id));
+
+    if (allReady) {
+      return this.continueToNextRound(newState);
+    }
+
+    this.currentState = newState;
+    return { success: true, value: newState };
+  }
+
   continueToNextRound(state: GameState): Result<GameState> {
     if (state.phase !== 'scoring') {
       return { success: false, error: ErrorCode.INVALID_STATE };
@@ -579,7 +604,8 @@ export class DefaultGameEngine implements GameEngine {
       currentTurnPlayerIndex: nextStartPlayerIndex,
       turnCount: 0,
       lastAction: undefined,
-      lastScoreBreakdown: undefined
+      lastScoreBreakdown: undefined,
+      readyForNextRound: []
     };
   }
 
