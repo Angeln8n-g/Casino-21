@@ -64,27 +64,29 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
   return (
     <div
-      ref={setNodeRef}
+      className={`wood-bumper w-full max-w-5xl rounded-2xl md:rounded-[4rem] p-3 md:p-6 ring-4 ring-black/80 transition-all ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[400px]'} flex-1 flex flex-col`}
       style={{
-        ...boardBackgroundStyle,
-        /* Auto-scale board on narrow viewports */
         transform: isMobile ? `scale(${boardScale})` : undefined,
         transformOrigin: 'top center',
-        borderColor: boardBorderColor,
       }}
-      className={`
-        relative flex flex-col items-center justify-center
-        gap-3 md:gap-6 p-3 md:p-10 w-full max-w-5xl
-        rounded-2xl md:rounded-[4rem]
-        shadow-[0_8px_20px_rgba(0,0,0,0.5),inset_0_3px_10px_rgba(0,0,0,0.7)]
-        md:shadow-[0_30px_60px_rgba(0,0,0,0.7),inset_0_10px_30px_rgba(0,0,0,0.9)]
-        border-[6px] md:border-[16px]
-        ring-2 md:ring-8 ring-black/50
-        transition-all flex-1 overflow-hidden
-        ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[400px]'}
-        ${isOver ? `brightness-110` : ''}
-      `}
     >
+      <div
+        ref={setNodeRef}
+        style={{
+          ...boardBackgroundStyle,
+          borderColor: boardBorderColor,
+        }}
+        className={`
+          relative flex flex-col items-center justify-center
+          gap-3 md:gap-6 p-3 md:p-10 w-full h-full
+          rounded-xl md:rounded-[3.2rem]
+          shadow-[inset_0_10px_30px_rgba(0,0,0,0.9)]
+          border-[3px] md:border-[6px]
+          ring-1 md:ring-2 ring-black/50
+          transition-all flex-1 overflow-hidden
+          ${isOver ? 'brightness-110' : ''}
+        `}
+      >
       {!boardThemeUrl && !boardTheme && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -130,7 +132,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Cartas Sueltas — zona central */}
         {board.cards.length > 0 && (
-          <div className="mb-3 md:mb-6 w-full text-center rounded-xl md:rounded-2xl border border-yellow-200/20 bg-black/20 backdrop-blur-sm p-2 md:p-4">
+          <div className="mb-3 md:mb-6 w-full text-center p-2 md:p-4 betting-box bg-black/10">
             <h3 className="text-[10px] md:text-sm font-bold mb-1.5 md:mb-4 text-yellow-300 drop-shadow-md tracking-wider uppercase">Cartas Sueltas</h3>
             <div className="flex flex-wrap gap-1.5 md:gap-4 justify-center min-h-[60px] md:min-h-[160px]">
               {board.cards.map(card => (
@@ -147,7 +149,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Formaciones — zona separada visualmente */}
         {board.formations.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-3 md:gap-8 mt-1 md:mt-4 border border-yellow-200/20 bg-black/20 rounded-xl md:rounded-2xl pt-5 md:pt-8 pb-2 md:pb-4 w-full relative">
+          <div className="flex flex-wrap justify-center gap-3 md:gap-8 mt-1 md:mt-4 pt-5 md:pt-8 pb-2 md:pb-4 w-full relative betting-box bg-black/10">
             <div className="absolute top-1.5 md:top-2 bg-black/40 px-2 md:px-4 text-yellow-200/70 text-[9px] md:text-xs font-bold tracking-widest uppercase">Formaciones</div>
             {board.formations.map(form => (
               <DroppableFormation
@@ -162,7 +164,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Cartas Cantadas — zona separada */}
         {board.cantedCards.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 md:gap-6 mt-1 md:mt-4 border border-yellow-200/20 bg-black/20 rounded-xl md:rounded-2xl pt-5 md:pt-8 pb-2 md:pb-4 w-full relative">
+          <div className="flex flex-wrap justify-center gap-2 md:gap-6 mt-1 md:mt-4 pt-5 md:pt-8 pb-2 md:pb-4 w-full relative betting-box bg-black/10">
             <div className="absolute top-1.5 md:top-2 bg-black/40 px-2 md:px-4 text-yellow-200/70 text-[9px] md:text-xs font-bold tracking-widest uppercase">Cartas Cantadas</div>
             {board.cantedCards.map(canted => (
               <div key={canted.card.id} className="relative group">
@@ -178,6 +180,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

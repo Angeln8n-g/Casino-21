@@ -25,6 +25,7 @@ import {
 } from './game';
 import type { DragModalData } from './game';
 import { getTheme, BoardTheme } from '../themes/themeRegistry';
+import { triggerHaptic } from '../utils/haptics';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -446,9 +447,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }
     if (event.active.data.current?.type === 'handCard') {
       // Haptic feedback on mobile if available
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(10);
-      }
+      triggerHaptic('card_tap');
       playSfx('cardPlay', { volumeMultiplier: 0.4, playbackRate: 1.12 });
       setActiveDragCard(event.active.data.current.card);
     }
@@ -844,8 +843,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         {/* ===== ZONA JUGADOR — Mano del jugador (sticky bottom en móvil) ===== */}
         <footer
           className={`
-            bg-black/40 backdrop-blur-md rounded-2xl md:rounded-3xl border
-            ${isCurrentTurn ? 'border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10'}
+            bg-black/60 backdrop-blur-xl rounded-2xl md:rounded-3xl border
+            ${isCurrentTurn ? 'border-yellow-500/50 shadow-[0_0_30px_rgba(250,204,21,0.15),inset_0_0_15px_rgba(0,0,0,0.5)]' : 'border-white/10 shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]'}
             flex flex-col items-center gap-2 md:gap-6 relative overflow-hidden
             transition-all duration-300 w-full
             ${isMobile

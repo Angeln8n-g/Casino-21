@@ -1,0 +1,151 @@
+# Card & Table Themes — Sistema de Temas Visuales en la Tienda
+
+## ¿Qué hace esto?
+
+Añade un nuevo tipo de artículo `'theme'` a la tienda que, al comprarse y equiparse, cambia completamente el estilo visual de las cartas y la mesa durante la partida. Cada tema es un conjunto de variables CSS/JS que se aplican en tiempo real sin recargar.
+
+**Temas iniciales incluidos:**
+| Key | Nombre | Descripción corta |
+|---|---|---|
+| `default` | Clásico | El estilo actual del juego |
+| `vault_noir` | Vault Noir | Casino de lujo, cartas crema, mesa de terciopelo negro |
+| `neon_dealer` | Neon Dealer | Cyberpunk neón, cada palo con su color brillante |
+| `gold_rush` | Gold Rush | Glassmorphism premium dorado |
+| `bento_casino` | Bento Casino | Minimalismo Apple, tarjetas limpias |
+| `tactile_vegas` | Tactile Vegas | Efecto táctil clay con física de rebote |
+
+---
+
+## Infraestructura actual (ya existe ✅)
+
+- `store_items.item_type` ya acepta `'board'` — extenderemos con `'theme'`  
+- `profiles.equipped_board` — reutilizaremos para almacenar el `theme_key`  
+- `BoardView` ya recibe `boardThemeUrl` — lo reemplazaremos con un objeto de tema  
+- `equip_store_item` RPC ya existe — solo añadimos el caso `'theme'`
+
+> [!IMPORTANT]
+> Los temas **no** almacenan CSS en la DB. Solo almacenan un `theme_key` (string como `vault_noir`). Las definiciones visuales viven en el frontend en un `ThemeRegistry`. Esto da control total al equipo de diseño sin tocar la DB por cada cambio visual.
+
+---
+
+## Open Questions
+
+> [!WARNING]
+> **¿Nuevo `item_type` o reutilizar `'board'`?**  
+> Propongo `item_type = 'theme'` (nuevo valor) para no mezclar semántica. Esto requiere un `ALTER TYPE` en la DB si el campo usa un `ENUM`, o simplemente permite cualquier string si es `TEXT`. Necesito verificar el tipo de columna actual.
+
+> [!NOTE]
+> **¿Preview en la tienda?**  
+> El modal de preview mostrará una mini-carta animada con el estilo del tema aplicado en vivo (sin imagen, puro CSS). Esto es el diferenciador UX clave.
+
+---
+
+## Proposed Changes
+
+### 1. Base de datos (Supabase)
+
+#### [MODIFY] `store_items` table
+- Añadir soporte para `item_type = 'theme'`
+- Añadir columna `theme_key TEXT` para almacenar el identificador del tema (`vault_noir`, etc.)
+
+#### [MODIFY] `profiles` table  
+- Añadir columna `equipped_theme TEXT DEFAULT 'default'`
+
+#### [MODIFY] `equip_store_item` RPC
+- Añadir caso `WHEN 'theme' THEN UPDATE profiles SET equipped_theme = item.theme_key`
+
+---
+
+### 2. Frontend — Nuevos Archivos
+
+#### [NEW] `src/web/themes/themeRegistry.ts`
+Define la interfaz `GameTheme` y el registro de los 5 temas:
+```ts
+interface CardTheme { /* propiedades CSS para CardView */ }
+interface BoardTheme { /* propiedades CSS para BoardView */ }
+interface GameTheme {
+  key: string;
+  cardTheme: CardTheme;
+  boardTheme: BoardTheme;
+}
+export const THEME_REGISTRY: Record<string, GameTheme> = { ... }
+```
+
+#### [NEW] `src/web/hooks/useGameTheme.ts`
+Hook que lee `profile.equipped_theme` y devuelve el `GameTheme` activo:
+```ts
+export function useGameTheme(): GameTheme {
+  const { profile } = useAuth();
+  return THEME_REGISTRY[profile?.equipped_theme ?? 'default'];
+}
+```
+
+---
+
+### 3. Frontend — Archivos Modificados
+
+#### [MODIFY] [CardView.tsx](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/CardView.tsx)
+- Añadir prop opcional `theme?: CardTheme`
+- Aplicar `theme.cardBackground`, `theme.suitColors`, `theme.borderStyle`, `theme.animationClass` en lugar de los estilos hardcoded actuales
+
+#### [MODIFY] [BoardView.tsx](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/BoardView.tsx)
+- Reemplazar `boardThemeUrl` por `theme?: BoardTheme` (más potente)
+- Aplicar `theme.background`, `theme.borderColor`, `theme.glowColor`, `theme.overlayEffects`
+
+#### [MODIFY] [HandView.tsx](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/HandView.tsx)
+- Pasar `theme` a cada `<CardView>` que renderiza
+
+#### [MODIFY] [GameScreen.tsx](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/GameScreen.tsx)
+- Llamar `useGameTheme()` una sola vez al tope
+- Pasar `theme.cardTheme` a `HandView` y cartas de la mesa
+- Pasar `theme.boardTheme` a `BoardView`
+
+#### [MODIFY] [Store.tsx](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/Store.tsx)
+- Añadir categoría `'theme'` en el filtro de tabs (🎨 Temas)
+- Modal de preview: mostrar **mini-carta viva** con el CSS del tema aplicado (en lugar de imagen)
+- Mostrar también mini-preview de la mesa (rectángulo con gradiente del tema)
+
+#### [MODIFY] `src/web/components/StoreAdmin.tsx`
+- Añadir campo `theme_key` en el formulario de creación de items tipo `'theme'`
+- Selector desplegable con los temas disponibles en el registry
+
+---
+
+## Flujo completo de la feature
+
+```
+Usuario en tienda
+    → Ve tab "🎨 Temas"
+    → Click en "Vault Noir" (500 monedas)
+    → Modal muestra mini-carta con estilo Vault Noir EN VIVO
+    → Compra → equip_store_item RPC → profiles.equipped_theme = 'vault_noir'
+    → Inicia partida
+    → GameScreen llama useGameTheme() → devuelve VaultNoirTheme
+    → CardView y BoardView aplican estilos del tema
+    → El oponente ve el tema por defecto (los temas son personales)
+```
+
+> [!IMPORTANT]
+> **Decisión confirmada:**
+> - 🃏 **Cartas** → cada jugador ve las suyas con su propio `equipped_theme` (local, desde `useGameTheme()`)
+> - 🎲 **Mesa** → usa el tema del **HOST** de la sala. El `equipped_theme` del host se incluye en el estado de la sala (room metadata) y se transmite a todos los jugadores vía Supabase Realtime/room state.
+
+---
+
+## Verification Plan
+
+### Automatizado
+- `npm run build` — verificar que no hay errores de tipos TS en los nuevos props
+- Smoke test manual: equipar cada tema y verificar que las cartas cambian visualmente
+
+### Manual
+1. Ir a la tienda → pestaña Temas → verificar que aparecen los ítems
+2. Comprar un tema → verificar descuento de monedas
+3. Equipar → iniciar partida → verificar que cartas y mesa cambian de estilo
+4. Cambiar de tema → iniciar nueva partida → verificar que el nuevo tema aplica
+5. Verificar que el tema `default` funciona si no hay nada equipado
+6. Mobile: verificar que los temas se ven correctamente en viewport < 768px
+
+### DB
+- Verificar que `profiles.equipped_theme` se actualiza con el RPC
+- Verificar que `store_items` con `item_type = 'theme'` aparecen en la query de la tienda

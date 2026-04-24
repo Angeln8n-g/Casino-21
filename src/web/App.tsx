@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameProvider, useGame } from './hooks/useGame';
 import { AudioProvider } from './hooks/useAudio';
 import { MainMenu } from './components/MainMenu';
 import { GameScreen } from './components/GameScreen';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { AuthScreen } from './components/AuthScreen';
+import { triggerHaptic } from './utils/haptics';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -40,6 +41,23 @@ function AppContent() {
 }
 
 export default function App() {
+  // Global event listener for button haptics
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if the clicked element or its parent is a button
+      const button = target.closest('button');
+      if (button && !button.disabled) {
+        triggerHaptic('light');
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick, { capture: true });
+    return () => {
+      document.removeEventListener('click', handleGlobalClick, { capture: true });
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <AudioProvider>
