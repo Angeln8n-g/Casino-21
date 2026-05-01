@@ -28,7 +28,8 @@ describe('ActionValidator', () => {
       deck: createDeck(),
       currentTurnPlayerIndex: 0,
       turnCount: 1,
-      roundCount: 1
+      roundCount: 1,
+      roundStartPlayerIndex: 0
     };
   });
 
@@ -69,6 +70,59 @@ describe('ActionValidator', () => {
       const result = validator.validate(baseState, action);
       expect(result.isValid).toBe(false);
       expect(result.error).toBe(ErrorCode.CARD_NOT_IN_HAND);
+    });
+
+    it('should allow taking a formation and a loose card if their sum matches hand card (Opponent)', () => {
+      // Create a state where Player 1 (p1) is trying to pick up Player 2's (p2) formation
+      const stateWithOpponentFormation = {
+        ...baseState,
+        players: [
+          { ...baseState.players[0], hand: [createCard('spades', 'K')] }, // Hand card value 13
+          baseState.players[1]
+        ],
+        board: createBoard(
+          [createCard('diamonds', '4')], // Loose card value 4
+          [{ id: 'f2', cards: [createCard('hearts', '9')], value: 9, createdBy: 'p2', createdAt: 1 }] // Formation value 9
+        )
+      };
+
+      const action: LlevarAction = {
+        type: 'llevar',
+        playerId: 'p1',
+        cardId: 'K-spades',
+        boardCardIds: ['4-diamonds'],
+        formationIds: ['f2']
+      };
+
+      const result = validator.validate(stateWithOpponentFormation, action);
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should reject taking a formation and a loose card if the formation belongs to the player', () => {
+      // Create a state where Player 1 (p1) is trying to pick up THEIR OWN formation with a higher card
+      const stateWithOwnFormation = {
+        ...baseState,
+        players: [
+          { ...baseState.players[0], hand: [createCard('spades', 'K')] }, // Hand card value 13
+          baseState.players[1]
+        ],
+        board: createBoard(
+          [createCard('diamonds', '4')], // Loose card value 4
+          [{ id: 'f1', cards: [createCard('hearts', '9')], value: 9, createdBy: 'p1', createdAt: 1 }] // Formation value 9 created by p1
+        )
+      };
+
+      const action: LlevarAction = {
+        type: 'llevar',
+        playerId: 'p1',
+        cardId: 'K-spades',
+        boardCardIds: ['4-diamonds'],
+        formationIds: ['f1']
+      };
+
+      const result = validator.validate(stateWithOwnFormation, action);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe(ErrorCode.INVALID_ACTION);
     });
   });
 

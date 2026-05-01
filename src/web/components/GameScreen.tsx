@@ -627,24 +627,15 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
         {/* ── Full-screen theme background ── */}
-        {(hostBoardTheme || boardThemeUrl) && (
+        {boardThemeUrl && (
           <div
             className="absolute inset-0 z-0"
-            style={
-              boardThemeUrl
-                ? {
-                    backgroundImage: `url(${boardThemeUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    opacity: 0.25,
-                  }
-                : hostBoardTheme
-                ? {
-                    backgroundImage: hostBoardTheme.background,
-                    opacity: 0.35,
-                  }
-                : undefined
-            }
+            style={{
+              backgroundImage: `url(${boardThemeUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              opacity: 0.15,
+            }}
           />
         )}
         <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />

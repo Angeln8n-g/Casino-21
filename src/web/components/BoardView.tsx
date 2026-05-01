@@ -47,15 +47,26 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
   const boardInnerRing = boardTheme?.innerRingColor ?? 'rgba(253,224,71,0.35)';
   const watermarkOpacity = boardTheme?.watermarkOpacity ?? 0.1;
 
+  // Ensure store themes (which are just image URLs) are wrapped in url() if they aren't already
+  const formatBackground = (bg: string | undefined | null) => {
+    if (!bg) return undefined;
+    if (bg.startsWith('http') || bg.startsWith('/')) {
+      return `url("${bg}")`;
+    }
+    return bg;
+  };
+
   const boardBackgroundStyle: React.CSSProperties = boardThemeUrl
     ? {
-        backgroundImage: `linear-gradient(160deg, rgba(4, 13, 24, 0.82), rgba(2, 8, 16, 0.8)), url(${boardThemeUrl})`,
+        backgroundImage: `linear-gradient(160deg, rgba(4, 13, 24, 0.82), rgba(2, 8, 16, 0.8)), url("${boardThemeUrl}")`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
     : boardTheme
     ? {
-        backgroundImage: boardTheme.background,
+        backgroundImage: formatBackground(boardTheme.background),
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
       }
     : {
         backgroundImage:
@@ -64,27 +75,45 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
   return (
     <div
-      className={`wood-bumper w-full max-w-5xl rounded-2xl md:rounded-[4rem] p-3 md:p-6 ring-4 ring-black/80 transition-all ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[400px]'} flex-1 flex flex-col`}
+      className={`w-full max-w-5xl rounded-2xl md:rounded-[4rem] p-3 md:p-6 ring-4 ring-black/80 transition-all relative overflow-hidden ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[400px]'} flex-1 flex flex-col`}
       style={{
+        ...boardBackgroundStyle,
         transform: isMobile ? `scale(${boardScale})` : undefined,
         transformOrigin: 'top center',
       }}
     >
+      {/* Optional store-theme overlay gradient (Applied to full board now) */}
+      {boardTheme?.overlayGradient && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ backgroundImage: boardTheme.overlayGradient }}
+        />
+      )}
+
+      {/* Default wood background if no theme is applied */}
+      {!boardThemeUrl && !boardTheme && (
+         <div className="absolute inset-0 pointer-events-none wood-bumper -z-10" />
+      )}
+
       <div
         ref={setNodeRef}
         style={{
-          ...boardBackgroundStyle,
           borderColor: boardBorderColor,
+          // Apply the default inner blue gradient ONLY if no custom theme is used
+          backgroundImage: (!boardTheme && !boardThemeUrl) 
+            ? 'radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.2) 0%, rgba(15, 23, 42, 0) 38%), radial-gradient(circle at 50% 100%, rgba(14, 116, 144, 0.25) 0%, rgba(8, 47, 73, 0.05) 45%), linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)'
+            : 'none',
         }}
         className={`
           relative flex flex-col items-center justify-center
           gap-3 md:gap-6 p-3 md:p-10 w-full h-full
           rounded-xl md:rounded-[3.2rem]
-          shadow-[inset_0_10px_30px_rgba(0,0,0,0.9)]
-          border-[3px] md:border-[6px]
+          shadow-[inset_0_10px_30px_rgba(0,0,0,0.5)]
+          border-[2px] md:border-[4px]
           ring-1 md:ring-2 ring-black/50
           transition-all flex-1 overflow-hidden
-          ${isOver ? 'brightness-110' : ''}
+          ${!boardTheme && !boardThemeUrl ? 'bg-black/40 backdrop-blur-md' : 'bg-transparent'} 
+          ${isOver ? 'brightness-110 bg-black/30' : ''}
         `}
       >
       {!boardThemeUrl && !boardTheme && (
@@ -99,31 +128,32 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
           }}
         />
       )}
-      {/* Optional store-theme overlay gradient */}
-      {boardTheme?.overlayGradient && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: boardTheme.overlayGradient }}
-        />
-      )}
+      
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(135deg, ${boardInnerRing.replace('0.35', '0.18')}, transparent 30%, transparent 70%, ${boardInnerRing.replace('0.35', '0.12')})`,
-        }}
-      />
-      <div className="absolute inset-1 md:inset-2 rounded-xl md:rounded-[3rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing}` }} />
-      <div className="absolute inset-2 md:inset-5 rounded-xl md:rounded-[2.5rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.2')}` }} />
-      <div className="absolute inset-3 md:inset-8 rounded-lg md:rounded-[2rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.1')}` }} />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl md:rounded-[3rem]">
-        <span
-          className="text-3xl md:text-8xl font-black tracking-[0.2em] uppercase transform -rotate-12 select-none"
-          style={{ color: `rgba(255,255,255,${watermarkOpacity})` }}
-        >
-          Kasino21
-        </span>
-      </div>
+      
+      {/* Show classic inner rings and watermark ONLY if no custom theme is applied, to keep custom themes clean */}
+      {!boardThemeUrl && !boardTheme && (
+        <>
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `linear-gradient(135deg, ${boardInnerRing.replace('0.35', '0.18')}, transparent 30%, transparent 70%, ${boardInnerRing.replace('0.35', '0.12')})`,
+            }}
+          />
+          <div className="absolute inset-1 md:inset-2 rounded-xl md:rounded-[3rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing}` }} />
+          <div className="absolute inset-2 md:inset-5 rounded-xl md:rounded-[2.5rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.2')}` }} />
+          <div className="absolute inset-3 md:inset-8 rounded-lg md:rounded-[2rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.1')}` }} />
+          
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl md:rounded-[3rem]">
+            <span
+              className="text-3xl md:text-8xl font-black tracking-[0.2em] uppercase transform -rotate-12 select-none"
+              style={{ color: `rgba(255,255,255,${watermarkOpacity})` }}
+            >
+              Kasino21
+            </span>
+          </div>
+        </>
+      )}
 
       <div className="relative z-10 flex flex-col items-center w-full h-full overflow-y-auto custom-scrollbar p-1 md:p-2">
         {board.cards.length === 0 && board.formations.length === 0 && board.cantedCards.length === 0 && (

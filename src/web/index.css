@@ -100,6 +100,11 @@
            hover:text-white;
   }
 
+  /* ─── Safe Areas ─── */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
   /* ─── Input Field ─── */
   .input-casino {
     @apply w-full bg-black/40 border border-white/[0.08] rounded-xl px-4 py-3 

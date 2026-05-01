@@ -63,7 +63,7 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
           boxShadow: t.boxShadow !== 'none' ? (selected ? t.boxShadowSelected : t.boxShadow) : undefined,
           border: t.border !== 'none' ? t.border : undefined,
           color: suitColor,
-          fontFamily: '"Playfair Display", serif',
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
           transformStyle: 'preserve-3d',
           // CSS animation applied inline so it works regardless of Tailwind JIT purge
           animation: selected ? 'cardGlow 1.6s ease-in-out infinite' : undefined,

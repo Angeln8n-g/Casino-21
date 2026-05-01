@@ -135,13 +135,19 @@ export class DefaultActionValidator implements ActionValidator {
     // Aces can be 1 or 14
     const targetValues = handCard.rank === 'A' ? [1, 14] : [handCard.value];
 
-    // Check formations
+    // Rule: If the player is picking up a formation as part of a larger sum (not matching targetValue directly),
+    // they CANNOT be the creator of that formation. Only opponents can pick up a formation with a larger card.
     for (const formationId of action.formationIds) {
       const formation = state.board.formations.find(f => f.id === formationId);
       if (!formation) {
         return { isValid: false, error: ErrorCode.FORMATION_NOT_FOUND };
       }
-      if (!targetValues.includes(formation.value)) {
+      
+      const matchesTargetDirectly = targetValues.includes(formation.value);
+      
+      // If it doesn't match directly, it's being used as part of a sum.
+      // In Casino, you cannot use your own formation as part of a larger sum to take it.
+      if (!matchesTargetDirectly && formation.createdBy === player.id) {
         return { isValid: false, error: ErrorCode.INVALID_ACTION };
       }
     }
@@ -169,71 +175,67 @@ export class DefaultActionValidator implements ActionValidator {
       }
     }
 
-    // Since Aces can be 1 or 14, we need to try partitioning for all possible target values
+    // Combine loose cards and formations into a single list of values to partition
+    const valuesToPartition: number[] = [];
+
+    // Gather board cards
+    const boardCards = action.boardCardIds.map(id => {
+      let card = state.board.cards.find(c => c.id === id);
+      if (!card) {
+        const canted = state.board.cantedCards.find(c => c.card.id === id);
+        if (canted) {
+          card = canted.card;
+        }
+      }
+      return card;
+    });
+
+    if (boardCards.some(c => !c)) {
+      return { isValid: false, error: ErrorCode.INVALID_STATE };
+    }
+
+    // Add board card values
+    valuesToPartition.push(...boardCards.map(c => c!.value));
+
+    // Add formation values (treated as single indivisible blocks)
+    for (const formationId of action.formationIds) {
+       const formation = state.board.formations.find(f => f.id === formationId)!;
+       valuesToPartition.push(formation.value);
+    }
+
     let partitionSuccessful = false;
 
-    // We must ensure that ALL selected board cards and formations are completely consumed
-    // by the target value. The `canPartitionIntoSum` function handles board cards.
-    // If formations are selected, they MUST exactly match the target value (already checked above).
-    // We only need to check if the board cards can partition into the target value.
-    
-    if (action.boardCardIds.length > 0) {
-      const boardCards = action.boardCardIds.map(id => {
-        // First check normal cards
-        let card = state.board.cards.find(c => c.id === id);
-        // Then check canted cards if not found in normal cards
-        if (!card) {
-          const canted = state.board.cantedCards.find(c => c.card.id === id);
-          if (canted) {
-            card = canted.card;
-          }
-        }
-        return card;
-      });
-
-      if (boardCards.some(c => !c)) {
-        return { isValid: false, error: ErrorCode.INVALID_STATE };
-      }
-
-      const values = boardCards.map(c => c!.value);
+    if (valuesToPartition.length > 0) {
       partitionSuccessful = targetValues.some(tv => {
         // Special case for Aces taking canted Aces:
         // A canted Ace can be taken by another Ace directly (1 takes 1, or 14 takes 14).
-        // If ALL selected board cards are Aces and the hand card is an Ace, it's valid to take them individually.
-        if (handCard.rank === 'A' && boardCards.every(c => c!.rank === 'A')) {
-          // If we are just taking an Ace with an Ace, the partition logic will work for tv=1 if we treat Ace as 1, 
-          // or we can explicitly allow it. The backtrack function will group 1s into 1s successfully.
-          return canPartitionIntoSum(values.map(v => v === 14 ? 1 : v), 1);
-        }
-
-        // First check if formations match this specific target value tv
-        // If we selected formations, and they don't match tv, we can't use tv
-        if (action.formationIds.length > 0) {
-          const allFormationsMatchTv = action.formationIds.every(fid => {
-             const f = state.board.formations.find(form => form.id === fid);
-             return f && f.value === tv;
-          });
-          if (!allFormationsMatchTv) return false;
+        // If ALL selected board cards are Aces, no formations, and hand card is Ace.
+        if (handCard.rank === 'A' && action.formationIds.length === 0 && boardCards.every(c => c!.rank === 'A')) {
+          return canPartitionIntoSum(valuesToPartition.map(v => v === 14 ? 1 : v), 1);
         }
         
-        return canPartitionIntoSum(values, tv);
+        // Dynamically adjust Ace values in the board selection to match the target value
+        // If we are testing tv=14, any Ace on the board should be treated as 14.
+        // If we are testing tv=1, any Ace on the board should be treated as 1.
+        const adjustedValues = [...valuesToPartition];
+        if (handCard.rank === 'A') {
+          // Find the indices of Aces among the board cards
+          for (let i = 0; i < boardCards.length; i++) {
+            if (boardCards[i]!.rank === 'A') {
+              adjustedValues[i] = tv;
+            }
+          }
+        }
+        
+        return canPartitionIntoSum(adjustedValues, tv);
       });
       
       if (!partitionSuccessful) {
         return { isValid: false, error: ErrorCode.INVALID_ACTION };
       }
     } else {
-       // If no board cards, we still need to make sure the formations match ONE of the target values
-       const validTv = targetValues.find(tv => {
-         return action.formationIds.every(fid => {
-            const f = state.board.formations.find(form => form.id === fid);
-            return f && f.value === tv;
-         });
-       });
-       
-       if (!validTv) {
-         return { isValid: false, error: ErrorCode.INVALID_ACTION };
-       }
+       // If no board cards and no formations, invalid action
+       return { isValid: false, error: ErrorCode.INVALID_ACTION };
     }
 
     return { isValid: true };
