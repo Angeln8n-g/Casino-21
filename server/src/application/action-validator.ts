@@ -141,19 +141,15 @@ export class DefaultActionValidator implements ActionValidator {
     // Aces can be 1 or 14
     const targetValues = handCard.rank === 'A' ? [1, 14] : [handCard.value];
 
-    // Rule: If the player is picking up a formation as part of a larger sum (not matching targetValue directly),
-    // they CANNOT be the creator of that formation. Only opponents can pick up a formation with a larger card.
+    // Rule: Every formation selected MUST exactly match the target value.
+    // In strict mode, formations cannot be combined with loose cards to form a larger sum.
     for (const formationId of action.formationIds) {
       const formation = state.board.formations.find(f => f.id === formationId);
       if (!formation) {
         return { isValid: false, error: ErrorCode.FORMATION_NOT_FOUND };
       }
       
-      const matchesTargetDirectly = targetValues.includes(formation.value);
-      
-      // If it doesn't match directly, it's being used as part of a sum.
-      // In Casino, you cannot use your own formation as part of a larger sum to take it.
-      if (!matchesTargetDirectly && formation.createdBy === player.id) {
+      if (!targetValues.includes(formation.value)) {
         return { isValid: false, error: ErrorCode.INVALID_ACTION };
       }
     }
@@ -181,9 +177,6 @@ export class DefaultActionValidator implements ActionValidator {
       }
     }
 
-    // Combine loose cards and formations into a single list of values to partition
-    const valuesToPartition: number[] = [];
-
     // Gather board cards
     const boardCards = action.boardCardIds.map(id => {
       let card = state.board.cards.find(c => c.id === id);
@@ -200,14 +193,12 @@ export class DefaultActionValidator implements ActionValidator {
       return { isValid: false, error: ErrorCode.INVALID_STATE };
     }
 
-    // Add board card values
-    valuesToPartition.push(...boardCards.map(c => c!.value));
-
-    // Add formation values (treated as single indivisible blocks)
-    for (const formationId of action.formationIds) {
-       const formation = state.board.formations.find(f => f.id === formationId)!;
-       valuesToPartition.push(formation.value);
+    // If there are no loose cards, but we had valid formations, the action is valid
+    if (boardCards.length === 0) {
+      return { isValid: true };
     }
+
+    const valuesToPartition = boardCards.map(c => c!.value);
 
     let partitionSuccessful = false;
 
@@ -239,9 +230,6 @@ export class DefaultActionValidator implements ActionValidator {
       if (!partitionSuccessful) {
         return { isValid: false, error: ErrorCode.INVALID_ACTION };
       }
-    } else {
-       // If no board cards and no formations, invalid action
-       return { isValid: false, error: ErrorCode.INVALID_ACTION };
     }
 
     return { isValid: true };

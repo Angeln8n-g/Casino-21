@@ -442,6 +442,16 @@ export class DefaultGameEngine implements GameEngine {
     newState.turnCount += 1;
     newState.lastAction = action.type;
 
+    // Check for early win based on guaranteed points (27+ cards, 7+ spades) mid-round
+    const earlyWin = this.scoreCalculator.checkEarlyWin(newState);
+    if (earlyWin.isWin && earlyWin.winnerId) {
+      newState.phase = 'completed';
+      newState.winnerId = earlyWin.winnerId;
+      newState.lastAction = `${earlyWin.reason}`;
+      this.currentState = newState;
+      return { success: true, value: newState };
+    }
+
     // 3. Advance turn and check for round end
     if (this.turnManager.isRoundComplete(newState)) {
       if (newState.deck.cards.length > 0) {

@@ -56,9 +56,23 @@ export function Store() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<StoreItem | null>(null);
 
+  // Wallet animation state
+  const [prevCoins, setPrevCoins] = useState(profile?.coins || 0);
+  const [coinAnim, setCoinAnim] = useState(false);
+  const [successItem, setSuccessItem] = useState<string | null>(null);
+
   useEffect(() => {
     fetchStoreData();
   }, [user]);
+
+  useEffect(() => {
+    if (profile?.coins !== prevCoins) {
+      setCoinAnim(true);
+      const timer = setTimeout(() => setCoinAnim(false), 500);
+      setPrevCoins(profile?.coins || 0);
+      return () => clearTimeout(timer);
+    }
+  }, [profile?.coins, prevCoins]);
 
   const fetchStoreData = async () => {
     if (!user) return;
@@ -98,24 +112,25 @@ export function Store() {
       alert('Monedas insuficientes.');
       return;
     }
-    if (confirm(`¿Comprar "${item.name}" por ${item.price} monedas?`)) {
-      setProcessingId(item.id);
-      try {
-        const { error } = await supabase.rpc('buy_store_item', { p_item_id: item.id });
-        if (error) throw error;
-        
-        setInventory(prev => [...prev, item.id]);
-        playSfx('chipsClink', { volumeMultiplier: 1.15 });
-        triggerHaptic('success');
-        window.dispatchEvent(new CustomEvent('coins_updated'));
-      } catch (err: any) {
-        console.error('Error buying item:', err);
-        playSfx('error');
-        triggerHaptic('error');
-        alert(err.message || 'Error al procesar la compra.');
-      } finally {
-        setProcessingId(null);
-      }
+    setProcessingId(item.id);
+    try {
+      const { error } = await supabase.rpc('buy_store_item', { p_item_id: item.id });
+      if (error) throw error;
+      
+      setInventory(prev => [...prev, item.id]);
+      playSfx('chipsClink', { volumeMultiplier: 1.15 });
+      triggerHaptic('success');
+      window.dispatchEvent(new CustomEvent('coins_updated'));
+      
+      setSuccessItem(item.id);
+      setTimeout(() => setSuccessItem(null), 1500);
+    } catch (err: any) {
+      console.error('Error buying item:', err);
+      playSfx('error');
+      triggerHaptic('error');
+      alert(err.message || 'Error al procesar la compra.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -128,6 +143,9 @@ export function Store() {
       playSfx('cardPlay', { volumeMultiplier: 0.8, playbackRate: 1.08 });
       triggerHaptic('success');
       window.dispatchEvent(new Event('profile_updated'));
+      
+      setSuccessItem(item.id);
+      setTimeout(() => setSuccessItem(null), 1500);
     } catch (err: any) {
       console.error('Error equipping item:', err);
       playSfx('error');
@@ -174,51 +192,91 @@ export function Store() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center p-12 h-64">
+        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-24 md:pb-0">
-      {/* Sticky Mobile Tabs / Desktop Header */}
-      <div className="sticky top-0 z-30 -mx-4 px-4 md:mx-0 md:px-0 bg-black/80 md:bg-transparent backdrop-blur-xl md:backdrop-blur-none border-b border-white/5 md:border-none pt-2 pb-3 md:py-0">
-        <div className="glass-panel p-0 md:p-6 rounded-none md:rounded-3xl border-none md:border border-white/10 bg-transparent md:bg-black/40 md:backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 animate-slide-down">
-          <div className="px-1 md:px-0">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-purple-400 uppercase tracking-widest drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">
-              Tienda In-Game
-            </h2>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1 font-medium">Personaliza tu experiencia con tus monedas.</p>
-          </div>
+    <div className="space-y-4 md:space-y-6 pb-24 md:pb-8">
+      <style>{`
+        @keyframes float3d {
+          0%, 100% { transform: translateY(0px) rotateX(10deg) rotateY(-5deg); }
+          50% { transform: translateY(-15px) rotateX(15deg) rotateY(5deg); }
+        }
+        .animate-float-3d {
+          animation: float3d 6s ease-in-out infinite;
+          transform-style: preserve-3d;
+        }
+        @keyframes purchaseSuccess {
+          0% { box-shadow: inset 0 0 0 0 rgba(74, 222, 128, 0); }
+          50% { box-shadow: inset 0 0 20px 5px rgba(74, 222, 128, 0.5); }
+          100% { box-shadow: inset 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+        .animate-purchase-success {
+          animation: purchaseSuccess 1s ease-out;
+        }
+      `}</style>
+
+      {/* Hero Banner / Header */}
+      <div className="relative z-30 -mx-4 px-4 md:mx-0 md:px-0 mb-6 md:mb-8 pt-2">
+        <div className="relative w-full rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-md p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+          {/* Background effects */}
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/40 via-black/20 to-blue-900/40 pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-500/20 rounded-full blur-[80px] pointer-events-none" />
           
-          <div className="w-full md:w-auto">
-            <div className="bg-black/40 p-1.5 rounded-2xl border border-white/5 flex gap-1.5 md:gap-1 overflow-x-auto max-w-full snap-x snap-mandatory custom-scrollbar touch-pan-x">
-              {(['all', 'avatar', 'card_back', 'title', 'board', 'theme'] as const).map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    triggerHaptic('light');
-                    setActiveCategory(cat);
-                  }}
-                  className={`snap-center px-4 md:px-5 min-h-[44px] py-2.5 md:py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all flex items-center justify-center min-w-[min-content] ${
-                    activeCategory === cat ? 'bg-purple-500/20 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.2)]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-                  }`}
-                >
-                  {cat === 'all' ? '🌟 Todo' : getCategoryLabel(cat)}
-                </button>
-              ))}
+          <div className="relative z-10 text-center md:text-left">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-cyan-300 uppercase tracking-widest drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+              Tienda VIP
+            </h2>
+            <p className="text-gray-300 text-sm md:text-base mt-2 font-medium max-w-md">
+              Adquiere artículos exclusivos, tapetes y reversos premium. Tu estilo, tus reglas.
+            </p>
+          </div>
+
+          <div className="relative z-10 bg-black/60 border border-white/10 rounded-2xl p-4 flex items-center gap-4 shadow-xl min-w-[200px] justify-center md:justify-end">
+            <div className="text-right">
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black mb-1">Tu Billetera</p>
+              <div className={`text-2xl md:text-3xl font-black font-mono flex items-center gap-2 transition-transform duration-300 ${coinAnim ? 'scale-110 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]' : 'text-casino-gold drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'}`}>
+                <span className="text-3xl">🪙</span> {(profile?.coins || 0).toLocaleString()}
+              </div>
             </div>
           </div>
         </div>
+        
+        {/* Category Tabs */}
+        <div className="mt-6 flex gap-2 md:gap-3 overflow-x-auto max-w-full snap-x snap-mandatory custom-scrollbar pb-2">
+          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme'] as const).map(cat => (
+            <button
+              key={cat}
+              onClick={() => {
+                triggerHaptic('light');
+                setActiveCategory(cat);
+              }}
+              className={`snap-center px-5 md:px-6 min-h-[48px] py-3 md:py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest whitespace-nowrap transition-all flex items-center justify-center min-w-[min-content] border ${
+                activeCategory === cat 
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
+                  : 'bg-black/40 border-white/5 text-gray-400 hover:text-gray-200 hover:bg-white/10'
+              }`}
+            >
+              {cat === 'all' ? '🌟 Todo' : getCategoryLabel(cat)}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 min-[375px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+      <div className="grid grid-cols-1 min-[375px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6 grid-flow-dense">
         {filteredItems.map((item, index) => {
           const isOwned = inventory.includes(item.id);
           const canAfford = (profile?.coins || 0) >= item.price;
           const isEquipped = isItemEquipped(item);
           const isTheme = item.item_type === 'theme';
+          const isPremium = item.price >= 5000;
+          const isBoard = item.item_type === 'board';
+          const isCardBack = item.item_type === 'card_back';
+          const isSuccess = successItem === item.id;
           
           return (
             <div 
@@ -227,33 +285,52 @@ export function Store() {
                 triggerHaptic('light');
                 setPreviewItem(item);
               }}
-              className={`glass-panel p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl relative overflow-hidden group border transition-all duration-300 cursor-pointer bg-black/40 backdrop-blur-md shadow-lg animate-slide-up hover:-translate-y-1 flex flex-col h-full ${
-                isTheme
-                  ? `bg-gradient-to-br ${getRarityStyle(item)} hover:border-purple-400/60 hover:shadow-[0_10px_30px_rgba(168,85,247,0.2)]`
-                  : 'border-white/10 hover:border-purple-500/50 hover:shadow-[0_10px_30px_rgba(168,85,247,0.15)]'
+              className={`glass-panel p-4 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl relative overflow-hidden group border transition-all duration-300 cursor-pointer bg-black/40 backdrop-blur-md shadow-lg animate-slide-up hover:-translate-y-1.5 flex flex-col h-full
+                ${isBoard ? 'col-span-1 min-[375px]:col-span-2 lg:col-span-2' : 'col-span-1'}
+                ${isCardBack ? 'row-span-2' : ''}
+                ${isSuccess ? 'animate-purchase-success border-green-400' : ''}
+                ${isTheme
+                  ? `bg-gradient-to-br ${getRarityStyle(item)} hover:border-purple-400/60 hover:shadow-[0_15px_40px_rgba(168,85,247,0.3)]`
+                  : isPremium 
+                    ? 'border-casino-gold/40 shadow-[0_0_15px_rgba(251,191,36,0.1)] hover:border-casino-gold hover:shadow-[0_15px_40px_rgba(251,191,36,0.25)]'
+                    : 'border-white/10 hover:border-purple-500/50 hover:shadow-[0_15px_40px_rgba(168,85,247,0.2)]'
               }`}
               style={{ animationDelay: `${(index % 10) * 50}ms` }}
             >
-              <div className="absolute -right-6 -top-6 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-500 pointer-events-none"></div>
-              <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-500 pointer-events-none"></div>
+              {/* Glow effects */}
+              {isPremium && (
+                <>
+                  <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-20 pointer-events-none">
+                    <div className="absolute top-6 -right-6 bg-gradient-to-r from-yellow-500 to-yellow-300 text-black text-[9px] font-black uppercase tracking-widest py-1.5 px-8 rotate-45 shadow-[0_0_10px_rgba(251,191,36,0.5)]">
+                      Premium
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                </>
+              )}
+
+              <div className="absolute -right-10 -top-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-all duration-700 pointer-events-none"></div>
+              <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-all duration-700 pointer-events-none"></div>
               
-              <div className="flex justify-between items-start mb-3 sm:mb-4 relative z-10 gap-2">
-                <span className="text-[9px] sm:text-[10px] text-gray-300 uppercase tracking-widest font-bold bg-white/5 border border-white/10 px-1.5 sm:px-2 py-1 rounded-lg shrink-0">
+              <div className="flex justify-between items-start mb-4 relative z-10 gap-2">
+                <span className={`text-[10px] sm:text-xs text-gray-200 uppercase tracking-widest font-black bg-black/50 border px-2 py-1.5 rounded-lg shrink-0 ${isPremium ? 'border-casino-gold/30' : 'border-white/10'}`}>
                   {getCategoryLabel(item.item_type)}
                 </span>
                 {isOwned ? (
-                  <span className={`text-[9px] sm:text-[10px] uppercase tracking-widest font-black px-1.5 sm:px-2 py-1 rounded-lg border text-right ${isEquipped ? 'text-casino-gold bg-casino-gold/10 border-casino-gold/30' : 'text-green-400 bg-green-400/10 border-green-400/20'}`}>
-                    {isEquipped ? '★ Equipado' : '✓ Comprado'}
+                  <span className={`text-[10px] sm:text-xs uppercase tracking-widest font-black px-2 py-1.5 rounded-lg border text-right shadow-sm ${isEquipped ? 'text-casino-gold bg-casino-gold/10 border-casino-gold/40' : 'text-green-400 bg-green-400/10 border-green-400/30'}`}>
+                    {isEquipped ? '★ Equipado' : '✓ Adquirido'}
                   </span>
                 ) : (
-                  <span className={`text-[10px] sm:text-xs font-black font-mono flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 rounded-lg border bg-black/40 shrink-0 ${canAfford ? 'text-yellow-400 border-yellow-400/30' : 'text-red-400 border-red-400/30'}`}>
+                  <span className={`text-xs sm:text-sm font-black font-mono flex items-center gap-1.5 px-2 py-1.5 rounded-lg border bg-black/60 shrink-0 shadow-sm ${canAfford ? (isPremium ? 'text-yellow-300 border-yellow-400/50' : 'text-yellow-400 border-yellow-400/30') : 'text-red-400 border-red-400/30'}`}>
                     🪙 {item.price.toLocaleString()}
                   </span>
                 )}
               </div>
 
               {/* Preview area */}
-              <div className="text-center py-2 mb-3 sm:mb-4 md:mb-5 bg-black/30 border border-white/5 rounded-xl sm:rounded-2xl relative z-10 min-h-[100px] sm:min-h-[120px] md:min-h-[140px] flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-500 shadow-inner overflow-hidden">
+              <div className={`text-center py-2 mb-4 bg-black/50 border rounded-2xl relative z-10 flex items-center justify-center group-hover:scale-[1.04] transition-transform duration-500 shadow-inner overflow-hidden ${
+                isPremium ? 'border-casino-gold/20' : 'border-white/5'
+              } ${isBoard ? 'min-h-[160px] sm:min-h-[200px]' : isCardBack ? 'min-h-[220px]' : 'min-h-[140px] sm:min-h-[160px]'}`}>
                 {isTheme && item.theme_key ? (
                   <ThemeCardPreview themeKey={item.theme_key} />
                 ) : item.image_url ? (
@@ -262,7 +339,9 @@ export function Store() {
                     alt={item.name} 
                     loading="lazy"
                     decoding="async"
-                    className="max-h-20 sm:max-h-24 object-contain drop-shadow-[0_10px_15px_rgba(0,0,0,0.5)] transition-all duration-500 group-hover:drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]" 
+                    className={`object-contain drop-shadow-[0_15px_25px_rgba(0,0,0,0.6)] transition-all duration-700 group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.5)] ${
+                      isBoard ? 'w-full h-full object-cover rounded-xl' : 'max-h-24 sm:max-h-32'
+                    }`} 
                     onError={(e) => { 
                       const target = e.target as HTMLImageElement;
                       if (!target.src.includes('/assets/store/')) {
@@ -271,18 +350,24 @@ export function Store() {
                     }}
                   />
                 ) : (
-                  <div className="text-3xl sm:text-4xl animate-pulse opacity-50">✨</div>
+                  <div className="text-4xl sm:text-5xl animate-pulse opacity-50">✨</div>
                 )}
               </div>
 
               <div className="flex flex-col flex-grow relative z-10">
-                <h3 className="font-display font-black text-white text-sm sm:text-base md:text-lg leading-tight mb-1 sm:mb-1.5 md:mb-2 group-hover:text-purple-300 transition-colors drop-shadow-sm">{item.name}</h3>
-                <p className="text-gray-400 text-[10px] sm:text-xs mb-3 sm:mb-4 md:mb-5 line-clamp-2 font-medium flex-grow">{item.description}</p>
+                <h3 className={`font-display font-black text-base sm:text-lg md:text-xl leading-tight mb-2 transition-colors drop-shadow-md ${isPremium ? 'text-casino-gold group-hover:text-yellow-300' : 'text-white group-hover:text-purple-300'}`}>
+                  {item.name}
+                </h3>
+                <p className="text-gray-400 text-[11px] sm:text-xs mb-5 line-clamp-3 font-medium flex-grow">{item.description}</p>
               </div>
 
               <div className="relative z-10 mt-auto pt-2">
                 <button 
-                  className="w-full min-h-[44px] py-2 sm:py-2.5 md:py-3 font-black text-[9px] sm:text-[10px] uppercase tracking-widest rounded-xl transition-all border border-white/10 bg-white/5 group-hover:bg-purple-500/20 group-hover:border-purple-500/40 group-hover:text-purple-300 text-gray-300 flex items-center justify-center"
+                  className={`w-full min-h-[48px] py-2.5 sm:py-3 font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-xl transition-all border flex items-center justify-center ${
+                    isPremium 
+                      ? 'bg-casino-gold/10 border-casino-gold/30 text-casino-gold group-hover:bg-casino-gold/20 group-hover:border-casino-gold/60' 
+                      : 'bg-white/5 border-white/10 text-gray-300 group-hover:bg-purple-500/20 group-hover:border-purple-500/50 group-hover:text-purple-300'
+                  }`}
                   aria-label={isOwned ? (isEquipped ? `Equipado: ${item.name}` : `Equipar o ver: ${item.name}`) : `Ver detalles de ${item.name}`}
                 >
                   {isOwned ? (isEquipped ? '★ Equipado' : 'Equipar / Ver') : 'Ver Detalles'}
@@ -294,113 +379,120 @@ export function Store() {
       </div>
 
       {filteredItems.length === 0 && (
-        <div className="text-center py-16 glass-panel rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md">
-          <div className="text-4xl mb-4 opacity-50">🏪</div>
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">No hay artículos en esta categoría</p>
+        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="text-5xl mb-6 opacity-50">🏪</div>
+          <p className="text-gray-400 font-black uppercase tracking-widest text-base">No hay artículos en esta categoría</p>
         </div>
       )}
 
-      {/* Preview Modal */}
+      {/* Premium Preview Modal (Inmersive) */}
       {previewItem && (
         <div 
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-0 md:p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-2xl animate-fade-in"
           onClick={() => setPreviewItem(null)}
         >
+          {/* Background Board if previewing a board */}
+          {previewItem.item_type === 'board' && previewItem.image_url && (
+            <div 
+              className="absolute inset-0 opacity-30 z-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${previewItem.image_url.startsWith('http') ? previewItem.image_url : `/assets/store/${previewItem.image_url}`})` }}
+            />
+          )}
+
           <div 
-            className="glass-panel-strong w-full md:max-w-lg mt-auto md:mt-0 rounded-t-[2rem] md:rounded-3xl border-t md:border border-purple-500/30 shadow-[0_-10px_50px_rgba(168,85,247,0.2)] md:shadow-[0_0_50px_rgba(168,85,247,0.3)] overflow-hidden flex flex-col relative animate-slide-up pb-safe"
+            className={`w-full h-full md:h-auto md:max-h-[90vh] md:max-w-5xl md:rounded-[2.5rem] border-0 md:border bg-black/60 shadow-2xl flex flex-col md:flex-row relative z-10 animate-slide-up overflow-hidden ${
+              previewItem.price >= 5000 ? 'border-casino-gold/40 shadow-[0_0_80px_rgba(251,191,36,0.15)]' : 'border-purple-500/30 shadow-[0_0_60px_rgba(168,85,247,0.2)]'
+            }`}
             onClick={e => e.stopPropagation()}
           >
-            {/* Scrollable Container */}
-            <div className="overflow-y-auto max-h-[85vh] md:max-h-[90vh] custom-scrollbar flex flex-col relative w-full">
-              <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-purple-500/20 to-transparent z-0 pointer-events-none" />
-              <div className="absolute -top-20 -right-20 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl z-0 pointer-events-none" />
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl z-0 pointer-events-none" />
+            {/* Close button - absolute for both mobile and desktop */}
+            <button 
+              onClick={() => setPreviewItem(null)}
+              className="absolute right-4 top-4 md:right-6 md:top-6 w-12 h-12 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/40 border border-white/10 hover:bg-white/20 text-white transition-colors z-50 backdrop-blur-md"
+              aria-label="Cerrar modal"
+            >
+              ✕
+            </button>
 
-              <div className="p-3 md:p-4 flex flex-col items-center justify-center md:items-end relative z-10">
-                {/* Visual handle for mobile bottom sheet */}
-                <div className="w-12 h-1.5 bg-white/20 rounded-full mb-1 md:hidden"></div>
-                <button 
-                  onClick={() => setPreviewItem(null)}
-                  className="absolute right-3 top-3 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-black/20 md:bg-transparent hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
-                  aria-label="Cerrar modal"
-                >
-                  ✕
-                </button>
-              </div>
+            {/* Left side: Immersive Preview */}
+            <div className={`w-full md:w-1/2 relative flex items-center justify-center p-8 min-h-[40vh] md:min-h-[60vh] perspective-1000 ${
+              previewItem.item_type === 'board' ? 'bg-transparent' : 'bg-gradient-to-br from-white/5 to-transparent'
+            }`}>
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent pointer-events-none" />
+              
+              {previewItem.item_type === 'theme' && previewItem.theme_key ? (
+                <div className="w-full h-64 md:h-80 shadow-2xl rounded-2xl overflow-hidden border border-white/10">
+                  <ThemeCardPreview themeKey={previewItem.theme_key} />
+                </div>
+              ) : previewItem.image_url ? (
+                <img 
+                  src={previewItem.image_url} 
+                  alt={previewItem.name} 
+                  className={`max-w-full relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)] ${
+                    previewItem.item_type === 'card_back' ? 'w-48 md:w-64 animate-float-3d' :
+                    previewItem.item_type === 'board' ? 'w-full h-full object-cover rounded-2xl border border-white/20 shadow-2xl' :
+                    'max-h-64 md:max-h-80'
+                  }`}
+                  onError={(e) => { 
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes('/assets/store/')) {
+                      target.src = `/assets/store/${previewItem.image_url}`; 
+                    }
+                  }}
+                />
+              ) : (
+                <div className="text-8xl animate-pulse">✨</div>
+              )}
+            </div>
 
-              <div className="px-5 md:px-8 pb-8 md:pb-8 flex flex-col items-center text-center relative z-10 flex-1">
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold bg-white/5 border border-white/10 px-3 py-1 rounded-full mb-4 md:mb-6 shadow-inner">
-                  {getCategoryLabel(previewItem.item_type)}
+            {/* Right side: Info and Actions */}
+            <div className="w-full md:w-1/2 p-6 md:p-10 flex flex-col justify-center bg-black/80 backdrop-blur-xl md:border-l border-white/10 relative">
+              <div className="overflow-y-auto custom-scrollbar pr-2 flex-grow flex flex-col">
+                <span className={`text-xs uppercase tracking-widest font-black bg-white/5 border px-3 py-1.5 rounded-lg mb-6 self-start ${
+                  previewItem.price >= 5000 ? 'text-casino-gold border-casino-gold/40' : 'text-gray-300 border-white/10'
+                }`}>
+                  {getCategoryLabel(previewItem.item_type)} {previewItem.price >= 5000 && '· PREMIUM'}
                 </span>
 
-                {/* Preview — live theme card for themes, image for others */}
-                <div className="w-full h-40 sm:h-48 md:h-52 bg-black/40 rounded-2xl border border-white/10 flex items-center justify-center mb-5 md:mb-6 shadow-[inset_0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  {previewItem.item_type === 'theme' && previewItem.theme_key ? (
-                    <div className="absolute inset-0">
-                      <ThemeCardPreview themeKey={previewItem.theme_key} />
-                    </div>
-                  ) : previewItem.image_url ? (
-                    <img 
-                      src={previewItem.image_url} 
-                      alt={previewItem.name} 
-                      loading="lazy"
-                      decoding="async"
-                      className={`max-w-full max-h-full object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-110 ${
-                        previewItem.item_type === 'board' ? 'w-full h-full object-cover rounded-xl' : 'p-4'
-                      }`} 
-                      onError={(e) => { 
-                        const target = e.target as HTMLImageElement;
-                        if (!target.src.includes('/assets/store/')) {
-                          target.src = `/assets/store/${previewItem.image_url}`; 
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="text-6xl animate-pulse">✨</div>
-                  )}
-                </div>
-
-                {/* Theme description row */}
                 {previewItem.item_type === 'theme' && previewItem.theme_key && (() => {
                   const themeData = ALL_THEMES.find(t => t.key === previewItem.theme_key);
                   return themeData ? (
-                    <div className="flex items-center gap-2 mb-3 text-xs text-gray-400 font-bold">
-                      <span className="text-xl">{themeData.emoji}</span>
+                    <div className="flex items-center gap-2 mb-4 text-sm text-gray-400 font-bold">
+                      <span className="text-2xl">{themeData.emoji}</span>
                       <span className="uppercase tracking-widest">{themeData.name}</span>
                     </div>
                   ) : null;
                 })()}
 
-                <h2 className="text-2xl md:text-3xl font-display font-black text-white mb-2 tracking-wide drop-shadow-md">
+                <h2 className={`text-3xl md:text-5xl font-display font-black mb-4 tracking-wide drop-shadow-lg ${
+                  previewItem.price >= 5000 ? 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600' : 'text-white'
+                }`}>
                   {previewItem.name}
                 </h2>
-                <p className="text-gray-400 text-sm mb-6 md:mb-8 max-w-sm leading-relaxed">
+                
+                <p className="text-gray-300 text-base md:text-lg mb-8 leading-relaxed">
                   {previewItem.description}
                 </p>
 
-                {/* Note for theme items */}
                 {previewItem.item_type === 'theme' && (
-                  <div className="text-[10px] text-purple-300/70 font-bold uppercase tracking-widest mb-4 bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-xl w-full">
+                  <div className="text-xs text-purple-300/80 font-black uppercase tracking-widest mb-8 bg-purple-500/10 border border-purple-500/20 px-5 py-3 rounded-xl">
                     🃏 Tus cartas · 🎲 Mesa compartida con el anfitrión
                   </div>
                 )}
 
-                {/* Actions */}
-                <div className="w-full flex flex-col gap-3 mt-auto pt-2">
+                <div className="mt-auto pt-4 flex flex-col gap-4">
                   {inventory.includes(previewItem.id) ? (
                     <button 
                       onClick={() => {
                         if (!isItemEquipped(previewItem)) {
                           handleEquip(previewItem);
-                          setPreviewItem(null);
                         }
                       }}
                       disabled={processingId === previewItem.id || isItemEquipped(previewItem)}
-                      className={`w-full min-h-[52px] md:min-h-[56px] py-4 font-black text-sm uppercase tracking-widest rounded-2xl transition-all border shadow-lg flex items-center justify-center ${
+                      className={`w-full min-h-[64px] py-4 font-black text-base uppercase tracking-widest rounded-2xl transition-all border-2 shadow-xl flex items-center justify-center ${
                         isItemEquipped(previewItem)
                           ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default' 
-                          : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]'
+                          : 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]'
                       }`}
                     >
                       {processingId === previewItem.id 
@@ -412,30 +504,38 @@ export function Store() {
                   ) : (
                     <button 
                       onClick={() => {
-                        handleBuy(previewItem);
-                        setPreviewItem(null);
+                        if (confirm(`¿Comprar "${previewItem.name}" por ${previewItem.price} monedas?`)) {
+                          handleBuy(previewItem);
+                        }
                       }}
                       disabled={processingId === previewItem.id || (profile?.coins || 0) < previewItem.price}
-                      className={`w-full min-h-[52px] md:min-h-[56px] py-4 font-black text-sm uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full min-h-[64px] py-4 font-black text-base uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-3 border-2 ${
                         (profile?.coins || 0) >= previewItem.price 
-                          ? 'btn-gold shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:shadow-[0_0_30px_rgba(251,191,36,0.5)] hover:-translate-y-0.5' 
-                          : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/5'
+                          ? previewItem.price >= 5000 
+                            ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black border-yellow-400 shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:shadow-[0_0_50px_rgba(251,191,36,0.6)] hover:-translate-y-1'
+                            : 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:-translate-y-1'
+                          : 'bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700'
                       }`}
                     >
                       {processingId === previewItem.id ? (
-                        'PROCESANDO...'
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                          PROCESANDO...
+                        </div>
                       ) : (
                         <>
-                          COMPRAR POR <span className="text-lg leading-none ml-1">🪙 {previewItem.price.toLocaleString()}</span>
+                          COMPRAR POR <span className="text-2xl leading-none">🪙 {previewItem.price.toLocaleString()}</span>
                         </>
                       )}
                     </button>
                   )}
                   
                   {!inventory.includes(previewItem.id) && (profile?.coins || 0) < previewItem.price && (
-                    <p className="text-xs text-red-400 font-bold mt-2">
-                      Te faltan {(previewItem.price - (profile?.coins || 0)).toLocaleString()} monedas
-                    </p>
+                    <div className="text-center bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                      <p className="text-sm text-red-400 font-bold">
+                        Te faltan {(previewItem.price - (profile?.coins || 0)).toLocaleString()} monedas
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

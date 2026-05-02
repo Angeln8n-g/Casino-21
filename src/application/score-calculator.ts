@@ -9,9 +9,67 @@ export interface ScoreResult {
 
 export interface ScoreCalculator {
   calculateRoundScore(state: GameState): ScoreResult;
+  checkEarlyWin(state: GameState): { isWin: boolean, winnerId?: string, reason?: string };
 }
 
 export class DefaultScoreCalculator implements ScoreCalculator {
+  checkEarlyWin(state: GameState): { isWin: boolean, winnerId?: string, reason?: string } {
+    const is2v2 = state.mode === '2v2';
+    const entities = is2v2 ? state.teams : state.players;
+
+    for (const entity of entities) {
+      let collectedCards: Card[] = [];
+      let virados = 0;
+      let currentScore = entity.score;
+
+      if (is2v2) {
+        const teamPlayers = state.players.filter(p => p.teamId === entity.id);
+        teamPlayers.forEach(p => {
+          collectedCards = collectedCards.concat(p.collectedCards);
+          virados += p.virados;
+        });
+        collectedCards = collectedCards.concat(entity.collectedCards);
+        virados += entity.virados;
+      } else {
+        collectedCards = [...entity.collectedCards];
+        virados = entity.virados;
+      }
+
+      let guaranteedPoints = 0;
+
+      // Check guaranteed cards majority (27+)
+      const hasCardMajority = collectedCards.length >= 27;
+      if (hasCardMajority) {
+        guaranteedPoints += 3;
+      }
+
+      // Check guaranteed spades majority (7+)
+      const spadesCount = collectedCards.filter(c => c.suit === 'spades').length;
+      const hasSpadesMajority = spadesCount >= 7;
+      if (hasSpadesMajority) {
+        guaranteedPoints += 1;
+      }
+
+      // Virados are already counted in real-time or end of round, but let's ensure we only count them if they are NOT already in entity.score.
+      // Wait, in game-engine.ts virados might not be added to entity.score until the end of the round.
+      // Actually, if we want to be safe, virados earned IN THIS ROUND are strictly added here:
+      const totalAssuredScore = currentScore + guaranteedPoints + virados;
+
+      if (totalAssuredScore >= 21) {
+        let reason = 'Ganó por asegurar ';
+        if (hasCardMajority && hasSpadesMajority) reason += 'Mayoría de Cartas y Mayoría de Picas';
+        else if (hasCardMajority) reason += 'Mayoría de Cartas';
+        else if (hasSpadesMajority) reason += 'Mayoría de Picas';
+        else if (virados > 0) reason += 'Virados suficientes';
+        else reason += 'puntos asegurados';
+
+        return { isWin: true, winnerId: entity.id, reason };
+      }
+    }
+
+    return { isWin: false };
+  }
+
   calculateRoundScore(state: GameState): ScoreResult {
     const is2v2 = state.mode === '2v2';
     const entities = is2v2 ? state.teams : state.players;
