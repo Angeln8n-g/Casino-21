@@ -115,7 +115,7 @@ io.use(async (socket, next) => {
   const rooms: Record<string, {
     engine: DefaultGameEngine;
     state: GameState | null;
-    players: { socketId: string, playerId: string, name: string, userId: string }[];
+    players: { socketId: string, playerId: string, name: string, userId: string, team?: 1 | 2 }[];
     spectators: { socketId: string, userId: string, name: string }[];
     maxPlayers: number;
     timerInterval?: NodeJS.Timeout;
@@ -310,7 +310,7 @@ io.on('connection', (socket) => {
     rooms[roomId] = {
       engine: new DefaultGameEngine(),
       state: null,
-      players: [{ socketId: socket.id, playerId: userId, name: playerName, userId }],
+      players: [{ socketId: socket.id, playerId: userId, name: playerName, userId, team: mode === '2v2' ? 1 : undefined }],
       spectators: [],
       maxPlayers,
       chatHistory: [],
@@ -459,14 +459,25 @@ io.on('connection', (socket) => {
       return;
     }
 
-    room.players.push({ socketId: socket.id, playerId: userId, name: playerName, userId });
+    let assignedTeam: 1 | 2 | undefined = undefined;
+    if (room.maxPlayers === 4) {
+      const team1Count = room.players.filter(p => p.team === 1).length;
+      const team2Count = room.players.filter(p => p.team === 2).length;
+      assignedTeam = team1Count <= team2Count ? 1 : 2;
+    }
+
+    room.players.push({ socketId: socket.id, playerId: userId, name: playerName, userId, team: assignedTeam });
     socket.join(roomId);
 
     // Enviar el playerId al jugador que se acaba de unir
     const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
     socket.emit('room_joined', { roomId, playerId: userId, betAmount: room.betAmount, mode });
 
-    io.to(roomId).emit('player_joined', { players: room.players.map(p => p.name) });
+    // Mandar información completa para enriquecer avatares en el frontend
+    io.to(roomId).emit('player_joined', { 
+      players: room.players.map(p => p.name),
+      playersData: room.players.map((p: any) => ({ id: p.userId, name: p.name, team: p.team }))
+    });
     
     socket.emit('chat_history', room.chatHistory);
 
@@ -475,7 +486,24 @@ io.on('connection', (socket) => {
       const playerNames = room.players.map(p => p.name);
       const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
       
-      const result = room.engine.startNewGame(mode, playerNames);
+      // En 2v2 ordenar los jugadores por equipo para que el motor del juego asigne correctamente
+      if (mode === '2v2') {
+        const team1 = room.players.filter(p => p.team === 1);
+        const team2 = room.players.filter(p => p.team === 2);
+        // Motor espera [Equipo1P1, Equipo2P1, Equipo1P2, Equipo2P2] o similar?
+        // Wait, en create2v2PlayersAndTeams (src/domain/team.ts):
+        // team1: p1, p3 (indices 0 y 2)
+        // team2: p2, p4 (indices 1 y 3)
+        room.players = [
+          team1[0],
+          team2[0],
+          team1[1],
+          team2[1]
+        ].filter(Boolean) as any;
+      }
+      
+      const orderedPlayerNames = room.players.map(p => p.name);
+      const result = room.engine.startNewGame(mode, orderedPlayerNames);
       
       if (result.success && result.value) {
         room.state = result.value;
@@ -489,6 +517,23 @@ io.on('connection', (socket) => {
         // Enviar el estado inicial a cada jugador de forma segura (ocultando cartas de otros)
         broadcastGameState(roomId, room);
       }
+    }
+  });
+
+  socket.on('switch_team', ({ roomId, team }: { roomId: string, team: 1 | 2 }) => {
+    const room = rooms[roomId];
+    if (!room || room.state) return; // No se puede cambiar si ya empezó
+
+    const player = room.players.find(p => p.socketId === socket.id);
+    if (!player) return;
+
+    const teamCount = room.players.filter(p => p.team === team).length;
+    if (teamCount < 2 && player.team !== team) {
+      player.team = team;
+      io.to(roomId).emit('player_joined', { 
+        players: room.players.map(p => p.name),
+        playersData: room.players.map((p: any) => ({ id: p.userId, name: p.name, team: p.team }))
+      });
     }
   });
 

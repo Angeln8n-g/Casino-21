@@ -107,14 +107,40 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
           <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:gap-6 w-full mb-3 sm:mb-5 md:mb-8">
             {getEntities(gameState).map((entity) => {
               const progress = Math.min((entity.score / 21) * 100, 100);
+              
+              // Lógica de equipos para RoundSummary
+              let entityName = (entity as any).name || `Equipo ${entity.id}`;
+              let isMyTeam = false;
+              let teamColorClass = "from-green-600 to-green-400";
+              let shadowColor = "rgba(74,222,128,0.5)";
+
+              if (gameState.mode === '2v2') {
+                const teamPlayers = gameState.players.filter(p => p.teamId === entity.id);
+                if (teamPlayers.length === 2) {
+                  isMyTeam = teamPlayers.some(p => p.id === localPlayerId);
+                  
+                  if (isMyTeam) {
+                    const me = teamPlayers.find(p => p.id === localPlayerId);
+                    const partner = teamPlayers.find(p => p.id !== localPlayerId);
+                    entityName = `Tú & ${partner?.name}`;
+                    teamColorClass = "from-cyan-600 to-cyan-400";
+                    shadowColor = "rgba(34,211,238,0.5)";
+                  } else {
+                    entityName = `${teamPlayers[0].name} & ${teamPlayers[1].name}`;
+                    teamColorClass = "from-rose-600 to-rose-400";
+                    shadowColor = "rgba(244,63,94,0.5)";
+                  }
+                }
+              }
+
               return (
                 <div
                   key={entity.id}
-                  className="flex-1 bg-black/40 border border-yellow-600/30 p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl shadow-inner"
+                  className={`flex-1 bg-black/40 border p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl shadow-inner ${isMyTeam ? 'border-cyan-600/30' : (gameState.mode === '2v2' ? 'border-rose-600/30' : 'border-yellow-600/30')}`}
                 >
                   <div className="flex justify-between text-[11px] sm:text-xs md:text-sm mb-1.5 sm:mb-2 font-bold text-white items-center">
-                    <span className="text-gray-200 truncate mr-2">
-                      {(entity as any).name || `Equipo ${entity.id}`}
+                    <span className={`truncate mr-2 ${isMyTeam ? 'text-cyan-300' : (gameState.mode === '2v2' ? 'text-rose-300' : 'text-gray-200')}`}>
+                      {entityName}
                     </span>
                     <span className="text-yellow-400 font-mono tracking-wider shrink-0">
                       {entity.score}
@@ -125,10 +151,10 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
                   </div>
                   <div className="w-full bg-[#111A28] rounded-full h-1.5 sm:h-2 md:h-3 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)] border border-white/5">
                     <div
-                      className="bg-gradient-to-r from-green-600 to-green-400 h-full transition-all duration-1000 ease-in-out"
+                      className={`bg-gradient-to-r ${teamColorClass} h-full transition-all duration-1000 ease-in-out`}
                       style={{
                         width: `${progress}%`,
-                        boxShadow: '0 0 8px rgba(74,222,128,0.5)',
+                        boxShadow: `0 0 8px ${shadowColor}`,
                       }}
                     />
                   </div>
@@ -140,17 +166,35 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
           {/* ---- Score Breakdown Cards ---- */}
           <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 md:gap-6 w-full mb-4 sm:mb-6 md:mb-8">
             {gameState.lastScoreBreakdown?.map((b) => {
-              const entity =
-                gameState.players.find((p) => p.id === b.id) ||
-                gameState.teams.find((t) => t.id === b.id);
+              const isTeam = !!gameState.teams.find((t) => t.id === b.id);
+              const entity = isTeam
+                ? gameState.teams.find((t) => t.id === b.id)
+                : gameState.players.find((p) => p.id === b.id);
+                
+              let entityName = (entity as any)?.name || (entity ? `Equipo ${entity.id}` : b.id);
+              let isMyTeamCard = false;
+
+              if (isTeam && gameState.mode === '2v2') {
+                const teamPlayers = gameState.players.filter(p => p.teamId === b.id);
+                if (teamPlayers.length === 2) {
+                  isMyTeamCard = teamPlayers.some(p => p.id === localPlayerId);
+                  if (isMyTeamCard) {
+                    const partner = teamPlayers.find(p => p.id !== localPlayerId);
+                    entityName = `Tú & ${partner?.name}`;
+                  } else {
+                    entityName = `${teamPlayers[0].name} & ${teamPlayers[1].name}`;
+                  }
+                }
+              }
+
               return (
                 <div
                   key={b.id}
-                  className="bg-[#0b1525]/80 p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl md:rounded-2xl shadow-xl border border-yellow-600/30 text-left group hover:border-yellow-500/50 transition-colors duration-300"
+                  className={`bg-[#0b1525]/80 p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl md:rounded-2xl shadow-xl border text-left group transition-colors duration-300 ${isMyTeamCard ? 'border-cyan-600/30 hover:border-cyan-500/50' : (isTeam && gameState.mode === '2v2' ? 'border-rose-600/30 hover:border-rose-500/50' : 'border-yellow-600/30 hover:border-yellow-500/50')}`}
                 >
                   {/* Entity name header */}
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold mb-2 sm:mb-3 md:mb-4 text-center text-white border-b border-yellow-600/20 pb-1.5 sm:pb-2 md:pb-3 tracking-wide">
-                    {(entity as any)?.name || (entity ? `Equipo ${entity.id}` : b.id)}
+                  <h3 className={`text-sm sm:text-base md:text-xl font-bold mb-2 sm:mb-3 md:mb-4 text-center border-b pb-1.5 sm:pb-2 md:pb-3 tracking-wide ${isMyTeamCard ? 'text-cyan-300 border-cyan-600/20' : (isTeam && gameState.mode === '2v2' ? 'text-rose-300 border-rose-600/20' : 'text-white border-yellow-600/20')}`}>
+                    {entityName}
                   </h3>
 
                   <ul className="space-y-1.5 sm:space-y-2 md:space-y-3 text-[11px] sm:text-xs md:text-sm text-gray-300">

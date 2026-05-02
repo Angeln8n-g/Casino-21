@@ -552,6 +552,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         gameState={gameState}
         showCelebration={showCelebration}
         celebrationSeed={celebrationSeed}
+        localPlayerId={localPlayerId}
       />
     );
   }
@@ -578,7 +579,20 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const renderTurnPlayer = (p: any, index: number) => {
     const isTurn = index === gameState.currentTurnPlayerIndex;
     const progress = isTurn ? Math.max(0, Math.min(1, timeRemaining / TURN_TIME_LIMIT_MS)) : 1;
-    const ringColor = isTurn ? (timeRemaining < 10000 ? '#ef4444' : '#22c55e') : '#334155';
+    
+    // Colores de equipo
+    let isMyTeam = false;
+    if (gameState.mode === '2v2' && localPlayerId) {
+      const myTeamId = gameState.players.find(player => player.id === localPlayerId)?.teamId;
+      isMyTeam = p.teamId === myTeamId;
+    }
+    
+    const teamBaseColor = gameState.mode === '2v2' ? (isMyTeam ? '#06b6d4' : '#f43f5e') : '#ef4444'; // Cyan o Rosa/Rojo
+    const teamBgClass = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-900/30 border-cyan-500/30' : 'bg-rose-900/30 border-rose-500/30') : 'bg-black/35 border-white/10';
+    const teamTurnBgClass = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-900/60 border-cyan-400 shadow-[0_0_18px_rgba(6,182,212,0.3)]' : 'bg-rose-900/60 border-rose-400 shadow-[0_0_18px_rgba(244,63,94,0.3)]') : 'bg-white/10 border-white/20 shadow-[0_0_18px_rgba(34,211,238,0.15)]';
+    const teamTextColor = gameState.mode === '2v2' ? (isMyTeam ? 'text-cyan-200' : 'text-rose-200') : 'text-cyan-200';
+
+    const ringColor = isTurn ? (timeRemaining < 10000 ? '#ef4444' : teamBaseColor) : '#334155';
     const ringStyle: React.CSSProperties = {
       background: `conic-gradient(${ringColor} ${progress * 360}deg, rgba(255,255,255,0.14) 0deg)`,
     };
@@ -587,7 +601,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const reaction = activeReactions[p.id];
 
     return (
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-2xl border ${isTurn ? 'bg-white/10 border-white/20 shadow-[0_0_18px_rgba(34,211,238,0.15)]' : 'bg-black/35 border-white/10'}`}>
+      <div className={`flex items-center gap-3 px-3 py-2 rounded-2xl border ${isTurn ? teamTurnBgClass : teamBgClass}`}>
         <div className="relative shrink-0">
           {reaction && (
             <div key={reaction.nonce} className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 md:w-16 md:h-16 z-[100] animate-bounce pointer-events-none">
@@ -626,7 +640,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               </span>
             )}
           </div>
-          <div className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${isTurn ? 'text-cyan-200' : 'text-gray-400'}`}>
+          <div className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${isTurn ? teamTextColor : 'text-gray-400'}`}>
             {isTurn ? 'Turno' : 'Espera'}
           </div>
           <div className="text-[10px] md:text-xs text-yellow-300/90 font-bold">
@@ -745,10 +759,65 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   <div className="flex-1 min-w-0 flex justify-end">{renderTurnPlayer(gameState.players[1], 1)}</div>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2 md:gap-4 w-full justify-center">
-                  {gameState.players.map((p, i) => (
-                    <div key={p.id}>{renderTurnPlayer(p, i)}</div>
-                  ))}
+                <div className="w-full relative flex items-center justify-center min-h-[140px] md:min-h-[180px]">
+                  {/* Equipo 1 vs Equipo 2 Layout en Cruz */}
+                  {(() => {
+                    // Identificar compañeros y oponentes
+                    const isLocalP1 = localPlayerId === gameState.players[0]?.id;
+                    const isLocalP2 = localPlayerId === gameState.players[1]?.id;
+                    const isLocalP3 = localPlayerId === gameState.players[2]?.id;
+                    const isLocalP4 = localPlayerId === gameState.players[3]?.id;
+
+                    // Equipo 1: players[0] y players[2]
+                    // Equipo 2: players[1] y players[3]
+                    
+                    // Lógica para saber quién va en cada posición (Arriba: compañero, Izquierda/Derecha: oponentes)
+                    let partnerIndex = -1;
+                    let leftOpponentIndex = -1;
+                    let rightOpponentIndex = -1;
+
+                    if (isSpectator) {
+                      // Vista de espectador estándar
+                      partnerIndex = 2; // Compañero del host
+                      leftOpponentIndex = 1;
+                      rightOpponentIndex = 3;
+                    } else if (isLocalP1) {
+                      partnerIndex = 2; leftOpponentIndex = 1; rightOpponentIndex = 3;
+                    } else if (isLocalP3) {
+                      partnerIndex = 0; leftOpponentIndex = 3; rightOpponentIndex = 1;
+                    } else if (isLocalP2) {
+                      partnerIndex = 3; leftOpponentIndex = 0; rightOpponentIndex = 2;
+                    } else if (isLocalP4) {
+                      partnerIndex = 1; leftOpponentIndex = 2; rightOpponentIndex = 0;
+                    } else {
+                      // Fallback por si acaso
+                      partnerIndex = 2; leftOpponentIndex = 1; rightOpponentIndex = 3;
+                    }
+
+                    return (
+                      <>
+                        {/* Compañero (Arriba Centro) */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
+                          {gameState.players[partnerIndex] && renderTurnPlayer(gameState.players[partnerIndex], partnerIndex)}
+                        </div>
+                        
+                        {/* Oponente Izquierda */}
+                        <div className="absolute top-1/2 -translate-y-1/2 left-0 md:left-4 z-10 scale-90 md:scale-100 origin-left">
+                          {gameState.players[leftOpponentIndex] && renderTurnPlayer(gameState.players[leftOpponentIndex], leftOpponentIndex)}
+                        </div>
+
+                        {/* VS Central */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shrink-0 text-yellow-300/50 font-black tracking-widest text-lg md:text-2xl drop-shadow-sm z-0">
+                          VS
+                        </div>
+
+                        {/* Oponente Derecha */}
+                        <div className="absolute top-1/2 -translate-y-1/2 right-0 md:right-4 z-10 scale-90 md:scale-100 origin-right">
+                          {gameState.players[rightOpponentIndex] && renderTurnPlayer(gameState.players[rightOpponentIndex], rightOpponentIndex)}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -768,15 +837,46 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           <div className="flex gap-2 md:gap-4 w-full">
             {getEntities().map(entity => {
               const progress = Math.min((entity.score / 21) * 100, 100);
+              
+              // Lógica de nombres de equipos en 2v2
+              let entityName = (entity as any).name || `Equipo ${entity.id}`;
+              let isMyTeam = false;
+              let teamColorClass = "bg-green-500";
+              let teamBgClass = "bg-gray-700";
+              let teamBorderClass = "";
+
+              if (gameState.mode === '2v2') {
+                const teamPlayers = gameState.players.filter(p => p.teamId === entity.id);
+                if (teamPlayers.length === 2) {
+                  isMyTeam = teamPlayers.some(p => p.id === localPlayerId);
+                  
+                  if (isMyTeam) {
+                    const me = teamPlayers.find(p => p.id === localPlayerId);
+                    const partner = teamPlayers.find(p => p.id !== localPlayerId);
+                    entityName = `Tú & ${partner?.name}`;
+                    teamColorClass = "bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.8)]"; // Cyan para tu equipo
+                    teamBgClass = "bg-cyan-950/50";
+                    teamBorderClass = "border border-cyan-500/30";
+                  } else {
+                    entityName = `${teamPlayers[0].name} & ${teamPlayers[1].name}`;
+                    teamColorClass = "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]"; // Rojo/Rosa para oponentes
+                    teamBgClass = "bg-rose-950/50";
+                    teamBorderClass = "border border-rose-500/30";
+                  }
+                }
+              }
+
               return (
-                <div key={entity.id} className="flex-1">
+                <div key={entity.id} className={`flex-1 p-1.5 md:p-2 rounded-lg ${teamBorderClass} bg-black/20`}>
                   <div className="flex justify-between text-[9px] md:text-xs mb-0.5 md:mb-1">
-                    <span className="truncate pr-1">{(entity as any).name || `Equipo ${entity.id}`}</span>
-                    <span className="shrink-0">{entity.score} / 21</span>
+                    <span className={`truncate pr-1 font-bold ${isMyTeam ? 'text-cyan-300' : (gameState.mode === '2v2' ? 'text-rose-300' : 'text-gray-200')}`}>
+                      {entityName}
+                    </span>
+                    <span className="shrink-0 text-white font-mono">{entity.score} / 21</span>
                   </div>
-                  <div className="w-full bg-gray-700 rounded-full h-1.5 md:h-3 overflow-hidden">
+                  <div className={`w-full ${teamBgClass} rounded-full h-1.5 md:h-3 overflow-hidden`}>
                     <div 
-                      className="bg-green-500 h-1.5 md:h-3 transition-all duration-1000 ease-in-out" 
+                      className={`${teamColorClass} h-1.5 md:h-3 transition-all duration-1000 ease-in-out`}
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>

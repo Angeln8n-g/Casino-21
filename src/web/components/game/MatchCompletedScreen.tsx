@@ -12,6 +12,7 @@ interface MatchCompletedScreenProps {
   gameState: GameState;
   showCelebration: boolean;
   celebrationSeed: number;
+  localPlayerId?: string | null;
 }
 
 /**
@@ -36,6 +37,7 @@ export function MatchCompletedScreen({
   gameState,
   showCelebration,
   celebrationSeed,
+  localPlayerId,
 }: MatchCompletedScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center p-4 sm:p-8 bg-transparent relative z-10 overflow-y-auto">
@@ -47,12 +49,27 @@ export function MatchCompletedScreen({
         </h1>
 
         <h2 className="text-xl sm:text-3xl font-bold mb-6 sm:mb-10 text-white">
-          {gameState.winnerId
-            ? `Ganador: ${
+          {(() => {
+            if (!gameState.winnerId) return '¡EMPATE!';
+            
+            if (gameState.mode === '2v2') {
+              const teamPlayers = gameState.players.filter(p => p.teamId === gameState.winnerId);
+              if (teamPlayers.length === 2) {
+                const amIWinner = teamPlayers.some(p => p.id === localPlayerId);
+                if (amIWinner) {
+                  const partner = teamPlayers.find(p => p.id !== localPlayerId);
+                  return <span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">¡Victoria de Tú & {partner?.name}!</span>;
+                } else {
+                  return <span className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]">Victoria de {teamPlayers[0].name} & {teamPlayers[1].name}</span>;
+                }
+              }
+            }
+
+            return `Ganador: ${
                 gameState.players.find((p) => p.id === gameState.winnerId)?.name ||
                 gameState.winnerId
-              }`
-            : '¡EMPATE!'}
+              }`;
+          })()}
         </h2>
 
         {/* Player stat cards */}

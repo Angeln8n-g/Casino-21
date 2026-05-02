@@ -54,6 +54,7 @@ export function MainMenu() {
   const [view, setView] = useState<'menu' | 'waiting'>('menu');
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [playersInRoom, setPlayersInRoom] = useState<string[]>([]);
+  const [playersInRoomData, setPlayersInRoomData] = useState<Array<{name: string, id?: string, avatar?: string | null, team?: 1 | 2}>>([]);
   const [error, setError] = useState('');
   
   // ─── Modal Apuesta Sala ───
@@ -61,6 +62,9 @@ export function MainMenu() {
   const [betAmount, setBetAmount] = useState<number>(0);
   const [roomBet, setRoomBet] = useState<number>(0); // Guardamos la apuesta de la sala actual
   const [roomMode, setRoomMode] = useState<'1v1' | '2v2'>('1v1'); // Selección de modo al crear sala
+  
+  // ─── Countdown ───
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // ─── FASE 8: Matchmaking State ───
   const [isMatchmaking, setIsMatchmaking] = useState(false);
@@ -108,17 +112,30 @@ export function MainMenu() {
     const expectedPlayers = mode === '1v1' ? 2 : 4;
     if (playersInRoom.length !== expectedPlayers) return;
     if (hasRequestedStateRef.current) return;
+    
+    // Si la sala está llena, iniciamos el countdown
+    if (countdown === null) {
+      setCountdown(3);
+      playSfx('turnChange');
+      return;
+    }
+    
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev !== null ? prev - 1 : null);
+        playSfx('turnChange', { playbackRate: 1 + (4 - countdown) * 0.1 });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
 
-    hasRequestedStateRef.current = true;
-    const timer = setTimeout(() => {
+    if (countdown === 0) {
+      hasRequestedStateRef.current = true;
       try {
         const socket = socketService.getSocket();
         socket.emit('request_game_state', { roomId: currentRoomId });
       } catch {}
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [currentRoomId, gameState, mode, playersInRoom.length, view]);
+    }
+  }, [currentRoomId, gameState, mode, playersInRoom.length, view, countdown, playSfx]);
 
   // ─── Desktop Invitation & Spectator Listener ───
   useEffect(() => {
@@ -191,6 +208,8 @@ export function MainMenu() {
           localStorage.setItem('casino21_playerId', playerId);
           localStorage.removeItem('casino21_spectatorRoomId');
           setPlayersInRoom([playerName]);
+          setPlayersInRoomData([{ name: playerName, id: playerId, avatar: profile?.equipped_avatar || profile?.avatar_url }]);
+          setCountdown(null);
           setView('waiting');
           setError('');
         });
@@ -204,6 +223,7 @@ export function MainMenu() {
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
           localStorage.removeItem('casino21_spectatorRoomId');
+          setCountdown(null);
           setView('waiting');
           setError('');
         });
@@ -218,12 +238,42 @@ export function MainMenu() {
           // Necesitaremos decirle al GameScreen que somos espectadores
           // Podemos usar un estado global o local. Por simplicidad, agregamos un item a localStorage temporalmente
           localStorage.setItem('casino21_spectatorRoomId', roomId);
+          setCountdown(null);
           setView('waiting'); // Se cambiará automáticamente a GameScreen cuando llegue el estado
           setError('');
         });
 
-        socket.on('player_joined', ({ players }) => {
+        socket.on('player_joined', async ({ players, playersData }) => {
           setPlayersInRoom(players);
+          
+          // Si el backend envía playersData (ID y Nombre), usamos eso para buscar avatares
+          if (playersData && Array.isArray(playersData)) {
+            // Intentar buscar los avatares en Supabase
+            try {
+              const ids = playersData.map(p => p.id).filter(Boolean);
+              if (ids.length > 0) {
+                const { supabase } = await import('../services/supabase');
+                const { data } = await supabase.from('profiles').select('id, avatar_url, equipped_avatar').in('id', ids);
+                
+                const enrichedPlayers = playersData.map(p => {
+                  const dbProfile = data?.find(row => row.id === p.id);
+                  return {
+                    ...p,
+                    avatar: dbProfile ? (dbProfile.equipped_avatar || dbProfile.avatar_url) : null
+                  };
+                });
+                setPlayersInRoomData(enrichedPlayers);
+              } else {
+                setPlayersInRoomData(playersData);
+              }
+            } catch (e) {
+              setPlayersInRoomData(playersData);
+            }
+          } else {
+            // Fallback si no hay playersData
+            setPlayersInRoomData(players.map((name: string) => ({ name })));
+          }
+          
           // Only switch view if not already waiting. RoomId will be set by room_joined if this player just joined
           setView(prevView => prevView === 'menu' ? 'waiting' : prevView);
         });
@@ -238,6 +288,8 @@ export function MainMenu() {
           setView('menu');
           setCurrentRoomId(null);
           setPlayersInRoom([]);
+          setPlayersInRoomData([]);
+          setCountdown(null);
           setIsMatchmaking(false);
           setMatchFound(null);
           if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
@@ -360,6 +412,15 @@ export function MainMenu() {
       console.error(e);
       setError(e.message || 'Error conectando al servidor...');
     }
+  };
+
+  const handleSwitchTeam = (team: 1 | 2) => {
+    if (!currentRoomId) return;
+    try {
+      const socket = socketService.getSocket();
+      socket.emit('switch_team', { roomId: currentRoomId, team });
+      playSfx('clipsClick', { volumeMultiplier: 0.5 });
+    } catch (e) {}
   };
 
   // ─── FASE 8: Matchmaking Logic ───
@@ -504,11 +565,12 @@ export function MainMenu() {
             </div>
           </div>
           
-          {/* Player Slots */}
-          <div className="space-y-3 mb-8">
-            <h3 className="section-header text-center">
+          {/* ─── Player Slots & Countdown ─── */}
+          <div className="mb-8">
+            <h3 className="section-header text-center mb-4">
               Jugadores ({playersInRoom.length}/{mode === '1v1' ? 2 : 4})
             </h3>
+            
             {roomBet > 0 && (
               <div className="flex justify-center mb-4">
                 <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-3 py-1 rounded-full text-xs font-bold shadow-[0_0_10px_rgba(234,179,8,0.3)]">
@@ -516,30 +578,154 @@ export function MainMenu() {
                 </span>
               </div>
             )}
-            {playersInRoom.map((p, i) => (
-              <div key={i} className="bg-casino-emerald/10 border border-casino-emerald/20 py-3 px-4 rounded-xl text-sm font-display font-bold text-casino-emerald flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-casino-emerald animate-pulse" />
-                {p}
+
+            {/* Layout de equipos si es 2v2 */}
+            {mode === '2v2' ? (
+              <div className="grid grid-cols-2 gap-4 relative">
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-full w-8 h-8 flex items-center justify-center border border-white/10 z-10 font-black text-[10px] text-gray-500">
+                  VS
+                </div>
+                
+                {/* Equipo Azul */}
+                <div className="space-y-3 relative group/team1">
+                  <div className="text-[10px] text-cyan-400 font-black uppercase tracking-widest text-center border-b border-cyan-500/20 pb-1 mb-2">Equipo 1</div>
+                  {(() => {
+                    const team1Players = playersInRoomData.filter(p => p.team === 1);
+                    const myTeam = playersInRoomData.find(p => p.name === playerName)?.team;
+                    const canJoin = team1Players.length < 2 && myTeam !== 1;
+
+                    return (
+                      <>
+                        {[0, 1].map((slotIndex) => {
+                          const p = team1Players[slotIndex];
+                          return p ? (
+                            <div key={slotIndex} className="bg-cyan-950/40 border border-cyan-500/30 p-2 rounded-xl flex flex-col items-center gap-2 animate-fade-in shadow-[0_0_15px_rgba(6,182,212,0.15)] relative overflow-hidden group">
+                              <div className="absolute inset-0 bg-cyan-500/10 translate-y-full group-hover:translate-y-0 transition-transform" />
+                              <div className="w-12 h-12 rounded-full border-2 border-cyan-400 p-0.5 relative">
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full animate-ping" />
+                                {p.avatar ? (
+                                  <img src={p.avatar} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full rounded-full bg-cyan-900 flex items-center justify-center text-cyan-200 font-black">{p.name.charAt(0).toUpperCase()}</div>
+                                )}
+                              </div>
+                              <span className="text-xs font-bold text-cyan-100 truncate w-full text-center relative z-10">{p.name}</span>
+                            </div>
+                          ) : (
+                            <div key={`empty-${slotIndex}`} className="bg-white/[0.02] p-2 rounded-xl flex flex-col items-center gap-2 border border-dashed border-white/[0.08] opacity-50">
+                              <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-600/50 flex items-center justify-center">
+                                <span className="text-xl opacity-20">👤</span>
+                              </div>
+                              <span className="text-[10px] text-gray-500 font-medium">Esperando...</span>
+                            </div>
+                          );
+                        })}
+                        {canJoin && countdown === null && (
+                          <button 
+                            onClick={() => handleSwitchTeam(1)}
+                            className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-300 border border-cyan-500/50 px-3 py-1 rounded-full font-bold transition-all opacity-0 group-hover/team1:opacity-100 group-hover/team1:-bottom-4 z-20 whitespace-nowrap"
+                          >
+                            Unirse al Equipo 1
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Equipo Rojo */}
+                <div className="space-y-3 relative group/team2">
+                  <div className="text-[10px] text-rose-400 font-black uppercase tracking-widest text-center border-b border-rose-500/20 pb-1 mb-2">Equipo 2</div>
+                  {(() => {
+                    const team2Players = playersInRoomData.filter(p => p.team === 2);
+                    const myTeam = playersInRoomData.find(p => p.name === playerName)?.team;
+                    const canJoin = team2Players.length < 2 && myTeam !== 2;
+
+                    return (
+                      <>
+                        {[0, 1].map((slotIndex) => {
+                          const p = team2Players[slotIndex];
+                          return p ? (
+                            <div key={slotIndex} className="bg-rose-950/40 border border-rose-500/30 p-2 rounded-xl flex flex-col items-center gap-2 animate-fade-in shadow-[0_0_15px_rgba(244,63,94,0.15)] relative overflow-hidden group">
+                              <div className="absolute inset-0 bg-rose-500/10 translate-y-full group-hover:translate-y-0 transition-transform" />
+                              <div className="w-12 h-12 rounded-full border-2 border-rose-400 p-0.5 relative">
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-400 rounded-full animate-ping" />
+                                {p.avatar ? (
+                                  <img src={p.avatar} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full rounded-full bg-rose-900 flex items-center justify-center text-rose-200 font-black">{p.name.charAt(0).toUpperCase()}</div>
+                                )}
+                              </div>
+                              <span className="text-xs font-bold text-rose-100 truncate w-full text-center relative z-10">{p.name}</span>
+                            </div>
+                          ) : (
+                            <div key={`empty-${slotIndex}`} className="bg-white/[0.02] p-2 rounded-xl flex flex-col items-center gap-2 border border-dashed border-white/[0.08] opacity-50">
+                              <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-600/50 flex items-center justify-center">
+                                <span className="text-xl opacity-20">👤</span>
+                              </div>
+                              <span className="text-[10px] text-gray-500 font-medium">Esperando...</span>
+                            </div>
+                          );
+                        })}
+                        {canJoin && countdown === null && (
+                          <button 
+                            onClick={() => handleSwitchTeam(2)}
+                            className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/50 px-3 py-1 rounded-full font-bold transition-all opacity-0 group-hover/team2:opacity-100 group-hover/team2:-bottom-4 z-20 whitespace-nowrap"
+                          >
+                            Unirse al Equipo 2
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
-            ))}
-            {Array.from({ length: (mode === '1v1' ? 2 : 4) - playersInRoom.length }).map((_, i) => (
-              <div key={`empty-${i}`} className="bg-white/[0.02] py-3 px-4 rounded-xl text-sm font-medium border border-dashed border-white/[0.08] text-gray-600 flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-gray-600/50" />
-                Esperando jugador...
+            ) : (
+              // Layout 1v1 Estándar
+              <div className="space-y-3">
+                {playersInRoomData.map((p, i) => (
+                  <div key={i} className="bg-casino-emerald/10 border border-casino-emerald/30 py-2 px-3 rounded-xl flex items-center gap-3 animate-slide-up shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                    <div className="w-10 h-10 rounded-full border-2 border-casino-emerald p-0.5 shrink-0 relative">
+                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-casino-emerald rounded-full animate-ping" />
+                      {p.avatar ? (
+                        <img src={p.avatar} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-emerald-900 flex items-center justify-center text-emerald-200 font-black text-sm">{p.name.charAt(0).toUpperCase()}</div>
+                      )}
+                    </div>
+                    <span className="text-sm font-display font-bold text-emerald-100 truncate">{p.name}</span>
+                  </div>
+                ))}
+                {Array.from({ length: 2 - playersInRoomData.length }).map((_, i) => (
+                  <div key={`empty-${i}`} className="bg-white/[0.02] py-3 px-4 rounded-xl text-sm font-medium border border-dashed border-white/[0.08] text-gray-600 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-600 flex items-center justify-center opacity-50">👤</div>
+                    Esperando jugador...
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
           {/* Loading indicator & Actions */}
           <div className="flex flex-col items-center gap-6">
-            <div className="flex items-center justify-center gap-2 text-blue-400">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-              <span className="text-sm font-medium ml-2">El juego iniciará automáticamente</span>
-            </div>
+            {countdown !== null ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-4xl font-black text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-ping relative">
+                  {countdown > 0 ? countdown : '¡YA!'}
+                  <div className="absolute inset-0 text-yellow-400 animate-pulse">{countdown > 0 ? countdown : '¡YA!'}</div>
+                </div>
+                <span className="text-sm font-bold text-yellow-200 uppercase tracking-widest">Iniciando Partida...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-blue-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span className="text-sm font-medium ml-2">Esperando a los demás jugadores...</span>
+              </div>
+            )}
             
-            {playersInRoom.length === 1 && (
+            {playersInRoom.length === 1 && countdown === null && (
               <button 
                 onClick={handleCancelRoom}
                 className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50 rounded-xl font-bold text-sm uppercase tracking-wider transition-all"
@@ -948,79 +1134,110 @@ export function MainMenu() {
       {/* Forzar Username Modal */}
       <WelcomeModal />
 
-      {/* ─── Modal Crear Sala (Apuesta) ─── */}
+      {/* ─── Modal Crear Sala (Apuesta y Modo) ─── */}
       {showBetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="glass-panel-strong p-6 w-full max-w-sm relative">
+          <div className="bg-slate-900/90 border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.15)] rounded-3xl p-6 w-full max-w-md relative overflow-hidden">
+            {/* Ambient Background */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+
             <button 
               onClick={() => setShowBetModal(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-all z-10"
             >
               ✕
             </button>
-            <h3 className="section-header text-center text-xl mb-4">Crear Sala</h3>
+            
+            <div className="flex items-center gap-3 mb-6 relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30 text-xl">
+                ⚙️
+              </div>
+              <h3 className="font-display font-black text-xl text-white uppercase tracking-widest">Configurar Sala</h3>
+            </div>
             
             {/* ─── Selección de Modo ─── */}
-            <div className="mb-6">
-              <label className="block text-[10px] uppercase text-gray-500 font-bold mb-2 ml-1 text-center">Modo de Juego</label>
-              <div className="flex gap-2">
+            <div className="mb-6 relative z-10">
+              <label className="block text-xs uppercase text-gray-400 font-bold mb-3 tracking-widest">1. Modo de Juego</label>
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setRoomMode('1v1')}
-                  className={`flex-1 py-2 rounded-xl border text-sm font-black uppercase tracking-wider transition-all ${
+                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 ${
                     roomMode === '1v1'
-                      ? 'bg-blue-500/20 border-blue-500/50 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
-                      : 'bg-white/5 border-white/10 text-gray-500 hover:bg-white/10'
+                      ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)] scale-[1.02]'
+                      : 'bg-black/40 border-white/10 text-gray-500 hover:border-blue-500/30 hover:bg-blue-500/5'
                   }`}
                 >
-                  1 vs 1
+                  <div className={`text-3xl transition-transform duration-300 ${roomMode === '1v1' ? 'scale-110 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'grayscale opacity-50'}`}>
+                    ⚔️
+                  </div>
+                  <span className={`font-black uppercase tracking-widest text-sm ${roomMode === '1v1' ? 'text-blue-400' : 'text-gray-500'}`}>
+                    1 vs 1
+                  </span>
                 </button>
+
                 <button
                   onClick={() => setRoomMode('2v2')}
-                  className={`flex-1 py-2 rounded-xl border text-sm font-black uppercase tracking-wider transition-all ${
+                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 ${
                     roomMode === '2v2'
-                      ? 'bg-purple-500/20 border-purple-500/50 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                      : 'bg-white/5 border-white/10 text-gray-500 hover:bg-white/10'
+                      ? 'bg-purple-500/20 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.2)] scale-[1.02]'
+                      : 'bg-black/40 border-white/10 text-gray-500 hover:border-purple-500/30 hover:bg-purple-500/5'
                   }`}
                 >
-                  2 vs 2
+                  <div className={`text-3xl transition-transform duration-300 ${roomMode === '2v2' ? 'scale-110 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'grayscale opacity-50'}`}>
+                    🤝
+                  </div>
+                  <span className={`font-black uppercase tracking-widest text-sm ${roomMode === '2v2' ? 'text-purple-400' : 'text-gray-500'}`}>
+                    2 vs 2
+                  </span>
                 </button>
               </div>
             </div>
 
-            <p className="text-sm text-gray-400 text-center mb-4">Selecciona el monto a apostar (Opcional)</p>
-            
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[0, 10, 50, 100, 500, 1000].map(amount => (
-                <button
-                  key={amount}
-                  onClick={() => setBetAmount(amount)}
-                  className={`py-2 rounded-xl border text-sm font-bold transition-all ${
-                    betAmount === amount 
-                      ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)]' 
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
-                  }`}
-                >
-                  {amount === 0 ? 'Gratis' : `🪙 ${amount}`}
-                </button>
-              ))}
-            </div>
+            {/* ─── Selección de Apuesta ─── */}
+            <div className="mb-8 relative z-10">
+              <label className="block text-xs uppercase text-gray-400 font-bold mb-3 tracking-widest">2. Apuesta (Opcional)</label>
+              
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {[0, 10, 50, 100, 500, 1000].map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setBetAmount(amount)}
+                    className={`py-2.5 rounded-xl border text-sm font-black transition-all ${
+                      betAmount === amount 
+                        ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.2)] scale-[1.02]' 
+                        : 'bg-black/40 border-white/10 text-gray-400 hover:bg-white/5 hover:border-yellow-500/30'
+                    }`}
+                  >
+                    {amount === 0 ? 'GRATIS' : `🪙 ${amount}`}
+                  </button>
+                ))}
+              </div>
 
-            <div className="mb-6">
-              <label className="block text-[10px] uppercase text-gray-500 font-bold mb-1 ml-1">Monto personalizado</label>
-              <input 
-                type="number" 
-                min={0}
-                value={betAmount}
-                onChange={e => setBetAmount(parseInt(e.target.value) || 0)}
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-center text-yellow-400 font-bold focus:border-yellow-500/50 outline-none transition-colors"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-yellow-500">
+                  🪙
+                </div>
+                <input 
+                  type="number" 
+                  min={0}
+                  value={betAmount || ''}
+                  onChange={e => setBetAmount(parseInt(e.target.value) || 0)}
+                  placeholder="Monto personalizado..."
+                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-yellow-400 font-bold focus:border-yellow-500/50 focus:bg-yellow-500/5 outline-none transition-colors placeholder:text-gray-600"
+                />
+              </div>
             </div>
 
             <button 
               onClick={handleCreateRoomConfirm}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all transform hover:scale-[1.02]"
+              className="relative w-full py-4 rounded-xl font-black text-lg uppercase tracking-widest overflow-hidden group transition-transform hover:scale-[1.02] shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
             >
-              Crear y Esperar
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 group-hover:from-blue-500 group-hover:via-cyan-400 group-hover:to-blue-400 transition-colors" />
+              <div className="relative z-10 text-white flex items-center justify-center gap-2">
+                <span>Crear y Esperar</span>
+                <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+              </div>
             </button>
           </div>
         </div>
