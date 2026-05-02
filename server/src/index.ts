@@ -123,6 +123,7 @@ io.use(async (socket, next) => {
     isTournament?: boolean;
     chatHistory: ChatMessage[];
     betAmount?: number;
+    prizePool?: number;
     isBot?: boolean;
     botDifficulty?: BotDifficulty;
   }> = {};
@@ -314,7 +315,8 @@ io.on('connection', (socket) => {
       spectators: [],
       maxPlayers,
       chatHistory: [],
-      betAmount: mode === '1v1' ? (data.betAmount || 0) : 0 // Guardar monto de apuesta
+      betAmount: data.betAmount || 0, // Guardar monto de apuesta
+      prizePool: 0
     };
 
     socket.join(roomId);
@@ -340,6 +342,7 @@ io.on('connection', (socket) => {
       maxPlayers: 2,
       chatHistory: [],
       betAmount: 0,
+      prizePool: 0,
       isBot: true,
       botDifficulty: difficulty
     };
@@ -366,7 +369,7 @@ io.on('connection', (socket) => {
   });
 
   // 2. Unirse a Sala
-  socket.on('join_room', ({ roomId, playerName, isTournament, isSpectator }: { roomId: string, playerName: string, isTournament?: boolean, isSpectator?: boolean }) => {
+  socket.on('join_room', async ({ roomId, playerName, isTournament, isSpectator }: { roomId: string, playerName: string, isTournament?: boolean, isSpectator?: boolean }) => {
     let room = rooms[roomId];
     
     if (!room) {
@@ -454,6 +457,26 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // ─── Validar Saldo para Apuestas ───
+    if (room.betAmount && room.betAmount > 0 && !isSpectator) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('coins')
+          .eq('id', userId)
+          .single();
+        
+        if (!profile || profile.coins < room.betAmount) {
+          socket.emit('error', 'No tienes suficientes monedas para entrar a esta sala.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error validando saldo:', error);
+        socket.emit('error', 'Error al validar tu saldo.');
+        return;
+      }
+    }
+
     if (room.players.length >= room.maxPlayers) {
       socket.emit('error', 'La sala está llena');
       return;
@@ -483,6 +506,39 @@ io.on('connection', (socket) => {
 
     // Si la sala se llenó, iniciar el juego
     if (room.players.length === room.maxPlayers) {
+      // ─── FASE 1: SISTEMA DE ESCROW ───
+      // Cobrar la apuesta a todos los jugadores ANTES de iniciar la partida
+      if (room.betAmount && room.betAmount > 0) {
+        let allPaid = true;
+        for (const player of room.players) {
+          try {
+            // Descontar saldo
+            const { data, error } = await supabase.rpc('update_wallet', { 
+              user_id: player.userId, 
+              amount: -room.betAmount, 
+              reason: `Room Escrow: ${roomId}` 
+            });
+            
+            if (error) {
+              allPaid = false;
+              break;
+            }
+          } catch (e) {
+            allPaid = false;
+            break;
+          }
+        }
+
+        if (!allPaid) {
+          io.to(roomId).emit('error', 'Error al procesar las apuestas. La sala se cerrará.');
+          closeRoom(roomId, 'escrow_failed');
+          return;
+        }
+        
+        room.prizePool = room.betAmount * room.maxPlayers;
+        console.log(`[ESCROW] Sala ${roomId} recaudó ${room.prizePool} monedas en total.`);
+      }
+
       const playerNames = room.players.map(p => p.name);
       const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
       
@@ -672,27 +728,38 @@ io.on('connection', (socket) => {
     const abandonerIndex = room.players.findIndex(p => p.socketId === socket.id);
     if (abandonerIndex === -1) return;
 
-    const abandoner = room.state.players.find(p => p.id === room.players[abandonerIndex].userId);
-    const opponent = room.state.players.find(p => p.id !== abandoner?.id);
+    const abandoner = room.players[abandonerIndex];
+    
+    // Determinar ganadores según el modo
+    let winningTeamOrPlayer: string | undefined;
+    if (room.maxPlayers === 4) {
+      // 2v2: El equipo contrario al abandonador gana
+      winningTeamOrPlayer = abandoner.team === 1 ? 't2' : 't1';
+    } else {
+      // 1v1: El jugador contrario gana
+      const opponent = room.players.find(p => p.userId !== abandoner.userId);
+      if (opponent) winningTeamOrPlayer = opponent.userId;
+    }
 
-    if (!abandoner || !opponent) return;
+    if (!winningTeamOrPlayer) return;
 
     room.state = {
       ...room.state,
       phase: 'completed',
-      winnerId: opponent.id
+      winnerId: winningTeamOrPlayer
     };
 
-    const betAmount = room.betAmount || 0;
-    const coinsEarned = betAmount > 0 ? betAmount * 2 : 50;
-    const eloEarned = 25;
-
-    // Save result mapping rewards to winner
+    // Save result mapping rewards to winner(s)
     saveMatchResult(roomId, room);
+
+    // Calculate roughly what was earned for the UI broadcast
+    const prizePool = room.prizePool || 0;
+    const coinsEarned = room.maxPlayers === 4 ? Math.floor(prizePool / 2) : prizePool;
+    const eloEarned = 25;
 
     // Notify room
     io.to(roomId).emit('match_abandoned', {
-      winnerId: opponent.id,
+      winnerId: winningTeamOrPlayer,
       coinsEarned,
       eloEarned
     });
@@ -847,139 +914,146 @@ async function saveMatchResult(roomId: string, room: any) {
   }
 
   let winnerId = room.state.winnerId || null;
-  const p1 = room.state.players[0];
-  const p2 = room.state.players[1];
 
+  // Si no hay winnerId claro, calcular por puntuación
   if (!winnerId) {
-    if (p1.score > p2.score) winnerId = p1.id;
-    else if (p2.score > p1.score) winnerId = p2.id;
+    if (room.maxPlayers === 4) {
+      // Calcular puntuación por equipo en 2v2
+      const t1Score = room.state.teams?.find((t: any) => t.id === 't1')?.score || 0;
+      const t2Score = room.state.teams?.find((t: any) => t.id === 't2')?.score || 0;
+      if (t1Score > t2Score) winnerId = 't1';
+      else if (t2Score > t1Score) winnerId = 't2';
+    } else {
+      const p1 = room.state.players[0];
+      const p2 = room.state.players[1];
+      if (p1.score > p2.score) winnerId = p1.id;
+      else if (p2.score > p1.score) winnerId = p2.id;
+    }
   }
 
   try {
-    const betAmount = room.betAmount || 0;
-    let coinsEarnedP1 = 0;
-    let coinsEarnedP2 = 0;
+    const prizePool = room.prizePool || 0;
+    const isTournament = !!room.isTournament;
+    const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
+    
+    // Mapear jugadores y resultados
+    const playersMetadata = [];
+    const ELO_WIN = 25;
+    const ELO_LOSS = -25;
+    const XP_WIN = 50;
+    const XP_LOSS = 15;
 
-    if (betAmount > 0 && winnerId) {
-      if (winnerId === p1.id) { coinsEarnedP1 = betAmount * 2; coinsEarnedP2 = -betAmount; }
-      else { coinsEarnedP2 = betAmount * 2; coinsEarnedP1 = -betAmount; }
-      if (coinsEarnedP1 !== 0) await supabase.rpc('update_wallet', { user_id: p1.id, amount: coinsEarnedP1, reason: `Match result: ${roomId}` });
-      if (coinsEarnedP2 !== 0) await supabase.rpc('update_wallet', { user_id: p2.id, amount: coinsEarnedP2, reason: `Match result: ${roomId}` });
-    } else {
-      coinsEarnedP1 = winnerId === p1.id ? 50 : 10;
-      coinsEarnedP2 = winnerId === p2.id ? 50 : 10;
+    for (let i = 0; i < room.players.length; i++) {
+      const playerInfo = room.players[i];
+      const playerState = room.state.players.find((p: any) => p.id === playerInfo.userId);
+      
+      let isWinner = false;
+      if (mode === '2v2') {
+        const teamId = playerInfo.team === 1 ? 't1' : 't2';
+        isWinner = winnerId === teamId;
+      } else {
+        isWinner = winnerId === playerInfo.userId;
+      }
+
+      let coinsEarned = 0;
+      
+      if (prizePool > 0 && isWinner) {
+        // Repartir el prize pool entre los ganadores (todo para el de 1v1, mitad para cada uno en 2v2)
+        coinsEarned = mode === '2v2' ? Math.floor(prizePool / 2) : prizePool;
+        
+        await supabase.rpc('update_wallet', { 
+          user_id: playerInfo.userId, 
+          amount: coinsEarned, 
+          reason: `Match Prize: ${roomId}` 
+        });
+      }
+
+      // Otorgar XP
+      const xpToGive = isWinner ? XP_WIN : XP_LOSS;
+      await supabase.rpc('add_player_xp', { p_player_id: playerInfo.userId, p_xp: xpToGive });
+
+      // Avance de misiones
+      await supabase.rpc('increment_quest_progress', { 
+        p_player_id: playerInfo.userId, 
+        p_quest_type: 'play_match' 
+      });
+      if (isWinner) {
+        await supabase.rpc('increment_quest_progress', { 
+          p_player_id: playerInfo.userId, 
+          p_quest_type: 'win_match' 
+        });
+      }
+
+      playersMetadata.push({
+        id: playerInfo.userId,
+        name: playerInfo.name,
+        score: playerState?.score || 0,
+        elo_change: isWinner ? ELO_WIN : ELO_LOSS,
+        coins_earned: coinsEarned
+      });
     }
 
-    const metadata = [
-      { id: p1.id, name: room.players[0].name, score: p1.score, elo_change: winnerId === p1.id ? 25 : (winnerId ? -25 : 0), coins_earned: coinsEarnedP1 },
-      { id: p2.id, name: room.players[1].name, score: p2.score, elo_change: winnerId === p2.id ? 25 : (winnerId ? -25 : 0), coins_earned: coinsEarnedP2 }
-    ];
-
+    // Guardar historial
     await supabase.from('match_history').insert({
-      game_mode: room.isTournament ? 'tournament' : (room.maxPlayers === 2 ? '1v1' : '2v2'),
+      game_mode: isTournament ? 'tournament' : mode,
       winner_id: winnerId,
-      metadata: metadata
+      metadata: playersMetadata
     });
-    console.log(`Historial de partida guardado en DB para la sala ${roomId}`);
+    console.log(`Historial guardado en DB para la sala ${roomId}`);
 
-    await supabase.from('matches').insert({
-      player1_id: room.players[0].userId, player2_id: room.players[1].userId,
-      winner_id: winnerId, status: 'completed'
-    });
-    console.log('Resultado de partida guardado en DB');
+    // Si es torneo, avanzar llave
+    if (isTournament && winnerId) {
+      const { data: matchData, error: matchError } = await supabase
+        .from('tournament_matches')
+        .select('id, event_id, next_match_id')
+        .eq('game_room_id', roomId)
+        .single();
 
-    if (room.isTournament && winnerId) {
-      const { data: tMatch, error: tError } = await supabase
-        .from('tournament_matches').update({ status: 'completed', winner_id: winnerId })
-        .eq('game_room_id', roomId).select().single();
-      if (tError) console.error('Error actualizando torneo:', tError);
-      if (tMatch) {
-        const nextRound = tMatch.round_number + 1;
-        const nextOrder = Math.ceil(tMatch.match_order / 2);
-        const { data: nextMatch } = await supabase.from('tournament_matches')
-          .select('id, player1_id, player2_id').eq('event_id', tMatch.event_id)
-          .eq('round_number', nextRound).eq('match_order', nextOrder).single();
-        if (nextMatch) {
-          const updateData: any = {};
-          if (tMatch.match_order % 2 !== 0) updateData.player1_id = winnerId;
-          else updateData.player2_id = winnerId;
-          await supabase.from('tournament_matches').update(updateData).eq('id', nextMatch.id);
-          console.log(`Ganador ${winnerId} avanzado a la ronda ${nextRound}`);
+      if (!matchError && matchData) {
+        await supabase.from('tournament_matches')
+          .update({ winner_id: winnerId, status: 'completed' })
+          .eq('id', matchData.id);
+
+        if (matchData.next_match_id) {
+          const { data: nextMatch } = await supabase
+            .from('tournament_matches')
+            .select('player1_id, player2_id')
+            .eq('id', matchData.next_match_id)
+            .single();
+
+          if (nextMatch) {
+            const updatePayload = !nextMatch.player1_id 
+              ? { player1_id: winnerId } 
+              : { player2_id: winnerId };
+            await supabase.from('tournament_matches')
+              .update(updatePayload)
+              .eq('id', matchData.next_match_id);
+          }
         } else {
-          console.log(`¡Ganador del Torneo! ${winnerId} ha ganado el evento ${tMatch.event_id}`);
-          const { data: eventData } = await supabase.from('events').select('prize_pool').eq('id', tMatch.event_id).single();
+          // Final del torneo, dar premio
+          const { data: eventData } = await supabase
+            .from('events')
+            .select('prize_pool')
+            .eq('id', matchData.event_id)
+            .single();
+          
           let finalPrize = 0;
-          if (eventData && eventData.prize_pool) {
-            const m = eventData.prize_pool.replace(/,/g, '').match(/(\d+)/);
-            if (m) finalPrize = parseInt(m[0], 10);
+          if (eventData?.prize_pool) {
+            const matchAmount = eventData.prize_pool.match(/\d+/);
+            if (matchAmount) finalPrize = parseInt(matchAmount[0], 10);
           }
           if (finalPrize > 0) {
-            const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
-              event_id_param: tMatch.event_id, winner_id_param: winnerId, prize_amount: finalPrize
+            await supabase.rpc('award_tournament_prize', {
+              event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
             });
-            if (rewardError) console.error('Error entregando premio:', rewardError);
-            else console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
+            console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
           }
         }
       }
     }
 
-    if (winnerId) {
-      const loserId = winnerId === p1.id ? p2.id : p1.id;
-
-      // ─── XP Awards ───
-      // Winner: +50 XP  |  Loser: +15 XP (siempre se aprende algo)
-      const XP_WIN  = 50;
-      const XP_LOSS = 15;
-      const [xpWinner, xpLoser] = await Promise.all([
-        supabase.rpc('add_player_xp', { p_player_id: winnerId, p_xp: XP_WIN }),
-        supabase.rpc('add_player_xp', { p_player_id: loserId,  p_xp: XP_LOSS }),
-      ]);
-      if (xpWinner.error) console.error('Error otorgando XP al ganador:', xpWinner.error);
-      if (xpLoser.error)  console.error('Error otorgando XP al perdedor:', xpLoser.error);
-      console.log(`XP otorgado — Ganador (${winnerId}): +${XP_WIN} | Perdedor (${loserId}): +${XP_LOSS}`);
-      // ─────────────────
-
-      const updateProfile = async (id: string, isWinner: boolean) => {
-        const { data: profile } = await supabase.from('profiles').select('elo, wins, losses').eq('id', id).single();
-        if (profile) {
-          const eloChange = 25;
-          await supabase.from('profiles').update({
-            elo: profile.elo + (isWinner ? eloChange : -eloChange),
-            wins: profile.wins + (isWinner ? 1 : 0),
-            losses: profile.losses + (isWinner ? 0 : 1)
-          }).eq('id', id);
-        }
-        try {
-          const today = new Date().toISOString().split('T')[0];
-          const { data: quests } = await supabase.from('player_daily_quests')
-            .select(`id, progress, is_completed, catalog:quest_catalog (target_amount, quest_type)`)
-            .eq('player_id', id).eq('assigned_date', today).eq('is_completed', false);
-          if (quests && quests.length > 0) {
-            for (const quest of quests) {
-              const catalog = Array.isArray(quest.catalog) ? quest.catalog[0] : quest.catalog;
-              if (!catalog) continue;
-              const { target_amount, quest_type } = catalog;
-              let increment = false;
-              if (quest_type === 'play_match') increment = true;
-              else if (quest_type === 'win_match' && isWinner) increment = true;
-              if (increment) {
-                const newProgress = quest.progress + 1;
-                const isCompleted = newProgress >= target_amount;
-                await supabase.from('player_daily_quests').update({ progress: newProgress, is_completed: isCompleted }).eq('id', quest.id);
-              }
-            }
-          }
-        } catch (questErr) {
-          console.error('Error actualizando misiones diarias:', questErr);
-        }
-      };
-      await updateProfile(winnerId, true);
-      await updateProfile(loserId, false);
-      console.log('Estadísticas, ELO y Misiones actualizados');
-    }
-  } catch (err) {
-    console.error('Error guardando partida:', err);
+  } catch (error) {
+    console.error('Error general guardando resultado de partida:', error);
   }
 }
 
