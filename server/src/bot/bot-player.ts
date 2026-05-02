@@ -17,7 +17,7 @@ import type { GameState } from '../domain/game-state';
 import type { Action, LlevarAction } from '../application/action-validator';
 import type { DefaultGameEngine } from '../application/game-engine';
 
-export type BotDifficulty = 'easy' | 'medium' | 'hard';
+export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'ultra';
 
 /** Unique identifier for the bot player (never collides with real Supabase UUIDs) */
 export const BOT_USER_ID = 'bot-easy';
@@ -27,6 +27,7 @@ export const BOT_NAMES: Record<BotDifficulty, string> = {
   easy:   'Bot Fácil 🤖',
   medium: 'Bot Medio 🧠',
   hard:   'Bot Difícil 👑',
+  ultra:  'Bot Ultra ⚜️',
 };
 
 /** Legacy export for backward compatibility */
@@ -59,6 +60,9 @@ export function getBotAction(
 
       case 'hard':
         return getHardAction(engine, state, playerId);
+
+      case 'ultra':
+        return getUltraAction(engine, state, playerId);
 
       default:
         return engine.getTimeoutAction(state, playerId);
@@ -413,5 +417,211 @@ function scoreHardAction(action: Action, state: GameState, playerId: string, opp
 
     default:
       return -200;
+  }
+}
+
+// ─────────────────────────────────────────────
+// ULTRA difficulty
+// ─────────────────────────────────────────────
+
+function getUltraAction(engine: DefaultGameEngine, state: GameState, playerId: string): Action {
+  const validActions = engine.getValidActions(state, playerId);
+  if (validActions.length === 0) return engine.getTimeoutAction(state, playerId);
+
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return engine.getTimeoutAction(state, playerId);
+
+  const opponent = state.players.find(p => p.id !== playerId);
+
+  let bestAction: Action = validActions[0];
+  let bestScore = -Infinity;
+
+  for (const action of validActions) {
+    const score = scoreUltraAction(action, state, playerId, opponent?.id);
+    if (score > bestScore) {
+      bestScore = score;
+      bestAction = action;
+    }
+  }
+
+  return bestAction;
+}
+
+function scoreUltraAction(action: Action, state: GameState, playerId: string, opponentId?: string): number {
+  const player = state.players.find(p => p.id === playerId)!;
+  const opponent = opponentId ? state.players.find(p => p.id === opponentId) : undefined;
+
+  switch (action.type) {
+    case 'llevar': {
+      const la = action as LlevarAction;
+      let score = 300; // Base score for taking
+
+      // Base card count logic (same as hard)
+      const boardCardCount = la.boardCardIds.length;
+      const formationCardCount = la.formationIds.reduce((sum, fid) => {
+        const f = state.board.formations.find(fo => fo.id === fid);
+        return sum + (f ? f.cards.length : 0);
+      }, 0);
+      const totalCards = boardCardCount + formationCardCount + 1;
+      score += totalCards * 10;
+
+      // ULTRA FEATURE: "llevar formaciones de cartas sueltas"
+      // If we are taking BOTH formations AND loose cards at the same time, this is highly efficient
+      if (la.formationIds.length > 0 && la.boardCardIds.length > 0) {
+        score += 50; // Massive bonus for combining formation takes with loose cards
+      }
+
+      // High-value scoring cards
+      const allCardsToCollect = la.boardCardIds.map(id => {
+        let card = state.board.cards.find(c => c.id === id);
+        if (!card) {
+          const canted = state.board.cantedCards.find(cc => cc.card.id === id);
+          if (canted) card = canted.card;
+        }
+        return card;
+      }).filter(Boolean);
+
+      for (const fid of la.formationIds) {
+        const f = state.board.formations.find(fo => fo.id === fid);
+        if (f) allCardsToCollect.push(...f.cards);
+      }
+
+      let spadesCollected = 0;
+      for (const card of allCardsToCollect) {
+        if (!card) continue;
+        if (card.rank === 'A') score += 20;
+        if (card.suit === 'diamonds' && card.rank === '10') score += 35;
+        if (card.suit === 'spades' && card.rank === '2') score += 18;
+        if (card.suit === 'spades') { spadesCollected++; score += 5; }
+      }
+
+      const currentSpades = player.collectedCards.filter(c => c.suit === 'spades').length;
+      const opponentSpades = opponent?.collectedCards.filter(c => c.suit === 'spades').length || 0;
+      if (currentSpades + spadesCollected > opponentSpades) score += 15;
+
+      const currentCardCount = player.collectedCards.length;
+      const opponentCardCount = opponent?.collectedCards.length || 0;
+      if (currentCardCount + totalCards > opponentCardCount) score += 20;
+
+      // Formations logic
+      const ownFormations = la.formationIds.filter(fid =>
+        state.board.formations.find(f => f.id === fid && f.createdBy === playerId)
+      );
+      score += ownFormations.length * 35; // Better prioritized
+
+      if (opponentId) {
+        const opponentFormations = la.formationIds.filter(fid =>
+          state.board.formations.find(f => f.id === fid && f.createdBy === opponentId)
+        );
+        score += opponentFormations.length * 30; // Better prioritized
+      }
+
+      // Virado detection
+      const remainingBoardCards = state.board.cards.length - boardCardCount;
+      const remainingFormations = state.board.formations.length - la.formationIds.length;
+      const cantedTaken = la.boardCardIds.filter(id =>
+        state.board.cantedCards.some(cc => cc.card.id === id)
+      ).length;
+      const remainingCanted = state.board.cantedCards.length - cantedTaken;
+      if (remainingBoardCards <= 0 && remainingFormations <= 0 && remainingCanted <= 0) {
+        score += 80; // Virado is extremely valuable for Ultra
+        if (opponent && opponent.virados > 0) score += 30;
+      }
+
+      if (player.score >= 17) {
+        score += totalCards * 8;
+      }
+      if (player.score >= 20) {
+        score += spadesCollected * 15;
+      }
+
+      return score;
+    }
+
+    case 'formar': {
+      let score = 150; // Ultra values forming higher than Hard (was 100)
+      const handCard = player.hand.find(c => c.id === action.cardId);
+      if (handCard) {
+        score += handCard.value * 4;
+        if (handCard.value >= 10) score += 25;
+      }
+
+      const boardCards = action.boardCardIds?.map(id => state.board.cards.find(c => c.id === id)).filter(Boolean) || [];
+      
+      // ULTRA FEATURE: "formar con cartas sueltas"
+      // If forming with multiple loose cards (e.g. 2 + 3 = 5), highly prioritized
+      if (boardCards.length > 1) {
+        score += boardCards.length * 20; // 2 cards = +40, 3 cards = +60
+      } else {
+        score += boardCards.length * 10;
+      }
+
+      const hasHighValueCards = boardCards.some(c => c && (c.rank === 'A' || (c.suit === 'diamonds' && c.rank === '10')));
+      if (hasHighValueCards) score += 35; // Protect them even more
+
+      if (opponentId && opponent) {
+        const opponentHand = opponent.hand || [];
+        const wouldBeVulnerable = boardCards.some(bc => bc && opponentHand.some(oh => oh.value === bc.value));
+        if (wouldBeVulnerable) score += 30;
+      }
+
+      return score;
+    }
+
+    case 'formarPar': {
+      let score = 100;
+      if (action.formationId) {
+        const f = state.board.formations.find(fo => fo.id === action.formationId);
+        if (f) {
+          score += f.cards.length * 8;
+          if (f.createdBy === opponentId) score += 35;
+        }
+      }
+      return score;
+    }
+
+    case 'aumentarFormacion': {
+      let score = 90;
+      const f = state.board.formations.find(fo => fo.id === action.formationId);
+      if (f) {
+        if (f.createdBy === opponentId) score += 30;
+        const handCard = player.hand.find(c => c.id === action.cardId);
+        if (handCard) score += (f.value + handCard.value) * 3;
+      }
+      return score;
+    }
+
+    case 'cantar': {
+      let score = 70;
+      const aceCount = player.hand.filter(c => c.rank === 'A').length;
+      if (aceCount >= 3) score += 20;
+      const boardAces = state.board.cards.filter(c => c.rank === 'A').length;
+      if (boardAces > 0) score += 15;
+      return score;
+    }
+
+    case 'colocar':
+    case 'botar': {
+      let score = -20;
+      const card = player.hand.find(c => c.id === action.cardId);
+      if (card) {
+        if (card.rank === 'A') score -= 50;
+        if (card.suit === 'diamonds' && card.rank === '10') score -= 60;
+        if (card.suit === 'spades' && card.rank === '2') score -= 30;
+        if (card.suit === 'spades') score -= 10;
+
+        score -= card.value * 3;
+
+        if (opponentId) {
+          const opponentFormations = state.board.formations.filter(f => f.createdBy === opponentId);
+          const matchesOpponent = opponentFormations.some(f => f.value === card.value);
+          if (matchesOpponent) score -= 25;
+        }
+      }
+      return score;
+    }
+
+    default:
+      return -300;
   }
 }

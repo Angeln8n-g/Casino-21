@@ -11,7 +11,7 @@ interface StoreItem {
   id: string;
   name: string;
   description: string;
-  item_type: 'avatar' | 'card_back' | 'title' | 'board' | 'theme';
+  item_type: 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic';
   price: number;
   image_url: string | null;
   theme_key?: string | null;
@@ -52,7 +52,7 @@ export function Store() {
   const [items, setItems] = useState<StoreItem[]>([]);
   const [inventory, setInventory] = useState<string[]>([]); // item_ids
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'card_back' | 'title' | 'board' | 'theme'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic'>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<StoreItem | null>(null);
 
@@ -134,10 +134,13 @@ export function Store() {
     }
   };
 
-  const handleEquip = async (item: StoreItem) => {
+  const handleEquip = async (item: StoreItem, slot?: number) => {
     setProcessingId(item.id);
     try {
-      const { error } = await supabase.rpc('equip_store_item', { p_item_id: item.id });
+      const { error } = await supabase.rpc('equip_store_item', { 
+        p_item_id: item.id,
+        p_slot: slot || 1
+      });
       if (error) throw error;
       
       playSfx('cardPlay', { volumeMultiplier: 0.8, playbackRate: 1.08 });
@@ -163,6 +166,7 @@ export function Store() {
       case 'title':     return profile?.equipped_title === item.name;
       case 'board':     return profile?.equipped_board === item.image_url;
       case 'theme':     return profile?.equipped_theme === item.theme_key;
+      case 'emotic':    return profile?.equipped_emotics?.includes(item.image_url);
       default: return false;
     }
   };
@@ -176,6 +180,7 @@ export function Store() {
       case 'title':     return '🏷️ Título';
       case 'board':     return '🎲 Tapete';
       case 'theme':     return '🎨 Tema';
+      case 'emotic':    return '😊 Emoticón';
       default: return 'Otro';
     }
   };
@@ -248,7 +253,7 @@ export function Store() {
         
         {/* Category Tabs */}
         <div className="mt-6 flex gap-2 md:gap-3 overflow-x-auto max-w-full snap-x snap-mandatory custom-scrollbar pb-2">
-          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme'] as const).map(cat => (
+          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme', 'emotic'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => {
@@ -482,25 +487,48 @@ export function Store() {
 
                 <div className="mt-auto pt-4 flex flex-col gap-4">
                   {inventory.includes(previewItem.id) ? (
-                    <button 
-                      onClick={() => {
-                        if (!isItemEquipped(previewItem)) {
-                          handleEquip(previewItem);
-                        }
-                      }}
-                      disabled={processingId === previewItem.id || isItemEquipped(previewItem)}
-                      className={`w-full min-h-[64px] py-4 font-black text-base uppercase tracking-widest rounded-2xl transition-all border-2 shadow-xl flex items-center justify-center ${
-                        isItemEquipped(previewItem)
-                          ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default' 
-                          : 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]'
-                      }`}
-                    >
-                      {processingId === previewItem.id 
-                        ? 'PROCESANDO...' 
-                        : isItemEquipped(previewItem)
-                          ? '★ EQUIPADO' 
-                          : 'EQUIPAR AHORA'}
-                    </button>
+                    previewItem.item_type === 'emotic' ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[1, 2, 3, 4].map(slot => {
+                          const isEquippedInSlot = profile?.equipped_emotics?.[slot - 1] === previewItem.image_url;
+                          return (
+                            <button
+                              key={slot}
+                              onClick={() => handleEquip(previewItem, slot)}
+                              disabled={processingId === previewItem.id || isEquippedInSlot}
+                              className={`py-3 rounded-xl font-black text-xs uppercase tracking-widest border-2 transition-all ${
+                                isEquippedInSlot
+                                  ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default'
+                                  : 'bg-black/40 border-white/10 text-white hover:bg-purple-600/40 hover:border-purple-500'
+                              }`}
+                            >
+                              Slot {slot}
+                              {isEquippedInSlot && <span className="block text-[8px] mt-0.5 opacity-80">Equipado</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          if (!isItemEquipped(previewItem)) {
+                            handleEquip(previewItem);
+                          }
+                        }}
+                        disabled={processingId === previewItem.id || isItemEquipped(previewItem)}
+                        className={`w-full min-h-[64px] py-4 font-black text-base uppercase tracking-widest rounded-2xl transition-all border-2 shadow-xl flex items-center justify-center ${
+                          isItemEquipped(previewItem)
+                            ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default' 
+                            : 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]'
+                        }`}
+                      >
+                        {processingId === previewItem.id 
+                          ? 'PROCESANDO...' 
+                          : isItemEquipped(previewItem)
+                            ? '★ EQUIPADO' 
+                            : 'EQUIPAR AHORA'}
+                      </button>
+                    )
                   ) : (
                     <button 
                       onClick={() => {

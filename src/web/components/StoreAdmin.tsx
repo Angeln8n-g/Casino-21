@@ -5,9 +5,10 @@ interface StoreItem {
   id: string;
   name: string;
   description: string;
-  item_type: 'avatar' | 'card_back' | 'title' | 'board';
+  item_type: 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic';
   price: number;
   image_url: string | null;
+  theme_key?: string | null;
   is_active: boolean;
 }
 
@@ -164,12 +165,14 @@ export function StoreAdmin() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Categoría</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentItem.item_type} onChange={e => setCurrentItem({...currentItem, item_type: e.target.value as any})}>
-                  <option value="avatar">Avatar</option>
-                  <option value="card_back">Reverso de Carta</option>
-                  <option value="title">Título</option>
-                  <option value="board">Tapete de Mesa</option>
-                </select>
+              <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentItem.item_type} onChange={e => setCurrentItem({...currentItem, item_type: e.target.value as any})}>
+                <option value="avatar">Avatar</option>
+                <option value="card_back">Reverso de Carta</option>
+                <option value="title">Título</option>
+                <option value="board">Tapete de Mesa</option>
+                <option value="theme">Tema Premium</option>
+                <option value="emotic">Emoticón</option>
+              </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>

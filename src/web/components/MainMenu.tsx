@@ -336,7 +336,7 @@ export function MainMenu() {
     } catch (e) {}
   };
 
-  const handlePlayVsBot = async (difficulty: 'easy' | 'medium' | 'hard' = 'easy') => {
+  const handlePlayVsBot = async (difficulty: 'easy' | 'medium' | 'hard' | 'ultra' = 'easy') => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
     try {
       const socket = await socketService.connect();
@@ -821,16 +821,18 @@ export function MainMenu() {
               </div>
 
               {/* VS BOT Cards — Difficulty Selection */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   { key: 'easy' as const, label: 'Fácil', emoji: '🤖', color: 'emerald', desc: 'Para aprender' },
                   { key: 'medium' as const, label: 'Medio', emoji: '🧠', color: 'amber', desc: 'Desafiante' },
                   { key: 'hard' as const, label: 'Difícil', emoji: '👑', color: 'rose', desc: 'Sin piedad' },
+                  { key: 'ultra' as const, label: 'Ultra', emoji: '⚜️', color: 'violet', desc: 'Imposible' },
                 ].map(({ key, label, emoji, color, desc }) => {
                   const colorMap: Record<string, { border: string, borderHover: string, bg: string, text: string, badge: string, shadow: string }> = {
                     emerald: { border: 'border-emerald-500/30', borderHover: 'hover:border-emerald-500', bg: 'from-emerald-900/30', text: 'group-hover:text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-400', shadow: 'hover:shadow-[0_10px_30px_rgba(16,185,129,0.2)]' },
                     amber:   { border: 'border-amber-500/30',   borderHover: 'hover:border-amber-500',   bg: 'from-amber-900/30',   text: 'group-hover:text-amber-400',   badge: 'bg-amber-500/20 text-amber-400',   shadow: 'hover:shadow-[0_10px_30px_rgba(245,158,11,0.2)]' },
                     rose:    { border: 'border-rose-500/30',    borderHover: 'hover:border-rose-500',    bg: 'from-rose-900/30',    text: 'group-hover:text-rose-400',    badge: 'bg-rose-500/20 text-rose-400',    shadow: 'hover:shadow-[0_10px_30px_rgba(244,63,94,0.2)]' },
+                    violet:  { border: 'border-violet-500/30',  borderHover: 'hover:border-violet-500',  bg: 'from-violet-900/30',  text: 'group-hover:text-violet-400',  badge: 'bg-violet-500/20 text-violet-400',  shadow: 'hover:shadow-[0_10px_30px_rgba(139,92,246,0.2)]' },
                   };
                   const c = colorMap[color];
                   return (

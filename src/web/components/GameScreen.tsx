@@ -70,6 +70,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const roomId = localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || '';
   const chatIndexRef = useRef(0);
   const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  
+  // Custom Emotes from player profile
+  const playerEmotes = profile?.equipped_emotics || quickEmojis;
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
@@ -342,7 +345,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
     for (const msg of newMessages) {
       const text = (msg.text || '').trim();
-      if (!quickEmojis.includes(text)) continue;
+      const isUrl = text.startsWith('http') || text.includes('/storage/v1/object/public/');
+      if (!quickEmojis.includes(text) && !isUrl) continue;
       if (!gameState?.players?.some((p) => p.id === msg.senderId)) continue;
 
       setActiveReactions((prev) => ({
@@ -586,8 +590,18 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
       <div className={`flex items-center gap-3 px-3 py-2 rounded-2xl border ${isTurn ? 'bg-white/10 border-white/20 shadow-[0_0_18px_rgba(34,211,238,0.15)]' : 'bg-black/35 border-white/10'}`}>
         <div className="relative shrink-0">
           {reaction && (
-            <div key={reaction.nonce} className="absolute -top-4 left-1/2 -translate-x-1/2 text-2xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-bounce">
-              {reaction.emoji}
+            <div key={reaction.nonce} className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 md:w-16 md:h-16 z-[100] animate-bounce pointer-events-none">
+              {reaction.emoji.startsWith('http') || reaction.emoji.includes('/storage/v1/object/public/') ? (
+                <img 
+                  src={reaction.emoji} 
+                  alt="emote" 
+                  className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]" 
+                />
+              ) : (
+                <span className="text-3xl md:text-4xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+                  {reaction.emoji}
+                </span>
+              )}
             </div>
           )}
           <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-[3px]" style={ringStyle}>
@@ -634,7 +648,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               backgroundImage: `url(${boardThemeUrl})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
-              opacity: 0.15,
+              opacity: 0.05,
             }}
           />
         )}
@@ -664,18 +678,20 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             paddingTop: isMobile ? 'env(safe-area-inset-top, 0.5rem)' : undefined,
           }}
         >
-          {/* Top Header */}
-        <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
+          {/* Global Notifications Layer */}
           {viradoBanner && (
-            <div className="absolute left-1/2 top-[105%] -translate-x-1/2 z-30 pointer-events-none">
-              <div className="animate-virado-banner rounded-full border border-yellow-400/40 bg-black/75 px-8 py-3 shadow-[0_0_35px_rgba(251,191,36,0.35)] backdrop-blur-md">
-                <p className="text-[11px] uppercase tracking-[0.4em] font-black text-yellow-300 text-center">Virado</p>
-                <p className="text-xl md:text-2xl font-black text-white text-center">
-                  {viradoBanner.playerName ? `${viradoBanner.playerName} limpio la mesa` : 'Mesa vacia'}
+            <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
+              <div className="animate-virado-banner rounded-full border border-yellow-400/60 bg-black/85 px-10 py-4 shadow-[0_0_50px_rgba(251,191,36,0.5)] backdrop-blur-xl">
+                <p className="text-xs md:text-sm uppercase tracking-[0.4em] font-black text-yellow-300 text-center drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">Virado</p>
+                <p className="text-2xl md:text-3xl font-black text-white text-center mt-1">
+                  {viradoBanner.playerName ? `${viradoBanner.playerName} limpió la mesa` : 'Mesa vacía'}
                 </p>
               </div>
             </div>
           )}
+
+          {/* Top Header */}
+        <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
           
           {/* Disconnection Warning */}
           {disconnectionMessage && (
@@ -860,16 +876,23 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           {!isSpectator && (
             <div className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
               <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                {quickEmojis.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleQuickEmoji(emoji)}
-                    className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition-colors text-lg shrink-0"
-                    title={`Enviar ${emoji}`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
+                {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
+                  const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
+                  return (
+                    <button
+                      key={emoji}
+                      onClick={() => handleQuickEmoji(emoji)}
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-lg shrink-0 flex items-center justify-center overflow-hidden"
+                      title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
+                    >
+                      {isUrl ? (
+                        <img src={emoji} alt="emote" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                      ) : (
+                        <span>{emoji}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-300">
                 <span className="text-gray-500">🙂</span>
