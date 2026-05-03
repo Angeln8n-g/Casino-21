@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
@@ -17,7 +17,6 @@ interface StoreItem {
   theme_key?: string | null;
 }
 
-// Mini preview card used inside the store for theme items
 const PREVIEW_CARD = createCard('hearts', 'A');
 
 function ThemeCardPreview({ themeKey }: { themeKey: string }) {
@@ -26,19 +25,17 @@ function ThemeCardPreview({ themeKey }: { themeKey: string }) {
     <div
       className="relative flex items-center justify-center w-full h-full overflow-hidden rounded-xl"
       style={{ background: theme.boardTheme.background }}
+      role="img"
+      aria-label={`Vista previa del tema ${themeKey}`}
     >
-      {/* Board mini-preview background */}
       <div className="absolute inset-0 opacity-60" style={{ backgroundImage: theme.boardTheme.background }} />
-      {/* Overlay gradient */}
       {theme.boardTheme.overlayGradient && (
         <div className="absolute inset-0" style={{ backgroundImage: theme.boardTheme.overlayGradient }} />
       )}
-      {/* Inner ring */}
       <div
         className="absolute inset-2 rounded-lg pointer-events-none"
         style={{ border: `1px solid ${theme.boardTheme.innerRingColor}` }}
       />
-      {/* Sample card */}
       <div className="relative z-10 transform scale-90 drop-shadow-2xl">
         <CardView card={PREVIEW_CARD} theme={theme.cardTheme} />
       </div>
@@ -46,20 +43,45 @@ function ThemeCardPreview({ themeKey }: { themeKey: string }) {
   );
 }
 
+// Skeleton Loader
+const SkeletonStoreItem = () => (
+  <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-white/5 bg-[#18181B]/50 animate-pulse flex flex-col h-full min-h-[300px]">
+    <div className="flex justify-between items-start mb-4">
+      <div className="h-5 w-16 bg-white/10 rounded-lg"></div>
+      <div className="h-6 w-20 bg-white/10 rounded-lg"></div>
+    </div>
+    <div className="h-28 w-full bg-white/5 rounded-2xl mb-4"></div>
+    <div className="h-6 w-3/4 bg-white/10 rounded-md mb-2"></div>
+    <div className="h-4 w-full bg-white/5 rounded-md mb-1"></div>
+    <div className="h-4 w-2/3 bg-white/5 rounded-md mb-4"></div>
+    <div className="mt-auto h-12 w-full bg-white/10 rounded-xl"></div>
+  </div>
+);
+
 export function Store() {
   const { profile, user } = useAuth();
   const { playSfx } = useAudio();
   const [items, setItems] = useState<StoreItem[]>([]);
-  const [inventory, setInventory] = useState<string[]>([]); // item_ids
+  const [inventory, setInventory] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Navigation & Cart State
+  const [viewMode, setViewMode] = useState<'store' | 'gallery'>('store');
   const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic'>('all');
+  const [cart, setCart] = useState<StoreItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'name'>('price_asc');
+  
+  // Purchase & Equip Flow
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [previewItem, setPreviewItem] = useState<StoreItem | null>(null);
+  const [successItems, setSuccessItems] = useState<string[]>([]);
 
   // Wallet animation state
   const [prevCoins, setPrevCoins] = useState(profile?.coins || 0);
   const [coinAnim, setCoinAnim] = useState(false);
-  const [successItem, setSuccessItem] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStoreData();
@@ -78,17 +100,14 @@ export function Store() {
     if (!user) return;
     setLoading(true);
     try {
-      // Fetch store catalog
       const { data: storeData, error: storeError } = await supabase
         .from('store_items')
         .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
+        .eq('is_active', true);
         
       if (storeError) throw storeError;
       setItems(storeData || []);
 
-      // Fetch player inventory
       const { data: invData, error: invError } = await supabase
         .from('player_inventory')
         .select('item_id')
@@ -104,31 +123,72 @@ export function Store() {
     }
   };
 
-  const handleBuy = async (item: StoreItem) => {
-    if (!profile) return;
-    if ((profile.coins || 0) < item.price) {
+  // Cart Functions
+  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+  const isInCart = (id: string) => cart.some(item => item.id === id);
+
+  const toggleCartItem = (item: StoreItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    
+    if (isInCart(item.id)) {
+      setCart(prev => prev.filter(i => i.id !== item.id));
+      triggerHaptic('light');
+    } else {
+      // Check if we can afford it before adding
+      if ((profile?.coins || 0) < cartTotal + item.price) {
+        playSfx('error');
+        triggerHaptic('error');
+        return;
+      }
+      setCart(prev => [...prev, item]);
+      triggerHaptic('success');
+      playSfx('chipsClink', { volumeMultiplier: 0.5 });
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!profile || cart.length === 0) return;
+    if ((profile.coins || 0) < cartTotal) {
       playSfx('error');
       triggerHaptic('error');
-      alert('Monedas insuficientes.');
       return;
     }
-    setProcessingId(item.id);
+
+    setProcessingId('checkout');
+    const newInventory = [...inventory];
+    const successfulPurchases: string[] = [];
+
     try {
-      const { error } = await supabase.rpc('buy_store_item', { p_item_id: item.id });
-      if (error) throw error;
+      // Process purchases sequentially to ensure DB consistency
+      for (const item of cart) {
+        const { error } = await supabase.rpc('buy_store_item', { p_item_id: item.id });
+        if (error) throw error;
+        newInventory.push(item.id);
+        successfulPurchases.push(item.id);
+      }
       
-      setInventory(prev => [...prev, item.id]);
-      playSfx('chipsClink', { volumeMultiplier: 1.15 });
+      setInventory(newInventory);
+      setCart([]);
+      setIsCartOpen(false);
+      setSuccessItems(successfulPurchases);
+      
+      playSfx('victory', { volumeMultiplier: 0.8 });
       triggerHaptic('success');
       window.dispatchEvent(new CustomEvent('coins_updated'));
       
-      setSuccessItem(item.id);
-      setTimeout(() => setSuccessItem(null), 1500);
+      setTimeout(() => setSuccessItems([]), 3000);
+      
+      // Switch to gallery view after successful multi-purchase
+      setViewMode('gallery');
     } catch (err: any) {
-      console.error('Error buying item:', err);
+      console.error('Error during checkout:', err);
       playSfx('error');
       triggerHaptic('error');
-      alert(err.message || 'Error al procesar la compra.');
+      alert(err.message || 'Ocurrió un error al procesar el carrito.');
+      
+      // Keep successful items in inventory, remove from cart
+      setInventory(newInventory);
+      setCart(prev => prev.filter(item => !successfulPurchases.includes(item.id)));
     } finally {
       setProcessingId(null);
     }
@@ -147,8 +207,8 @@ export function Store() {
       triggerHaptic('success');
       window.dispatchEvent(new Event('profile_updated'));
       
-      setSuccessItem(item.id);
-      setTimeout(() => setSuccessItem(null), 1500);
+      setSuccessItems([item.id]);
+      setTimeout(() => setSuccessItems([]), 1500);
     } catch (err: any) {
       console.error('Error equipping item:', err);
       playSfx('error');
@@ -171,8 +231,6 @@ export function Store() {
     }
   };
 
-  const filteredItems = items.filter(item => activeCategory === 'all' || item.item_type === activeCategory);
-
   const getCategoryLabel = (type: string) => {
     switch(type) {
       case 'avatar':    return '👤 Avatar';
@@ -185,27 +243,39 @@ export function Store() {
     }
   };
 
-  const getRarityStyle = (item: StoreItem) => {
-    if (item.item_type !== 'theme') return '';
-    const key = item.theme_key ?? '';
-    if (key === 'tactile_vegas') return 'from-purple-500/20 to-pink-500/10 border-purple-500/30';
-    if (key === 'neon_dealer')   return 'from-cyan-500/20 to-blue-500/10 border-cyan-500/30';
-    if (key === 'gold_rush')     return 'from-yellow-500/20 to-amber-500/10 border-yellow-500/30';
-    if (key === 'vault_noir')    return 'from-amber-900/20 to-yellow-900/10 border-amber-800/30';
-    return 'from-slate-500/20 to-slate-600/10 border-slate-500/30';
-  };
+  // Apply filters and sorting based on view mode
+  const displayItems = useMemo(() => {
+    // 1. Filter by ownership based on View Mode
+    let result = items.filter(item => {
+      const isOwned = inventory.includes(item.id);
+      return viewMode === 'gallery' ? isOwned : !isOwned;
+    });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-12 h-64">
-        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+    // 2. Filter by category
+    result = result.filter(item => activeCategory === 'all' || item.item_type === activeCategory);
+    
+    // 3. Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(item => item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q));
+    }
+
+    // 4. Sort
+    return result.sort((a, b) => {
+      if (sortBy === 'price_asc') return a.price - b.price;
+      if (sortBy === 'price_desc') return b.price - a.price;
+      return a.name.localeCompare(b.name);
+    });
+  }, [items, activeCategory, searchQuery, sortBy, viewMode, inventory]);
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-24 md:pb-8">
+    <div className="min-h-screen bg-[#09090B] pb-24 md:pb-8 font-modern relative overflow-x-hidden">
+      {/* UI/UX Pro Max recommended font import (Nunito Sans & Rubik) */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700&family=Rubik:wght@300;400;500;700&display=swap');
+        .font-modern { font-family: 'Nunito Sans', sans-serif; }
+        .font-display { font-family: 'Rubik', sans-serif; }
+        
         @keyframes float3d {
           0%, 100% { transform: translateY(0px) rotateX(10deg) rotateY(-5deg); }
           50% { transform: translateY(-15px) rotateX(15deg) rotateY(5deg); }
@@ -214,364 +284,363 @@ export function Store() {
           animation: float3d 6s ease-in-out infinite;
           transform-style: preserve-3d;
         }
-        @keyframes purchaseSuccess {
-          0% { box-shadow: inset 0 0 0 0 rgba(74, 222, 128, 0); }
-          50% { box-shadow: inset 0 0 20px 5px rgba(74, 222, 128, 0.5); }
-          100% { box-shadow: inset 0 0 0 0 rgba(74, 222, 128, 0); }
+        .masonry-grid {
+          column-count: 1;
+          column-gap: 1.25rem;
         }
-        .animate-purchase-success {
-          animation: purchaseSuccess 1s ease-out;
-        }
+        @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
+        @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
+        @media (min-width: 1280px) { .masonry-grid { column-count: 4; } }
+        .masonry-item { break-inside: avoid; margin-bottom: 1.25rem; }
       `}</style>
 
-      {/* Hero Banner / Header */}
-      <div className="relative z-30 -mx-4 px-4 md:mx-0 md:px-0 mb-6 md:mb-8 pt-2">
-        <div className="relative w-full rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-md p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-          {/* Background effects */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/40 via-black/20 to-blue-900/40 pointer-events-none" />
-          <div className="absolute -top-24 -left-24 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-500/20 rounded-full blur-[80px] pointer-events-none" />
-          
-          <div className="relative z-10 text-center md:text-left">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-cyan-300 uppercase tracking-widest drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-              Tienda VIP
-            </h2>
-            <p className="text-gray-300 text-sm md:text-base mt-2 font-medium max-w-md">
-              Adquiere artículos exclusivos, tapetes y reversos premium. Tu estilo, tus reglas.
-            </p>
-          </div>
+      {/* Floating Cart Button (Mobile & Desktop) */}
+      {/* Eliminado: El botón flotante inferior ha sido removido y movido al Header */}
 
-          <div className="relative z-10 bg-black/60 border border-white/10 rounded-2xl p-4 flex items-center gap-4 shadow-xl min-w-[200px] justify-center md:justify-end">
-            <div className="text-right">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black mb-1">Tu Billetera</p>
-              <div className={`text-2xl md:text-3xl font-black font-mono flex items-center gap-2 transition-transform duration-300 ${coinAnim ? 'scale-110 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]' : 'text-casino-gold drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'}`}>
-                <span className="text-3xl">🪙</span> {(profile?.coins || 0).toLocaleString()}
+      {/* Main Container */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6 flex flex-col">
+        
+        {/* Header & Wallet */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 shrink-0">
+          <div className="text-center md:text-left">
+            <h1 className="text-3xl md:text-5xl font-display font-bold text-white tracking-tight">
+              Mercado <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#7C3AED] to-[#A78BFA]">Exclusivo</span>
+            </h1>
+            <p className="text-[#A1A1AA] mt-2 font-medium">Equípate y personaliza tu presencia en la mesa.</p>
+          </div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Wallet */}
+            <div className="bg-[#18181B] border border-white/10 rounded-2xl p-4 flex items-center justify-center shadow-xl flex-grow md:flex-grow-0">
+              <div className="text-center md:text-right">
+                <p className="text-[10px] text-[#A1A1AA] uppercase tracking-widest font-bold mb-1">Tu Saldo</p>
+                <div className={`text-2xl font-display font-bold flex items-center justify-center md:justify-end gap-2 transition-transform duration-300 ${coinAnim ? 'scale-110 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]' : 'text-[#FACC15]'}`}>
+                  <span className="text-2xl" aria-hidden="true">🪙</span> {(profile?.coins || 0).toLocaleString()}
+                </div>
               </div>
             </div>
+
+            {/* Cart Button */}
+            {viewMode === 'store' && (
+              <button 
+                onClick={() => setIsCartOpen(true)}
+                disabled={cart.length === 0}
+                className={`bg-[#18181B] border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center shadow-xl min-w-[80px] transition-all duration-300 relative ${
+                  cart.length > 0 
+                    ? 'hover:bg-white/5 cursor-pointer border-[#7C3AED]/50 hover:border-[#7C3AED]' 
+                    : 'opacity-50 cursor-not-allowed'
+                }`}
+                aria-label="Abrir carrito"
+              >
+                <span className="text-2xl mb-1" aria-hidden="true">🛒</span>
+                <span className="text-[10px] text-white uppercase tracking-widest font-bold">Cart</span>
+                
+                {cart.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-[#F43F5E] text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-[#09090B] animate-bounce-subtle">
+                    {cart.length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Navigation Tabs (Store vs Gallery) */}
+        <div className="flex p-1 bg-[#18181B] rounded-2xl w-full max-w-md mx-auto md:mx-0 mb-8 border border-white/5">
+          <button
+            onClick={() => setViewMode('store')}
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${viewMode === 'store' ? 'bg-[#27272A] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'}`}
+          >
+            🛍️ Comprar
+          </button>
+          <button
+            onClick={() => setViewMode('gallery')}
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${viewMode === 'gallery' ? 'bg-[#27272A] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'}`}
+          >
+            🖼️ Mi Galería ({inventory.length})
+          </button>
+        </div>
         
-        {/* Category Tabs */}
-        <div className="mt-6 flex gap-2 md:gap-3 overflow-x-auto max-w-full snap-x snap-mandatory custom-scrollbar pb-2">
+        {/* Search & Filters Bar */}
+        <div className="mb-8 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-grow">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" aria-hidden="true">🔍</span>
+            <input 
+              type="text" 
+              placeholder={viewMode === 'store' ? "Buscar nuevos artículos..." : "Buscar en tu colección..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#18181B]/80 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-[#71717A] focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all"
+            />
+          </div>
+          <select 
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="bg-[#18181B]/80 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#7C3AED] transition-all cursor-pointer appearance-none min-w-[160px] font-medium"
+          >
+            <option value="price_asc">Menor precio</option>
+            <option value="price_desc">Mayor precio</option>
+            <option value="name">A - Z</option>
+          </select>
+        </div>
+
+        {/* Category Pills */}
+        <div className="mb-8 flex gap-2 overflow-x-auto max-w-full custom-scrollbar pb-2 mask-edges">
           {(['all', 'avatar', 'card_back', 'title', 'board', 'theme', 'emotic'] as const).map(cat => (
             <button
               key={cat}
-              onClick={() => {
-                triggerHaptic('light');
-                setActiveCategory(cat);
-              }}
-              className={`snap-center px-5 md:px-6 min-h-[48px] py-3 md:py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest whitespace-nowrap transition-all flex items-center justify-center min-w-[min-content] border ${
+              onClick={() => { triggerHaptic('light'); setActiveCategory(cat); }}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all border ${
                 activeCategory === cat 
-                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
-                  : 'bg-black/40 border-white/5 text-gray-400 hover:text-gray-200 hover:bg-white/10'
+                  ? 'bg-white text-[#09090B] border-white shadow-lg' 
+                  : 'bg-transparent border-white/20 text-[#A1A1AA] hover:border-white/50 hover:text-white'
               }`}
             >
-              {cat === 'all' ? '🌟 Todo' : getCategoryLabel(cat)}
+              {cat === 'all' ? 'Todos' : getCategoryLabel(cat)}
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 min-[375px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6 grid-flow-dense">
-        {filteredItems.map((item, index) => {
-          const isOwned = inventory.includes(item.id);
-          const canAfford = (profile?.coins || 0) >= item.price;
-          const isEquipped = isItemEquipped(item);
-          const isTheme = item.item_type === 'theme';
-          const isPremium = item.price >= 5000;
-          const isBoard = item.item_type === 'board';
-          const isCardBack = item.item_type === 'card_back';
-          const isSuccess = successItem === item.id;
-          
-          return (
-            <div 
-              key={item.id} 
-              onClick={() => {
-                triggerHaptic('light');
-                setPreviewItem(item);
-              }}
-              className={`glass-panel p-4 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl relative overflow-hidden group border transition-all duration-300 cursor-pointer bg-black/40 backdrop-blur-md shadow-lg animate-slide-up hover:-translate-y-1.5 flex flex-col h-full
-                ${isBoard ? 'col-span-1 min-[375px]:col-span-2 lg:col-span-2' : 'col-span-1'}
-                ${isCardBack ? 'row-span-2' : ''}
-                ${isSuccess ? 'animate-purchase-success border-green-400' : ''}
-                ${isTheme
-                  ? `bg-gradient-to-br ${getRarityStyle(item)} hover:border-purple-400/60 hover:shadow-[0_15px_40px_rgba(168,85,247,0.3)]`
-                  : isPremium 
-                    ? 'border-casino-gold/40 shadow-[0_0_15px_rgba(251,191,36,0.1)] hover:border-casino-gold hover:shadow-[0_15px_40px_rgba(251,191,36,0.25)]'
-                    : 'border-white/10 hover:border-purple-500/50 hover:shadow-[0_15px_40px_rgba(168,85,247,0.2)]'
-              }`}
-              style={{ animationDelay: `${(index % 10) * 50}ms` }}
-            >
-              {/* Glow effects */}
-              {isPremium && (
-                <>
-                  <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-20 pointer-events-none">
-                    <div className="absolute top-6 -right-6 bg-gradient-to-r from-yellow-500 to-yellow-300 text-black text-[9px] font-black uppercase tracking-widest py-1.5 px-8 rotate-45 shadow-[0_0_10px_rgba(251,191,36,0.5)]">
-                      Premium
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                </>
-              )}
-
-              <div className="absolute -right-10 -top-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-all duration-700 pointer-events-none"></div>
-              <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-all duration-700 pointer-events-none"></div>
-              
-              {/* Tags Area */}
-              <div className="flex flex-wrap sm:flex-nowrap justify-between items-start mb-4 relative z-10 gap-1.5 sm:gap-2 w-full">
-                <span className={`text-[9px] sm:text-[10px] text-gray-200 uppercase tracking-widest font-black bg-black/50 border px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg shrink-0 max-w-[50%] truncate ${isPremium ? 'border-casino-gold/30' : 'border-white/10'}`}>
-                  {getCategoryLabel(item.item_type)}
-                </span>
-                {isOwned ? (
-                  <span className={`text-[9px] sm:text-[10px] uppercase tracking-widest font-black px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border text-center shadow-sm shrink-0 whitespace-nowrap max-w-[50%] overflow-hidden text-ellipsis ${isEquipped ? 'text-casino-gold bg-casino-gold/10 border-casino-gold/40' : 'text-green-400 bg-green-400/10 border-green-400/30'}`}>
-                    {isEquipped ? '★ Equipado' : '✓ Adquirido'}
-                  </span>
-                ) : (
-                  <span className={`text-[10px] sm:text-xs font-black font-mono flex items-center justify-center gap-1 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border bg-black/60 shrink-0 shadow-sm whitespace-nowrap max-w-[50%] ${canAfford ? (isPremium ? 'text-yellow-300 border-yellow-400/50' : 'text-yellow-400 border-yellow-400/30') : 'text-red-400 border-red-400/30'}`}>
-                    🪙 {item.price.toLocaleString()}
-                  </span>
-                )}
+        {/* Main Grid / Masonry Layout */}
+        <div className={viewMode === 'gallery' ? 'masonry-grid' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}>
+          {loading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className={viewMode === 'gallery' ? 'masonry-item' : ''}>
+                <SkeletonStoreItem />
               </div>
-
-              {/* Preview area */}
-              <div className={`text-center py-2 mb-4 bg-black/50 border rounded-2xl relative z-10 flex items-center justify-center group-hover:scale-[1.04] transition-transform duration-500 shadow-inner overflow-hidden ${
-                isPremium ? 'border-casino-gold/20' : 'border-white/5'
-              } ${isBoard ? 'min-h-[160px] sm:min-h-[200px]' : isCardBack ? 'min-h-[220px]' : 'min-h-[140px] sm:min-h-[160px]'}`}>
-                {isTheme && item.theme_key ? (
-                  <ThemeCardPreview themeKey={item.theme_key} />
-                ) : item.image_url ? (
-                  <img 
-                    src={item.image_url} 
-                    alt={item.name} 
-                    loading="lazy"
-                    decoding="async"
-                    className={`object-contain drop-shadow-[0_15px_25px_rgba(0,0,0,0.6)] transition-all duration-700 group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.5)] ${
-                      isBoard ? 'w-full h-full object-cover rounded-xl' : 'max-h-24 sm:max-h-32'
-                    }`} 
-                    onError={(e) => { 
-                      const target = e.target as HTMLImageElement;
-                      if (!target.src.includes('/assets/store/')) {
-                        target.src = `/assets/store/${item.image_url}`; 
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="text-4xl sm:text-5xl animate-pulse opacity-50">✨</div>
-                )}
-              </div>
-
-              <div className="flex flex-col flex-grow relative z-10">
-                <h3 className={`font-display font-black text-base sm:text-lg md:text-xl leading-tight mb-2 transition-colors drop-shadow-md ${isPremium ? 'text-casino-gold group-hover:text-yellow-300' : 'text-white group-hover:text-purple-300'}`}>
-                  {item.name}
-                </h3>
-                <p className="text-gray-400 text-[11px] sm:text-xs mb-5 line-clamp-3 font-medium flex-grow">{item.description}</p>
-              </div>
-
-              <div className="relative z-10 mt-auto pt-2">
-                <button 
-                  className={`w-full min-h-[48px] py-2.5 sm:py-3 font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-xl transition-all border flex items-center justify-center ${
-                    isPremium 
-                      ? 'bg-casino-gold/10 border-casino-gold/30 text-casino-gold group-hover:bg-casino-gold/20 group-hover:border-casino-gold/60' 
-                      : 'bg-white/5 border-white/10 text-gray-300 group-hover:bg-purple-500/20 group-hover:border-purple-500/50 group-hover:text-purple-300'
-                  }`}
-                  aria-label={isOwned ? (isEquipped ? `Equipado: ${item.name}` : `Equipar o ver: ${item.name}`) : `Ver detalles de ${item.name}`}
-                >
-                  {isOwned ? (isEquipped ? '★ Equipado' : 'Equipar / Ver') : 'Ver Detalles'}
-                </button>
-              </div>
+            ))
+          ) : displayItems.length === 0 ? (
+            <div className="col-span-full text-center py-24 bg-[#18181B]/50 rounded-3xl border border-white/5">
+              <div className="text-6xl mb-6 opacity-30" aria-hidden="true">{viewMode === 'store' ? '💸' : '📦'}</div>
+              <h3 className="text-xl font-display font-bold text-white mb-2">
+                {viewMode === 'store' ? 'Tienda vacía' : 'Galería vacía'}
+              </h3>
+              <p className="text-[#A1A1AA]">
+                {viewMode === 'store' 
+                  ? 'No hay artículos nuevos en esta categoría. ¡Ya compraste todo!' 
+                  : 'Aún no posees artículos de esta categoría. Ve a comprar algunos.'}
+              </p>
             </div>
-          );
-        })}
-      </div>
-
-      {filteredItems.length === 0 && (
-        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md">
-          <div className="text-5xl mb-6 opacity-50">🏪</div>
-          <p className="text-gray-400 font-black uppercase tracking-widest text-base">No hay artículos en esta categoría</p>
-        </div>
-      )}
-
-      {/* Premium Preview Modal (Bottom Sheet on Mobile, Centered on Desktop) */}
-      {previewItem && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-top md:items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-0 md:p-4"
-          onClick={() => setPreviewItem(null)}
-        >
-          <div 
-            className={`w-full max-w-[100%] md:max-w-4xl max-h-[90vh] md:max-h-[85vh] rounded-t-[2.5rem] md:rounded-[2rem] border-t md:border border-x bg-black/60 backdrop-blur-xl shadow-2xl flex flex-col md:flex-row relative z-10 animate-slide-up overflow-hidden flex-shrink-0 ${
-              previewItem.price >= 5000 ? 'border-casino-gold/40 shadow-[0_0_80px_rgba(251,191,36,0.15)]' : 'border-purple-500/30 shadow-[0_0_60px_rgba(168,85,247,0.2)]'
-            }`}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Visual handle for mobile bottom sheet */}
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full md:hidden z-50"></div>
-
-            {/* Close button - absolute for both mobile and desktop */}
-            <button 
-              onClick={() => setPreviewItem(null)}
-              className="absolute right-4 top-4 md:right-5 md:top-5 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/40 border border-white/10 hover:bg-white/20 text-white transition-colors z-50 backdrop-blur-md"
-              aria-label="Cerrar modal"
-            >
-              ✕
-            </button>
-
-            {/* Content Wrapper for internal scrolling on mobile */}
-            <div className="flex flex-col md:flex-row w-full overflow-y-auto md:overflow-hidden custom-scrollbar pb-safe">
+          ) : (
+            displayItems.map((item, index) => {
+              const isPremium = item.price >= 5000;
+              const isSuccess = successItems.includes(item.id);
+              const inCart = isInCart(item.id);
+              const isEquipped = viewMode === 'gallery' && isItemEquipped(item);
               
-              {/* Left side: Immersive Preview */}
-              <div className={`w-full md:w-1/2 relative flex items-center justify-center p-6 pt-10 md:p-8 min-h-[30vh] md:min-h-[50vh] perspective-1000 shrink-0 ${
-                previewItem.item_type === 'board' ? 'bg-transparent' : 'bg-gradient-to-br from-white/5 to-transparent'
-              }`}>
-                {/* Background Board if previewing a board */}
-                {previewItem.item_type === 'board' && previewItem.image_url && (
-                  <div 
-                    className="absolute inset-0 opacity-40 z-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${previewItem.image_url.startsWith('http') ? previewItem.image_url : `/assets/store/${previewItem.image_url}`})` }}
-                  />
-                )}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent pointer-events-none" />
-                
-                {previewItem.item_type === 'theme' && previewItem.theme_key ? (
-                  <div className="w-full max-w-[240px] md:max-w-[280px] h-40 sm:h-48 md:h-64 shadow-2xl rounded-2xl overflow-hidden border border-white/10 relative z-10">
-                    <ThemeCardPreview themeKey={previewItem.theme_key} />
-                  </div>
-                ) : previewItem.image_url ? (
-                  <img 
-                    src={previewItem.image_url} 
-                    alt={previewItem.name} 
-                    className={`max-w-full relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)] ${
-                      previewItem.item_type === 'card_back' ? 'w-24 sm:w-32 md:w-56 animate-float-3d' :
-                      previewItem.item_type === 'board' ? 'w-full h-full object-cover rounded-2xl border border-white/20 shadow-2xl' :
-                      'max-h-36 sm:max-h-48 md:max-h-64'
-                    }`}
-                    onError={(e) => { 
-                      const target = e.target as HTMLImageElement;
-                      if (!target.src.includes('/assets/store/')) {
-                        target.src = `/assets/store/${previewItem.image_url}`; 
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="text-5xl md:text-8xl animate-pulse relative z-10">✨</div>
-                )}
-              </div>
-
-              {/* Right side: Info and Actions */}
-              <div className="w-full md:w-1/2 p-5 md:p-8 flex flex-col bg-black/80 backdrop-blur-xl md:border-l border-white/10 relative shrink-0 md:justify-center">
-                <span className={`text-[10px] sm:text-xs uppercase tracking-widest font-black bg-white/5 border px-2.5 py-1 rounded-lg mb-3 md:mb-4 self-start shrink-0 ${
-                  previewItem.price >= 5000 ? 'text-casino-gold border-casino-gold/40' : 'text-gray-300 border-white/10'
-                }`}>
-                  {getCategoryLabel(previewItem.item_type)} {previewItem.price >= 5000 && '· PREMIUM'}
-                </span>
-
-                {previewItem.item_type === 'theme' && previewItem.theme_key && (() => {
-                  const themeData = ALL_THEMES.find(t => t.key === previewItem.theme_key);
-                  return themeData ? (
-                    <div className="flex items-center gap-2 mb-2 md:mb-3 text-xs md:text-sm text-gray-400 font-bold">
-                      <span className="text-xl md:text-2xl">{themeData.emoji}</span>
-                      <span className="uppercase tracking-widest">{themeData.name}</span>
-                    </div>
-                  ) : null;
-                })()}
-
-                <h2 className={`text-2xl sm:text-3xl md:text-4xl font-display font-black mb-2 md:mb-3 tracking-wide drop-shadow-lg leading-tight shrink-0 ${
-                  previewItem.price >= 5000 ? 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600' : 'text-white'
-                }`}>
-                  {previewItem.name}
-                </h2>
-                
-                <p className="text-gray-300 text-sm md:text-base mb-4 md:mb-6 leading-relaxed shrink-0">
-                  {previewItem.description}
-                </p>
-
-                {previewItem.item_type === 'theme' && (
-                  <div className="text-[10px] md:text-xs text-purple-300/80 font-black uppercase tracking-widest mb-4 md:mb-6 bg-purple-500/10 border border-purple-500/20 px-4 py-2.5 rounded-xl shrink-0">
-                    🃏 Tus cartas · 🎲 Mesa compartida con el anfitrión
-                  </div>
-                )}
-
-                <div className="mt-2 md:mt-auto pt-2 flex flex-col gap-3 shrink-0">
-                  {inventory.includes(previewItem.id) ? (
-                    previewItem.item_type === 'emotic' ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[1, 2, 3, 4].map(slot => {
-                          const isEquippedInSlot = profile?.equipped_emotics?.[slot - 1] === previewItem.image_url;
-                          return (
-                            <button
-                              key={slot}
-                              onClick={() => handleEquip(previewItem, slot)}
-                              disabled={processingId === previewItem.id || isEquippedInSlot}
-                              className={`py-2 md:py-3 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest border-2 transition-all ${
-                                isEquippedInSlot
-                                  ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default'
-                                  : 'bg-black/40 border-white/10 text-white hover:bg-purple-600/40 hover:border-purple-500'
-                              }`}
-                            >
-                              Slot {slot}
-                              {isEquippedInSlot && <span className="block text-[8px] mt-0.5 opacity-80">Equipado</span>}
-                            </button>
-                          );
-                        })}
+              return (
+                <div 
+                  key={item.id} 
+                  className={`glass-panel rounded-3xl relative overflow-hidden group border transition-all duration-500 bg-[#18181B]/80 backdrop-blur-xl flex flex-col ${
+                    viewMode === 'gallery' ? 'masonry-item' : 'h-full'
+                  } ${
+                    isSuccess ? 'border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.2)]' : 
+                    inCart ? 'border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.15)] scale-[0.98]' :
+                    isEquipped ? 'border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.1)]' :
+                    'border-white/5 hover:border-white/20 hover:shadow-2xl hover:-translate-y-1'
+                  }`}
+                  style={{ animationDelay: `${(index % 10) * 50}ms` }}
+                >
+                  {/* Image/Preview Area */}
+                  <div className={`relative p-6 flex items-center justify-center overflow-hidden bg-gradient-to-b from-white/5 to-transparent ${
+                    item.item_type === 'board' ? 'min-h-[160px]' : 'min-h-[200px]'
+                  }`}>
+                    {isPremium && (
+                      <div className="absolute top-4 left-4 bg-gradient-to-r from-yellow-400 to-yellow-600 text-[#09090B] text-[9px] font-bold uppercase tracking-widest py-1 px-3 rounded-full z-20 shadow-md">
+                        Premium
                       </div>
-                    ) : (
-                      <button 
-                        onClick={() => {
-                          if (!isItemEquipped(previewItem)) {
-                            handleEquip(previewItem);
+                    )}
+
+                    {item.item_type === 'theme' && item.theme_key ? (
+                      <div className="w-full h-full absolute inset-0 opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-700">
+                        <ThemeCardPreview themeKey={item.theme_key} />
+                      </div>
+                    ) : item.image_url ? (
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        loading="lazy"
+                        className={`object-contain relative z-10 transition-transform duration-700 group-hover:scale-110 drop-shadow-2xl ${
+                          item.item_type === 'board' ? 'w-full h-full object-cover rounded-xl border border-white/10' : 'max-h-32'
+                        }`}
+                        onError={(e) => { 
+                          const target = e.target as HTMLImageElement;
+                          if (!target.src.includes('/assets/store/')) {
+                            target.src = `/assets/store/${item.image_url}`; 
                           }
                         }}
-                        disabled={processingId === previewItem.id || isItemEquipped(previewItem)}
-                        className={`w-full min-h-[56px] py-3 md:py-4 font-black text-sm md:text-base uppercase tracking-widest rounded-xl md:rounded-2xl transition-all border-2 shadow-xl flex items-center justify-center ${
-                          isItemEquipped(previewItem)
-                            ? 'bg-casino-gold/20 text-casino-gold border-casino-gold/50 cursor-default' 
-                            : 'bg-purple-600 hover:bg-purple-500 text-white border-purple-400 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]'
-                        }`}
-                      >
-                        {processingId === previewItem.id 
-                          ? 'PROCESANDO...' 
-                          : isItemEquipped(previewItem)
-                            ? '★ EQUIPADO' 
-                            : 'EQUIPAR AHORA'}
-                      </button>
-                    )
-                  ) : (
-                    <button 
-                      onClick={() => {
-                        if (confirm(`¿Comprar "${previewItem.name}" por ${previewItem.price} monedas?`)) {
-                          handleBuy(previewItem);
-                        }
-                      }}
-                      disabled={processingId === previewItem.id || (profile?.coins || 0) < previewItem.price}
-                      className={`w-full min-h-[56px] py-3 md:py-4 font-black text-sm md:text-base uppercase tracking-widest rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-2 md:gap-3 border-2 ${
-                        (profile?.coins || 0) >= previewItem.price 
-                          ? previewItem.price >= 5000 
-                            ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black border-yellow-400 shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:shadow-[0_0_50px_rgba(251,191,36,0.6)] hover:-translate-y-1'
-                            : 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:-translate-y-1'
-                          : 'bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700'
-                      }`}
-                    >
-                      {processingId === previewItem.id ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                          PROCESANDO...
-                        </div>
-                      ) : (
-                        <>
-                          COMPRAR POR <span className="text-xl md:text-2xl leading-none">🪙 {previewItem.price.toLocaleString()}</span>
-                        </>
+                      />
+                    ) : (
+                      <div className="text-5xl opacity-20">✨</div>
+                    )}
+                  </div>
+
+                  {/* Content Area */}
+                  <div className="p-6 flex flex-col flex-grow bg-[#09090B]/40">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] text-[#A1A1AA] uppercase tracking-widest font-bold">
+                        {getCategoryLabel(item.item_type)}
+                      </span>
+                      {viewMode === 'store' && (
+                        <span className="text-sm font-display font-bold text-[#FACC15]">
+                          🪙 {item.price.toLocaleString()}
+                        </span>
                       )}
-                    </button>
-                  )}
-                  
-                  {!inventory.includes(previewItem.id) && (profile?.coins || 0) < previewItem.price && (
-                    <div className="text-center bg-red-500/10 border border-red-500/20 rounded-xl p-2 md:p-3">
-                      <p className="text-xs md:text-sm text-red-400 font-bold">
-                        Te faltan {(previewItem.price - (profile?.coins || 0)).toLocaleString()} monedas
-                      </p>
                     </div>
-                  )}
+                    
+                    <h3 className="font-display font-bold text-lg text-white mb-2 leading-tight">
+                      {item.name}
+                    </h3>
+                    
+                    <p className="text-[#A1A1AA] text-xs line-clamp-2 flex-grow mb-4">
+                      {item.description}
+                    </p>
+
+                    {/* Actions */}
+                    <div className="mt-auto pt-4 border-t border-white/5" onClick={e => e.stopPropagation()}>
+                      {viewMode === 'store' ? (
+                        <button 
+                          onClick={(e) => toggleCartItem(item, e)}
+                          className={`w-full py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+                            inCart 
+                              ? 'bg-white text-[#09090B] hover:bg-red-500 hover:text-white' 
+                              : 'bg-[#27272A] text-white hover:bg-[#7C3AED]'
+                          }`}
+                        >
+                          {inCart ? (
+                            <><span aria-hidden="true">✓</span> En el carrito</>
+                          ) : (
+                            <><span aria-hidden="true">➕</span> Añadir</>
+                          )}
+                        </button>
+                      ) : (
+                        item.item_type === 'emotic' ? (
+                          <div className="flex flex-col gap-2">
+                            <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider text-center font-bold">Equipar en Slot:</span>
+                            <div className="grid grid-cols-4 gap-2">
+                              {[1, 2, 3, 4].map(slot => {
+                                const isEquippedInSlot = profile?.equipped_emotics?.[slot - 1] === item.image_url;
+                                return (
+                                  <button
+                                    key={slot}
+                                    onClick={(e) => { e.stopPropagation(); handleEquip(item, slot); }}
+                                    disabled={processingId === item.id || isEquippedInSlot}
+                                    className={`py-2 rounded-xl font-bold text-xs transition-colors border ${
+                                      isEquippedInSlot
+                                        ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
+                                        : 'bg-[#27272A] border-white/10 text-white hover:bg-white/20'
+                                    }`}
+                                    title={`Equipar en Slot ${slot}`}
+                                  >
+                                    S{slot}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleEquip(item); }}
+                            disabled={isEquipped || processingId === item.id}
+                            className={`w-full py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                              isEquipped 
+                                ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' 
+                                : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9] shadow-lg shadow-purple-500/20'
+                            }`}
+                          >
+                            {processingId === item.id ? 'Cargando...' : isEquipped ? '★ Equipado' : 'Equipar'}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Shopping Cart Drawer / Modal */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsCartOpen(false)}></div>
+          
+          <div className="w-full max-w-md bg-[#09090B] border-l border-white/10 h-[100dvh] flex flex-col relative z-10 animate-slide-left shadow-2xl">
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#18181B] shrink-0">
+              <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                <span aria-hidden="true">🛒</span> Tu Carrito
+              </h2>
+              <button onClick={() => setIsCartOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#A1A1AA] hover:text-white transition-colors">
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {cart.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-[#A1A1AA] opacity-70">
+                  <div className="text-6xl mb-4">🛒</div>
+                  <p>El carrito está vacío</p>
+                </div>
+              ) : (
+                cart.map(item => (
+                  <div key={`cart-${item.id}`} className="flex gap-4 p-4 rounded-2xl bg-[#18181B] border border-white/5 items-center">
+                    <div className="w-16 h-16 rounded-xl bg-[#27272A] flex items-center justify-center overflow-hidden shrink-0 p-1">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt="" className="max-w-full max-h-full object-contain" />
+                      ) : <span className="text-xs">✨</span>}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <h4 className="text-white font-bold text-sm truncate">{item.name}</h4>
+                      <p className="text-[#A1A1AA] text-xs">{getCategoryLabel(item.item_type)}</p>
+                      <p className="text-[#FACC15] font-bold text-sm mt-1">🪙 {item.price.toLocaleString()}</p>
+                    </div>
+                    <button 
+                      onClick={() => toggleCartItem(item)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-6 border-t border-white/5 bg-[#18181B] shrink-0">
+              <div className="flex justify-between items-end mb-6">
+                <span className="text-[#A1A1AA] font-bold">Total a pagar:</span>
+                <span className={`text-2xl font-display font-bold ${cartTotal > (profile?.coins || 0) ? 'text-red-400' : 'text-white'}`}>
+                  🪙 {cartTotal.toLocaleString()}
+                </span>
               </div>
+              
+              {cartTotal > (profile?.coins || 0) && (
+                <p className="text-red-400 text-xs mb-4 font-bold text-center">
+                  Monedas insuficientes. Te faltan {(cartTotal - (profile?.coins || 0)).toLocaleString()} 🪙
+                </p>
+              )}
+
+              <button
+                onClick={handleCheckout}
+                disabled={cart.length === 0 || cartTotal > (profile?.coins || 0) || processingId === 'checkout'}
+                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
+                  cart.length === 0 || cartTotal > (profile?.coins || 0)
+                    ? 'bg-[#27272A] text-[#71717A] cursor-not-allowed'
+                    : 'bg-[#F8FAFC] text-[#09090B] hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                }`}
+              >
+                {processingId === 'checkout' ? (
+                  <>
+                    <svg className="animate-spin w-5 h-5 text-current" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Procesando...
+                  </>
+                ) : (
+                  'Confirmar Compra'
+                )}
+              </button>
             </div>
           </div>
         </div>

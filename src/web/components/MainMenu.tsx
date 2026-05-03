@@ -388,7 +388,7 @@ export function MainMenu() {
     } catch (e) {}
   };
 
-  const handlePlayVsBot = async (difficulty: 'easy' | 'medium' | 'hard' | 'ultra' = 'easy') => {
+  const handlePlayVsBot = async (difficulty: 'easy' | 'medium' | 'hard' | 'expert' = 'easy') => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
     try {
       const socket = await socketService.connect();
@@ -419,7 +419,7 @@ export function MainMenu() {
     try {
       const socket = socketService.getSocket();
       socket.emit('switch_team', { roomId: currentRoomId, team });
-      playSfx('clipsClick', { volumeMultiplier: 0.5 });
+      playSfx('chipsClink', { volumeMultiplier: 0.5 });
     } catch (e) {}
   };
 
@@ -1012,7 +1012,7 @@ export function MainMenu() {
                   { key: 'easy' as const, label: 'Fácil', emoji: '🤖', color: 'emerald', desc: 'Para aprender' },
                   { key: 'medium' as const, label: 'Medio', emoji: '🧠', color: 'amber', desc: 'Desafiante' },
                   { key: 'hard' as const, label: 'Difícil', emoji: '👑', color: 'rose', desc: 'Sin piedad' },
-                  { key: 'ultra' as const, label: 'Ultra', emoji: '⚜️', color: 'violet', desc: 'Imposible' },
+                  { key: 'expert' as const, label: 'Experto', emoji: '⚜️', color: 'violet', desc: 'Imposible' },
                 ].map(({ key, label, emoji, color, desc }) => {
                   const colorMap: Record<string, { border: string, borderHover: string, bg: string, text: string, badge: string, shadow: string }> = {
                     emerald: { border: 'border-emerald-500/30', borderHover: 'hover:border-emerald-500', bg: 'from-emerald-900/30', text: 'group-hover:text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-400', shadow: 'hover:shadow-[0_10px_30px_rgba(16,185,129,0.2)]' },

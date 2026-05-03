@@ -17,7 +17,7 @@ import type { GameState } from '../domain/game-state';
 import type { Action, LlevarAction } from '../application/action-validator';
 import type { DefaultGameEngine } from '../application/game-engine';
 
-export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'ultra';
+export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 /** Unique identifier for the bot player (never collides with real Supabase UUIDs) */
 export const BOT_USER_ID = 'bot-easy';
@@ -27,7 +27,7 @@ export const BOT_NAMES: Record<BotDifficulty, string> = {
   easy:   'Bot Fácil 🤖',
   medium: 'Bot Medio 🧠',
   hard:   'Bot Difícil 👑',
-  ultra:  'Bot Ultra ⚜️',
+  expert: 'Bot Experto ⚜️',
 };
 
 /** Legacy export for backward compatibility */
@@ -61,8 +61,8 @@ export function getBotAction(
       case 'hard':
         return getHardAction(engine, state, playerId);
 
-      case 'ultra':
-        return getUltraAction(engine, state, playerId);
+      case 'expert':
+        return getExpertAction(engine, state, playerId);
 
       default:
         return engine.getTimeoutAction(state, playerId);
@@ -421,10 +421,10 @@ function scoreHardAction(action: Action, state: GameState, playerId: string, opp
 }
 
 // ─────────────────────────────────────────────
-// ULTRA difficulty
+// EXPERT difficulty
 // ─────────────────────────────────────────────
 
-function getUltraAction(engine: DefaultGameEngine, state: GameState, playerId: string): Action {
+function getExpertAction(engine: DefaultGameEngine, state: GameState, playerId: string): Action {
   const validActions = engine.getValidActions(state, playerId);
   if (validActions.length === 0) return engine.getTimeoutAction(state, playerId);
 
@@ -437,7 +437,7 @@ function getUltraAction(engine: DefaultGameEngine, state: GameState, playerId: s
   let bestScore = -Infinity;
 
   for (const action of validActions) {
-    const score = scoreUltraAction(action, state, playerId, opponent?.id);
+    const score = scoreExpertAction(action, state, playerId, opponent?.id);
     if (score > bestScore) {
       bestScore = score;
       bestAction = action;
@@ -447,9 +447,29 @@ function getUltraAction(engine: DefaultGameEngine, state: GameState, playerId: s
   return bestAction;
 }
 
-function scoreUltraAction(action: Action, state: GameState, playerId: string, opponentId?: string): number {
+function scoreExpertAction(action: Action, state: GameState, playerId: string, opponentId?: string): number {
   const player = state.players.find(p => p.id === playerId)!;
   const opponent = opponentId ? state.players.find(p => p.id === opponentId) : undefined;
+
+  // EXPERT FEATURE: Conteo de Cartas (Memoria)
+  // Calcula cuántas cartas de un valor específico son conocidas públicamente o en mano del bot
+  const getKnownCount = (val: number): number => {
+    let count = 0;
+    // 1. En la mano del bot
+    count += player.hand.filter(c => c.value === val).length;
+    // 2. En la mesa (sueltas y cantadas)
+    count += state.board.cards.filter(c => c.value === val).length;
+    count += state.board.cantedCards.filter(cc => cc.card.value === val).length;
+    // 3. Dentro de formaciones
+    state.board.formations.forEach(f => {
+      count += f.cards.filter(c => c.value === val).length;
+    });
+    // 4. Cartas recogidas por TODOS los jugadores (basurero público)
+    state.players.forEach(p => {
+      count += p.collectedCards.filter(c => c.value === val).length;
+    });
+    return count;
+  };
 
   switch (action.type) {
     case 'llevar': {
@@ -465,10 +485,18 @@ function scoreUltraAction(action: Action, state: GameState, playerId: string, op
       const totalCards = boardCardCount + formationCardCount + 1;
       score += totalCards * 10;
 
-      // ULTRA FEATURE: "llevar formaciones de cartas sueltas"
+      // EXPERT FEATURE: "llevar formaciones de cartas sueltas"
       // If we are taking BOTH formations AND loose cards at the same time, this is highly efficient
       if (la.formationIds.length > 0 && la.boardCardIds.length > 0) {
         score += 50; // Massive bonus for combining formation takes with loose cards
+      }
+
+      // EXPERT FEATURE: "llevar combinación de cartas sueltas" (Ej. llevarse un 8 y un 4 con un 12)
+      // Si el bot se lleva más de una carta suelta, significa que está sumando sus valores.
+      // Premiamos esta jugada porque es muy eficiente para limpiar la mesa y recolectar cartas.
+      if (la.boardCardIds.length > 1 && la.formationIds.length === 0) {
+        // Se está llevando múltiples cartas sueltas sumadas (ej. 8 + 4 = 12)
+        score += la.boardCardIds.length * 35; // +70 por llevarse 2 cartas sueltas, +105 por 3, etc.
       }
 
       // High-value scoring cards
@@ -524,7 +552,7 @@ function scoreUltraAction(action: Action, state: GameState, playerId: string, op
       ).length;
       const remainingCanted = state.board.cantedCards.length - cantedTaken;
       if (remainingBoardCards <= 0 && remainingFormations <= 0 && remainingCanted <= 0) {
-        score += 80; // Virado is extremely valuable for Ultra
+        score += 80; // Virado is extremely valuable for Expert
         if (opponent && opponent.virados > 0) score += 30;
       }
 
@@ -539,7 +567,7 @@ function scoreUltraAction(action: Action, state: GameState, playerId: string, op
     }
 
     case 'formar': {
-      let score = 150; // Ultra values forming higher than Hard (was 100)
+      let score = 150; // Expert values forming higher than Hard (was 100)
       const handCard = player.hand.find(c => c.id === action.cardId);
       if (handCard) {
         score += handCard.value * 4;
@@ -548,7 +576,7 @@ function scoreUltraAction(action: Action, state: GameState, playerId: string, op
 
       const boardCards = action.boardCardIds?.map(id => state.board.cards.find(c => c.id === id)).filter(Boolean) || [];
       
-      // ULTRA FEATURE: "formar con cartas sueltas"
+      // EXPERT FEATURE: "formar con cartas sueltas"
       // If forming with multiple loose cards (e.g. 2 + 3 = 5), highly prioritized
       if (boardCards.length > 1) {
         score += boardCards.length * 20; // 2 cards = +40, 3 cards = +60
@@ -558,6 +586,16 @@ function scoreUltraAction(action: Action, state: GameState, playerId: string, op
 
       const hasHighValueCards = boardCards.some(c => c && (c.rank === 'A' || (c.suit === 'diamonds' && c.rank === '10')));
       if (hasHighValueCards) score += 35; // Protect them even more
+
+      // EXPERT FEATURE: Formación Segura con Conteo
+      // Si formamos con una carta de nuestra mano, y sabemos que ya no quedan más copias de ese valor para el rival,
+      // la formación es "Inrobable" (Unstealable).
+      if (handCard) {
+        const knownCount = getKnownCount(handCard.value);
+        if (knownCount >= 4) {
+          score += 120; // Absolutamente seguro formarla, nadie nos la puede robar
+        }
+      }
 
       if (opponentId && opponent) {
         const opponentHand = opponent.hand || [];
@@ -616,6 +654,22 @@ function scoreUltraAction(action: Action, state: GameState, playerId: string, op
           const opponentFormations = state.board.formations.filter(f => f.createdBy === opponentId);
           const matchesOpponent = opponentFormations.some(f => f.value === card.value);
           if (matchesOpponent) score -= 25;
+        }
+
+        // EXPERT FEATURE: Conteo de Cartas para botar seguro
+        const knownCount = getKnownCount(card.value);
+        if (knownCount >= 4) {
+          score += 100; // 100% seguro botarla, nadie más tiene esta carta.
+        } else if (knownCount === 3) {
+          score += 40;  // Muy probable que nadie la tenga, bastante seguro.
+        }
+
+        // EXPERT FEATURE: Prevención de Virado (Look-ahead preventivo)
+        // Si botamos una carta y la mesa queda con esa única carta, es un "Virado regalado"
+        const boardItemsCount = state.board.cards.length + state.board.formations.length + state.board.cantedCards.length;
+        if (boardItemsCount === 0 && knownCount < 4) {
+          // Dejar la mesa con 1 sola carta (la que acabamos de botar) que el oponente AÚN podría tener
+          score -= 150; // ¡Pánico! Regalo de Virado.
         }
       }
       return score;

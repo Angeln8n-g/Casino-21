@@ -90,7 +90,7 @@ export function useNotifications() {
         .eq('id', inviteRow.sender_id)
         .single();
 
-      if (!sender) return;
+      if (!sender || !isMounted) return;
 
       const inviteData: GameInviteToastData = {
         invitationId: inviteRow.id,
@@ -171,6 +171,8 @@ export function useNotifications() {
         }
       } catch (error: any) {
         if (!isMounted) return;
+        const message = String(error?.message || '');
+        if (message.includes('Failed to fetch')) return;
         console.error('Error fetching notification counts:', error);
       }
     };
