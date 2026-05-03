@@ -15,6 +15,9 @@ import matchFoundSrc from '../../Public/Steel_Over_Stone.mp3';
 import victorySrc from '../../Public/victory.mp3';
 import viradoSrc from '../../Public/virado.mp3';
 import turnChangeSrc from '../../Public/sfx-impact22.mp3';
+import emoteInSrc from '../../Public/Rake Swing Whoosh Close.mp3';
+import emoteOutSrc from '../../Public/Sniffle.mp3';
+import viradoOutSrc from '../../Public/Stomach Thumps.mp3';
 
 export type AudioCue =
   | 'cardDeal'
@@ -22,11 +25,14 @@ export type AudioCue =
   | 'chipsClink'
   | 'matchFound'
   | 'virado'
+  | 'viradoOut'
   | 'victory'
   | 'defeat'
   | 'error'
   | 'alert'
-  | 'turnChange';
+  | 'turnChange'
+  | 'emoteIn'
+  | 'emoteOut';
 
 interface PlaySfxOptions {
   playbackRate?: number;
@@ -61,11 +67,14 @@ const AUDIO_CATALOG: Record<
   chipsClink: { src: chipsClinkSrc, baseVolume: 0.75, cooldownMs: 120 },
   matchFound: { src: matchFoundSrc, baseVolume: 0.5, cooldownMs: 500 },
   virado: { src: viradoSrc, baseVolume: 0.85, cooldownMs: 800 },
+  viradoOut: { src: viradoOutSrc, baseVolume: 0.75, cooldownMs: 800 },
   victory: { src: victorySrc, baseVolume: 0.85, cooldownMs: 1200 },
   defeat: { src: errorSrc, baseVolume: 0.6, cooldownMs: 1000 },
   error: { src: errorSrc, baseVolume: 0.45, cooldownMs: 180 },
   alert: { src: matchFoundSrc, baseVolume: 0.35, cooldownMs: 400 },
   turnChange: { src: turnChangeSrc, baseVolume: 0.6, cooldownMs: 500 },
+  emoteIn: { src: emoteInSrc, baseVolume: 0.8, cooldownMs: 300 },
+  emoteOut: { src: emoteOutSrc, baseVolume: 0.7, cooldownMs: 300 },
 };
 
 const AudioContext = createContext<AudioContextValue | undefined>(undefined);

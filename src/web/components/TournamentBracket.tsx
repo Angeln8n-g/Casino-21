@@ -24,29 +24,30 @@ export interface TournamentBracketProps {
   onJoinMatch?: (match: TournamentMatch) => void;
   currentUserId?: string | null;
   isAdmin?: boolean;
+  prizePool?: string;
 }
 
 function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; currentUserId?: string | null; isAdmin?: boolean }) {
   if (!match) {
     return (
-      <div className="w-32 md:w-40 h-16 border-2 border-white/10 rounded-lg bg-black/40 flex flex-col justify-center opacity-50 relative z-10">
-        <div className="h-1/2 border-b border-white/10" />
+      <div className="w-40 md:w-48 h-20 md:h-24 border border-[#2A2A4A] rounded bg-[#0F0F23]/80 flex flex-col justify-center opacity-40 relative z-10">
+        <div className="h-1/2 border-b border-[#2A2A4A]" />
       </div>
     );
   }
 
   const getPlayerClass = (p: TournamentPlayer | null) => {
-    if (!p) return 'text-gray-600';
+    if (!p) return 'text-slate-600 font-mono';
     if (match.status === 'completed') {
-      return p.isWinner ? 'text-casino-gold font-bold' : 'text-gray-500 opacity-50 line-through';
+      return p.isWinner ? 'text-[#00FFCC] font-bold text-shadow-[0_0_5px_rgba(0,255,204,0.5)]' : 'text-slate-500 opacity-60 line-through';
     }
-    return 'text-gray-200';
+    return 'text-slate-200';
   };
 
   const getBoxClass = () => {
-    if (match.status === 'live') return 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.4)] bg-red-950/20';
-    if (match.status === 'completed') return 'border-white/20 bg-black/60';
-    return 'border-white/10 bg-black/40';
+    if (match.status === 'live') return 'border-[#FF0055]/70 shadow-[0_0_15px_rgba(255,0,85,0.4)] bg-[#FF0055]/10';
+    if (match.status === 'completed') return 'border-[#7C3AED]/40 bg-[#0F0F23]/90';
+    return 'border-[#2A2A4A] bg-[#0F0F23]/70 hover:border-[#7C3AED]/60';
   };
 
   const isPlayerInMatch = currentUserId && (match.player1?.id === currentUserId || match.player2?.id === currentUserId);
@@ -56,31 +57,31 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
 
   return (
     <div 
-      className={`w-32 md:w-40 h-16 border-2 rounded-lg flex flex-col justify-center relative z-10 backdrop-blur-sm transition-all ${isClickable ? 'hover:scale-105 hover:border-casino-gold/50 cursor-pointer shadow-[0_0_15px_rgba(234,179,8,0.2)]' : ''} ${getBoxClass()}`}
+      className={`w-40 md:w-48 h-20 md:h-24 border rounded flex flex-col justify-center relative z-10 backdrop-blur-sm transition-all duration-300 font-mono tracking-tight ${isClickable ? 'hover:scale-105 hover:-translate-y-1 hover:shadow-[0_5px_20px_rgba(124,58,237,0.4)] cursor-pointer' : ''} ${getBoxClass()}`}
       onClick={() => isClickable && onJoinMatch && onJoinMatch(match)}
     >
       {match.status === 'live' && (
-        <div className="absolute -top-2 -right-2 w-4 h-4 z-30">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-slate-900"></span>
+        <div className="absolute -top-1 -right-1 w-3 h-3 z-30">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF0055] opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-[#FF0055] shadow-[0_0_8px_#FF0055]"></span>
         </div>
       )}
       {canJoin ? (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-casino-gold text-black text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-[0_0_10px_rgba(234,179,8,0.8)] z-20 animate-pulse">
-          ¡TU TURNO!
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#00FFCC] text-[#0F0F23] text-[9px] font-black uppercase px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(0,255,204,0.8)] z-20 animate-pulse tracking-widest border border-[#00FFCC]/50">
+          TU TURNO
         </div>
       ) : isSpectatable ? (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500/80 border border-blue-400 text-white text-[8px] font-bold uppercase px-2 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.6)] z-20 flex items-center gap-1 group-hover:bg-blue-400 transition-colors">
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#7C3AED] text-white text-[8px] font-bold uppercase px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(124,58,237,0.6)] z-20 flex items-center gap-1 group-hover:bg-[#8B5CF6] transition-colors tracking-widest border border-[#A78BFA]/50">
           <span>👁️</span> VER
         </div>
       ) : null}
       
-      <div className="flex flex-col h-full text-xs">
-        <div className={`flex-1 flex items-center px-2 border-b border-white/10 truncate ${getPlayerClass(match.player1)} gap-2`}>
+      <div className="flex flex-col h-full text-sm">
+        <div className={`flex-1 flex items-center px-3 border-b border-[#2A2A4A] truncate ${getPlayerClass(match.player1)} gap-3 transition-colors`}>
           {match.player1 && (
-            <div className="w-4 h-4 rounded-sm bg-casino-surface-light flex items-center justify-center text-[8px] border border-casino-gold/30 shrink-0 overflow-hidden">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-sm bg-[#1A1A3A] flex items-center justify-center text-xs font-bold border border-[#7C3AED]/40 shrink-0 overflow-hidden shadow-[inset_0_0_5px_rgba(0,0,0,0.5)]">
               {match.player1.avatar ? (
-                <img src={match.player1.avatar} alt="A" className="w-full h-full object-cover" />
+                <img src={match.player1.avatar} alt={match.player1.name} className="w-full h-full object-cover" />
               ) : (
                 match.player1.name.charAt(0).toUpperCase()
               )}
@@ -88,11 +89,11 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
           )}
           <span className="truncate">{match.player1?.name || 'TBD'}</span>
         </div>
-        <div className={`flex-1 flex items-center px-2 truncate ${getPlayerClass(match.player2)} gap-2`}>
+        <div className={`flex-1 flex items-center px-3 truncate ${getPlayerClass(match.player2)} gap-3 transition-colors`}>
           {match.player2 && (
-            <div className="w-4 h-4 rounded-sm bg-casino-surface-light flex items-center justify-center text-[8px] border border-casino-gold/30 shrink-0 overflow-hidden">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-sm bg-[#1A1A3A] flex items-center justify-center text-xs font-bold border border-[#7C3AED]/40 shrink-0 overflow-hidden shadow-[inset_0_0_5px_rgba(0,0,0,0.5)]">
               {match.player2.avatar ? (
-                <img src={match.player2.avatar} alt="A" className="w-full h-full object-cover" />
+                <img src={match.player2.avatar} alt={match.player2.name} className="w-full h-full object-cover" />
               ) : (
                 match.player2.name.charAt(0).toUpperCase()
               )}
@@ -102,17 +103,15 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
         </div>
       </div>
 
-      {/* Connectors (CSS Lines) */}
+      {/* Connectors (CSS Lines) Cyberpunk style */}
       {!isFinal && (
-        <>
-          <div className={`absolute top-1/2 w-4 md:w-6 border-t-2 border-white/20 ${isLeft ? '-right-4 md:-right-6' : '-left-4 md:-left-6'}`} />
-        </>
+        <div className={`absolute top-1/2 w-4 md:w-6 border-t-2 ${match.status === 'completed' ? 'border-[#7C3AED] shadow-[0_0_5px_#7C3AED]' : 'border-[#2A2A4A]'} ${isLeft ? '-right-4 md:-right-6' : '-left-4 md:-left-6'} transition-colors duration-500`} />
       )}
     </div>
   );
 }
 
-export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, currentUserId, isAdmin }: TournamentBracketProps) {
+export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, currentUserId, isAdmin, prizePool }: TournamentBracketProps) {
   // Helper to find a match by round and position
   const getMatch = (r: number, p: number) => matches.find(m => m.round === r && m.position === p);
 
@@ -132,11 +131,22 @@ export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxP
   const is32Player = maxParticipants === 32;
 
   return (
-    <div className="w-full h-full overflow-auto pb-8 pt-4 custom-scrollbar flex justify-center md:items-start items-start">
-      <div className="min-w-[800px] md:min-w-[1000px] flex flex-col items-center select-none font-sans mx-auto px-4">
+    <div className="w-full h-full overflow-x-auto overflow-y-hidden pb-8 pt-4 custom-scrollbar flex md:justify-center justify-start items-start relative bg-[#0F0F23] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1A1A3A] via-[#0F0F23] to-black">
+      {/* Grid Background Effect */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(124,58,237,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(124,58,237,0.05)_1px,transparent_1px)] bg-[size:30px_30px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+
+      <div className="min-w-[800px] md:min-w-[1000px] flex flex-col items-center select-none font-sans mx-auto px-4 relative z-10">
         
+        {/* Title/Header Area */}
+        <div className="mb-6 text-center">
+          <h2 className="text-2xl md:text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-[#00FFCC] via-white to-[#7C3AED] drop-shadow-[0_0_10px_rgba(0,255,204,0.5)]">
+            {title}
+          </h2>
+          <div className="h-1 w-32 bg-gradient-to-r from-transparent via-[#FF0055] to-transparent mx-auto mt-2 opacity-70" />
+        </div>
+
         {/* Bracket Container */}
-        <div className="flex justify-center items-stretch gap-6 md:gap-10 relative w-full px-4 mt-8">
+        <div className="flex justify-center items-stretch gap-6 md:gap-10 relative w-full px-4 mt-4">
           
           {/* LEFT SIDE */}
           <div className="flex gap-6 md:gap-10">
@@ -195,9 +205,14 @@ export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxP
 
           {/* CENTER (FINAL) */}
           <div className="flex flex-col justify-center items-center relative z-20 mx-2 md:mx-4 mt-8 md:mt-16">
-             <div className="mb-6 relative">
+             <div className="mb-6 relative flex flex-col items-center">
                <div className="absolute inset-0 bg-casino-gold/20 blur-xl rounded-full animate-pulse" />
-               <span className="text-6xl md:text-8xl drop-shadow-[0_0_20px_rgba(234,179,8,0.8)] relative z-10">🏆</span>
+               <span className="text-6xl md:text-8xl drop-shadow-[0_0_20px_rgba(234,179,8,0.8)] relative z-10 mb-2">🏆</span>
+               {prizePool && (
+                 <div className="bg-[#0F0F23]/80 border border-[#00FFCC]/50 px-4 py-1 rounded shadow-[0_0_15px_rgba(0,255,204,0.3)] backdrop-blur-sm z-10 animate-pulse mt-2">
+                   <span className="text-[#00FFCC] font-bold text-sm tracking-widest uppercase">RECOMPENSA: {prizePool}</span>
+                 </div>
+               )}
              </div>
              {renderMatchNode(getMatch(4, 1), false, true)}
              {/* Connectors from semis to final */}

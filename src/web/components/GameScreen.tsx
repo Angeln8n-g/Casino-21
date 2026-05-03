@@ -176,12 +176,19 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         }
       }
 
-      if (gameState.phase === 'playing' && getTotalVirados(gameState) !== getTotalVirados(previousState)) {
-        setViradoBanner({
-          id: Date.now(),
-          playerName: previousState.players[previousState.currentTurnPlayerIndex]?.name ?? null,
-        });
-        playSfx('virado');
+      if (gameState.phase === 'playing') {
+        const currentVirados = getTotalVirados(gameState);
+        const prevVirados = getTotalVirados(previousState);
+
+        if (currentVirados > prevVirados) {
+          setViradoBanner({
+            id: Date.now(),
+            playerName: previousState.players[previousState.currentTurnPlayerIndex]?.name ?? null,
+          });
+          playSfx('virado');
+        } else if (currentVirados < prevVirados) {
+          playSfx('viradoOut');
+        }
       }
 
       if (previousState.phase !== 'completed' && gameState.phase === 'completed') {
@@ -353,20 +360,23 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         ...prev,
         [msg.senderId]: { emoji: text, nonce: Date.now() },
       }));
+      
+      playSfx('emoteIn');
 
       const prevTimer = reactionTimersRef.current[msg.senderId];
       if (prevTimer) clearTimeout(prevTimer);
 
       reactionTimersRef.current[msg.senderId] = setTimeout(() => {
+        playSfx('emoteOut');
         setActiveReactions((prev) => {
           if (!prev[msg.senderId]) return prev;
           const next = { ...prev };
           delete next[msg.senderId];
           return next;
         });
-      }, 1600);
+      }, 3000);
     }
-  }, [chatMessages, gameState?.players, quickEmojis]);
+  }, [chatMessages, gameState?.players, quickEmojis, playSfx]);
 
   if (!gameState) return null;
 
@@ -598,26 +608,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     };
 
     const avatarUrl = getAvatarForPlayer(p.id);
-    const reaction = activeReactions[p.id];
 
     return (
       <div className={`flex items-center gap-3 px-3 py-2 rounded-2xl border ${isTurn ? teamTurnBgClass : teamBgClass}`}>
         <div className="relative shrink-0">
-          {reaction && (
-            <div key={reaction.nonce} className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 md:w-16 md:h-16 z-[100] animate-bounce pointer-events-none">
-              {reaction.emoji.startsWith('http') || reaction.emoji.includes('/storage/v1/object/public/') ? (
-                <img 
-                  src={reaction.emoji} 
-                  alt="emote" 
-                  className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)]" 
-                />
-              ) : (
-                <span className="text-3xl md:text-4xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
-                  {reaction.emoji}
-                </span>
-              )}
-            </div>
-          )}
           <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-[3px]" style={ringStyle}>
             <div className="w-full h-full rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-lg md:text-xl font-black text-casino-gold">
               {avatarUrl ? (
@@ -653,6 +647,44 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <style>{`
+        @keyframes slideInLeft {
+          0% { transform: translateX(-150%) scale(0.5); opacity: 0; }
+          60% { transform: translateX(10%) scale(1.1); opacity: 1; }
+          100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        @keyframes slideInRight {
+          0% { transform: translateX(150%) scale(0.5); opacity: 0; }
+          60% { transform: translateX(-10%) scale(1.1); opacity: 1; }
+          100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        @keyframes shimmerEffect {
+          0% { transform: translateX(-150%) skewX(-20deg); }
+          100% { transform: translateX(200%) skewX(-20deg); }
+        }
+        .animate-emote-left {
+          animation: slideInLeft 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .animate-emote-right {
+          animation: slideInRight 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .shimmer-overlay::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 50%;
+          height: 100%;
+          background: linear-gradient(
+            to right,
+            rgba(255,255,255,0) 0%,
+            rgba(255,255,255,0.2) 50%,
+            rgba(255,255,255,0) 100%
+          );
+          animation: shimmerEffect 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          pointer-events: none;
+        }
+      `}</style>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
         {/* ── Full-screen theme background ── */}
         {boardThemeUrl && (
@@ -902,6 +934,55 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           `}
           style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(${profile.equipped_board})` } : {}}
         >
+          {/* Reacciones Centrales (Emotes) */}
+          <div className="absolute inset-0 pointer-events-none z-[100] flex flex-col justify-center overflow-hidden">
+            {Object.entries(activeReactions).map(([playerId, reaction], index) => {
+              const p = gameState.players.find((player) => player.id === playerId);
+              if (!p) return null;
+              
+              const isEven = index % 2 === 0;
+              const animationClass = isEven ? 'animate-emote-left' : 'animate-emote-right';
+              
+              return (
+                <div 
+                  key={reaction.nonce} 
+                  className={`absolute w-full flex ${isEven ? 'justify-start pl-4 md:pl-16' : 'justify-end pr-4 md:pr-16'}`}
+                  style={{ top: `${35 + (index * 15)}%` }}
+                >
+                  <div className={`flex items-center gap-3 bg-black/50 backdrop-blur-md pl-2 pr-4 py-2 rounded-full border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden shimmer-overlay ${animationClass}`}>
+                    {/* Avatar */}
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-sm font-black text-casino-gold shrink-0">
+                      {getAvatarForPlayer(p.id) ? (
+                        <img src={getAvatarForPlayer(p.id)!} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        (p.name?.charAt(0)?.toUpperCase() || '?')
+                      )}
+                    </div>
+                    {/* Name */}
+                    <span className="text-white font-bold text-xs md:text-sm max-w-[80px] md:max-w-[120px] truncate">
+                      {p.name}
+                    </span>
+                    
+                    {/* Emote */}
+                    <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center -ml-1">
+                      {reaction.emoji.startsWith('http') || reaction.emoji.includes('/storage/v1/object/public/') ? (
+                        <img 
+                          src={reaction.emoji} 
+                          alt="emote" 
+                          className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)] animate-pulse" 
+                        />
+                      ) : (
+                        <span className="text-4xl md:text-5xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-pulse">
+                          {reaction.emoji}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Indicador visual de turno grande */}
           {!isCurrentTurn && (
             <div className={`absolute ${isMobile ? 'top-2 px-4 py-1.5 text-xs' : 'top-4 px-6 py-2 text-base'} bg-black/60 rounded-full border border-white/10 text-gray-300 font-bold tracking-widest z-0 pointer-events-none animate-pulse`}>

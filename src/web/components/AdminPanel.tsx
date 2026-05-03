@@ -309,7 +309,7 @@ export function AdminPanel() {
       if (playerIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url')
+          .select('id, username, avatar_url, equipped_avatar')
           .in('id', playerIds);
           
         if (profilesData) {
@@ -327,8 +327,8 @@ export function AdminPanel() {
           id: m.id,
           round: m.round_number,
           position: m.match_order,
-          player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
-          player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
+          player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
+          player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
           status: m.status as any,
           game_room_id: m.game_room_id
         };
@@ -724,6 +724,7 @@ export function AdminPanel() {
                   onJoinMatch={handleAdminMatchClick}
                   currentUserId={null}
                   isAdmin={true}
+                  prizePool={selectedTournament.prize_pool}
                 />
               )}
             </div>

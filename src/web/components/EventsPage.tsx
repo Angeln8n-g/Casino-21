@@ -189,6 +189,7 @@ export function EventsPage() {
   const [selectedTournament, setSelectedTournament] = useState('');
   const [selectedTournamentImage, setSelectedTournamentImage] = useState<string | undefined>('');
   const [selectedTournamentMaxParticipants, setSelectedTournamentMaxParticipants] = useState(16);
+  const [selectedTournamentPrize, setSelectedTournamentPrize] = useState<string | undefined>(undefined);
   const [tournamentMatches, setTournamentMatches] = useState<TournamentMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -224,6 +225,8 @@ export function EventsPage() {
     setSelectedTournament(title);
     setSelectedTournamentMaxParticipants(maxParticipants || 16);
     setSelectedTournamentImage(imageUrl);
+    const event = events.find(e => e.id === eventId);
+    setSelectedTournamentPrize(event?.prize_pool);
     setBracketModalOpen(true);
     setMatchesLoading(true);
 
@@ -253,7 +256,7 @@ export function EventsPage() {
         logger.debug('Buscando perfiles para IDs:', playerIds);
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url')
+          .select('id, username, avatar_url, equipped_avatar')
           .in('id', playerIds);
           
         if (profilesError) {
@@ -277,8 +280,8 @@ export function EventsPage() {
           id: m.id,
           round: m.round_number,
           position: m.match_order,
-          player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
-          player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
+          player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
+          player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
           status: m.status as any,
           game_room_id: m.game_room_id
         };
@@ -650,6 +653,7 @@ export function EventsPage() {
                   maxParticipants={selectedTournamentMaxParticipants} 
                   onJoinMatch={handleJoinMatch}
                   currentUserId={user?.id}
+                  prizePool={selectedTournamentPrize}
                 />
               )}
             </div>

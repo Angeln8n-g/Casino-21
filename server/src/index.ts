@@ -1005,7 +1005,7 @@ async function saveMatchResult(roomId: string, room: any) {
     if (isTournament && winnerId) {
       const { data: matchData, error: matchError } = await supabase
         .from('tournament_matches')
-        .select('id, event_id, next_match_id')
+        .select('id, event_id, next_match_id, status')
         .eq('game_room_id', roomId)
         .single();
 
@@ -1039,14 +1039,22 @@ async function saveMatchResult(roomId: string, room: any) {
           
           let finalPrize = 0;
           if (eventData?.prize_pool) {
-            const matchAmount = eventData.prize_pool.match(/\d+/);
+            // Limpiar comas, puntos y extraer el número completo
+            const cleanPrizeStr = eventData.prize_pool.replace(/[,.]/g, '');
+            const matchAmount = cleanPrizeStr.match(/\d+/);
             if (matchAmount) finalPrize = parseInt(matchAmount[0], 10);
           }
+
           if (finalPrize > 0) {
-            await supabase.rpc('award_tournament_prize', {
-              event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
-            });
-            console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
+            // Verificación para evitar Doble Pago: Asegurarnos que la partida estaba 'pending' o 'in_progress'
+            if (matchData.status !== 'completed') {
+              await supabase.rpc('award_tournament_prize', {
+                event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
+              });
+              console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
+            } else {
+              console.log(`Intento de doble pago de torneo evitado para ${winnerId}`);
+            }
           }
         }
       }
