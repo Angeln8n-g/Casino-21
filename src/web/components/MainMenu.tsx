@@ -281,6 +281,16 @@ export function MainMenu() {
         socket.on('error', (msg: string) => {
           playSfx('error');
           setError(msg);
+          // Si hay un error grave (como sala llena o escrow), regresar al lobby
+          if (msg.includes('sala se cerrará') || msg.includes('llena') || msg.includes('saldo')) {
+            setView('menu');
+            setCurrentRoomId(null);
+            setPlayersInRoom([]);
+            setPlayersInRoomData([]);
+            setCountdown(null);
+            localStorage.removeItem('casino21_roomId');
+            localStorage.removeItem('casino21_playerId');
+          }
         });
 
         socket.on('room_closed', ({ roomId, reason }: { roomId: string; reason?: string }) => {
@@ -302,6 +312,8 @@ export function MainMenu() {
             setError('Tu desafío expiró sin respuesta.');
           } else if (reason === 'challenge_cancelled') {
             setError('El desafío fue cancelado.');
+          } else if (reason === 'escrow_failed') {
+            setError('La sala fue cerrada porque alguien no tenía suficientes monedas.');
           } else {
             setError(`La sala ${roomId} fue cerrada.`);
           }

@@ -510,27 +510,71 @@ io.on('connection', (socket) => {
       // Cobrar la apuesta a todos los jugadores ANTES de iniciar la partida
       if (room.betAmount && room.betAmount > 0) {
         let allPaid = true;
+        let successfulPayments: string[] = [];
+        
         for (const player of room.players) {
           try {
-            // Descontar saldo
-            const { data, error } = await supabase.rpc('update_wallet', { 
-              user_id: player.userId, 
-              amount: -room.betAmount, 
-              reason: `Room Escrow: ${roomId}` 
-            });
+            // Descontar saldo verificando antes
+            const { data: profile, error: profileError } = await supabase.from('profiles').select('coins').eq('id', player.userId).single();
             
-            if (error) {
+            if (profileError || !profile) {
+              console.error(`[ESCROW] Error obteniendo perfil de ${player.userId}:`, profileError);
               allPaid = false;
               break;
             }
+
+            if (profile.coins < room.betAmount) {
+              console.error(`[ESCROW] Saldo insuficiente para ${player.userId}. Tiene ${profile.coins}, necesita ${room.betAmount}`);
+              allPaid = false;
+              break;
+            }
+
+            const { error: updateError } = await supabase.from('profiles')
+              .update({ coins: profile.coins - room.betAmount })
+              .eq('id', player.userId);
+            
+            if (updateError) {
+              console.error(`[ESCROW] Fallo cobro a ${player.userId}:`, updateError);
+              allPaid = false;
+              break;
+            } else {
+              successfulPayments.push(player.userId);
+              // Intentar guardar el registro si existe la tabla, pero sin romper si falla
+              try {
+                await supabase.from('wallet_transactions').insert({
+                  player_id: player.userId,
+                  amount: -room.betAmount,
+                  reason: `Room Escrow: ${roomId}`
+                });
+              } catch(e) {}
+            }
           } catch (e) {
+            console.error(`[ESCROW] Exception cobro a ${player.userId}:`, e);
             allPaid = false;
             break;
           }
         }
 
         if (!allPaid) {
-          io.to(roomId).emit('error', 'Error al procesar las apuestas. La sala se cerrará.');
+          console.log(`[ESCROW] Fallo masivo en sala ${roomId}. Revirtiendo cobros a:`, successfulPayments);
+          // Devolver el dinero a los que sí pagaron antes de que fallara
+          for (const userId of successfulPayments) {
+            try {
+               const { data: p } = await supabase.from('profiles').select('coins').eq('id', userId).single();
+               if (p) {
+                 await supabase.from('profiles').update({ coins: p.coins + room.betAmount }).eq('id', userId);
+                 try {
+                   await supabase.from('wallet_transactions').insert({
+                     player_id: userId, amount: room.betAmount, reason: `Refund Escrow Failed: ${roomId}`
+                   });
+                 } catch(e) {}
+               }
+            } catch(e) {
+               console.error(`[ESCROW] CRÍTICO: No se pudo reembolsar a ${userId}`);
+            }
+          }
+          
+          io.to(roomId).emit('error', 'Error al procesar las apuestas. Alguien no tiene saldo. La sala se cerrará.');
           closeRoom(roomId, 'escrow_failed');
           return;
         }
@@ -895,6 +939,11 @@ function startTurnTimer(roomId: string, room: any) {
 
 async function saveMatchResult(roomId: string, room: any) {
   if (!room.state || room.state.phase !== 'completed') return;
+  if (room.isResultSaved) {
+    console.log(`[MatchResult] Partida ${roomId} ya fue guardada previamente. Ignorando.`);
+    return;
+  }
+  room.isResultSaved = true;
 
   // Partidas vs bot: otorgar XP reducido al humano pero NO afectan ELO ni historial
   if (room.isBot) {
@@ -958,15 +1007,18 @@ async function saveMatchResult(roomId: string, room: any) {
       let coinsEarned = 0;
       
       if (prizePool > 0 && isWinner) {
-        // Repartir el prize pool entre los ganadores (todo para el de 1v1, mitad para cada uno en 2v2)
-        coinsEarned = mode === '2v2' ? Math.floor(prizePool / 2) : prizePool;
-        
-        await supabase.rpc('update_wallet', { 
-          user_id: playerInfo.userId, 
-          amount: coinsEarned, 
-          reason: `Match Prize: ${roomId}` 
-        });
-      }
+          // Repartir el prize pool entre los ganadores (todo para el de 1v1, mitad para cada uno en 2v2)
+          coinsEarned = mode === '2v2' ? Math.floor(prizePool / 2) : prizePool;
+          const { data: p } = await supabase.from('profiles').select('coins').eq('id', playerInfo.userId).single();
+          if (p) {
+            await supabase.from('profiles').update({ coins: p.coins + coinsEarned }).eq('id', playerInfo.userId);
+            try {
+              await supabase.from('wallet_transactions').insert({
+                player_id: playerInfo.userId, amount: coinsEarned, reason: `Match Prize: ${roomId}`
+              });
+            } catch(e) {}
+          }
+        }
 
       // Otorgar XP
       const xpToGive = isWinner ? XP_WIN : XP_LOSS;
@@ -1003,16 +1055,26 @@ async function saveMatchResult(roomId: string, room: any) {
 
     // Si es torneo, avanzar llave
     if (isTournament && winnerId) {
+      console.log(`[Torneo] Procesando avance de torneo para la sala ${roomId}. Ganador: ${winnerId}`);
       const { data: matchData, error: matchError } = await supabase
         .from('tournament_matches')
         .select('id, event_id, next_match_id, status')
         .eq('game_room_id', roomId)
         .single();
 
+      if (matchError) {
+         console.error(`[Torneo] Error buscando tournament_match asociado a la sala ${roomId}:`, matchError);
+      }
+
       if (!matchError && matchData) {
-        await supabase.from('tournament_matches')
+        console.log(`[Torneo] Actualizando status a 'completed' para el match ${matchData.id}`);
+        const { error: updateError } = await supabase.from('tournament_matches')
           .update({ winner_id: winnerId, status: 'completed' })
           .eq('id', matchData.id);
+          
+        if (updateError) {
+           console.error(`[Torneo] Error marcando partida como completada:`, updateError);
+        }
 
         if (matchData.next_match_id) {
           const { data: nextMatch } = await supabase
@@ -1022,12 +1084,28 @@ async function saveMatchResult(roomId: string, room: any) {
             .single();
 
           if (nextMatch) {
-            const updatePayload = !nextMatch.player1_id 
-              ? { player1_id: winnerId } 
-              : { player2_id: winnerId };
-            await supabase.from('tournament_matches')
-              .update(updatePayload)
-              .eq('id', matchData.next_match_id);
+            // Verificar a qué posición pertenece el jugador que avanza (si es la partida 1 y 2, avanzan a la partida 1 del siguiente round)
+            // Es más seguro asignar explícitamente según quién está vacío, pero también debemos evitar sobrescribir si ambos están llenos por error
+            let updatePayload: any = null;
+            if (!nextMatch.player1_id) {
+              updatePayload = { player1_id: winnerId };
+            } else if (!nextMatch.player2_id) {
+              updatePayload = { player2_id: winnerId };
+            }
+
+            if (updatePayload) {
+              const { error: advanceError } = await supabase.from('tournament_matches')
+                .update(updatePayload)
+                .eq('id', matchData.next_match_id);
+              
+              if (advanceError) {
+                console.error(`[Torneo] Error avanzando jugador ${winnerId} a la siguiente ronda:`, advanceError);
+              } else {
+                console.log(`[Torneo] Jugador ${winnerId} avanzado a la siguiente ronda (${matchData.next_match_id})`);
+              }
+            } else {
+               console.warn(`[Torneo] Alerta: next_match_id ${matchData.next_match_id} ya tiene ambos jugadores llenos. No se pudo avanzar a ${winnerId}.`);
+            }
           }
         } else {
           // Final del torneo, dar premio
@@ -1048,10 +1126,15 @@ async function saveMatchResult(roomId: string, room: any) {
           if (finalPrize > 0) {
             // Verificación para evitar Doble Pago: Asegurarnos que la partida estaba 'pending' o 'in_progress'
             if (matchData.status !== 'completed') {
-              await supabase.rpc('award_tournament_prize', {
+              console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
+              const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
                 event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
               });
-              console.log(`Premio de ${finalPrize} monedas entregado a ${winnerId}`);
+              if (rewardError) {
+                 console.error(`[Torneo] Error entregando premio final:`, rewardError);
+              } else {
+                 console.log(`[Torneo] Premio entregado exitosamente.`);
+              }
             } else {
               console.log(`Intento de doble pago de torneo evitado para ${winnerId}`);
             }

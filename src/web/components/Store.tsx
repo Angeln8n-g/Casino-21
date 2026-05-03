@@ -73,7 +73,13 @@ export function Store() {
   
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'name'>('price_asc');
+  
+  // Calculate Rarity dynamically based on price
+  const getRarity = (price: number) => {
+    if (price >= 2000) return { label: 'LEGENDARIO', color: 'text-[#FACC15] border-[#FACC15]/50 bg-black/60' };
+    if (price >= 800) return { label: 'EPICO', color: 'text-[#C084FC] border-[#C084FC]/50 bg-black/60' };
+    return { label: 'RARO', color: 'text-[#60A5FA] border-[#60A5FA]/50 bg-black/60' };
+  };
   
   // Purchase & Equip Flow
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -260,16 +266,12 @@ export function Store() {
       result = result.filter(item => item.name.toLowerCase().includes(q) || item.description.toLowerCase().includes(q));
     }
 
-    // 4. Sort
-    return result.sort((a, b) => {
-      if (sortBy === 'price_asc') return a.price - b.price;
-      if (sortBy === 'price_desc') return b.price - a.price;
-      return a.name.localeCompare(b.name);
-    });
-  }, [items, activeCategory, searchQuery, sortBy, viewMode, inventory]);
+    // 4. Sort (Hardcoded to price_desc matching design intent for top items first, or keep existing logic)
+    return result.sort((a, b) => b.price - a.price);
+  }, [items, activeCategory, searchQuery, viewMode, inventory]);
 
   return (
-    <div className="min-h-screen bg-[#09090B] pb-24 md:pb-8 font-modern relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#11100E] pb-24 md:pb-8 font-modern relative overflow-x-hidden">
       {/* UI/UX Pro Max recommended font import (Nunito Sans & Rubik) */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700&family=Rubik:wght@300;400;500;700&display=swap');
@@ -300,23 +302,70 @@ export function Store() {
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6 flex flex-col">
         
-        {/* Header & Wallet */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 shrink-0">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl md:text-5xl font-display font-bold text-white tracking-tight">
-              Mercado <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#7C3AED] to-[#A78BFA]">Exclusivo</span>
+        {/* Top Bar: Search and View Toggle */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          {/* Search */}
+          <div className="relative flex-grow order-2 md:order-1">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" aria-hidden="true">🔍</span>
+            <input 
+              type="text" 
+              placeholder={viewMode === 'store' ? "Buscar cosméticos exclusivos..." : "Buscar en tu colección..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#1A1815] border border-[#2A2722] rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-[#71717A] focus:outline-none focus:border-[#FACC15] transition-all"
+            />
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex p-1 bg-[#1A1815] rounded-xl border border-[#2A2722] order-1 md:order-2 shrink-0 md:h-[54px]">
+            <button
+              onClick={() => setViewMode('store')}
+              className={`flex-1 md:flex-none px-6 py-2 md:py-0 rounded-lg font-bold text-sm transition-all duration-300 ${viewMode === 'store' ? 'bg-[#2A2722] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white'}`}
+            >
+              Catalog
+            </button>
+            <button
+              onClick={() => setViewMode('gallery')}
+              className={`flex-1 md:flex-none px-6 py-2 md:py-0 rounded-lg font-bold text-sm transition-all duration-300 ${viewMode === 'gallery' ? 'bg-[#2A2722] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white'}`}
+            >
+              Collection ({inventory.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Category Pills */}
+        <div className="mb-8 flex gap-3 overflow-x-auto max-w-full custom-scrollbar pb-2 mask-edges">
+          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme', 'emotic'] as const).map(cat => (
+            <button
+              key={cat}
+              onClick={() => { triggerHaptic('light'); setActiveCategory(cat); }}
+              className={`px-5 py-2 rounded-full text-sm font-bold transition-all border ${
+                activeCategory === cat 
+                  ? 'bg-[#FDE68A] text-[#11100E] border-[#FDE68A] shadow-lg' 
+                  : 'bg-transparent border-[#2A2722] text-[#A1A1AA] hover:border-[#FACC15]/50 hover:text-white'
+              }`}
+            >
+              {cat === 'all' ? 'All items' : getCategoryLabel(cat)}
+            </button>
+          ))}
+        </div>
+
+        {/* Title & Wallet/Cart Row */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-white tracking-tight">
+              {viewMode === 'store' ? 'Digital Assets' : 'My Collection'}
             </h1>
-            <p className="text-[#A1A1AA] mt-2 font-medium">Equípate y personaliza tu presencia en la mesa.</p>
+            <p className="text-[#A1A1AA] mt-1 text-sm">
+              {viewMode === 'store' ? 'Coleccionables de edición limitada' : 'Tus artículos exclusivos'}
+            </p>
           </div>
           
           <div className="flex items-center gap-3 w-full md:w-auto">
             {/* Wallet */}
-            <div className="bg-[#18181B] border border-white/10 rounded-2xl p-4 flex items-center justify-center shadow-xl flex-grow md:flex-grow-0">
-              <div className="text-center md:text-right">
-                <p className="text-[10px] text-[#A1A1AA] uppercase tracking-widest font-bold mb-1">Tu Saldo</p>
-                <div className={`text-2xl font-display font-bold flex items-center justify-center md:justify-end gap-2 transition-transform duration-300 ${coinAnim ? 'scale-110 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]' : 'text-[#FACC15]'}`}>
-                  <span className="text-2xl" aria-hidden="true">🪙</span> {(profile?.coins || 0).toLocaleString()}
-                </div>
+            <div className="bg-[#1A1815] border border-[#FACC15]/30 rounded-full px-5 py-2.5 flex items-center justify-center shadow-xl flex-grow md:flex-grow-0">
+              <div className={`text-sm font-display font-bold flex items-center justify-center gap-2 transition-transform duration-300 ${coinAnim ? 'scale-110 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]' : 'text-[#FACC15]'}`}>
+                <span aria-hidden="true">🪙</span> {(profile?.coins || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
 
@@ -325,80 +374,18 @@ export function Store() {
               <button 
                 onClick={() => setIsCartOpen(true)}
                 disabled={cart.length === 0}
-                className={`bg-[#18181B] border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center shadow-xl min-w-[80px] transition-all duration-300 relative ${
+                className={`border rounded-full px-5 py-2.5 flex items-center justify-center shadow-xl transition-all duration-300 gap-2 ${
                   cart.length > 0 
-                    ? 'hover:bg-white/5 cursor-pointer border-[#7C3AED]/50 hover:border-[#7C3AED]' 
-                    : 'opacity-50 cursor-not-allowed'
+                    ? 'bg-[#FACC15]/10 border-[#FACC15]/50 text-[#FACC15] hover:bg-[#FACC15]/20 cursor-pointer' 
+                    : 'bg-[#1A1815] border-[#2A2722] text-[#A1A1AA] opacity-50 cursor-not-allowed'
                 }`}
                 aria-label="Abrir carrito"
               >
-                <span className="text-2xl mb-1" aria-hidden="true">🛒</span>
-                <span className="text-[10px] text-white uppercase tracking-widest font-bold">Cart</span>
-                
-                {cart.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-[#F43F5E] text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-[#09090B] animate-bounce-subtle">
-                    {cart.length}
-                  </span>
-                )}
+                <span aria-hidden="true">🛒</span>
+                <span className="text-sm font-bold">{cart.length}</span>
               </button>
             )}
           </div>
-        </div>
-
-        {/* Navigation Tabs (Store vs Gallery) */}
-        <div className="flex p-1 bg-[#18181B] rounded-2xl w-full max-w-md mx-auto md:mx-0 mb-8 border border-white/5">
-          <button
-            onClick={() => setViewMode('store')}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${viewMode === 'store' ? 'bg-[#27272A] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'}`}
-          >
-            🛍️ Comprar
-          </button>
-          <button
-            onClick={() => setViewMode('gallery')}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${viewMode === 'gallery' ? 'bg-[#27272A] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white hover:bg-white/5'}`}
-          >
-            🖼️ Mi Galería ({inventory.length})
-          </button>
-        </div>
-        
-        {/* Search & Filters Bar */}
-        <div className="mb-8 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-grow">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" aria-hidden="true">🔍</span>
-            <input 
-              type="text" 
-              placeholder={viewMode === 'store' ? "Buscar nuevos artículos..." : "Buscar en tu colección..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#18181B]/80 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-[#71717A] focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all"
-            />
-          </div>
-          <select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-[#18181B]/80 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#7C3AED] transition-all cursor-pointer appearance-none min-w-[160px] font-medium"
-          >
-            <option value="price_asc">Menor precio</option>
-            <option value="price_desc">Mayor precio</option>
-            <option value="name">A - Z</option>
-          </select>
-        </div>
-
-        {/* Category Pills */}
-        <div className="mb-8 flex gap-2 overflow-x-auto max-w-full custom-scrollbar pb-2 mask-edges">
-          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme', 'emotic'] as const).map(cat => (
-            <button
-              key={cat}
-              onClick={() => { triggerHaptic('light'); setActiveCategory(cat); }}
-              className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all border ${
-                activeCategory === cat 
-                  ? 'bg-white text-[#09090B] border-white shadow-lg' 
-                  : 'bg-transparent border-white/20 text-[#A1A1AA] hover:border-white/50 hover:text-white'
-              }`}
-            >
-              {cat === 'all' ? 'Todos' : getCategoryLabel(cat)}
-            </button>
-          ))}
         </div>
 
         {/* Main Grid / Masonry Layout */}
@@ -423,7 +410,7 @@ export function Store() {
             </div>
           ) : (
             displayItems.map((item, index) => {
-              const isPremium = item.price >= 5000;
+              const rarity = getRarity(item.price);
               const isSuccess = successItems.includes(item.id);
               const inCart = isInCart(item.id);
               const isEquipped = viewMode === 'gallery' && isItemEquipped(item);
@@ -431,28 +418,26 @@ export function Store() {
               return (
                 <div 
                   key={item.id} 
-                  className={`glass-panel rounded-3xl relative overflow-hidden group border transition-all duration-500 bg-[#18181B]/80 backdrop-blur-xl flex flex-col ${
+                  className={`bg-[#1A1815] rounded-2xl relative overflow-hidden group border transition-all duration-500 flex flex-col ${
                     viewMode === 'gallery' ? 'masonry-item' : 'h-full'
                   } ${
                     isSuccess ? 'border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.2)]' : 
-                    inCart ? 'border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.15)] scale-[0.98]' :
+                    inCart ? 'border-[#FACC15] shadow-[0_0_20px_rgba(250,204,21,0.15)] scale-[0.98]' :
                     isEquipped ? 'border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.1)]' :
-                    'border-white/5 hover:border-white/20 hover:shadow-2xl hover:-translate-y-1'
+                    'border-[#2A2722] hover:border-[#3A362F] hover:shadow-2xl hover:-translate-y-1'
                   }`}
                   style={{ animationDelay: `${(index % 10) * 50}ms` }}
                 >
                   {/* Image/Preview Area */}
-                  <div className={`relative p-6 flex items-center justify-center overflow-hidden bg-gradient-to-b from-white/5 to-transparent ${
-                    item.item_type === 'board' ? 'min-h-[160px]' : 'min-h-[200px]'
+                  <div className={`relative w-full overflow-hidden flex items-center justify-center bg-[#0F0E0C] ${
+                    item.item_type === 'board' ? 'aspect-video' : 'aspect-square'
                   }`}>
-                    {isPremium && (
-                      <div className="absolute top-4 left-4 bg-gradient-to-r from-yellow-400 to-yellow-600 text-[#09090B] text-[9px] font-bold uppercase tracking-widest py-1 px-3 rounded-full z-20 shadow-md">
-                        Premium
-                      </div>
-                    )}
+                    <div className={`absolute top-3 left-3 z-20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border backdrop-blur-md ${rarity.color}`}>
+                      {rarity.label}
+                    </div>
 
                     {item.item_type === 'theme' && item.theme_key ? (
-                      <div className="w-full h-full absolute inset-0 opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-700">
+                      <div className="w-full h-full absolute inset-0 opacity-90 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-700">
                         <ThemeCardPreview themeKey={item.theme_key} />
                       </div>
                     ) : item.image_url ? (
@@ -460,8 +445,8 @@ export function Store() {
                         src={item.image_url} 
                         alt={item.name} 
                         loading="lazy"
-                        className={`object-contain relative z-10 transition-transform duration-700 group-hover:scale-110 drop-shadow-2xl ${
-                          item.item_type === 'board' ? 'w-full h-full object-cover rounded-xl border border-white/10' : 'max-h-32'
+                        className={`w-full h-full transition-transform duration-700 group-hover:scale-110 ${
+                          item.item_type === 'board' || item.item_type === 'avatar' ? 'object-cover' : 'object-contain p-4'
                         }`}
                         onError={(e) => { 
                           const target = e.target as HTMLImageElement;
@@ -476,41 +461,37 @@ export function Store() {
                   </div>
 
                   {/* Content Area */}
-                  <div className="p-6 flex flex-col flex-grow bg-[#09090B]/40">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] text-[#A1A1AA] uppercase tracking-widest font-bold">
-                        {getCategoryLabel(item.item_type)}
-                      </span>
-                      {viewMode === 'store' && (
-                        <span className="text-sm font-display font-bold text-[#FACC15]">
-                          🪙 {item.price.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <span className="text-[10px] text-[#A78BFA] uppercase tracking-widest font-black mb-1">
+                      {getCategoryLabel(item.item_type).split(' ')[1] || item.item_type}
+                    </span>
                     
                     <h3 className="font-display font-bold text-lg text-white mb-2 leading-tight">
                       {item.name}
                     </h3>
                     
-                    <p className="text-[#A1A1AA] text-xs line-clamp-2 flex-grow mb-4">
-                      {item.description}
-                    </p>
+                    {viewMode === 'store' && (
+                      <div className="text-[#FACC15] font-bold flex items-center gap-1.5 mb-4">
+                        <span aria-hidden="true" className="text-sm">🪙</span> 
+                        <span>{item.price.toLocaleString()}</span>
+                      </div>
+                    )}
 
                     {/* Actions */}
-                    <div className="mt-auto pt-4 border-t border-white/5" onClick={e => e.stopPropagation()}>
+                    <div className="mt-auto pt-2" onClick={e => e.stopPropagation()}>
                       {viewMode === 'store' ? (
                         <button 
                           onClick={(e) => toggleCartItem(item, e)}
-                          className={`w-full py-3 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+                          className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
                             inCart 
-                              ? 'bg-white text-[#09090B] hover:bg-red-500 hover:text-white' 
-                              : 'bg-[#27272A] text-white hover:bg-[#7C3AED]'
+                              ? 'bg-[#2A2722] text-[#FACC15] border border-[#FACC15]/30 hover:bg-[#3A362F]' 
+                              : 'bg-[#FACC15] text-black hover:bg-[#FDE68A]'
                           }`}
                         >
                           {inCart ? (
-                            <><span aria-hidden="true">✓</span> En el carrito</>
+                            <><span aria-hidden="true">✓</span> EN EL CARRITO</>
                           ) : (
-                            <><span aria-hidden="true">➕</span> Añadir</>
+                            <><span aria-hidden="true">🛒</span> AÑADIR</>
                           )}
                         </button>
                       ) : (
@@ -527,8 +508,8 @@ export function Store() {
                                     disabled={processingId === item.id || isEquippedInSlot}
                                     className={`py-2 rounded-xl font-bold text-xs transition-colors border ${
                                       isEquippedInSlot
-                                        ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
-                                        : 'bg-[#27272A] border-white/10 text-white hover:bg-white/20'
+                                        ? 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/50'
+                                        : 'bg-[#2A2722] border-[#3A362F] text-white hover:bg-[#3A362F]'
                                     }`}
                                     title={`Equipar en Slot ${slot}`}
                                   >
@@ -542,13 +523,13 @@ export function Store() {
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleEquip(item); }}
                             disabled={isEquipped || processingId === item.id}
-                            className={`w-full py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${
                               isEquipped 
-                                ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' 
-                                : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9] shadow-lg shadow-purple-500/20'
+                                ? 'bg-[#FACC15]/10 text-[#FACC15] border border-[#FACC15]/20' 
+                                : 'bg-[#2A2722] text-white hover:bg-[#3A362F] border border-[#3A362F]'
                             }`}
                           >
-                            {processingId === item.id ? 'Cargando...' : isEquipped ? '★ Equipado' : 'Equipar'}
+                            {processingId === item.id ? 'Cargando...' : isEquipped ? '★ EQUIPADO' : 'EQUIPAR'}
                           </button>
                         )
                       )}
