@@ -93,7 +93,7 @@ export function AuthScreen() {
           <div className="relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.4)] animate-float">
             <LogoK21 size={96} />
           </div>
-          <h1 className="text-3xl font-display font-black text-white mt-4 tracking-wider uppercase">
+          <h1 className="text-3xl font-display font-black text-yellow-600 mt-4 tracking-wider uppercase">
             KASINO <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-casino-gold-dark">21</span>
           </h1>
           <p className="text-gray-400 text-sm mt-1 uppercase tracking-[0.2em] font-bold">Autenticación</p>
