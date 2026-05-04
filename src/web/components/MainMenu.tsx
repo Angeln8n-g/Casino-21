@@ -819,9 +819,10 @@ export function MainMenu() {
               <div className="space-y-4 animate-fade-in pb-4">
                 <h3 className="section-header">📊 Estadísticas</h3>
                 <QuickStats />
-                <ProfileHistory />
                 <h3 className="section-header">🎯 Misiones Diarias</h3>
                 <DailyQuests />
+                <h3 className="section-header">📜 Historial de Partidas</h3>
+                <ProfileHistory />
                 <h3 className="section-header">🏅 Logros Recientes</h3>
                 <RecentAchievements />
               </div>
@@ -854,7 +855,7 @@ export function MainMenu() {
               <div className="animate-fade-in space-y-6 max-w-4xl mx-auto">
                 <h3 className="section-header">📊 Estadísticas</h3>
                 <QuickStats />
-                <ProfileHistory />
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h3 className="section-header">🎯 Misiones Diarias</h3>
@@ -865,6 +866,9 @@ export function MainMenu() {
                     <RecentAchievements />
                   </div>
                 </div>
+
+                <h3 className="section-header">📜 Historial de Partidas</h3>
+                <ProfileHistory />
               </div>
             )}
             {desktopTab === 'events' && (

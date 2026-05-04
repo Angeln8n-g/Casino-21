@@ -200,6 +200,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       } else {
         setProfile(data);
+        
+        // Asignar misiones diarias automáticamente al cargar el perfil
+        try {
+          await supabase.rpc('assign_daily_quests', { p_player_id: userId });
+        } catch (questError) {
+          logger.error('Error auto-assigning daily quests:', questError);
+        }
       }
     } catch (error: any) {
       const message = String(error?.message || '');

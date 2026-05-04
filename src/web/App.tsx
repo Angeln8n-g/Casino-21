@@ -1,15 +1,42 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GameProvider, useGame } from './hooks/useGame';
 import { AudioProvider } from './hooks/useAudio';
 import { MainMenu } from './components/MainMenu';
 import { GameScreen } from './components/GameScreen';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { AuthScreen } from './components/AuthScreen';
+import { UpdatePassword } from './components/UpdatePassword';
 import { triggerHaptic } from './utils/haptics';
 
 function AppContent() {
   const { user, loading } = useAuth();
   const { gameState } = useGame();
+  const [isRecovery, setIsRecovery] = useState(false);
+
+  useEffect(() => {
+    // Detectar si venimos de un enlace de recuperación de contraseña de Supabase
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setIsRecovery(true);
+    }
+    
+    // Escuchar cambios en el hash
+    const handleHashChange = () => {
+      if (window.location.hash.includes('type=recovery')) {
+        setIsRecovery(true);
+      } else {
+        setIsRecovery(false);
+      }
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+  
+  if (isRecovery) {
+    return <UpdatePassword />;
+  }
+
   
   if (loading) {
     return (

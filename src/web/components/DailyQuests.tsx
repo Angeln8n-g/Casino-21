@@ -188,12 +188,15 @@ export function DailyQuests() {
                   <button
                     onClick={() => handleClaim(quest.id)}
                     disabled={claimingId === quest.id}
-                    className="btn-gold px-4 py-1.5 text-xs font-bold whitespace-nowrap ml-auto sm:ml-0"
+                    className="relative overflow-hidden group px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest whitespace-nowrap ml-auto sm:ml-0 transition-all duration-300 border border-yellow-500/50 hover:border-yellow-400 bg-gradient-to-r from-yellow-600/20 to-amber-600/20 hover:from-yellow-500/30 hover:to-amber-500/30 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.2)] hover:shadow-[0_0_25px_rgba(234,179,8,0.4)]"
                   >
-                    {claimingId === quest.id ? 'Reclamando...' : 'Reclamar'}
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                    <span className="relative z-10 flex items-center gap-2">
+                      {claimingId === quest.id ? '⏳ Procesando' : '✨ Reclamar'}
+                    </span>
                   </button>
                 ) : !quest.is_completed ? (
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider ml-auto sm:ml-0">
+                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider ml-auto sm:ml-0 bg-black/40 px-3 py-1 rounded-full border border-white/5">
                     En progreso
                   </span>
                 ) : null}

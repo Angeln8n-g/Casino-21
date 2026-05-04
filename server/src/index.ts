@@ -985,12 +985,12 @@ async function saveMatchResult(roomId: string, room: any) {
     const isTournament = !!room.isTournament;
     const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
     
-    // Mapear jugadores y resultados
-    const playersMetadata = [];
     const ELO_WIN = 25;
     const ELO_LOSS = -25;
     const XP_WIN = 50;
     const XP_LOSS = 15;
+
+    const playersData = [];
 
     for (let i = 0; i < room.players.length; i++) {
       const playerInfo = room.players[i];
@@ -1005,53 +1005,38 @@ async function saveMatchResult(roomId: string, room: any) {
       }
 
       let coinsEarned = 0;
-      
       if (prizePool > 0 && isWinner) {
-          // Repartir el prize pool entre los ganadores (todo para el de 1v1, mitad para cada uno en 2v2)
-          coinsEarned = mode === '2v2' ? Math.floor(prizePool / 2) : prizePool;
-          const { data: p } = await supabase.from('profiles').select('coins').eq('id', playerInfo.userId).single();
-          if (p) {
-            await supabase.from('profiles').update({ coins: p.coins + coinsEarned }).eq('id', playerInfo.userId);
-            try {
-              await supabase.from('wallet_transactions').insert({
-                player_id: playerInfo.userId, amount: coinsEarned, reason: `Match Prize: ${roomId}`
-              });
-            } catch(e) {}
-          }
-        }
-
-      // Otorgar XP
-      const xpToGive = isWinner ? XP_WIN : XP_LOSS;
-      await supabase.rpc('add_player_xp', { p_player_id: playerInfo.userId, p_xp: xpToGive });
-
-      // Avance de misiones
-      await supabase.rpc('increment_quest_progress', { 
-        p_player_id: playerInfo.userId, 
-        p_quest_type: 'play_match' 
-      });
-      if (isWinner) {
-        await supabase.rpc('increment_quest_progress', { 
-          p_player_id: playerInfo.userId, 
-          p_quest_type: 'win_match' 
-        });
+        coinsEarned = mode === '2v2' ? Math.floor(prizePool / 2) : prizePool;
       }
 
-      playersMetadata.push({
+      playersData.push({
         id: playerInfo.userId,
         name: playerInfo.name,
         score: playerState?.score || 0,
+        is_winner: isWinner,
         elo_change: isWinner ? ELO_WIN : ELO_LOSS,
-        coins_earned: coinsEarned
+        coins_earned: coinsEarned,
+        xp_gained: isWinner ? XP_WIN : XP_LOSS
       });
     }
 
-    // Guardar historial
-    await supabase.from('match_history').insert({
-      game_mode: isTournament ? 'tournament' : mode,
-      winner_id: winnerId,
-      metadata: playersMetadata
+    // Validar winner_id para evitar error de UUID en equipos (t1, t2)
+    const dbWinnerId = (mode === '2v2' && (winnerId === 't1' || winnerId === 't2')) ? null : winnerId;
+
+    // Procesar todos los resultados de forma atómica en una sola llamada RPC
+    const { error: atomicError } = await supabase.rpc('process_match_results', {
+      p_room_id: roomId,
+      p_game_mode: mode,
+      p_winner_id: dbWinnerId,
+      p_is_tournament: isTournament,
+      p_players_data: playersData
     });
-    console.log(`Historial guardado en DB para la sala ${roomId}`);
+
+    if (atomicError) {
+      console.error(`Error guardando resultados atómicos de la sala ${roomId}:`, atomicError);
+    } else {
+      console.log(`Resultados procesados y guardados en DB para la sala ${roomId}`);
+    }
 
     // Si es torneo, avanzar llave
     if (isTournament && winnerId) {
