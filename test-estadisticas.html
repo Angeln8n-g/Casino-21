@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test de Eventos de Estadísticas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    button {
+      flex: 1;
+      min-width: 150px;
+      padding: 15px 25px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-profile {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-coins {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+    .btn-elo {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+    }
+    .btn-all {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      color: #333;
+    }
+    .btn-clear {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      color: #333;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .log-container {
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 10px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .log-entry {
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 5px;
+      border-left: 4px solid;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    .log-profile {
+      background: rgba(102, 126, 234, 0.2);
+      border-color: #667eea;
+    }
+    .log-coins {
+      background: rgba(245, 87, 108, 0.2);
+      border-color: #f5576c;
+    }
+    .log-elo {
+      background: rgba(0, 242, 254, 0.2);
+      border-color: #00f2fe;
+    }
+    .timestamp {
+      color: #aaa;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+    .event-name {
+      font-weight: bold;
+      color: #43e97b;
+    }
+    .info {
+      background: rgba(67, 233, 123, 0.1);
+      border: 1px solid rgba(67, 233, 123, 0.3);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .info h3 {
+      margin-top: 0;
+      color: #43e97b;
+    }
+    .info ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .info li {
+      margin: 5px 0;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .stat-card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #43e97b;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Test de Eventos de Estadísticas</h1>
+    
+    <div class="info">
+      <h3>📋 Instrucciones</h3>
+      <ul>
+        <li>Abre las DevTools (F12) y ve a la pestaña Console</li>
+        <li>Haz clic en los botones para simular eventos</li>
+        <li>Observa los logs en esta página y en la consola</li>
+        <li>Verifica que los eventos se disparen correctamente</li>
+      </ul>
+    </div>
+
+    <div class="button-group">
+      <button class="btn-profile" onclick="dispatchProfileEvent()">
+        👤 Profile Updated
+      </button>
+      <button class="btn-coins" onclick="dispatchCoinsEvent()">
+        🪙 Coins Updated
+      </button>
+      <button class="btn-elo" onclick="dispatchEloEvent()">
+        ⚔️ ELO Updated
+      </button>
+    </div>
+
+    <div class="button-group">
+      <button class="btn-all" onclick="dispatchAllEvents()">
+        🎯 Disparar Todos
+      </button>
+      <button class="btn-clear" onclick="clearLogs()">
+        🗑️ Limpiar Logs
+      </button>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="profileCount">0</div>
+        <div class="stat-label">Profile Events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="coinsCount">0</div>
+        <div class="stat-label">Coins Events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="eloCount">0</div>
+        <div class="stat-label">ELO Events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-label">Total Events</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 30px;">📊 Event Log</h3>
+    <div class="log-container" id="logContainer">
+      <div style="color: #aaa; text-align: center; padding: 20px;">
+        Esperando eventos...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let profileCount = 0;
+    let coinsCount = 0;
+    let eloCount = 0;
+
+    function getTimestamp() {
+      const now = new Date();
+      return now.toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        fractionalSecondDigits: 3
+      });
+    }
+
+    function addLog(eventName, className) {
+      const logContainer = document.getElementById('logContainer');
+      
+      // Limpiar mensaje de "Esperando eventos..."
+      if (logContainer.children.length === 1 && logContainer.children[0].textContent.includes('Esperando')) {
+        logContainer.innerHTML = '';
+      }
+
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry ${className}`;
+      logEntry.innerHTML = `
+        <span class="timestamp">[${getTimestamp()}]</span>
+        <span class="event-name">${eventName}</span> disparado
+      `;
+      
+      logContainer.insertBefore(logEntry, logContainer.firstChild);
+      
+      // Limitar a 50 entradas
+      while (logContainer.children.length > 50) {
+        logContainer.removeChild(logContainer.lastChild);
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('profileCount').textContent = profileCount;
+      document.getElementById('coinsCount').textContent = coinsCount;
+      document.getElementById('eloCount').textContent = eloCount;
+      document.getElementById('totalCount').textContent = profileCount + coinsCount + eloCount;
+    }
+
+    function dispatchProfileEvent() {
+      window.dispatchEvent(new CustomEvent('profile_updated'));
+      console.log('✅ profile_updated event dispatched');
+      addLog('profile_updated', 'log-profile');
+      profileCount++;
+      updateStats();
+    }
+
+    function dispatchCoinsEvent() {
+      window.dispatchEvent(new CustomEvent('coins_updated'));
+      console.log('✅ coins_updated event dispatched');
+      addLog('coins_updated', 'log-coins');
+      coinsCount++;
+      updateStats();
+    }
+
+    function dispatchEloEvent() {
+      window.dispatchEvent(new CustomEvent('elo_updated'));
+      console.log('✅ elo_updated event dispatched');
+      addLog('elo_updated', 'log-elo');
+      eloCount++;
+      updateStats();
+    }
+
+    function dispatchAllEvents() {
+      dispatchProfileEvent();
+      setTimeout(() => dispatchCoinsEvent(), 100);
+      setTimeout(() => dispatchEloEvent(), 200);
+    }
+
+    function clearLogs() {
+      const logContainer = document.getElementById('logContainer');
+      logContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Logs limpiados. Esperando eventos...</div>';
+      profileCount = 0;
+      coinsCount = 0;
+      eloCount = 0;
+      updateStats();
+      console.clear();
+      console.log('🗑️ Logs limpiados');
+    }
+
+    // Escuchar eventos
+    window.addEventListener('profile_updated', () => {
+      console.log('🎯 profile_updated event received!');
+    });
+
+    window.addEventListener('coins_updated', () => {
+      console.log('🎯 coins_updated event received!');
+    });
+
+    window.addEventListener('elo_updated', () => {
+      console.log('🎯 elo_updated event received!');
+    });
+
+    console.log('🎮 Test de Eventos de Estadísticas cargado');
+    console.log('📋 Usa los botones en la página para disparar eventos');
+  </script>
+</body>
+</html>

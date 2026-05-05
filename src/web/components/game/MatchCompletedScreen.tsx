@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameState } from '../../../domain/game-state';
 import { CelebrationConfetti } from '../CelebrationConfetti';
 
@@ -39,6 +39,13 @@ export function MatchCompletedScreen({
   celebrationSeed,
   localPlayerId,
 }: MatchCompletedScreenProps) {
+  // Disparar eventos al montar el componente para refrescar estadísticas
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('profile_updated'));
+    window.dispatchEvent(new CustomEvent('coins_updated'));
+    window.dispatchEvent(new CustomEvent('elo_updated'));
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center p-4 sm:p-8 bg-transparent relative z-10 overflow-y-auto">
       <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
