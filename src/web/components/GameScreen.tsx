@@ -200,13 +200,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           setShowCelebration(true);
         }
 
-        // Disparar eventos para refrescar el perfil después de completar la partida
-        // Esto notifica a useAuth que debe recargar las estadísticas actualizadas
-        if (!isSpectator) {
-          window.dispatchEvent(new CustomEvent('profile_updated'));
-          window.dispatchEvent(new CustomEvent('coins_updated'));
-          window.dispatchEvent(new CustomEvent('elo_updated'));
-        }
+        // NOTA: Los eventos profile_updated/elo_updated ahora se disparan desde useGame
+        // cuando el servidor confirma via socket 'stats_updated' que el RPC completó,
+        // evitando leer ELO viejo de la DB.
       }
     }
 

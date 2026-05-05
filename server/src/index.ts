@@ -1020,6 +1020,17 @@ async function saveMatchResult(roomId: string, room: any) {
       });
     }
 
+    console.log(`[MatchResult] Sala ${roomId}: ${playersData.length} jugadores, winnerId=${winnerId}`);
+
+    // Fix #3: Asegurar que todos los jugadores tengan quests asignadas ANTES del RPC
+    for (const pd of playersData) {
+      try {
+        await supabase.rpc('assign_daily_quests', { p_player_id: pd.id });
+      } catch (questAssignErr) {
+        console.warn(`[MatchResult] Error asignando quests a ${pd.id}:`, questAssignErr);
+      }
+    }
+
     // Validar winner_id para evitar error de UUID en equipos (t1, t2)
     const dbWinnerId = (mode === '2v2' && (winnerId === 't1' || winnerId === 't2')) ? null : winnerId;
 
@@ -1033,9 +1044,27 @@ async function saveMatchResult(roomId: string, room: any) {
     });
 
     if (atomicError) {
-      console.error(`Error guardando resultados atómicos de la sala ${roomId}:`, atomicError);
+      console.error(`[MatchResult] Error guardando resultados atómicos de la sala ${roomId}:`, atomicError);
     } else {
-      console.log(`Resultados procesados y guardados en DB para la sala ${roomId}`);
+      console.log(`[MatchResult] Resultados procesados y guardados en DB para la sala ${roomId}`);
+
+      // Fix #2: Notificar a cada jugador que sus stats fueron actualizados en DB
+      // El frontend escuchará este evento para refrescar el perfil con datos reales
+      for (const pd of playersData) {
+        const playerInRoom = room.players.find((p: any) => p.userId === pd.id);
+        if (playerInRoom) {
+          const playerSocket = io.sockets.sockets.get(playerInRoom.socketId);
+          if (playerSocket) {
+            playerSocket.emit('stats_updated', {
+              playerId: pd.id,
+              eloChange: pd.elo_change,
+              coinsEarned: pd.coins_earned,
+              xpGained: pd.xp_gained,
+              isWinner: pd.is_winner
+            });
+          }
+        }
+      }
     }
 
     // Si es torneo, avanzar llave

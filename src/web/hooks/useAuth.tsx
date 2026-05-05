@@ -235,38 +235,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.id]);
 
-  // Suscripción en tiempo real a cambios en el perfil del usuario
+  // Suscripción en tiempo real a cambios en el perfil del usuario (con reconexión automática)
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel(`profile-changes-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`
-        },
-        (payload) => {
-          logger.debug('Profile updated in DB via realtime:', payload);
-          // Actualizar el perfil con los nuevos datos
-          if (payload.new) {
-            setProfile(payload.new);
+    let disposed = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const subscribe = () => {
+      if (disposed) return;
+
+      const channel = supabase
+        .channel(`profile-changes-${user.id}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`
+          },
+          (payload) => {
+            logger.debug('Profile updated in DB via realtime:', payload);
+            // Actualizar el perfil con los nuevos datos
+            if (payload.new) {
+              setProfile(payload.new);
+            }
           }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          logger.debug('Subscribed to profile changes');
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          logger.warn('Profile subscription error:', status);
-        }
-      });
+        )
+        .subscribe((status) => {
+          if (disposed) return;
+          if (status === 'SUBSCRIBED') {
+            logger.debug('Subscribed to profile changes');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            logger.warn('Profile subscription error:', status, '— reconnecting in 5s');
+            // Limpiar canal muerto y reintentar
+            supabase.removeChannel(channel);
+            activeChannel = null;
+            if (!disposed) {
+              retryTimer = setTimeout(subscribe, 5000);
+            }
+          }
+        });
+
+      activeChannel = channel;
+    };
+
+    subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (activeChannel) supabase.removeChannel(activeChannel);
     };
   }, [user?.id]);
 

@@ -59,6 +59,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('receive_message');
       socket.off('chat_history');
       socket.off('match_abandoned');
+      socket.off('stats_updated');
 
       socket.on('action_error', (msg: string) => {
         setError(msg);
@@ -98,6 +99,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.on('match_abandoned', (data: any) => {
         setMatchAbandonedData(data);
       });
+
+      // Fix #2: Escuchar cuando el servidor confirma que las stats fueron guardadas en DB
+      // Esto garantiza que fetchProfile() lea los datos ya actualizados (ELO, coins, XP)
+      socket.on('stats_updated', () => {
+        window.dispatchEvent(new CustomEvent('profile_updated'));
+        window.dispatchEvent(new CustomEvent('coins_updated'));
+        window.dispatchEvent(new CustomEvent('elo_updated'));
+      });
     };
 
     const setupSocket = async () => {
@@ -131,6 +140,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('receive_message');
         currentSocket.off('chat_history');
         currentSocket.off('match_abandoned');
+        currentSocket.off('stats_updated');
       }
     };
   }, []);
