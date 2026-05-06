@@ -113,7 +113,7 @@ export function AuthScreen() {
           </div>
         )}
 
-        {/* OAuth Buttons (Only show in Login/Register, not in recovery) */}
+        {/* OAuth Buttons (Only show in Login/Register, not in recovery) 
         {!isRecovery && (
           <div className="space-y-3 mb-6">
             <button
@@ -148,7 +148,7 @@ export function AuthScreen() {
             </div>
           </div>
         )}
-
+          */}
         {/* Tabs for Login/Register (Only if not in recovery) */}
         {!isRecovery && (
           <div className="flex p-1 bg-white/5 rounded-xl mb-6">

@@ -1059,7 +1059,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
           )}
           {!isSpectator && (
-            <div className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
+            <div className="relative z-30 w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
               <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
                 {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
                   const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));

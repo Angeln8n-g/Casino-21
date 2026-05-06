@@ -79,6 +79,22 @@ export function canPartitionIntoSum(numbers: number[], target: number): boolean 
   return backtrack(0, 0, 0);
 }
 
+export function getAllPossibleValues(cards: ReadonlyArray<{ rank: string; value: number }>): number[][] {
+  if (cards.length === 0) return [[]];
+  let combinations: number[][] = [[]];
+  for (const card of cards) {
+    const newCombinations: number[][] = [];
+    const possibleValues = card.rank === 'A' ? [1, 14] : [card.value];
+    for (const val of possibleValues) {
+      for (const combo of combinations) {
+        newCombinations.push([...combo, val]);
+      }
+    }
+    combinations = newCombinations;
+  }
+  return combinations;
+}
+
 export class DefaultActionValidator implements ActionValidator {
   validate(state: GameState, action: Action): ValidationResult {
     // Basic turn validation
@@ -192,33 +208,20 @@ export class DefaultActionValidator implements ActionValidator {
       return { isValid: true };
     }
 
-    const valuesToPartition = boardCards.map(c => c!.value);
-
     let partitionSuccessful = false;
 
-    if (valuesToPartition.length > 0) {
+    if (boardCards.length > 0) {
+      const possibleBoardValues = getAllPossibleValues(boardCards as any);
+      
       partitionSuccessful = targetValues.some(tv => {
         // Special case for Aces taking canted Aces:
         // A canted Ace can be taken by another Ace directly (1 takes 1, or 14 takes 14).
         // If ALL selected board cards are Aces, no formations, and hand card is Ace.
         if (handCard.rank === 'A' && action.formationIds.length === 0 && boardCards.every(c => c!.rank === 'A')) {
-          return canPartitionIntoSum(valuesToPartition.map(v => v === 14 ? 1 : v), 1);
+          return canPartitionIntoSum(boardCards.map(() => 1), 1);
         }
         
-        // Dynamically adjust Ace values in the board selection to match the target value
-        // If we are testing tv=14, any Ace on the board should be treated as 14.
-        // If we are testing tv=1, any Ace on the board should be treated as 1.
-        const adjustedValues = [...valuesToPartition];
-        if (handCard.rank === 'A') {
-          // Find the indices of Aces among the board cards
-          for (let i = 0; i < boardCards.length; i++) {
-            if (boardCards[i]!.rank === 'A') {
-              adjustedValues[i] = tv;
-            }
-          }
-        }
-        
-        return canPartitionIntoSum(adjustedValues, tv);
+        return possibleBoardValues.some(vals => canPartitionIntoSum(vals, tv));
       });
       
       if (!partitionSuccessful) {
@@ -256,7 +259,6 @@ export class DefaultActionValidator implements ActionValidator {
       return { isValid: false, error: ErrorCode.INVALID_STATE };
     }
 
-    const allValues = [handCard.value, ...boardCards.map(c => c!.value)];
     const possibleAces = handCard.rank === 'A' ? [1, 14] : [handCard.value];
 
     // The target value must be the value of another card in the player's hand
@@ -279,17 +281,21 @@ export class DefaultActionValidator implements ActionValidator {
     }
 
     let validTargetFound = false;
+    const possibleBoardValues = getAllPossibleValues(boardCards as any);
 
     // We must test each possible value of the hand card (if it's an Ace, 1 or 14)
     for (const handVal of possibleAces) {
-      const valuesToPartition = [handVal, ...boardCards.map(c => c!.value)];
-      
-      for (const target of potentialTargets) {
-        if (target > 14) continue;
-        if (canPartitionIntoSum(valuesToPartition, target)) {
-          validTargetFound = true;
-          break;
+      for (const boardVals of possibleBoardValues) {
+        const valuesToPartition = [handVal, ...boardVals];
+        
+        for (const target of potentialTargets) {
+          if (target > 14) continue;
+          if (canPartitionIntoSum(valuesToPartition, target)) {
+            validTargetFound = true;
+            break;
+          }
         }
+        if (validTargetFound) break;
       }
       if (validTargetFound) break;
     }
@@ -337,10 +343,17 @@ export class DefaultActionValidator implements ActionValidator {
         return { isValid: false, error: ErrorCode.INVALID_STATE };
       }
       
-      const values = boardCards.map(c => c!.value);
+      const possibleBoardValues = getAllPossibleValues(boardCards as any);
       const possibleTargets = handCard.rank === 'A' ? [1, 14] : [handCard.value];
       
-      const validTarget = possibleTargets.find(tv => canPartitionIntoSum(values, tv));
+      let validTarget = 0;
+      for (const tv of possibleTargets) {
+        if (possibleBoardValues.some(vals => canPartitionIntoSum(vals, tv))) {
+          validTarget = tv;
+          break;
+        }
+      }
+      
       if (!validTarget) {
         return { isValid: false, error: ErrorCode.INVALID_ACTION };
       }

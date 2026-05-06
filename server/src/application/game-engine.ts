@@ -1,6 +1,6 @@
 import { GameState } from '../domain/game-state';
 import { GameMode, ErrorCode } from '../domain/types';
-import { Action, ActionValidator, DefaultActionValidator, canPartitionIntoSum } from './action-validator';
+import { Action, ActionValidator, DefaultActionValidator, canPartitionIntoSum, getAllPossibleValues } from './action-validator';
 import { TurnManager, DefaultTurnManager } from './turn-manager';
 import { ScoreCalculator, DefaultScoreCalculator } from './score-calculator';
 import { createDeck, shuffle, draw } from '../domain/deck';
@@ -281,17 +281,21 @@ export class DefaultGameEngine implements GameEngine {
 
         // Determine the actual formationValue
         for (const handVal of possibleAces) {
-          const valuesToPartition = [handVal, ...boardCardsToForm.map(c => c.value)];
-          for (const target of potentialTargets) {
-            if (target > 14) continue;
-            if (canPartitionIntoSum(valuesToPartition, target)) {
-              const totalSum = valuesToPartition.reduce((a, b) => a + b, 0);
-              formationValue = target;
-              if (totalSum > target) {
-                isGroup = true;
+          const possibleBoardValues = getAllPossibleValues(boardCardsToForm as any);
+          for (const boardVals of possibleBoardValues) {
+            const valuesToPartition = [handVal, ...boardVals];
+            for (const target of potentialTargets) {
+              if (target > 14) continue;
+              if (canPartitionIntoSum(valuesToPartition, target)) {
+                const totalSum = valuesToPartition.reduce((a, b) => a + b, 0);
+                formationValue = target;
+                if (totalSum > target) {
+                  isGroup = true;
+                }
+                break;
               }
-              break;
             }
+            if (formationValue > 0) break;
           }
           if (formationValue > 0) break;
         }
@@ -348,10 +352,12 @@ export class DefaultGameEngine implements GameEngine {
 
         let targetValue = card.value;
         if (card.rank === 'A' && boardCardsToForm.length > 0) {
-           const values = boardCardsToForm.map(c => c.value);
-           const sum = values.reduce((a, b) => a + b, 0);
-           if (sum % 14 === 0) targetValue = 14;
-           else targetValue = 1;
+           const possibleBoardValues = getAllPossibleValues(boardCardsToForm as any);
+           if (possibleBoardValues.some(vals => canPartitionIntoSum(vals, 14))) {
+               targetValue = 14;
+           } else {
+               targetValue = 1;
+           }
         } else if (card.rank === 'A' && action.formationId) {
            const form = newState.board.formations.find(f => f.id === action.formationId);
            if (form) targetValue = form.value;
