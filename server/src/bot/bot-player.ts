@@ -451,22 +451,22 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
   const player = state.players.find(p => p.id === playerId)!;
   const opponent = opponentId ? state.players.find(p => p.id === opponentId) : undefined;
 
-  // EXPERT FEATURE: Conteo de Cartas (Memoria)
-  // Calcula cuántas cartas de un valor específico son conocidas públicamente o en mano del bot
-  const getKnownCount = (val: number): number => {
+  // EXPERT FEATURE: Conteo de Cartas (Memoria) basado en Rank
+  // Calcula cuántas cartas de un rango específico ('A', '2', 'J', etc.) son conocidas
+  const getKnownRankCount = (rank: string): number => {
     let count = 0;
     // 1. En la mano del bot
-    count += player.hand.filter(c => c.value === val).length;
+    count += player.hand.filter(c => c.rank === rank).length;
     // 2. En la mesa (sueltas y cantadas)
-    count += state.board.cards.filter(c => c.value === val).length;
-    count += state.board.cantedCards.filter(cc => cc.card.value === val).length;
+    count += state.board.cards.filter(c => c.rank === rank).length;
+    count += state.board.cantedCards.filter(cc => cc.card.rank === rank).length;
     // 3. Dentro de formaciones
     state.board.formations.forEach(f => {
-      count += f.cards.filter(c => c.value === val).length;
+      count += f.cards.filter(c => c.rank === rank).length;
     });
     // 4. Cartas recogidas por TODOS los jugadores (basurero público)
     state.players.forEach(p => {
-      count += p.collectedCards.filter(c => c.value === val).length;
+      count += p.collectedCards.filter(c => c.rank === rank).length;
     });
     return count;
   };
@@ -517,10 +517,10 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
       let spadesCollected = 0;
       for (const card of allCardsToCollect) {
         if (!card) continue;
-        if (card.rank === 'A') score += 20;
-        if (card.suit === 'diamonds' && card.rank === '10') score += 35;
-        if (card.suit === 'spades' && card.rank === '2') score += 18;
-        if (card.suit === 'spades') { spadesCollected++; score += 5; }
+        if (card.rank === 'A') score += 25; // Aces are extremely valuable
+        if (card.suit === 'diamonds' && card.rank === '10') score += 50; // 10♦ is worth 2 pts
+        if (card.suit === 'spades' && card.rank === '2') score += 30; // 2♠ is worth 1 pt
+        if (card.suit === 'spades') { spadesCollected++; score += 6; }
       }
 
       const currentSpades = player.collectedCards.filter(c => c.suit === 'spades').length;
@@ -541,7 +541,7 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
         const opponentFormations = la.formationIds.filter(fid =>
           state.board.formations.find(f => f.id === fid && f.createdBy === opponentId)
         );
-        score += opponentFormations.length * 30; // Better prioritized
+        score += opponentFormations.length * 80; // ROBO DE FORMACIÓN: Prioridad masiva
       }
 
       // Virado detection
@@ -553,7 +553,19 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
       const remainingCanted = state.board.cantedCards.length - cantedTaken;
       if (remainingBoardCards <= 0 && remainingFormations <= 0 && remainingCanted <= 0) {
         score += 80; // Virado is extremely valuable for Expert
-        if (opponent && opponent.virados > 0) score += 30;
+        if (opponent && opponent.virados > 0) score += 40;
+      } else if (remainingBoardCards + remainingFormations + remainingCanted === 1) {
+        // EXPERT FEATURE: "Anti-Virado"
+        // Si al llevar dejamos EXACTAMENTE 1 carta/formación en mesa, evaluamos si le regalamos un virado al rival.
+        if (remainingBoardCards === 1) {
+           const remainingCard = state.board.cards.find(c => !la.boardCardIds.includes(c.id));
+           if (remainingCard) {
+             const kCount = getKnownRankCount(remainingCard.rank);
+             if (kCount < 4) {
+                score -= 60; // Peligro: dejamos la mesa en bandeja de plata para un virado
+             }
+           }
+        }
       }
 
       if (player.score >= 17) {
@@ -561,6 +573,14 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
       }
       if (player.score >= 20) {
         score += spadesCollected * 15;
+      }
+
+      // EXPERT: Aggressive block if opponent is near winning
+      if (opponent && opponent.score >= 17) {
+        const has10DiamondToTake = allCardsToCollect.some(c => c && c.suit === 'diamonds' && c.rank === '10');
+        const has2SpadeToTake = allCardsToCollect.some(c => c && c.suit === 'spades' && c.rank === '2');
+        if (has10DiamondToTake) score += 60; // Deny 10♦!
+        if (has2SpadeToTake) score += 40;    // Deny 2♠!
       }
 
       return score;
@@ -587,13 +607,18 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
       const hasHighValueCards = boardCards.some(c => c && (c.rank === 'A' || (c.suit === 'diamonds' && c.rank === '10')));
       if (hasHighValueCards) score += 35; // Protect them even more
 
-      // EXPERT FEATURE: Formación Segura con Conteo
-      // Si formamos con una carta de nuestra mano, y sabemos que ya no quedan más copias de ese valor para el rival,
-      // la formación es "Inrobable" (Unstealable).
+      // EXPERT FEATURE: Formación Segura con Conteo y Respaldo
       if (handCard) {
-        const knownCount = getKnownCount(handCard.value);
+        const knownCount = getKnownRankCount(handCard.rank);
         if (knownCount >= 4) {
           score += 120; // Absolutamente seguro formarla, nadie nos la puede robar
+        }
+
+        // EXPERT FEATURE: Defensa de Formación Múltiple
+        // Si tenemos OTRA carta en mano con el mismo rank, no nos importa si nos roban porque podemos robar de vuelta
+        const sameRankInHand = player.hand.filter(c => c.rank === handCard.rank).length;
+        if (sameRankInHand > 1) {
+          score += 90; // Tenemos el par en la mano, formar es segurísimo
         }
       }
 
@@ -622,9 +647,18 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
       let score = 90;
       const f = state.board.formations.find(fo => fo.id === action.formationId);
       if (f) {
-        if (f.createdBy === opponentId) score += 30;
+        if (f.createdBy === opponentId) score += 100; // Robar formaciones del rival es brutal
         const handCard = player.hand.find(c => c.id === action.cardId);
-        if (handCard) score += (f.value + handCard.value) * 3;
+        if (handCard) {
+          score += (f.value + handCard.value) * 3;
+          
+          // EXPERT: Si al aumentar usamos una carta de la que tenemos par, o sabemos que no la tienen
+          const knownCount = getKnownRankCount(handCard.rank);
+          if (knownCount >= 4) score += 80;
+          
+          const sameRankInHand = player.hand.filter(c => c.rank === handCard.rank).length;
+          if (sameRankInHand > 1) score += 60;
+        }
       }
       return score;
     }
@@ -657,19 +691,23 @@ function scoreExpertAction(action: Action, state: GameState, playerId: string, o
         }
 
         // EXPERT FEATURE: Conteo de Cartas para botar seguro
-        const knownCount = getKnownCount(card.value);
+        const knownCount = getKnownRankCount(card.rank);
         if (knownCount >= 4) {
-          score += 100; // 100% seguro botarla, nadie más tiene esta carta.
+          score += 150; // 100% seguro botarla, nadie más tiene esta carta.
         } else if (knownCount === 3) {
-          score += 40;  // Muy probable que nadie la tenga, bastante seguro.
+          score += 50;  // Muy probable que nadie la tenga, bastante seguro.
         }
 
         // EXPERT FEATURE: Prevención de Virado (Look-ahead preventivo)
-        // Si botamos una carta y la mesa queda con esa única carta, es un "Virado regalado"
         const boardItemsCount = state.board.cards.length + state.board.formations.length + state.board.cantedCards.length;
-        if (boardItemsCount === 0 && knownCount < 4) {
-          // Dejar la mesa con 1 sola carta (la que acabamos de botar) que el oponente AÚN podría tener
-          score -= 150; // ¡Pánico! Regalo de Virado.
+        if (boardItemsCount === 0) {
+          if (knownCount < 4) {
+            // Dejar la mesa con 1 sola carta que el oponente AÚN podría tener
+            score -= 150; // ¡Pánico! Regalo de Virado.
+          } else {
+            // Si la mesa está vacía pero tenemos la ÚLTIMA copia de esta carta, es la mejor carta para botar
+            score += 100;
+          }
         }
       }
       return score;

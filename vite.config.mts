@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import { resolve } from 'path';
 
 // Supabase project hostname — used in CSP without exposing the secret key
@@ -9,7 +10,85 @@ export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'prompt',
+        injectRegister: 'auto',
+        devOptions: {
+          enabled: true,
+          type: 'module',
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}'],
+          maximumFileSizeToCacheInBytes: 50 * 1024 * 1024, // 50MB limit
+          runtimeCaching: [
+            {
+              // Cache static assets and images
+              urlPattern: ({ request }) => request.destination === 'image' || request.destination === 'style' || request.destination === 'script' || request.destination === 'font',
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'static-assets-cache',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+                },
+              },
+            },
+            {
+              // Supabase API requests (Network-First)
+              urlPattern: /^https:\/\/yarmgboyjjnodjszwiqi\.supabase\.co\/rest\/.*/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'api-cache',
+                networkTimeoutSeconds: 5,
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 60 * 60, // 1 hour
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              // External fonts
+              urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-cache',
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+                },
+              },
+            }
+          ],
+        },
+        manifest: {
+          name: 'Kasino21 — Juego de Cartas Competitivo',
+          short_name: 'Kasino21',
+          description: 'Juego de cartas competitivo multijugador en linea. Compite en torneos, sube de rango y desbloquea logros.',
+          theme_color: '#020617',
+          background_color: '#020617',
+          display: 'standalone',
+          start_url: '/',
+          scope: '/',
+          lang: 'es',
+          icons: [
+            { src: '/icons/icon-72x72.png', sizes: '72x72', type: 'image/png' },
+            { src: '/icons/icon-96x96.png', sizes: '96x96', type: 'image/png' },
+            { src: '/icons/icon-128x128.png', sizes: '128x128', type: 'image/png' },
+            { src: '/icons/icon-144x144.png', sizes: '144x144', type: 'image/png' },
+            { src: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
+            { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/icons/icon-384x384.png', sizes: '384x384', type: 'image/png' },
+            { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+            { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          ]
+        }
+      })
+    ],
 
     server: {
       port: 3000,

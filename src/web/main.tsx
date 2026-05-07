@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { PWAManager } from './components/pwa/PWAManager';
 import './index.css';
 
 // ── Suppress React DevTools advertisement in production ───────────────────────
@@ -19,6 +20,8 @@ if (import.meta.env.PROD) {
 const root = createRoot(document.getElementById('root')!);
 root.render(
   <React.StrictMode>
-    <App />
+    <PWAManager>
+      <App />
+    </PWAManager>
   </React.StrictMode>
 );
