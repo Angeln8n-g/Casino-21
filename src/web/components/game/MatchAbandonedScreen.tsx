@@ -30,6 +30,11 @@ export function MatchAbandonedScreen({ data, localPlayerId, celebrationSeed }: M
     window.dispatchEvent(new CustomEvent('profile_updated'));
     window.dispatchEvent(new CustomEvent('coins_updated'));
     window.dispatchEvent(new CustomEvent('elo_updated'));
+
+    // Trigger Interstitial Ad when match is abandoned
+    import('../AdManager').then(({ showInterstitialAd }) => {
+      showInterstitialAd();
+    });
   }, []);
 
   return (

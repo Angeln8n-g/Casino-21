@@ -6,6 +6,8 @@ import splashBg from '../../Public/splash.png';
 export function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -53,6 +55,7 @@ export function AuthScreen() {
       } else {
         if (!username.trim()) throw new Error('El nombre de usuario es obligatorio');
         if (username.trim().length < 3) throw new Error('El nombre debe tener al menos 3 caracteres');
+        if (!acceptedTerms) throw new Error('Debes aceptar los Términos de Servicio para registrarte');
         
         const { error } = await supabase.auth.signUp({
           email,
@@ -79,11 +82,11 @@ export function AuthScreen() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: `url(${splashBg})` }}
     >
       {/* Dark gradient overlay for professional look and text readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/80 via-[#050505]/60 to-[#050505]/95 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/85 via-[#050505]/70 to-[#050505]/95 pointer-events-none" />
 
       {/* Background Ambient FX */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 bg-casino-gold/15 rounded-full blur-[120px] pointer-events-none" />
@@ -92,182 +95,291 @@ export function AuthScreen() {
       {/* Scanlines Overlay */}
       <div className="absolute inset-0 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8cGF0aCBkPSJNMCAwTDQgNE0wIDRMNCAwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMikiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] opacity-40 mix-blend-overlay" />
 
-      <div className="w-full max-w-md bg-black/40 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl relative z-10">
-        
-        {/* Header / Logo */}
-        <div className="flex flex-col items-center mb-8 relative">
-          <div className="absolute inset-0 bg-casino-gold/20 blur-[40px] rounded-full" />
-          <div className="relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.4)] animate-float">
-            <LogoK21 size={96} />
-          </div>
-          <h1 className="text-3xl font-display font-black text-yellow-600 mt-4 tracking-wider uppercase">
-            KASINO <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-casino-gold-dark">21</span>
-          </h1>
-          <p className="text-gray-400 text-sm mt-1 uppercase tracking-[0.2em] font-bold">Autenticación</p>
-        </div>
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-sm mb-6 flex items-start gap-3 animate-fade-in-up">
-            <span className="text-lg">⚠️</span>
-            <p className="mt-0.5">{error}</p>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl text-sm mb-6 flex items-start gap-3 animate-fade-in-up">
-            <span className="text-lg">✅</span>
-            <p className="mt-0.5">{successMsg}</p>
-          </div>
-        )}
-
-        {/* OAuth Buttons (Only show in Login/Register, not in recovery) 
-        {!isRecovery && (
-          <div className="space-y-3 mb-6">
-            <button
-              onClick={() => handleOAuth('google')}
-              disabled={loading}
-              className="w-full relative group overflow-hidden bg-white text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all hover:bg-gray-100 disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              Continuar con Google
-            </button>
-
-            <button
-              onClick={() => handleOAuth('discord')}
-              disabled={loading}
-              className="w-full relative group overflow-hidden bg-[#5865F2] text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all hover:bg-[#4752C4] disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 127.14 96.36">
-                <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
-              </svg>
-              Continuar con Discord
-            </button>
-
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">O usar email</span>
-              <div className="flex-1 h-px bg-white/10" />
+      <div className="flex-1 flex items-center justify-center w-full py-12">
+        <div className="w-full max-w-md bg-black/40 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl relative z-10">
+          
+          {/* Header / Logo */}
+          <div className="flex flex-col items-center mb-8 relative">
+            <div className="absolute inset-0 bg-casino-gold/20 blur-[40px] rounded-full" />
+            <div className="relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.4)] animate-float">
+              <LogoK21 size={96} />
             </div>
+            <h1 className="text-3xl font-display font-black text-yellow-600 mt-4 tracking-wider uppercase">
+              KASINO <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-casino-gold-dark">21</span>
+            </h1>
+            <p className="text-gray-400 text-sm mt-1 uppercase tracking-[0.2em] font-bold">Autenticación</p>
           </div>
-        )}
-          */}
-        {/* Tabs for Login/Register (Only if not in recovery) */}
-        {!isRecovery && (
-          <div className="flex p-1 bg-white/5 rounded-xl mb-6">
-            <button 
-              type="button"
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-display font-bold transition-all duration-300 ${
-                isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              Iniciar Sesión
-            </button>
-            <button 
-              type="button"
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-display font-bold transition-all duration-300 ${
-                !isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              Registrarse
-            </button>
-          </div>
-        )}
 
-        {isRecovery && (
-          <div className="mb-6">
-            <h3 className="text-xl font-display font-bold text-white mb-2 text-center">Recuperar Contraseña</h3>
-            <p className="text-gray-400 text-xs text-center">Ingresa tu correo y te enviaremos un enlace para cambiar tu contraseña.</p>
-          </div>
-        )}
-
-        <form onSubmit={handleAuth} className="space-y-4">
-          {!isLogin && !isRecovery && (
-            <div>
-              <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Usuario</label>
-              <input 
-                type="text" 
-                value={username} 
-                onChange={e => setUsername(e.target.value)} 
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
-                placeholder="Tu alias"
-                required
-                minLength={3}
-                maxLength={15}
-              />
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-sm mb-6 flex items-start gap-3 animate-fade-in-up">
+              <span className="text-lg">⚠️</span>
+              <p className="mt-0.5">{error}</p>
             </div>
           )}
 
-          <div>
-            <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Email</label>
-            <input 
-              type="email" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
-              placeholder="tu@email.com"
-              required
-            />
-          </div>
+          {successMsg && (
+            <div className="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl text-sm mb-6 flex items-start gap-3 animate-fade-in-up">
+              <span className="text-lg">✅</span>
+              <p className="mt-0.5">{successMsg}</p>
+            </div>
+          )}
 
+          {/* Tabs for Login/Register (Only if not in recovery) */}
           {!isRecovery && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] text-gray-500 uppercase tracking-widest font-bold">Contraseña</label>
-                {isLogin && (
-                  <button 
-                    type="button" 
-                    onClick={() => setIsRecovery(true)}
-                    className="text-[11px] text-casino-gold hover:text-white transition-colors"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                )}
-              </div>
-              <input 
-                type="password" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
+            <div className="flex p-1 bg-white/5 rounded-xl mb-6 border border-white/5">
+              <button 
+                type="button"
+                onClick={() => setIsLogin(true)}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-display font-bold transition-all duration-300 ${
+                  isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Iniciar Sesión
+              </button>
+              <button 
+                type="button"
+                onClick={() => setIsLogin(false)}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-display font-bold transition-all duration-300 ${
+                  !isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Registrarse
+              </button>
             </div>
           )}
-
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-gradient-to-b from-casino-gold to-casino-gold-dark text-black font-display font-black tracking-wide rounded-xl mt-4 hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                PROCESANDO...
-              </span>
-            ) : (
-              isRecovery ? 'ENVIAR ENLACE' : isLogin ? 'ENTRAR' : 'CREAR CUENTA'
-            )}
-          </button>
 
           {isRecovery && (
-            <button 
-              type="button"
-              onClick={() => setIsRecovery(false)}
-              className="w-full py-3 text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              Volver a Iniciar Sesión
-            </button>
+            <div className="mb-6">
+              <h3 className="text-xl font-display font-bold text-white mb-2 text-center">Recuperar Contraseña</h3>
+              <p className="text-gray-400 text-xs text-center">Ingresa tu correo y te enviaremos un enlace para cambiar tu contraseña.</p>
+            </div>
           )}
-        </form>
+
+          <form onSubmit={handleAuth} className="space-y-4">
+            {!isLogin && !isRecovery && (
+              <div>
+                <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Usuario</label>
+                <input 
+                  type="text" 
+                  value={username} 
+                  onChange={e => setUsername(e.target.value)} 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                  placeholder="Tu alias"
+                  required
+                  minLength={3}
+                  maxLength={15}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Email</label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                placeholder="tu@email.com"
+                required
+              />
+            </div>
+
+            {!isRecovery && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] text-gray-500 uppercase tracking-widest font-bold">Contraseña</label>
+                  {isLogin && (
+                    <button 
+                      type="button" 
+                      onClick={() => setIsRecovery(true)}
+                      className="text-[11px] text-casino-gold hover:text-white transition-colors"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  )}
+                </div>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+
+            {!isLogin && !isRecovery && (
+              <div className="flex items-start gap-3 bg-white/5 p-3 rounded-xl border border-white/5 transition-all hover:bg-white/10">
+                <input
+                  type="checkbox"
+                  id="acceptTerms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-white/20 bg-black/40 text-casino-gold focus:ring-casino-gold/50 cursor-pointer"
+                />
+                <label htmlFor="acceptTerms" className="text-xs text-gray-400 leading-relaxed cursor-pointer select-none">
+                  Acepto los{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms(true)}
+                    className="text-casino-gold hover:text-white underline font-bold"
+                  >
+                    Términos de Servicio
+                  </button>
+                  {' '}y confirmo que soy mayor de 13 años.
+                </label>
+              </div>
+            )}
+
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-gradient-to-b from-casino-gold to-casino-gold-dark text-black font-display font-black tracking-widest rounded-xl mt-4 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed shadow-lg"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  PROCESANDO...
+                </span>
+              ) : (
+                isRecovery ? 'ENVIAR ENLACE' : isLogin ? 'ENTRAR AL CASINO' : 'CREAR CUENTA VIP'
+              )}
+            </button>
+
+            {isRecovery && (
+              <button 
+                type="button"
+                onClick={() => setIsRecovery(false)}
+                className="w-full py-3 text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Volver a Iniciar Sesión
+              </button>
+            )}
+          </form>
+        </div>
       </div>
+
+      {/* Terms Modal */}
+      {showTerms && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between p-6 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 bg-casino-gold rounded-full" />
+                <h2 className="text-xl font-display font-black text-white uppercase tracking-tighter">Términos de Servicio</h2>
+              </div>
+              <button
+                onClick={() => setShowTerms(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar">
+              <div className="prose prose-invert prose-sm max-w-none space-y-6">
+                <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black">Legal / Kasino21</p>
+                  <p className="text-[10px] text-casino-gold font-bold">ACTUALIZADO: 05 MAYO 2026</p>
+                </div>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">1. Aceptación de Términos</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">Al acceder o jugar KASINO21, aceptas estos términos. Si no estás de acuerdo, no uses el juego.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">2. Descripción del Servicio</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">KASINO21 es un juego de cartas online con monedas virtuales. Las monedas, avatares y artículos del Shop NO tienen valor monetario real y NO pueden canjearse por dinero.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">3. Propiedad Intelectual</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">Todo el contenido de KASINO21, incluyendo código fuente, diseño, gráficos, logo, nombre "KASINO21", mecánicas de juego y textos, son propiedad exclusiva de Angel. Queda prohibido copiar, distribuir, modificar, descompilar o crear obras derivadas sin autorización escrita.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">4. Conducta del Usuario</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">Te comprometes a no hacer trampa, usar bots, explotar bugs, acosar a otros jugadores o intentar hackear el servicio. Nos reservamos el derecho de banear cuentas sin reembolso si violas esto.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">5. Compras Virtuales</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">Todas las compras de monedas, avatares VIP o Pases son finales y no reembolsables, excepto cuando lo exija la ley. Al comprar, recibes una licencia de uso del artículo virtual, no propiedad del mismo.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">6. Sin Apuestas con Dinero Real</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">KASINO21 es solo entretenimiento. Está prohibido apostar, vender o intercambiar cuentas, monedas o artículos por dinero real fuera de la plataforma.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">7. Limitación de Responsabilidad</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">El juego se ofrece "tal cual". No garantizamos que estará libre de errores 24/7. No nos hace responsables por pérdida de monedas virtuales debido a bugs, resets o cierre del servicio.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">8. Terminación</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">Podemos suspender tu acceso en cualquier momento si incumples estas reglas.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">9. Cambios a los Términos</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">Podemos actualizar estos términos. El uso continuo después de cambios implica aceptación.</p>
+                </section>
+                
+                <section>
+                  <h3 className="text-casino-gold font-display font-bold text-base mb-2 uppercase tracking-wide">10. Contacto</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed font-mono bg-white/5 p-3 rounded-lg inline-block">Para dudas legales: <span className="text-white">kasino21soporte@gmail.com</span></p>
+                </section>
+                
+                <p className="text-gray-400 text-xs mt-8 pt-6 border-t border-white/10 text-center italic">Al crear una cuenta, confirmas que eres mayor de 13 años.</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-white/10 bg-white/5">
+              <button
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  setShowTerms(false);
+                }}
+                className="w-full py-4 bg-gradient-to-r from-casino-gold to-casino-gold-dark text-black font-black uppercase tracking-widest rounded-2xl hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all transform hover:scale-[1.01] active:scale-[0.99]"
+              >
+                He leído y acepto los términos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Footer */}
+      <footer className="w-full relative z-10 text-center py-8 px-4 mt-auto">
+        <div className="max-w-4xl mx-auto">
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />
+          
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="text-left">
+              <p className="text-[10px] uppercase tracking-[0.3em] font-black text-white/40 mb-1">Kasino 21 Engine</p>
+              <p className="text-xs text-gray-500 font-medium">© 2026 KASINO21. Todos los derechos reservados.</p>
+            </div>
+
+            <div className="flex gap-8 justify-center items-center">
+              <button onClick={() => setShowTerms(true)} className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Términos</button>
+              <a href="/privacy" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Privacidad</a>
+              <a href="/como-jugar" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Cómo Jugar</a>
+            </div>
+
+            <div className="text-right max-w-[250px]">
+              <p className="text-[10px] text-gray-600 leading-relaxed font-medium">
+                KASINO21 no está afiliado a ningún casino real. Monedas virtuales sin valor comercial.
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
+
   );
 }

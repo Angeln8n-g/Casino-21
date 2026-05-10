@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showInterstitialAd } from './AdManager';
 
 interface MatchPointHUDProps {
   score: number;
@@ -12,6 +13,8 @@ export const MatchPointHUD: React.FC<MatchPointHUDProps> = ({ score }) => {
     if (score >= 17 && score < 21) {
       setIsVisible(true);
       setIsOpen(true);
+      // Trigger Interstitial Ad during this pause/moment
+      showInterstitialAd();
     } else {
       setIsVisible(false);
     }

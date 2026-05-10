@@ -402,14 +402,20 @@ export function MainMenu() {
 
   const handlePlayVsBot = async (difficulty: 'easy' | 'medium' | 'hard' | 'expert' = 'easy') => {
     if (!playerName.trim()) return setError('Ingresa tu nombre');
-    try {
-      const socket = await socketService.connect();
-      playSfx('cardPlay', { volumeMultiplier: 0.65, playbackRate: 0.9 });
-      socket.emit('create_bot_room', { playerName, difficulty });
-    } catch (e: any) {
-      console.error('Error creando sala vs bot:', e);
-      setError(e.message || 'Error conectando al servidor...');
-    }
+    
+    // Import AdManager ad triggers dynamically or globally
+    const { showGateAdForBots } = await import('./AdManager');
+    
+    showGateAdForBots(async () => {
+      try {
+        const socket = await socketService.connect();
+        playSfx('cardPlay', { volumeMultiplier: 0.65, playbackRate: 0.9 });
+        socket.emit('create_bot_room', { playerName, difficulty });
+      } catch (e: any) {
+        console.error('Error creando sala vs bot:', e);
+        setError(e.message || 'Error conectando al servidor...');
+      }
+    });
   };
 
   const handleJoinRoom = async () => {

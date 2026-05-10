@@ -44,6 +44,11 @@ export function MatchCompletedScreen({
     window.dispatchEvent(new CustomEvent('profile_updated'));
     window.dispatchEvent(new CustomEvent('coins_updated'));
     window.dispatchEvent(new CustomEvent('elo_updated'));
+    
+    // Trigger Interstitial Ad at the end of the match
+    import('../AdManager').then(({ showInterstitialAd }) => {
+      showInterstitialAd();
+    });
   }, []);
 
   return (

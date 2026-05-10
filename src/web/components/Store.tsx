@@ -361,7 +361,36 @@ export function Store() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* View Sponsored Message Button */}
+            <button
+              onClick={() => {
+                import('./AdManager').then(({ showRewardedAd }) => {
+                  showRewardedAd(async (amount) => {
+                    if (!user) return;
+                    try {
+                      // Usar RPC o actualizar directamente (esto dependerá de tu API, asumiendo update directo para el demo)
+                      // Idealmente esto debería ser un RPC en backend seguro.
+                      const currentCoins = profile?.coins || 0;
+                      const { error } = await supabase
+                        .from('players')
+                        .update({ coins: currentCoins + amount })
+                        .eq('id', user.id);
+                      if (!error) {
+                        window.dispatchEvent(new CustomEvent('coins_updated'));
+                        playSfx('victory');
+                      }
+                    } catch (e) {
+                      console.error('Error rewarding player', e);
+                    }
+                  }, 500);
+                });
+              }}
+              className="bg-[#3b82f6]/20 border border-[#3b82f6]/50 text-[#3b82f6] hover:bg-[#3b82f6]/30 rounded-full px-4 py-2 flex items-center justify-center shadow-xl transition-all duration-300 text-sm font-bold"
+            >
+              Sponsored Message
+            </button>
+
             {/* Wallet */}
             <div className="bg-[#1A1815] border border-[#FACC15]/30 rounded-full px-5 py-2.5 flex items-center justify-center shadow-xl flex-grow md:flex-grow-0">
               <div className={`text-sm font-display font-bold flex items-center justify-center gap-2 transition-transform duration-300 ${coinAnim ? 'scale-110 text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]' : 'text-[#FACC15]'}`}>

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { AuthScreen } from './components/AuthScreen';
 import { UpdatePassword } from './components/UpdatePassword';
 import { triggerHaptic } from './utils/haptics';
+import { AdManager, initializeAds } from './components/AdManager';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -70,6 +71,9 @@ function AppContent() {
 export default function App() {
   // Global event listener for button haptics
   useEffect(() => {
+    // Initialize ads when app loads
+    initializeAds();
+
     const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
       // Check if the clicked element or its parent is a button
@@ -95,6 +99,7 @@ export default function App() {
             {/* Noise texture overlay */}
             <div className="noise-overlay" />
             <AppContent />
+            <AdManager />
           </div>
         </GameProvider>
       </AudioProvider>
