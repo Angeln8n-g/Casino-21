@@ -100,6 +100,30 @@ export function getAllPossibleValues(cards: ReadonlyArray<{ rank: string; value:
   return combinations;
 }
 
+export function getValidSubsets(cards: ReadonlyArray<{ id: string; value: number; rank: string }>, targetValue: number): string[][] {
+  const validSubsets: string[][] = [];
+  
+  const generate = (index: number, currentSubset: Array<{id: string; value: number; rank: string}>) => {
+    if (index === cards.length) {
+      if (currentSubset.length > 0) {
+        const possibleBoardValues = getAllPossibleValues(currentSubset);
+        if (possibleBoardValues.some(vals => canPartitionIntoSum(vals, targetValue))) {
+          validSubsets.push(currentSubset.map(c => c.id));
+        }
+      }
+      return;
+    }
+    
+    // Include card
+    generate(index + 1, [...currentSubset, cards[index]]);
+    // Exclude card
+    generate(index + 1, currentSubset);
+  };
+  
+  generate(0, []);
+  return validSubsets;
+}
+
 export class DefaultActionValidator implements ActionValidator {
   validate(state: GameState, action: Action): ValidationResult {
     // Basic turn validation
@@ -503,66 +527,110 @@ export class DefaultActionValidator implements ActionValidator {
     for (const card of player.hand) {
       const targetValues = card.rank === 'A' ? [1, 14] : [card.value];
       
-      const matchingBoardCards = state.board.cards.filter(c => targetValues.includes(c.value));
-      const matchingCantedCards = card.rank === 'A'
-        ? state.board.cantedCards.filter(cc => targetValues.includes(cc.card.value) || cc.card.rank === 'A').map(cc => cc.card)
-        : [];
-      const allMatchingCards = [...matchingBoardCards, ...matchingCantedCards];
+      for (const tv of targetValues) {
+        const matchingFormations = state.board.formations.filter(f => f.value === tv);
+        const matchingCantedCards = card.rank === 'A'
+          ? state.board.cantedCards.filter(cc => cc.card.value === tv || cc.card.rank === 'A').map(cc => cc.card)
+          : [];
+        
+        const validSubsets = getValidSubsets(state.board.cards, tv);
 
-      const matchingFormations = state.board.formations.filter(f => targetValues.includes(f.value));
-
-      if (allMatchingCards.length > 0 || matchingFormations.length > 0) {
-        // Can take all matching cards and formations at once
-        validActions.push({
-          type: 'llevar',
-          playerId,
-          cardId: card.id,
-          boardCardIds: allMatchingCards.map(c => c.id),
-          formationIds: matchingFormations.map(f => f.id)
-        });
-      }
-    }
-
-    // Formar (Single board card + hand card → formation)
-    for (const card of player.hand) {
-      const possibleHandVals = card.rank === 'A' ? [1, 14] : [card.value];
-      for (const boardCard of state.board.cards) {
-        const isCantedByOther = state.board.cantedCards.some(cc => cc.card.id === boardCard.id && cc.playerId !== playerId);
-        if (isCantedByOther) continue;
-        for (const hv of possibleHandVals) {
-          const sum = hv + boardCard.value;
-          if (sum > 14) continue;
-          const hasTarget = player.hand.some(c => c.id !== card.id && (c.value === sum || (c.rank === 'A' && sum === 14)));
-          if (hasTarget) {
-            validActions.push({ type: 'formar', playerId, cardId: card.id, boardCardIds: [boardCard.id] });
+        if (validSubsets.length === 0) {
+          if (matchingFormations.length > 0 || matchingCantedCards.length > 0) {
+            validActions.push({
+              type: 'llevar',
+              playerId,
+              cardId: card.id,
+              boardCardIds: matchingCantedCards.map(c => c.id),
+              formationIds: matchingFormations.map(f => f.id)
+            });
+          }
+        } else {
+          for (const subset of validSubsets) {
+            validActions.push({
+              type: 'llevar',
+              playerId,
+              cardId: card.id,
+              boardCardIds: [...subset, ...matchingCantedCards.map(c => c.id)],
+              formationIds: matchingFormations.map(f => f.id)
+            });
           }
         }
       }
     }
 
-    // Formar (Pair combinations)
-    // Two board cards that sum to the hand card value
+    // Formar (Subsets of board cards + hand card → formation)
     for (const card of player.hand) {
-
-      for (let i = 0; i < state.board.cards.length; i++) {
-        for (let j = i + 1; j < state.board.cards.length; j++) {
-          const c1 = state.board.cards[i];
-          const c2 = state.board.cards[j];
-          
-          const canted1 = state.board.cantedCards.find(cc => cc.card.id === c1.id);
-          const canted2 = state.board.cantedCards.find(cc => cc.card.id === c2.id);
-          
-          const protected1 = canted1 && canted1.playerId !== playerId;
-          const protected2 = canted2 && canted2.playerId !== playerId;
-          
-          if (!protected1 && !protected2 && c1.value + c2.value === card.value) {
-            validActions.push({
-              type: 'formar',
-              playerId,
-              cardId: card.id,
-              boardCardIds: [c1.id, c2.id]
-            });
+      const possibleHandVals = card.rank === 'A' ? [1, 14] : [card.value];
+      
+      const potentialTargets = new Set<number>();
+      for (const c of player.hand) {
+        if (c.id !== card.id) {
+          if (c.rank === 'A') {
+            potentialTargets.add(1);
+            potentialTargets.add(14);
+          } else {
+            potentialTargets.add(c.value);
           }
+        }
+      }
+
+      if (potentialTargets.size === 0) continue;
+
+      const generateAllSubsets = (cards: import('../domain/card').Card[]) => {
+         const subsets: import('../domain/card').Card[][] = [];
+         // Prevent excessive combinations if board is too large, but usually fine
+         const maxCombinations = 4096;
+         let count = 0;
+         const gen = (index: number, current: import('../domain/card').Card[]) => {
+           if (count > maxCombinations) return;
+           if (index === cards.length) {
+             if (current.length > 0) {
+               subsets.push([...current]);
+               count++;
+             }
+             return;
+           }
+           gen(index + 1, [...current, cards[index]]);
+           gen(index + 1, current);
+         };
+         gen(0, []);
+         return subsets;
+      };
+
+      // Exclude cards protected by opponent's canted card
+      const availableCards = state.board.cards.filter(c => 
+        !state.board.cantedCards.some(cc => cc.card.id === c.id && cc.playerId !== playerId)
+      );
+      
+      const allSubsets = generateAllSubsets(availableCards);
+
+      for (const subset of allSubsets) {
+        let validTargetFound = false;
+        const possibleBoardValues = getAllPossibleValues(subset as any);
+        
+        for (const hv of possibleHandVals) {
+          for (const bv of possibleBoardValues) {
+            const valuesToPartition = [hv, ...bv];
+            for (const target of potentialTargets) {
+               if (target > 14) continue;
+               if (canPartitionIntoSum(valuesToPartition, target)) {
+                 validTargetFound = true;
+                 break;
+               }
+            }
+            if (validTargetFound) break;
+          }
+          if (validTargetFound) break;
+        }
+
+        if (validTargetFound) {
+          validActions.push({
+            type: 'formar',
+            playerId,
+            cardId: card.id,
+            boardCardIds: subset.map(c => c.id)
+          });
         }
       }
     }
@@ -585,18 +653,13 @@ export class DefaultActionValidator implements ActionValidator {
     for (const card of player.hand) {
       const targetValues = card.rank === 'A' ? [1, 14] : [card.value];
       for (const tv of targetValues) {
-        // Find if any combination of board cards sums to this target value
-        // We only consider the simplest case: a subset of board cards that exactly sums to tv
-        // This is a simplified check for validActions generation to keep it performant
-        // For accurate UI, the user selects the cards and we validate it.
-        const values = state.board.cards.map(c => c.value);
-        if (canPartitionIntoSum(values, tv)) {
-          // We push a generic formarPar, though the specific boardCardIds would be chosen by user
+        const validSubsets = getValidSubsets(state.board.cards, tv);
+        for (const subset of validSubsets) {
           validActions.push({
             type: 'formarPar',
             playerId,
             cardId: card.id,
-            boardCardIds: state.board.cards.map(c => c.id) // Just a placeholder for UI suggestion
+            boardCardIds: subset
           });
         }
       }
