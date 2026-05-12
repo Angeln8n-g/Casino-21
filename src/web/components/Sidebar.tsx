@@ -97,6 +97,12 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           <span className="font-semibold text-sm">Cerrar Sesión</span>
         </button>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-2 mt-2 opacity-40 hover:opacity-100 transition-opacity">
+          <a href="/terms" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Términos</a>
+          <a href="/privacy" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Privacidad</a>
+          <a href="/cookies" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Cookies</a>
+        </div>
       </div>
     </aside>
   );

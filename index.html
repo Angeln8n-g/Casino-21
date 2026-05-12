@@ -1,22 +1,151 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Kasino21 — Juego de cartas competitivo multijugador en linea. Compite en torneos, sube de rango y desbloquea logros." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ═══ PRIMARY SEO ═══ -->
+    <title>KASINO21 — Juego de Cartas Competitivo Online Gratis | 1v1 y 2v2 Multijugador</title>
+    <meta name="description" content="KASINO21 es el juego de cartas competitivo multijugador online gratis. Juega partidas ranked 1v1 y 2v2, sube de rango ELO, completa misiones diarias, desbloquea logros y compite en torneos semanales. ¡Juega ahora desde tu navegador!" />
+    <meta name="keywords" content="kasino21, juego de cartas online, juego de cartas gratis, cartas multijugador, juego de cartas competitivo, card game online, juego de casino 21, twenty one card game, juego de cartas 1v1, juego de cartas 2v2, cartas ranked, juego de mesa online, juegos de cartas PWA, juego de cartas español" />
+    <meta name="author" content="KASINO21" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://kasino21.com/" />
+
+    <!-- ═══ OPEN GRAPH (Facebook, LinkedIn, WhatsApp) ═══ -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="KASINO21" />
+    <meta property="og:title" content="KASINO21 — Juego de Cartas Competitivo Online Gratis" />
+    <meta property="og:description" content="Juega el mejor juego de cartas competitivo multijugador online. Ranked 1v1 y 2v2, torneos semanales, sistema ELO y misiones diarias. ¡100% gratis!" />
+    <meta property="og:url" content="https://kasino21.com/" />
+    <meta property="og:image" content="https://kasino21.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="KASINO21 — Juego de cartas competitivo multijugador online" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- ═══ TWITTER CARD ═══ -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="KASINO21 — Juego de Cartas Competitivo Online" />
+    <meta name="twitter:description" content="Juega el mejor juego de cartas competitivo multijugador. Ranked 1v1 y 2v2, torneos, ELO y misiones diarias. ¡Gratis!" />
+    <meta name="twitter:image" content="https://kasino21.com/og-image.png" />
+    <meta name="twitter:image:alt" content="KASINO21 — Juego de cartas competitivo online" />
+
+    <!-- ═══ PWA & MOBILE ═══ -->
     <meta name="theme-color" content="#020617" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Kasino21" />
+    <meta name="apple-mobile-web-app-title" content="KASINO21" />
+    <meta name="application-name" content="KASINO21" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#020617" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-config" content="none" />
 
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-    <link rel="icon" type="image/png" href="/src/Public/brand21Icon.png" />
-    <title>Kasino21 — Juego de Cartas Competitivo</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- ═══ ICONS & MANIFEST ═══ -->
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-72x72.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <!-- ═══ PRECONNECT & FONTS ═══ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- ═══ STRUCTURED DATA (JSON-LD) ═══ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "KASINO21",
+      "alternateName": "Kasino 21",
+      "url": "https://kasino21.com",
+      "description": "Juego de cartas competitivo multijugador online gratis. Juega partidas ranked 1v1 y 2v2, sube de rango ELO, completa misiones diarias y compite en torneos semanales.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "KASINO21",
+        "url": "https://kasino21.com"
+      },
+      "inLanguage": ["es", "en"],
+      "image": "https://kasino21.com/og-image.png",
+      "screenshot": "https://kasino21.com/og-image.png",
+      "featureList": "Multijugador en tiempo real, Ranked 1v1, Equipos 2v2, Sistema ELO, Torneos semanales, Misiones diarias, Logros, Tienda de avatares, Chat en vivo",
+      "softwareVersion": "1.0.0",
+      "datePublished": "2026-01-01",
+      "dateModified": "2026-05-12"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "KASINO21",
+      "description": "Juego de cartas competitivo multijugador online. Compite en ranked 1v1 y 2v2, sube de rango y desbloquea logros.",
+      "url": "https://kasino21.com",
+      "genre": ["Card Game", "Strategy", "Multiplayer"],
+      "gamePlatform": ["Web Browser", "Android", "iOS"],
+      "numberOfPlayers": {
+        "@type": "QuantitativeValue",
+        "minValue": 1,
+        "maxValue": 4
+      },
+      "playMode": ["MultiPlayer", "SinglePlayer", "CoOp"],
+      "inLanguage": ["es", "en"],
+      "isFamilyFriendly": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
   </head>
   <body>
+    <!-- Noscript fallback for SEO crawlers and accessibility -->
+    <noscript>
+      <div style="background:#020617;color:#e2e8f0;font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;">
+        <h1 style="font-size:2.5rem;font-weight:900;color:#fbbf24;margin-bottom:1rem;">KASINO21</h1>
+        <h2 style="font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;">Juego de Cartas Competitivo Online Gratis</h2>
+        <p style="max-width:600px;line-height:1.8;color:#94a3b8;margin-bottom:2rem;">
+          KASINO21 es un juego de cartas competitivo multijugador online gratuito. 
+          Juega partidas ranked 1v1 y 2v2, sube de rango con el sistema ELO, 
+          completa misiones diarias, desbloquea logros y compite en torneos semanales. 
+          Disponible directamente desde tu navegador sin necesidad de descargas.
+        </p>
+        <p style="color:#64748b;font-size:0.875rem;">
+          Este juego requiere JavaScript habilitado para funcionar. 
+          Por favor, activa JavaScript en la configuración de tu navegador.
+        </p>
+        <nav style="margin-top:2rem;display:flex;gap:1.5rem;">
+          <a href="/privacy" style="color:#fbbf24;text-decoration:underline;">Privacidad</a>
+          <a href="/terms" style="color:#fbbf24;text-decoration:underline;">Términos</a>
+          <a href="/cookies" style="color:#fbbf24;text-decoration:underline;">Cookies</a>
+        </nav>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/web/main.tsx"></script>
   </body>

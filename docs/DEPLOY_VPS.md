@@ -84,7 +84,7 @@ SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
 JWT_SECRET=tu_jwt_secret
 
 # IMPORTANTE: Asegúrate de que lleve https:// y no termine en slash (/)
-CORS_ORIGINS=https://casino21.hunykho.com
+CORS_ORIGINS=https://kasino21.com
 ALLOW_INSECURE_JWT_FALLBACK=false
 EXPOSE_RULES_VERSION=false
 ```
@@ -162,7 +162,7 @@ curl http://127.0.0.1:4000/health
 
 Dominio público (Comprueba si Nginx enrutó bien):
 ```bash
-curl https://casino21.hunykho.com/health
+curl https://kasino21.com/health
 ```
 
 ## 10. Flujo de actualización
@@ -183,7 +183,7 @@ sudo systemctl reload nginx
 
 - `npm run build:prod` termina sin errores
 - `pm2 status` muestra `casino21-server` online sin el status en "errored"
-- `curl https://casino21.hunykho.com/health` responde `status: ok`
+- `curl https://kasino21.com/health` responde `status: ok`
 - el frontend carga por HTTPS
 - el login funciona con Supabase
 - el socket conecta sin errores de red o auth (revisa consola de DevTools)

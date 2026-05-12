@@ -8,6 +8,9 @@ import { AuthScreen } from './components/AuthScreen';
 import { UpdatePassword } from './components/UpdatePassword';
 import { triggerHaptic } from './utils/haptics';
 import { AdManager, initializeAds } from './components/AdManager';
+import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
+import { TermsOfService } from './components/legal/TermsOfService';
+import { CookiePolicy } from './components/legal/CookiePolicy';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -69,6 +72,12 @@ function AppContent() {
 }
 
 export default function App() {
+  // ─── Legal Page Router (public, no auth required) ─────────────────────────
+  const pathname = window.location.pathname;
+  if (pathname === '/privacy') return <PrivacyPolicy />;
+  if (pathname === '/terms')   return <TermsOfService />;
+  if (pathname === '/cookies') return <CookiePolicy />;
+
   // Global event listener for button haptics
   useEffect(() => {
     // Initialize ads when app loads

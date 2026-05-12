@@ -1,0 +1,26 @@
+
+Flujo de actualización para producción:
+cd /var/www/casino21/current
+# 1. Traer cambios del repo
+git pull
+# 2. Instalar nuevas dependencias (si hubo cambios en package.json)
+npm ci && npm --prefix server ci
+# 3. Reconstruir frontend + backend
+npm run build:prod
+# 4. Aplicar migraciones de BD (si las hay)
+docker exec -i supabase-db psql -U postgres -d postgres < database/nueva-migracion.sql
+# 5. Reiniciar servicios
+pm2 restart casino21-server
+nginx -t && systemctl reload nginx
+Tips:
+- PM2 ya tiene pm2 startup configurado, revive solo al reiniciar el server
+- Los logs los ves con: pm2 logs casino21-server y docker logs supabase-*
+- Si agregas columnas/tablas en Supabase, aplica el SQL con docker exec como en el paso 4
+- El dashboard de Supabase Studio está en http://localhost:8000 (solo accesible desde el servidor, usa SSH tunnel para entrar)
+
+Listo. https://supabase.kasino21.com activo con SSL.
+Entra con:
+- URL: https://supabase.kasino21.com
+- Usuario: supabase
+- Contraseña: 46eecea873cef353915203c345e4f516
+Desde ahí puedes ver la BD, consultar tablas, ver logs, etc.

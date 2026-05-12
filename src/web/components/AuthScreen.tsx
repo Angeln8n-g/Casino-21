@@ -366,8 +366,9 @@ export function AuthScreen() {
             </div>
 
             <div className="flex gap-8 justify-center items-center">
-              <button onClick={() => setShowTerms(true)} className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Términos</button>
+              <a href="/terms" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Términos</a>
               <a href="/privacy" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Privacidad</a>
+              <a href="/cookies" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Cookies</a>
               <a href="/como-jugar" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Cómo Jugar</a>
             </div>
 

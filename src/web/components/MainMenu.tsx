@@ -1077,6 +1077,17 @@ export function MainMenu() {
             <div className="h-6" />
           </div>
           {/* ═══ END LOBBY CONTENT ═══ */}
+
+          <footer className="mt-12 pb-12 text-center space-y-4 opacity-50 hover:opacity-100 transition-opacity">
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-2">
+              <a href="/terms" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Términos de Servicio</a>
+              <a href="/privacy" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Política de Privacidad</a>
+              <a href="/cookies" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Política de Cookies</a>
+            </div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-[0.2em] font-medium">
+              © 2026 KASINO21 • TODOS LOS DERECHOS RESERVADOS
+            </p>
+          </footer>
         </div>
       </main>
 

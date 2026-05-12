@@ -1,0 +1,32 @@
+# ═══════════════════════════════════════════════════════
+# KASINO21 — robots.txt
+# https://kasino21.com
+# ═══════════════════════════════════════════════════════
+
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
+Allow: /como-jugar
+
+# Block internal app routes that shouldn't be indexed
+Disallow: /api/
+Disallow: /assets/
+Disallow: /*.js$
+Disallow: /*.css$
+
+# Sitemap location
+Sitemap: https://kasino21.com/sitemap.xml
+
+# Crawl-delay (be kind to the server)
+Crawl-delay: 1
+
+# Google AdSense bot
+User-agent: Mediapartners-Google
+Allow: /
+
+# Google Images
+User-agent: Googlebot-Image
+Allow: /icons/
+Allow: /og-image.png
