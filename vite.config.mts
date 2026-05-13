@@ -132,6 +132,15 @@ export default defineConfig(({ mode }) => {
         input: {
           main: resolve(__dirname, 'index.html'),
         },
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-ui': ['lucide-react', 'qrcode.react'],
+            // Las demás partes de código ya se separan automáticamente
+            // gracias al React.lazy() que añadimos en App.tsx
+          }
+        }
       },
       minify: 'esbuild',
     },

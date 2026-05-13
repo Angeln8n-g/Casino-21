@@ -1,5 +1,5 @@
 import React from 'react';
-import brand21Icon from '../../Public/Icon (2).png';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 export default function Footer() {
   return (

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProfileHeader } from './ProfileHeader';
 import { AudioControlButton } from './AudioControlButton';
-import brand21Icon from '../../Public/Icon (2).png';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 import { Menu } from 'lucide-react';
 
 export type DesktopTab = 'all' | 'lobby' | 'social' | 'stats' | 'events' | 'store' | 'admin';

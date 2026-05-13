@@ -14,7 +14,7 @@ import { CardView } from './CardView';
 import { AudioControlButton } from './AudioControlButton';
 import { CelebrationConfetti } from './CelebrationConfetti';
 import { GameState } from '../../domain/game-state';
-import brand21Icon from '../../Public/Icon (2).png';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 import { MatchPointHUD } from './MatchPointHUD';
 import {
   RoundSummaryScreen,

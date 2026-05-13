@@ -1,16 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { GameProvider, useGame } from './hooks/useGame';
 import { AudioProvider } from './hooks/useAudio';
-import { MainMenu } from './components/MainMenu';
-import { GameScreen } from './components/GameScreen';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import { AuthScreen } from './components/AuthScreen';
-import { UpdatePassword } from './components/UpdatePassword';
 import { triggerHaptic } from './utils/haptics';
-import { AdManager, initializeAds } from './components/AdManager';
-import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
-import { TermsOfService } from './components/legal/TermsOfService';
-import { CookiePolicy } from './components/legal/CookiePolicy';
+import { initializeAds } from './components/AdManager';
+
+// ── Lazy-loaded components (code splitting) ───────────────────────────────────
+// These components are NOT needed on initial page load. By lazy-loading them,
+// the main JS bundle shrinks dramatically and the critical path speeds up.
+const MainMenu = lazy(() => import('./components/MainMenu').then(m => ({ default: m.MainMenu })));
+const GameScreen = lazy(() => import('./components/GameScreen').then(m => ({ default: m.GameScreen })));
+const AuthScreen = lazy(() => import('./components/AuthScreen').then(m => ({ default: m.AuthScreen })));
+const UpdatePassword = lazy(() => import('./components/UpdatePassword').then(m => ({ default: m.UpdatePassword })));
+const AdManager = lazy(() => import('./components/AdManager').then(m => ({ default: m.AdManager })));
+const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
+const TermsOfService = lazy(() => import('./components/legal/TermsOfService').then(m => ({ default: m.TermsOfService })));
+const CookiePolicy = lazy(() => import('./components/legal/CookiePolicy').then(m => ({ default: m.CookiePolicy })));
+
+// Minimal loading fallback matching the app's existing design
+function LoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+      <div className="relative">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-casino-gold to-casino-gold-dark animate-pulse shadow-gold" />
+        <div className="absolute inset-0 w-14 h-14 rounded-2xl border-2 border-casino-gold/20 animate-ping" />
+      </div>
+      <p className="text-gray-500 text-xs uppercase tracking-[0.2em] font-bold animate-pulse">Cargando</p>
+    </div>
+  );
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -74,9 +92,9 @@ function AppContent() {
 export default function App() {
   // ─── Legal Page Router (public, no auth required) ─────────────────────────
   const pathname = window.location.pathname;
-  if (pathname === '/privacy') return <PrivacyPolicy />;
-  if (pathname === '/terms')   return <TermsOfService />;
-  if (pathname === '/cookies') return <CookiePolicy />;
+  if (pathname === '/privacy') return <Suspense fallback={<LoadingFallback />}><PrivacyPolicy /></Suspense>;
+  if (pathname === '/terms')   return <Suspense fallback={<LoadingFallback />}><TermsOfService /></Suspense>;
+  if (pathname === '/cookies') return <Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense>;
 
   // Global event listener for button haptics
   useEffect(() => {
@@ -107,8 +125,10 @@ export default function App() {
           >
             {/* Noise texture overlay */}
             <div className="noise-overlay" />
-            <AppContent />
-            <AdManager />
+            <Suspense fallback={<LoadingFallback />}>
+              <AppContent />
+              <AdManager />
+            </Suspense>
           </div>
         </GameProvider>
       </AudioProvider>

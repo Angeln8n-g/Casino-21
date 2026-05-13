@@ -13,7 +13,7 @@ export function CookiePolicy() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white">
+    <div className="h-screen overflow-y-auto bg-[#020617] text-white">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#020617]/95 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -228,7 +228,7 @@ function CookieSection({ icon, title, children }: { icon: string; title: string;
         <h2 className="text-xl font-display font-black text-white tracking-tight">{title}</h2>
         <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent ml-2" />
       </div>
-      <div className="text-gray-400 text-sm leading-relaxed space-y-3 pl-10">
+      <div className="text-gray-400 text-sm leading-relaxed space-y-3 pl-6 md:pl-10">
         {children}
       </div>
     </section>

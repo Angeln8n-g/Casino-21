@@ -4,7 +4,7 @@ import { Board } from '../../domain/board';
 import { DroppableBoardCard } from './DroppableBoardCard';
 import { DroppableFormation } from './DroppableFormation';
 import { Card } from '../../domain/card';
-import splashBoard from '../../Public/splash.png';
+import splashBoard from '../../Public/splash.webp';
 import { BoardTheme } from '../themes/themeRegistry';
 
 interface BoardViewProps {

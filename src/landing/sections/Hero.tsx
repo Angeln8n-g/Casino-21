@@ -1,5 +1,6 @@
 import React from 'react';
-import brand21Icon from '../../Public/Icon (2).png';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
+import splashBg from '../../Public/splash.webp';
 
 const CARDS = ['A♠', 'K♥', 'Q♦', '7♣', 'J♠'];
 
@@ -9,7 +10,7 @@ export default function Hero() {
       {/* Splash background */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: 'url(/src/Public/splash.png)' }}
+        style={{ backgroundImage: `url(${splashBg})` }}
         aria-hidden="true"
       />
       {/* Dark overlay so text stays readable */}

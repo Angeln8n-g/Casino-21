@@ -10,7 +10,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import brand21Icon from '../../Public/Icon (2).png';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 import type { DesktopTab } from './TopNavbar';
 
 interface SidebarProps {

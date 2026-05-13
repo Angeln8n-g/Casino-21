@@ -23,7 +23,7 @@ import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
 import mainMenuBg from '../../Public/background.jpg';
-import brand21Icon from '../../Public/Icon (2).png';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 export function MainMenu() {
   const { gameState, setGameState, setLocalPlayerId } = useGame();

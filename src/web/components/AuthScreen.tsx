@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { LogoK21 } from './LogoK21';
-import splashBg from '../../Public/splash.png';
+import splashBg from '../../Public/splash.webp';
 
 export function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);

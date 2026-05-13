@@ -7,7 +7,7 @@ import Leaderboard from './sections/Leaderboard';
 import Tournaments from './sections/Tournaments';
 import Footer from './sections/Footer';
 import { useLandingData } from './hooks/useLandingData';
-import brand21Icon from '../Public/Icon (2).png';
+import brand21Icon from '../Public/brand21Icon-164.webp';
 
 export default function Landing() {
   const { leaderboard, tournaments, stats, loading } = useLandingData();
