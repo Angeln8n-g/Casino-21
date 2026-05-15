@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
 import { CardView } from './CardView';
-import { getTheme } from '../themes/themeRegistry';
+import { getTheme, getAllThemes } from '../themes/themeRegistry';
 import { createCard } from '../../domain/card';
 import { triggerHaptic } from '../utils/haptics';
 
