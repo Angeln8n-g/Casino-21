@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
 import { CardView } from './CardView';
-import { getTheme, ALL_THEMES } from '../themes/themeRegistry';
+import { getTheme } from '../themes/themeRegistry';
 import { createCard } from '../../domain/card';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -272,11 +272,9 @@ export function Store() {
 
   return (
     <div className="min-h-screen bg-[#11100E] pb-24 md:pb-8 font-modern relative overflow-x-hidden">
-      {/* UI/UX Pro Max recommended font import (Nunito Sans & Rubik) */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700&family=Rubik:wght@300;400;500;700&display=swap');
-        .font-modern { font-family: 'Nunito Sans', sans-serif; }
-        .font-display { font-family: 'Rubik', sans-serif; }
+        .font-modern { font-family: system-ui, -apple-system, sans-serif; }
+        .font-display { font-family: system-ui, -apple-system, sans-serif; }
         
         @keyframes float3d {
           0%, 100% { transform: translateY(0px) rotateX(10deg) rotateY(-5deg); }
