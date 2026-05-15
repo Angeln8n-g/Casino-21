@@ -102,6 +102,21 @@ VALUES (
 )
 ON CONFLICT (key) DO NOTHING;
 
+-- ─── Add UNIQUE constraint on store_items.theme_key if not exists ──────────────
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'store_items_theme_key_unique'
+          AND conrelid = 'public.store_items'::regclass
+    ) THEN
+        ALTER TABLE public.store_items
+        ADD CONSTRAINT store_items_theme_key_unique UNIQUE (theme_key);
+    END IF;
+END;
+$$;
+
 -- ─── UPSERT store_items for migrated themes ────────────────────────────────────
 
 INSERT INTO public.store_items (name, description, item_type, price, image_url, theme_key, is_active)
@@ -180,21 +195,6 @@ BEGIN
         CREATE POLICY "Admins can delete themes"
             ON public.themes FOR DELETE
             USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = TRUE));
-    END IF;
-END;
-$$;
-
--- ─── Add UNIQUE constraint on store_items.theme_key if not exists ──────────────
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'store_items_theme_key_unique'
-          AND conrelid = 'public.store_items'::regclass
-    ) THEN
-        ALTER TABLE public.store_items
-        ADD CONSTRAINT store_items_theme_key_unique UNIQUE (theme_key);
     END IF;
 END;
 $$;
