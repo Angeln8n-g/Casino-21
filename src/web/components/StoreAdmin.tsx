@@ -310,15 +310,54 @@ export function StoreAdmin() {
             Temas
           </button>
         </div>
-        <button 
-          onClick={() => {
-            setCurrentItem({ name: '', description: '', item_type: 'avatar', price: 0, image_url: '', is_active: true });
-            setIsEditing(true);
-          }}
-          className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(124,58,237,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] text-sm flex items-center gap-2"
-        >
-          <span>➕</span> Nuevo Artículo
-        </button>
+        {activeSection === 'items' && (
+          <button 
+            onClick={() => {
+              setCurrentItem({ name: '', description: '', item_type: 'avatar', price: 0, image_url: '', is_active: true });
+              setIsEditing(true);
+            }}
+            className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(124,58,237,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] text-sm flex items-center gap-2"
+          >
+            <span>➕</span> Nuevo Artículo
+          </button>
+        )}
+        {activeSection === 'themes' && (
+          <button
+            onClick={() => {
+              setThemeForm({
+                key: '',
+                name: '',
+                description: '',
+                emoji: '🎨',
+                previewColor: '#111827',
+                price: 500,
+                cardTheme: {
+                  background: 'linear-gradient(160deg, #ffffff 0%, #f8fafc 50%, #e2e8f0 100%)',
+                  boxShadow: '0 10px 20px -6px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.45) inset',
+                  boxShadowSelected: '0 22px 40px -10px rgba(0,0,0,0.55), 0 0 0 2px rgba(255,255,255,0.45) inset',
+                  border: '1px solid rgba(255,255,255,0.55)',
+                  innerEdge: 'rgba(148,163,184,0.8)',
+                  redSuitColor: '#dc2626',
+                  blackSuitColor: '#111827',
+                  extraClass: '',
+                },
+                boardTheme: {
+                  background: 'linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
+                  borderColor: '#2A1810',
+                  glowColor: 'rgba(34,211,238,0.4)',
+                  innerRingColor: 'rgba(253,224,71,0.35)',
+                  overlayGradient: '',
+                  watermarkOpacity: 0.1,
+                },
+                isActive: true,
+              });
+              setEditingTheme(true);
+            }}
+            className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(124,58,237,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] text-sm flex items-center gap-2"
+          >
+            <span>➕</span> Nuevo Tema
+          </button>
+        )}
       </div>
 
       {activeSection === 'items' ? (
