@@ -79,7 +79,7 @@ INSERT INTO public.themes (key, name, description, emoji, preview_color, price, 
 VALUES (
     'bento_casino',
     'Bento Casino',
-    'Minimalismo Apple. Tarjetas limpias, sombras perfectas.',
+    'Minimalismo Apple. Tarjetas limpias, sombras perfectas, tipografía suave.',
     '🍱',
     '#f5f5f7',
     500,
