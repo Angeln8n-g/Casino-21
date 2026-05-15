@@ -3,8 +3,7 @@ import { GameProvider, useGame } from './hooks/useGame';
 import { AudioProvider } from './hooks/useAudio';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { triggerHaptic } from './utils/haptics';
-import { initializeAds } from './components/AdManager';
-
+import { loadThemes } from './themes/themeRegistry';
 // ── Lazy-loaded components (code splitting) ───────────────────────────────────
 // These components are NOT needed on initial page load. By lazy-loading them,
 // the main JS bundle shrinks dramatically and the critical path speeds up.
@@ -12,7 +11,6 @@ const MainMenu = lazy(() => import('./components/MainMenu').then(m => ({ default
 const GameScreen = lazy(() => import('./components/GameScreen').then(m => ({ default: m.GameScreen })));
 const AuthScreen = lazy(() => import('./components/AuthScreen').then(m => ({ default: m.AuthScreen })));
 const UpdatePassword = lazy(() => import('./components/UpdatePassword').then(m => ({ default: m.UpdatePassword })));
-const AdManager = lazy(() => import('./components/AdManager').then(m => ({ default: m.AdManager })));
 const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazy(() => import('./components/legal/TermsOfService').then(m => ({ default: m.TermsOfService })));
 const CookiePolicy = lazy(() => import('./components/legal/CookiePolicy').then(m => ({ default: m.CookiePolicy })));
@@ -98,9 +96,7 @@ export default function App() {
 
   // Global event listener for button haptics
   useEffect(() => {
-    // Initialize ads when app loads
-    initializeAds();
-
+    loadThemes();
     const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
       // Check if the clicked element or its parent is a button
@@ -127,7 +123,6 @@ export default function App() {
             <div className="noise-overlay" />
             <Suspense fallback={<LoadingFallback />}>
               <AppContent />
-              <AdManager />
             </Suspense>
           </div>
         </GameProvider>
