@@ -45,14 +45,14 @@ export function PrivacyPolicy() {
             Legal / KASINO21
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-black text-white mb-4 tracking-tight">
-            Privacy <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Policy</span>
+            Política de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Privacidad</span>
           </h1>
           <p className="text-gray-400 text-base max-w-2xl leading-relaxed">
-            At KASINO21, we're committed to protecting your privacy. This policy explains what data we collect, 
-            how we use it, and your rights.
+            En KASINO21, estamos comprometidos con la protección de tu privacidad. Esta política explica qué datos recopilamos,
+            cómo los usamos y cuáles son tus derechos.
           </p>
           <p className="text-[11px] text-gray-600 mt-4 font-mono">
-            Last updated: May 11, 2026 · Effective immediately
+            Última actualización: 11 de mayo de 2026 · Vigente de inmediato
           </p>
         </div>
       </div>
@@ -60,124 +60,124 @@ export function PrivacyPolicy() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-12 space-y-10">
 
-        <Section icon="🛡️" title="1. Information We Collect">
-          <p>KASINO21 is designed with privacy in mind. We collect minimal data necessary to operate the game:</p>
+        <Section icon="🛡️" title="1. Información que Recopilamos">
+          <p>KASINO21 está diseñado pensando en tu privacidad. Recopilamos los datos mínimos necesarios para operar el juego:</p>
           <ul>
             <li>
-              <strong>Account Data:</strong> Email address and username when you register. This is used solely for authentication and to identify your account.
+              <strong>Datos de la cuenta:</strong> Correo electrónico y nombre de usuario al registrarte. Se usan únicamente para la autenticación e identificación de tu cuenta.
             </li>
             <li>
-              <strong>Game Data:</strong> Scores, ELO rating, coins, match history, avatars, and in-game items. This is stored in our secure database to provide the game experience.
+              <strong>Datos del juego:</strong> Puntuaciones, rango ELO, monedas, historial de partidas, avatares y objetos del juego. Se almacenan en nuestra base de datos segura para ofrecer la experiencia de juego.
             </li>
             <li>
-              <strong>Analytics Data:</strong> Anonymous usage statistics via Google Analytics (e.g., session duration, pages visited, device type). This data cannot identify you personally.
+              <strong>Datos analíticos:</strong> Estadísticas de uso anónimas a través de Google Analytics (p. ej., duración de la sesión, páginas visitadas, tipo de dispositivo). Estos datos no pueden identificarte personalmente.
             </li>
             <li>
-              <strong>Advertising Data:</strong> Google AdSense may collect data through cookies and similar technologies to display relevant advertisements. See Section 4 for details.
+              <strong>Datos publicitarios:</strong> Google AdSense puede recopilar datos mediante cookies y tecnologías similares para mostrar anuncios relevantes. Consulta la Sección 4 para más detalles.
             </li>
           </ul>
           <p className="text-sm text-gray-500 italic mt-2">
-            We do <strong className="text-gray-400">not</strong> collect payment information, real money, or sensitive personal data. All in-game coins and items have no monetary value.
+            No recopilamos <strong className="text-gray-400">ninguna</strong> información de pago, dinero real ni datos personales sensibles. Todas las monedas y objetos del juego no tienen valor monetario.
           </p>
         </Section>
 
-        <Section icon="🍪" title="2. Cookies & Tracking Technologies">
-          <p>We use cookies and similar technologies for the following purposes:</p>
+        <Section icon="🍪" title="2. Cookies y Tecnologías de Seguimiento">
+          <p>Utilizamos cookies y tecnologías similares para los siguientes fines:</p>
           <div className="grid md:grid-cols-3 gap-4 mt-4">
             <CookieCard
-              type="Essential"
+              type="Esenciales"
               color="emerald"
-              items={['User authentication session', 'Game progress & settings', 'Security tokens']}
+              items={['Sesión de autenticación del usuario', 'Progreso y configuración del juego', 'Tokens de seguridad']}
               canDisable={false}
             />
             <CookieCard
-              type="Analytics"
+              type="Analíticas"
               color="blue"
-              items={['Anonymous page visit tracking', 'Feature usage statistics', 'Performance monitoring']}
+              items={['Seguimiento anónimo de visitas a páginas', 'Estadísticas de uso de funciones', 'Monitoreo de rendimiento']}
               canDisable={true}
             />
             <CookieCard
-              type="Advertising"
+              type="Publicitarias"
               color="amber"
-              items={['Google AdSense personalization', 'Ad frequency capping', 'Interest-based ad delivery']}
+              items={['Personalización de Google AdSense', 'Control de frecuencia de anuncios', 'Entrega de anuncios basada en intereses']}
               canDisable={true}
             />
           </div>
           <p className="mt-4 text-sm text-gray-500">
-            You can manage cookies through your browser settings. Note that disabling essential cookies will prevent you from playing the game.
-            See our <a href="/cookies" className="text-casino-gold hover:underline">Cookie Policy</a> for full details.
+            Puedes gestionar las cookies mediante la configuración de tu navegador. Ten en cuenta que deshabilitar las cookies esenciales impedirá que puedas jugar.
+            Consulta nuestra <a href="/cookies" className="text-casino-gold hover:underline">Política de Cookies</a> para más información.
           </p>
         </Section>
 
-        <Section icon="📡" title="3. How We Use Your Data">
+        <Section icon="📡" title="3. Cómo Usamos tus Datos">
           <ul>
-            <li>To authenticate your account and keep your session secure</li>
-            <li>To save and display your game progress, rank, and achievements</li>
-            <li>To facilitate multiplayer matchmaking and real-time game sessions</li>
-            <li>To analyze usage patterns and improve the game experience</li>
-            <li>To serve relevant advertisements through Google AdSense</li>
-            <li>To send transactional emails (e.g., password reset) — no marketing emails</li>
+            <li>Autenticar tu cuenta y mantener tu sesión segura</li>
+            <li>Guardar y mostrar tu progreso, rango y logros en el juego</li>
+            <li>Facilitar el emparejamiento multijugador y las sesiones de juego en tiempo real</li>
+            <li>Analizar patrones de uso para mejorar la experiencia de juego</li>
+            <li>Mostrar anuncios relevantes a través de Google AdSense</li>
+            <li>Enviar correos transaccionales (p. ej., restablecimiento de contraseña) — sin correos de marketing</li>
           </ul>
           <p className="mt-3 text-sm text-gray-500 italic">
-            We never sell your personal data to third parties. We do not use your data for automated decision-making that produces legal effects.
+            Nunca vendemos tus datos personales a terceros. No utilizamos tus datos para la toma de decisiones automatizada que produzca efectos legales.
           </p>
         </Section>
 
-        <Section icon="🤝" title="4. Third-Party Services">
-          <p>KASINO21 uses the following third-party services, each with their own privacy policies:</p>
+        <Section icon="🤝" title="4. Servicios de Terceros">
+          <p>KASINO21 utiliza los siguientes servicios de terceros, cada uno con sus propias políticas de privacidad:</p>
           <div className="space-y-3 mt-4">
             <ThirdPartyRow
               name="Google AdSense"
-              purpose="Contextual advertising to support free gameplay"
+              purpose="Publicidad contextual para mantener el juego gratuito"
               url="https://policies.google.com/technologies/ads"
             />
             <ThirdPartyRow
               name="Google Analytics"
-              purpose="Anonymous usage analytics to improve the game"
+              purpose="Analíticas de uso anónimas para mejorar el juego"
               url="https://policies.google.com/privacy"
             />
             <ThirdPartyRow
               name="Supabase"
-              purpose="Secure backend database and authentication"
+              purpose="Base de datos segura y autenticación"
               url="https://supabase.com/privacy"
             />
           </div>
         </Section>
 
-        <Section icon="🌍" title="5. Data Storage & Security">
+        <Section icon="🌍" title="5. Almacenamiento y Seguridad de los Datos">
           <p>
-            Your game data is stored on servers operated by Supabase (EU/US regions). We implement industry-standard 
-            security measures including encrypted connections (HTTPS/TLS), bcrypt password hashing, and row-level 
-            security policies on all database tables.
+            Tus datos de juego se almacenan en servidores operados por Supabase (regiones UE/EE. UU.). Implementamos medidas
+            de seguridad estándar de la industria, incluyendo conexiones cifradas (HTTPS/TLS), hash de contraseñas con bcrypt
+            y políticas de seguridad a nivel de fila en todas las tablas de la base de datos.
           </p>
           <p className="mt-3 text-gray-400">
-            While we strive to protect your data, no internet transmission is 100% secure. We cannot guarantee 
-            absolute security but will notify you of any significant data breach as required by law.
+            Aunque nos esforzamos por proteger tus datos, ninguna transmisión por internet es 100% segura. No podemos garantizar
+            una seguridad absoluta, pero te notificaremos sobre cualquier violación de datos significativa según lo exija la ley.
           </p>
         </Section>
 
-        <Section icon="👶" title="6. Children's Privacy">
+        <Section icon="👶" title="6. Privacidad de Menores">
           <p>
-            KASINO21 is intended for users aged <strong>13 and older</strong>. We do not knowingly collect personal 
-            information from children under 13. If you are a parent or guardian and believe your child has provided 
-            us with personal data, please contact us immediately at{' '}
+            KASINO21 está destinado a usuarios mayores de <strong>13 años</strong>. No recopilamos a sabiendas información
+            personal de niños menores de 13 años. Si eres padre o tutor y crees que tu hijo nos ha proporcionado datos
+            personales, contáctanos de inmediato en{' '}
             <a href="mailto:kansino21.service@gmail.com" className="text-casino-gold hover:underline font-mono">
               kansino21.service@gmail.com
             </a>{' '}
-            and we will delete that information promptly.
+            y eliminaremos esa información rápidamente.
           </p>
         </Section>
 
-        <Section icon="⚖️" title="7. Your Rights (GDPR & CCPA)">
-          <p>Depending on your location, you may have the following rights regarding your personal data:</p>
+        <Section icon="⚖️" title="7. Tus Derechos (GDPR y CCPA)">
+          <p>Dependiendo de tu ubicación, puedes tener los siguientes derechos sobre tus datos personales:</p>
           <div className="grid md:grid-cols-2 gap-3 mt-4">
             {[
-              { right: 'Access', desc: 'Request a copy of your personal data' },
-              { right: 'Rectification', desc: 'Correct inaccurate or incomplete data' },
-              { right: 'Erasure', desc: 'Request deletion of your account and data' },
-              { right: 'Portability', desc: 'Receive your data in a portable format' },
-              { right: 'Objection', desc: 'Object to certain data processing activities' },
-              { right: 'Opt-Out', desc: 'Opt out of advertising personalization' },
+              { right: 'Acceso', desc: 'Solicitar una copia de tus datos personales' },
+              { right: 'Rectificación', desc: 'Corregir datos inexactos o incompletos' },
+              { right: 'Supresión', desc: 'Solicitar la eliminación de tu cuenta y datos' },
+              { right: 'Portabilidad', desc: 'Recibir tus datos en un formato portátil' },
+              { right: 'Oposición', desc: 'Oponearte a ciertas actividades de tratamiento de datos' },
+              { right: 'Exclusión', desc: 'Excluirte de la personalización publicitaria' },
             ].map(({ right, desc }) => (
               <div key={right} className="flex items-start gap-3 bg-white/5 rounded-xl p-3 border border-white/5">
                 <span className="text-casino-gold font-black text-xs mt-0.5">✓</span>
@@ -189,33 +189,33 @@ export function PrivacyPolicy() {
             ))}
           </div>
           <p className="mt-4 text-sm text-gray-500">
-            To exercise any of these rights, contact us at{' '}
+            Para ejercer cualquiera de estos derechos, contáctanos en{' '}
             <a href="mailto:kansino21.service@gmail.com" className="text-casino-gold hover:underline font-mono">
               kansino21.service@gmail.com
-            </a>. We will respond within 30 days.
+            </a>. Responderemos en un plazo de 30 días.
           </p>
         </Section>
 
-        <Section icon="🔄" title="8. Changes to This Policy">
+        <Section icon="🔄" title="8. Cambios a Esta Política">
           <p>
-            We may update this Privacy Policy from time to time. When we make significant changes, we will update the 
-            "Last updated" date at the top of this page. Your continued use of KASINO21 after changes are posted 
-            constitutes your acceptance of the updated policy.
+            Podemos actualizar esta Política de Privacidad periódicamente. Cuando realicemos cambios significativos,
+            actualizaremos la fecha de "Última actualización" en la parte superior de esta página. El uso continuado
+            de KASINO21 después de la publicación de los cambios constituye tu aceptación de la política actualizada.
           </p>
         </Section>
 
-        <Section icon="✉️" title="9. Contact Us">
-          <p>If you have questions, concerns, or requests regarding this Privacy Policy, please contact us:</p>
+        <Section icon="✉️" title="9. Contacto">
+          <p>Si tienes preguntas, inquietudes o solicitudes sobre esta Política de Privacidad, contáctanos:</p>
           <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4">
             <div className="w-12 h-12 bg-blue-500/20 border border-blue-500/30 rounded-xl flex items-center justify-center text-2xl shrink-0">
               📬
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Privacy Contact</p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Contacto de Privacidad</p>
               <a href="mailto:kansino21.service@gmail.com" className="text-casino-gold hover:text-white transition-colors font-mono text-sm">
                 kansino21.service@gmail.com
               </a>
-              <p className="text-xs text-gray-600 mt-1">Response within 30 days · English & Spanish supported</p>
+              <p className="text-xs text-gray-600 mt-1">Respuesta en 30 días · Atención en español</p>
             </div>
           </div>
         </Section>
@@ -274,7 +274,7 @@ function CookieCard({
         ))}
       </ul>
       <div className={`mt-3 pt-3 border-t border-white/5 text-[10px] font-bold uppercase tracking-wider ${canDisable ? 'text-gray-500' : 'text-gray-600'}`}>
-        {canDisable ? '⚙️ Can be disabled' : '🔒 Required'}
+        {canDisable ? '⚙️ Se puede deshabilitar' : '🔒 Obligatorio'}
       </div>
     </div>
   );
@@ -293,7 +293,7 @@ function ThirdPartyRow({ name, purpose, url }: { name: string; purpose: string; 
         rel="noopener noreferrer"
         className="text-xs text-casino-gold hover:underline font-mono shrink-0"
       >
-        View Policy →
+        Ver Política →
       </a>
     </div>
   );
@@ -301,9 +301,9 @@ function ThirdPartyRow({ name, purpose, url }: { name: string; purpose: string; 
 
 function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) {
   const links = [
-    { href: '/privacy', label: 'Privacy Policy' },
-    { href: '/terms', label: 'Terms of Service' },
-    { href: '/cookies', label: 'Cookie Policy' },
+    { href: '/privacy', label: 'Política de Privacidad' },
+    { href: '/terms', label: 'Términos de Servicio' },
+    { href: '/cookies', label: 'Política de Cookies' },
   ];
 
   return (
@@ -313,7 +313,7 @@ function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) 
           <LogoK21 size={28} />
           <div>
             <p className="text-xs font-black text-white/60 uppercase tracking-widest">KASINO21</p>
-            <p className="text-[10px] text-gray-600">© 2026 · All rights reserved</p>
+            <p className="text-[10px] text-gray-600">© 2026 · Todos los derechos reservados</p>
           </div>
         </div>
         <nav className="flex gap-6">
@@ -335,7 +335,7 @@ function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) 
           href="/"
           className="text-xs bg-casino-gold/10 hover:bg-casino-gold/20 text-casino-gold border border-casino-gold/20 px-4 py-2 rounded-xl font-bold uppercase tracking-widest transition-all"
         >
-          ← Back to Game
+          ← Volver al Juego
         </a>
       </div>
     </footer>

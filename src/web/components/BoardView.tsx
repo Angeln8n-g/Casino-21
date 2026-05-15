@@ -64,7 +64,9 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
       }
     : boardTheme
     ? {
-        backgroundImage: formatBackground(boardTheme.background),
+        backgroundImage: boardTheme.backgroundImage
+          ? `url("${boardTheme.backgroundImage}")`
+          : formatBackground(boardTheme.background),
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }

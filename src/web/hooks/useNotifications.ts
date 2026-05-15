@@ -345,11 +345,13 @@ export function useNotifications() {
   };
 
   const handleFriendRequest = async (id: string, status: 'accepted' | 'rejected') => {
+    if (!user) return;
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .update({ status, responded_at: new Date().toISOString() })
-        .eq('id', id);
+      const { error } = await supabase.rpc('respond_friend_request', {
+        p_request_id: id,
+        p_user_id: user.id,
+        p_action: status
+      });
 
       if (error) {
         console.error('Error updating friend request:', error);

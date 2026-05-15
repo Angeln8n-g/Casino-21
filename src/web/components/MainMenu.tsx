@@ -1083,6 +1083,7 @@ export function MainMenu() {
               <a href="/terms" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Términos de Servicio</a>
               <a href="/privacy" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Política de Privacidad</a>
               <a href="/cookies" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Política de Cookies</a>
+              <a href="/como-jugar" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-casino-gold transition-colors">Cómo Jugar</a>
             </div>
             <p className="text-[10px] text-gray-600 uppercase tracking-[0.2em] font-medium">
               © 2026 KASINO21 • TODOS LOS DERECHOS RESERVADOS

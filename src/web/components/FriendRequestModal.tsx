@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
 
 export interface FriendRequestProfile {
@@ -28,6 +29,7 @@ export function FriendRequestModal({
   onRejected,
   onClose,
 }: FriendRequestModalProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState<'accept' | 'reject' | null>(null);
   const [done, setDone] = useState<'accepted' | 'rejected' | null>(null);
 
@@ -40,10 +42,11 @@ export function FriendRequestModal({
   const handleAction = async (action: 'accepted' | 'rejected') => {
     setLoading(action === 'accepted' ? 'accept' : 'reject');
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .update({ status: action, responded_at: new Date().toISOString() })
-        .eq('id', request.requestId);
+      const { error } = await supabase.rpc('respond_friend_request', {
+        p_request_id: request.requestId,
+        p_user_id: user?.id,
+        p_action: action
+      });
 
       if (error) {
         console.error('Error responding to friend request:', error);
@@ -67,7 +70,7 @@ export function FriendRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 

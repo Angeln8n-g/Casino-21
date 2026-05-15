@@ -11,6 +11,39 @@ import { supabase } from './supabase';
 import { BOT_USER_ID, BOT_NAMES, BOT_THINK_DELAY_MS, getBotAction } from './bot/bot-player';
 import type { BotDifficulty } from './bot/bot-player';
 
+class RingBuffer<T> {
+  private buffer: (T | undefined)[];
+  private head = 0;
+  private tail = 0;
+  private _size = 0;
+  readonly capacity: number;
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+    this.buffer = new Array(capacity);
+  }
+
+  get size() { return this._size; }
+
+  push(item: T): void {
+    this.buffer[this.tail] = item;
+    this.tail = (this.tail + 1) % this.capacity;
+    if (this._size < this.capacity) {
+      this._size++;
+    } else {
+      this.head = (this.head + 1) % this.capacity;
+    }
+  }
+
+  toArray(): T[] {
+    const result: T[] = [];
+    for (let i = 0; i < this._size; i++) {
+      result.push(this.buffer[(this.head + i) % this.capacity] as T);
+    }
+    return result;
+  }
+}
+
 dotenv.config();
 
 const RULES_VERSION = 'agrupar-merge-2026-04-09';
@@ -57,12 +90,31 @@ if (EXPOSE_RULES_VERSION) {
 }
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"]
-  }
-});
+
+let io: Server;
+
+const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+
+if (process.env.NODE_ENV === 'production' || process.env.USE_REDIS_ADAPTER === 'true') {
+  const { createAdapter } = require('@socket.io/redis-adapter');
+  const { Redis } = require('ioredis');
+  const pubClient = new Redis(REDIS_URL);
+  const subClient = pubClient.duplicate();
+  io = new Server(httpServer, {
+    cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
+    adapter: createAdapter(pubClient, subClient),
+    maxHttpBufferSize: 1e5,
+    pingInterval: 25000,
+    pingTimeout: 20000,
+  });
+} else {
+  io = new Server(httpServer, {
+    cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
+    maxHttpBufferSize: 1e5,
+    pingInterval: 25000,
+    pingTimeout: 20000,
+  });
+}
 function extractUserIdFromTokenPayload(payload: any): string | null {
   if (!payload || typeof payload !== 'object') return null;
   return payload.sub || payload.user_id || payload.id || null;
@@ -121,12 +173,25 @@ io.use(async (socket, next) => {
     timerInterval?: NodeJS.Timeout;
     lastActionTime?: number;
     isTournament?: boolean;
-    chatHistory: ChatMessage[];
+    chatHistory: RingBuffer<ChatMessage>;
     betAmount?: number;
     prizePool?: number;
     isBot?: boolean;
     botDifficulty?: BotDifficulty;
   }> = {};
+
+const socketToRoomMap = new Map<string, string>();
+
+const actionTimestamps = new Map<string, number>();
+const RATE_LIMIT_MS = 500;
+
+function isRateLimited(socketId: string): boolean {
+  const lastAction = actionTimestamps.get(socketId);
+  const now = Date.now();
+  if (lastAction && (now - lastAction) < RATE_LIMIT_MS) return true;
+  actionTimestamps.set(socketId, now);
+  return false;
+}
 
 // ─── FASE 8: Matchmaking Queue ───
 interface MatchmakingPlayer {
@@ -179,7 +244,7 @@ setInterval(() => {
           ],
           spectators: [],
           maxPlayers: 2,
-          chatHistory: []
+          chatHistory: new RingBuffer<ChatMessage>(100)
         };
 
         const s1 = io.sockets.sockets.get(p1.socketId);
@@ -230,7 +295,9 @@ const TURN_TIME_LIMIT_MS = 30000; // 30 segundos
 function closeRoom(roomId: string, reason: string = 'room_closed') {
   const room = rooms[roomId];
   if (!room) return;
-  if (room.timerInterval) clearInterval(room.timerInterval);
+  if (room.timerInterval) clearTimeout(room.timerInterval);
+  room.players.forEach(p => socketToRoomMap.delete(p.socketId));
+  room.spectators.forEach(s => socketToRoomMap.delete(s.socketId));
   io.to(roomId).emit('room_closed', { roomId, reason });
   io.in(roomId).socketsLeave(roomId);
   delete rooms[roomId];
@@ -242,7 +309,7 @@ function scheduleBotTurnIfNeeded(roomId: string, room: any) {
 
   // ── Scoring phase: auto-continue after a delay ──
   if (room.state.phase === 'scoring') {
-    if (room.timerInterval) clearInterval(room.timerInterval);
+    if (room.timerInterval) clearTimeout(room.timerInterval);
     setTimeout(() => {
       if (!rooms[roomId] || !rooms[roomId].state) return;
       if (rooms[roomId].state.phase !== 'scoring') return; // already advanced
@@ -253,7 +320,7 @@ function scheduleBotTurnIfNeeded(roomId: string, room: any) {
         broadcastGameState(roomId, rooms[roomId]);
         
         if (rooms[roomId].state.phase === 'completed') {
-          if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
+          if (rooms[roomId].timerInterval) clearTimeout(rooms[roomId].timerInterval);
           saveMatchResult(roomId, rooms[roomId]);
         } else if (rooms[roomId].state.phase === 'playing') {
           startTurnTimer(roomId, rooms[roomId]);
@@ -280,10 +347,10 @@ function scheduleBotTurnIfNeeded(roomId: string, room: any) {
           rooms[roomId].state = result.value;
           broadcastGameState(roomId, rooms[roomId]);
           if (rooms[roomId].state.phase === 'completed') {
-            if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
+            if (rooms[roomId].timerInterval) clearTimeout(rooms[roomId].timerInterval);
             saveMatchResult(roomId, rooms[roomId]);
           } else if (rooms[roomId].state.phase === 'scoring') {
-            if (rooms[roomId].timerInterval) clearInterval(rooms[roomId].timerInterval);
+            if (rooms[roomId].timerInterval) clearTimeout(rooms[roomId].timerInterval);
             scheduleBotTurnIfNeeded(roomId, rooms[roomId]); // triggers auto-continue
           } else {
             startTurnTimer(roomId, rooms[roomId]);
@@ -314,12 +381,13 @@ io.on('connection', (socket) => {
       players: [{ socketId: socket.id, playerId: userId, name: playerName, userId, team: mode === '2v2' ? 1 : undefined }],
       spectators: [],
       maxPlayers,
-      chatHistory: [],
+      chatHistory: new RingBuffer<ChatMessage>(100),
       betAmount: data.betAmount || 0, // Guardar monto de apuesta
       prizePool: 0
     };
 
     socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
     socket.emit('room_created', { roomId, playerId: userId, betAmount: rooms[roomId].betAmount, mode });
     console.log(`Sala ${roomId} creada por ${playerName} con apuesta ${rooms[roomId].betAmount}`);
   });
@@ -340,7 +408,7 @@ io.on('connection', (socket) => {
       ],
       spectators: [],
       maxPlayers: 2,
-      chatHistory: [],
+      chatHistory: new RingBuffer<ChatMessage>(100),
       betAmount: 0,
       prizePool: 0,
       isBot: true,
@@ -348,6 +416,7 @@ io.on('connection', (socket) => {
     };
 
     socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
     socket.emit('room_created', { roomId, playerId: userId, betAmount: 0, mode: '1v1' });
 
     // Iniciar partida inmediatamente (la sala ya tiene 2 "jugadores")
@@ -382,9 +451,10 @@ io.on('connection', (socket) => {
           spectators: [],
           maxPlayers: 2, // Tournaments are 1v1 for now
           isTournament: true,
-          chatHistory: []
+          chatHistory: new RingBuffer<ChatMessage>(100)
         };
         socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
         socket.emit('room_created', { roomId, playerId: userId });
         console.log(`Sala de torneo ${roomId} creada automáticamente por ${playerName}`);
         return;
@@ -404,6 +474,7 @@ io.on('connection', (socket) => {
       }
       
       socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
       socket.emit('room_joined_as_spectator', { roomId });
       console.log(`Espectador ${playerName} unido a la sala ${roomId}`);
 
@@ -419,7 +490,7 @@ io.on('connection', (socket) => {
       }
       
       // Enviar el historial de chat a los espectadores
-      socket.emit('chat_history', room.chatHistory);
+      socket.emit('chat_history', room.chatHistory.toArray());
       return;
     }
     // ─── Fin Lógica Espectadores ───
@@ -429,6 +500,7 @@ io.on('connection', (socket) => {
     if (existingPlayer) {
       existingPlayer.socketId = socket.id; // Actualizar el socket ID
       socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
       socket.emit('room_joined', { roomId, playerId: existingPlayer.userId });
       
       // Enviar el estado actual de la sala o del juego al jugador que se reconecta
@@ -491,6 +563,7 @@ io.on('connection', (socket) => {
 
     room.players.push({ socketId: socket.id, playerId: userId, name: playerName, userId, team: assignedTeam });
     socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
 
     // Enviar el playerId al jugador que se acaba de unir
     const mode = room.maxPlayers === 2 ? '1v1' : '2v2';
@@ -502,7 +575,7 @@ io.on('connection', (socket) => {
       playersData: room.players.map((p: any) => ({ id: p.userId, name: p.name, team: p.team }))
     });
     
-    socket.emit('chat_history', room.chatHistory);
+    socket.emit('chat_history', room.chatHistory.toArray());
 
     // Si la sala se llenó, iniciar el juego
     if (room.players.length === room.maxPlayers) {
@@ -727,8 +800,9 @@ io.on('connection', (socket) => {
 
   // 3. Jugar Carta
   socket.on('play_action', (action: Action) => {
+    if (isRateLimited(socket.id)) return;
     // Buscar la sala del jugador
-    const roomId = Object.keys(rooms).find(id => rooms[id]?.players.some(p => p.socketId === socket.id));
+    const roomId = socketToRoomMap.get(socket.id);
     if (!roomId) return;
     const room = rooms[roomId];
     if (!room || !room.state) return;
@@ -747,11 +821,11 @@ io.on('connection', (socket) => {
       
       // Comprobar fase del juego
       if (room.state.phase === 'completed') {
-        if (room.timerInterval) clearInterval(room.timerInterval);
+        if (room.timerInterval) clearTimeout(room.timerInterval);
         saveMatchResult(roomId, room);
       } else if (room.state.phase === 'scoring') {
         // No iniciar timer durante scoring — el humano verá el resumen
-        if (room.timerInterval) clearInterval(room.timerInterval);
+        if (room.timerInterval) clearTimeout(room.timerInterval);
         // En partidas vs bot, auto-continuar después del delay
         scheduleBotTurnIfNeeded(roomId, room);
       } else {
@@ -811,7 +885,7 @@ io.on('connection', (socket) => {
 
   // 4. Continuar a la siguiente ronda
   socket.on('continue_round', () => {
-    const roomId = Object.keys(rooms).find(id => rooms[id]?.players.some(p => p.socketId === socket.id));
+    const roomId = socketToRoomMap.get(socket.id);
     if (!roomId) return;
     const room = rooms[roomId];
     if (!room || !room.state || room.state.phase !== 'scoring') return;
@@ -821,7 +895,7 @@ io.on('connection', (socket) => {
       room.state = result.value;
       
       if (room.state.phase === 'completed') {
-        if (room.timerInterval) clearInterval(room.timerInterval);
+        if (room.timerInterval) clearTimeout(room.timerInterval);
         broadcastGameState(roomId, room);
         saveMatchResult(roomId, room);
       } else if (room.state.phase === 'playing') {
@@ -860,10 +934,6 @@ io.on('connection', (socket) => {
       isSpectator
     };
 
-    // Limit chat history length to prevent memory leak
-    if (room.chatHistory.length > 100) {
-      room.chatHistory.shift();
-    }
     room.chatHistory.push(message);
     if (isSpectator) {
       // Solo a espectadores
@@ -880,7 +950,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Usuario desconectado: ${socket.id}`);
     matchmakingQueue = matchmakingQueue.filter(p => p.socketId !== socket.id);
-    const roomId = Object.keys(rooms).find(id => rooms[id]?.players.some(p => p.socketId === socket.id));
+    const roomId = socketToRoomMap.get(socket.id);
+    socketToRoomMap.delete(socket.id);
+    actionTimestamps.delete(socket.id);
     if (roomId) {
       const room = rooms[roomId];
       io.to(roomId).emit('player_disconnected', { 
@@ -895,46 +967,50 @@ io.on('connection', (socket) => {
 });
 
 function startTurnTimer(roomId: string, room: any) {
-  if (room.timerInterval) clearInterval(room.timerInterval);
+  if (room.timerInterval) clearTimeout(room.timerInterval);
   room.lastActionTime = Date.now();
-  room.timerInterval = setInterval(() => {
-    if (!room.state) return;
-    const now = Date.now();
-    const elapsed = now - (room.lastActionTime || now);
+
+  room.timerInterval = setTimeout(() => {
+    if (!room.state || room.state.phase !== 'playing') return;
+
+    const elapsed = Date.now() - (room.lastActionTime || Date.now());
     const remaining = Math.max(0, TURN_TIME_LIMIT_MS - elapsed);
-    io.to(roomId).emit('timer_update', { remaining });
-    if (remaining <= 0) {
-      clearInterval(room.timerInterval);
-      const currentPlayerIndex = room.state.currentTurnPlayerIndex;
-      const currentPlayer = room.state.players[currentPlayerIndex];
-      if (!currentPlayer || !Array.isArray(currentPlayer.hand)) return;
-      if (currentPlayer.hand.length === 0) {
-        room.state.currentTurnPlayerIndex = (room.state.currentTurnPlayerIndex + 1) % room.state.players.length;
-        startTurnTimer(roomId, room);
-        broadcastGameState(roomId, room);
-        return;
-      }
-      try {
-        const action = room.engine.getTimeoutAction(room.state, currentPlayer.id);
-        const result = room.engine.playCard(room.state, action);
-        if (result.success) {
-          room.state = result.value;
-          startTurnTimer(roomId, room);
-          broadcastGameState(roomId, room);
-          if (room.state.phase === 'completed') {
-            if (room.timerInterval) clearInterval(room.timerInterval);
-            saveMatchResult(roomId, room);
-          } else {
-            scheduleBotTurnIfNeeded(roomId, room);
-          }
-        } else {
-          console.error(`Error al aplicar jugada automática por timeout:`, result.error);
-        }
-      } catch (error) {
-        console.error('Excepción al generar o aplicar jugada por timeout:', error);
-      }
+
+    if (remaining > 0) {
+      startTurnTimer(roomId, room);
+      return;
     }
-  }, 1000);
+
+    const currentPlayerIndex = room.state.currentTurnPlayerIndex;
+    const currentPlayer = room.state.players[currentPlayerIndex];
+    if (!currentPlayer || !Array.isArray(currentPlayer.hand)) return;
+
+    if (currentPlayer.hand.length === 0) {
+      room.state.currentTurnPlayerIndex = (room.state.currentTurnPlayerIndex + 1) % room.state.players.length;
+      startTurnTimer(roomId, room);
+      broadcastGameState(roomId, room);
+      return;
+    }
+
+    try {
+      const action = room.engine.getTimeoutAction(room.state, currentPlayer.id);
+      const result = room.engine.playCard(room.state, action);
+      if (result.success) {
+        room.state = result.value;
+        if (room.state.phase === 'completed') {
+          saveMatchResult(roomId, room);
+        } else {
+          startTurnTimer(roomId, room);
+          scheduleBotTurnIfNeeded(roomId, room);
+        }
+        broadcastGameState(roomId, room);
+      } else {
+        console.error(`Error al aplicar jugada automática por timeout:`, result.error);
+      }
+    } catch (error) {
+      console.error('Excepción al generar o aplicar jugada por timeout:', error);
+    }
+  }, TURN_TIME_LIMIT_MS);
 }
 
 async function saveMatchResult(roomId: string, room: any) {
@@ -1131,10 +1207,9 @@ async function saveMatchResult(roomId: string, room: any) {
           
           let finalPrize = 0;
           if (eventData?.prize_pool) {
-            // Limpiar comas, puntos y extraer el número completo
-            const cleanPrizeStr = eventData.prize_pool.replace(/[,.]/g, '');
-            const matchAmount = cleanPrizeStr.match(/\d+/);
-            if (matchAmount) finalPrize = parseInt(matchAmount[0], 10);
+            // Extraer el primer número del prize_pool (formato: "10,000 Monedas + 500 XP")
+            const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
+            if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
           }
 
           if (finalPrize > 0) {
@@ -1167,23 +1242,26 @@ function broadcastGameState(roomId: string, room: any) {
   const fullState = room.state;
 
   room.players.forEach((p: any) => {
-    const safeState: GameState = JSON.parse(JSON.stringify(fullState));
-    safeState.players.forEach((statePlayer: any) => {
-      if (statePlayer.id !== p.playerId) {
-        statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_: any, i: number) => ({ 
-          id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
-        }));
-      }
+    const safeState = Object.assign({}, fullState, {
+      players: fullState.players.map((sp: any) => {
+        if (sp.id === p.playerId) return sp;
+        return Object.assign({}, sp, {
+          hand: sp.hand.map((_: any, i: number) => ({
+            id: `hidden_${sp.id}_${i}`, rank: '?', suit: 'hidden', value: 0
+          }))
+        });
+      })
     });
     io.to(p.socketId).emit('game_state_update', safeState);
   });
 
   if (room.spectators && room.spectators.length > 0) {
-    const spectatorSafeState: GameState = JSON.parse(JSON.stringify(fullState));
-    spectatorSafeState.players.forEach((statePlayer: any) => {
-      statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_: any, i: number) => ({ 
-        id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0 
-      }));
+    const spectatorSafeState = Object.assign({}, fullState, {
+      players: fullState.players.map((sp: any) => Object.assign({}, sp, {
+        hand: sp.hand.map((_: any, i: number) => ({
+          id: `hidden_${sp.id}_${i}`, rank: '?', suit: 'hidden', value: 0
+        }))
+      }))
     });
     room.spectators.forEach((s: any) => {
       io.to(s.socketId).emit('game_state_update', spectatorSafeState);
@@ -1191,7 +1269,9 @@ function broadcastGameState(roomId: string, room: any) {
   }
 }
 
-const PORT = process.env.PORT || 4000;
-httpServer.listen(PORT, () => {
-  console.log(`Servidor Casino 21 corriendo en el puerto ${PORT}`);
+const CLUSTER_PORT = process.env.NODE_APP_INSTANCE
+  ? parseInt(process.env.PORT || '4000', 10) + parseInt(process.env.NODE_APP_INSTANCE, 10)
+  : parseInt(process.env.PORT || '4000', 10);
+httpServer.listen(CLUSTER_PORT, () => {
+  console.log(`Servidor Casino 21 corriendo en el puerto ${CLUSTER_PORT}`);
 });

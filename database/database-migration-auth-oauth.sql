@@ -20,7 +20,7 @@ BEGIN
   -- Extraer nombre base dependiendo de los metadatos disponibles (Email, Google, Discord)
   base_username := COALESCE(
     new.raw_user_meta_data->>'username',           -- Email signup tradicional
-    new.raw_user_meta_data->>'custom_claims'->>'global_name', -- Discord
+    new.raw_user_meta_data#>>'{custom_claims,global_name}', -- Discord
     new.raw_user_meta_data->>'full_name',          -- Google
     new.raw_user_meta_data->>'name',               -- Otros proveedores
     'Jugador'                                      -- Fallback
@@ -56,11 +56,18 @@ BEGIN
     NULL
   );
 
-  -- Insertar el nuevo perfil
-  INSERT INTO public.profiles (id, username, avatar_url)
-  VALUES (new.id, final_username, user_avatar)
-  ON CONFLICT (id) DO NOTHING;
-  
+  BEGIN
+    INSERT INTO public.profiles (id, username, avatar_url)
+    VALUES (new.id, final_username, user_avatar)
+    ON CONFLICT (id) DO NOTHING;
+  EXCEPTION WHEN unique_violation THEN
+    -- Ocurrió una colisión de username por race condition entre
+    -- transacciones concurrentes. Reintentar con UUID como fallback.
+    INSERT INTO public.profiles (id, username, avatar_url)
+    VALUES (new.id, 'Jugador_' || substr(new.id::TEXT, 1, 8), user_avatar)
+    ON CONFLICT (id) DO NOTHING;
+  END;
+
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

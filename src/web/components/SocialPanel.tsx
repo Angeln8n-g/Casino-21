@@ -330,7 +330,7 @@ export function SocialPanel() {
 
   return (
     <>
-      <div className="flex flex-col h-full space-y-5 glass-panel p-4 md:p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md shadow-lg">
+      <div className="flex flex-col h-full space-y-5 glass-panel p-4 md:p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md shadow-lg relative z-10">
         {/* ── TABS ──────────────────────────────────────────── */}
         <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 shrink-0 overflow-x-auto custom-scrollbar shadow-inner">
           <button

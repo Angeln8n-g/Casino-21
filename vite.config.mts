@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { resolve } from 'path';
 
 // Supabase project hostname — used in CSP without exposing the secret key
-const SUPABASE_HOST = 'yarmgboyjjnodjszwiqi.supabase.co';
+const SUPABASE_HOST = 'kasino21.com';
 
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
@@ -51,18 +51,6 @@ export default defineConfig(({ mode }) => {
                 },
               },
             },
-            {
-              // External fonts
-              urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 30,
-                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-                },
-              },
-            }
           ],
         },
         manifest: {
@@ -103,14 +91,14 @@ export default defineConfig(({ mode }) => {
           "default-src 'self'",
           // Scripts: only from this origin ('unsafe-inline' needed for dev HMR)
           "script-src 'self' 'unsafe-inline'",
-          // Styles: allow inline (Tailwind/CSS-in-JS) + Google Fonts
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          // Styles: allow inline (Tailwind/CSS-in-JS)
+          "style-src 'self' 'unsafe-inline'",
           // Fonts
-          "font-src 'self' https://fonts.gstatic.com",
+          "font-src 'self'",
           // Images: self + Supabase Storage + Unsplash (used in EventsPage)
           `img-src 'self' data: blob: https://${SUPABASE_HOST} https://images.unsplash.com https://api.dicebear.com`,
           // API calls + WebSocket (Supabase realtime uses wss://)
-          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000`,
+          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com`,
           // No iframes from unknown origins
           "frame-src 'none'",
           // No plugins

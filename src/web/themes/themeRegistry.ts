@@ -20,6 +20,7 @@ export interface CardTheme {
 
 export interface BoardTheme {
   background: string;
+  backgroundImage?: string;
   borderColor: string;
   glowColor: string;
   innerRingColor: string;

@@ -61,6 +61,7 @@ export function AuthScreen() {
           email,
           password,
           options: {
+            emailRedirectTo: window.location.origin,
             data: {
               username: username.trim(),
             }
@@ -89,25 +90,27 @@ export function AuthScreen() {
       <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/85 via-[#050505]/70 to-[#050505]/95 pointer-events-none" />
 
       {/* Background Ambient FX */}
-      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-casino-gold/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 -left-20 w-48 sm:w-96 h-48 sm:h-96 bg-casino-gold/15 rounded-full blur-[80px] sm:blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-20 w-48 sm:w-96 h-48 sm:h-96 bg-purple-600/15 rounded-full blur-[80px] sm:blur-[120px] pointer-events-none" />
       
       {/* Scanlines Overlay */}
       <div className="absolute inset-0 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8cGF0aCBkPSJNMCAwTDQgNE0wIDRMNCAwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMikiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] opacity-40 mix-blend-overlay" />
 
       <div className="flex-1 flex items-center justify-center w-full py-12">
-        <div className="w-full max-w-md bg-black/40 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl relative z-10">
+        <div className="w-full max-w-md bg-black/40 backdrop-blur-2xl border border-white/10 p-5 sm:p-8 rounded-3xl shadow-2xl relative z-10">
           
           {/* Header / Logo */}
-          <div className="flex flex-col items-center mb-8 relative">
+          <div className="flex flex-col items-center mb-6 sm:mb-8 relative">
             <div className="absolute inset-0 bg-casino-gold/20 blur-[40px] rounded-full" />
             <div className="relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.4)] animate-float">
-              <LogoK21 size={96} />
+              <div className="w-[72px] sm:w-[96px]">
+                <LogoK21 size={96} />
+              </div>
             </div>
-            <h1 className="text-3xl font-display font-black text-yellow-600 mt-4 tracking-wider uppercase">
+            <h1 className="text-2xl sm:text-3xl font-display font-black text-yellow-600 mt-3 sm:mt-4 tracking-wider uppercase">
               KASINO <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-casino-gold-dark">21</span>
             </h1>
-            <p className="text-gray-400 text-sm mt-1 uppercase tracking-[0.2em] font-bold">Autenticación</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1 uppercase tracking-[0.2em] font-bold">Autenticación</p>
           </div>
 
           {error && (
@@ -241,10 +244,12 @@ export function AuthScreen() {
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  PROCESANDO...
+                  <span className="text-sm sm:text-base">PROCESANDO...</span>
                 </span>
               ) : (
-                isRecovery ? 'ENVIAR ENLACE' : isLogin ? 'ENTRAR AL CASINO' : 'CREAR CUENTA VIP'
+                <span className="text-sm sm:text-base">
+                  {isRecovery ? 'ENVIAR ENLACE' : isLogin ? 'ENTRAR AL CASINO' : 'CREAR CUENTA'}
+                </span>
               )}
             </button>
 
@@ -279,7 +284,7 @@ export function AuthScreen() {
                 </svg>
               </button>
             </div>
-            <div className="p-8 overflow-y-auto custom-scrollbar">
+            <div className="p-4 sm:p-8 overflow-y-auto custom-scrollbar">
               <div className="prose prose-invert prose-sm max-w-none space-y-6">
                 <div className="flex justify-between items-center pb-4 border-b border-white/5">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black">Legal / Kasino21</p>
@@ -365,14 +370,14 @@ export function AuthScreen() {
               <p className="text-xs text-gray-500 font-medium">© 2026 KASINO21. Todos los derechos reservados.</p>
             </div>
 
-            <div className="flex gap-8 justify-center items-center">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 sm:gap-8 justify-center items-center">
               <a href="/terms" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Términos</a>
               <a href="/privacy" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Privacidad</a>
               <a href="/cookies" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Cookies</a>
               <a href="/como-jugar" className="text-xs text-gray-400 hover:text-emerald-400 transition-all uppercase tracking-widest font-bold">Cómo Jugar</a>
             </div>
 
-            <div className="text-right max-w-[250px]">
+            <div className="text-center sm:text-right max-w-[250px]">
               <p className="text-[10px] text-gray-600 leading-relaxed font-medium">
                 KASINO21 no está afiliado a ningún casino real. Monedas virtuales sin valor comercial.
               </p>

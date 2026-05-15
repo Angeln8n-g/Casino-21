@@ -198,7 +198,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
   const secondsLeft = Math.ceil((progress / 100) * (CHALLENGE_DURATION_MS / 1000));
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
       <div

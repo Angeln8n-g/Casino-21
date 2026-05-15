@@ -45,14 +45,14 @@ export function CookiePolicy() {
             Legal / KASINO21
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-black text-white mb-4 tracking-tight">
-            Cookie <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">Policy</span>
+            Política de <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">Cookies</span>
           </h1>
           <p className="text-gray-400 text-base max-w-2xl leading-relaxed">
-            This Cookie Policy explains how KASINO21 uses cookies and similar tracking technologies, 
-            required by EU law (GDPR/ePrivacy Directive) for sites using Google AdSense.
+            Esta Política de Cookies explica cómo KASINO21 utiliza cookies y tecnologías de seguimiento similares,
+            requerida por la ley de la UE (GDPR/Directiva ePrivacy) para sitios que usan Google AdSense.
           </p>
           <p className="text-[11px] text-gray-600 mt-4 font-mono">
-            Last updated: May 11, 2026 · Required for EU compliance
+            Última actualización: 11 de mayo de 2026 · Requerido para cumplimiento UE
           </p>
         </div>
       </div>
@@ -60,70 +60,70 @@ export function CookiePolicy() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-12 space-y-10">
 
-        <CookieSection icon="🍪" title="What Are Cookies?">
+        <CookieSection icon="🍪" title="¿Qué Son las Cookies?">
           <p>
-            Cookies are small text files placed on your device (computer, tablet, or mobile) when you visit a website. 
-            They are widely used to make websites work efficiently, to remember your preferences, and to provide 
-            information to website owners.
+            Las cookies son pequeños archivos de texto que se colocan en tu dispositivo (ordenador, tableta o móvil)
+            cuando visitas un sitio web. Se utilizan ampliamente para que los sitios web funcionen de manera eficiente,
+            recordar tus preferencias y proporcionar información a los propietarios del sitio.
           </p>
           <p className="mt-3">
-            Similar technologies — such as web beacons, pixels, and local storage — serve similar purposes 
-            and are covered by this policy. We collectively refer to all of these as "cookies."
+            Tecnologías similares — como balizas web, píxeles y almacenamiento local — cumplen propósitos similares
+            y están cubiertas por esta política. Nos referimos colectivamente a todas ellas como "cookies".
           </p>
         </CookieSection>
 
-        <CookieSection icon="📋" title="What Cookies We Use">
-          <p className="mb-6">KASINO21 uses the following categories of cookies:</p>
+        <CookieSection icon="📋" title="Qué Cookies Utilizamos">
+          <p className="mb-6">KASINO21 utiliza las siguientes categorías de cookies:</p>
 
           <div className="space-y-4">
             <CookieTable
-              category="Essential / Strictly Necessary"
+              category="Esenciales / Estrictamente Necesarias"
               color="emerald"
               required
-              description="These cookies are required for the game to function. Without them, you cannot log in, play, or use core features. They cannot be disabled."
+              description="Estas cookies son necesarias para que el juego funcione. Sin ellas, no puedes iniciar sesión, jugar ni usar funciones principales. No se pueden deshabilitar."
               cookies={[
-                { name: 'sb-auth-token', provider: 'Supabase', purpose: 'Maintains your authenticated session', duration: 'Session / 1 hour' },
-                { name: 'casino21_roomId', provider: 'KASINO21', purpose: 'Saves your current game room for reconnection', duration: 'Session' },
-                { name: 'casino21_playerId', provider: 'KASINO21', purpose: 'Identifies your player ID in the current game', duration: 'Session' },
-                { name: 'casino21_ui_*', provider: 'KASINO21', purpose: 'Saves your UI preferences (sidebar state, etc.)', duration: 'Persistent' },
+                { name: 'sb-auth-token', provider: 'Supabase', purpose: 'Mantiene tu sesión autenticada', duration: 'Sesión / 1 hora' },
+                { name: 'casino21_roomId', provider: 'KASINO21', purpose: 'Guarda la sala de juego actual para reconexión', duration: 'Sesión' },
+                { name: 'casino21_playerId', provider: 'KASINO21', purpose: 'Identifica tu ID de jugador en la partida actual', duration: 'Sesión' },
+                { name: 'casino21_ui_*', provider: 'KASINO21', purpose: 'Guarda tus preferencias de interfaz (estado de barra lateral, etc.)', duration: 'Persistente' },
               ]}
             />
 
             <CookieTable
-              category="Analytics"
+              category="Analíticas"
               color="blue"
               required={false}
-              description="These cookies help us understand how players use KASINO21, which features are popular, and where improvements are needed. All data is anonymous."
+              description="Estas cookies nos ayudan a entender cómo los jugadores usan KASINO21, qué funciones son populares y dónde se necesitan mejoras. Todos los datos son anónimos."
               cookies={[
-                { name: '_ga', provider: 'Google Analytics', purpose: 'Distinguishes unique users (anonymized)', duration: '2 years' },
-                { name: '_ga_*', provider: 'Google Analytics', purpose: 'Maintains session state for analytics', duration: '2 years' },
-                { name: '_gid', provider: 'Google Analytics', purpose: 'Distinguishes users within a 24-hour period', duration: '24 hours' },
+                { name: '_ga', provider: 'Google Analytics', purpose: 'Distingue usuarios únicos (anonimizado)', duration: '2 años' },
+                { name: '_ga_*', provider: 'Google Analytics', purpose: 'Mantiene el estado de sesión para analíticas', duration: '2 años' },
+                { name: '_gid', provider: 'Google Analytics', purpose: 'Distingue usuarios en un período de 24 horas', duration: '24 horas' },
               ]}
             />
 
             <CookieTable
-              category="Advertising (Google AdSense)"
+              category="Publicitarias (Google AdSense)"
               color="amber"
               required={false}
-              description="Google AdSense places cookies to show relevant ads that help fund KASINO21 as a free game. These cookies may collect data about your browsing habits across sites."
+              description="Google AdSense coloca cookies para mostrar anuncios relevantes que ayudan a financiar KASINO21 como juego gratuito. Estas cookies pueden recopilar datos sobre tus hábitos de navegación en otros sitios."
               cookies={[
-                { name: '__gads / __gpi', provider: 'Google AdSense', purpose: 'Registers ad impressions and prevents duplicate serving', duration: '13 months' },
-                { name: 'IDE', provider: 'Google DoubleClick', purpose: 'Records and reports ad interactions for conversion tracking', duration: '13 months' },
-                { name: 'NID / ANID', provider: 'Google', purpose: 'Stores user preferences for ad personalization', duration: '6 months' },
-                { name: 'DSID', provider: 'Google', purpose: 'Identifies signed-in users for cross-device ad targeting', duration: '2 weeks' },
+                { name: '__gads / __gpi', provider: 'Google AdSense', purpose: 'Registra impresiones de anuncios y evita la duplicación', duration: '13 meses' },
+                { name: 'IDE', provider: 'Google DoubleClick', purpose: 'Registra e informa interacciones con anuncios para seguimiento de conversiones', duration: '13 meses' },
+                { name: 'NID / ANID', provider: 'Google', purpose: 'Almacena preferencias del usuario para personalización de anuncios', duration: '6 meses' },
+                { name: 'DSID', provider: 'Google', purpose: 'Identifica usuarios autenticados para segmentación entre dispositivos', duration: '2 semanas' },
               ]}
             />
           </div>
         </CookieSection>
 
-        <CookieSection icon="⚙️" title="How to Control Cookies">
-          <p>You have several options to manage cookies. Note that restricting cookies may impact your game experience:</p>
-          
+        <CookieSection icon="⚙️" title="Cómo Controlar las Cookies">
+          <p>Tienes varias opciones para gestionar las cookies. Ten en cuenta que restringir las cookies puede afectar tu experiencia de juego:</p>
+
           <div className="grid md:grid-cols-2 gap-4 mt-6">
             <ControlCard
               icon="🌐"
-              title="Browser Settings"
-              description="All modern browsers allow you to block, delete, or allow specific cookies. Here's how for common browsers:"
+              title="Configuración del Navegador"
+              description="Todos los navegadores modernos te permiten bloquear, eliminar o permitir cookies específicas. Aquí te mostramos cómo hacerlo en los navegadores más comunes:"
               links={[
                 { label: 'Chrome', url: 'https://support.google.com/chrome/answer/95647' },
                 { label: 'Firefox', url: 'https://support.mozilla.org/kb/enable-and-disable-cookies' },
@@ -133,13 +133,13 @@ export function CookiePolicy() {
             />
             <ControlCard
               icon="🎯"
-              title="Ad Personalization"
-              description="Opt out of Google's personalized advertising or manage your ad settings:"
+              title="Personalización de Anuncios"
+              description="Exclúyete de la publicidad personalizada de Google o gestiona tu configuración de anuncios:"
               links={[
-                { label: 'Google Ad Settings', url: 'https://adssettings.google.com' },
-                { label: 'Google Analytics Opt-out', url: 'https://tools.google.com/dlpage/gaoptout' },
-                { label: 'Your Online Choices (EU)', url: 'https://www.youronlinechoices.com' },
-                { label: 'NAI Opt-out (US)', url: 'https://optout.networkadvertising.org' },
+                { label: 'Configuración de Anuncios de Google', url: 'https://adssettings.google.com' },
+                { label: 'Exclusión de Google Analytics', url: 'https://tools.google.com/dlpage/gaoptout' },
+                { label: 'Tus Opciones Online (UE)', url: 'https://www.youronlinechoices.com' },
+                { label: 'Exclusión NAI (EE. UU.)', url: 'https://optout.networkadvertising.org' },
               ]}
             />
           </div>
@@ -148,64 +148,65 @@ export function CookiePolicy() {
             <div className="flex items-start gap-3">
               <span className="text-2xl shrink-0">⚠️</span>
               <div>
-                <p className="text-sm font-bold text-amber-400 mb-1">Important: Game Functionality</p>
+                <p className="text-sm font-bold text-amber-400 mb-1">Importante: Funcionalidad del Juego</p>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Disabling <strong className="text-white">Essential cookies</strong> will prevent you from logging in and playing KASINO21.
-                  Disabling <strong className="text-white">Analytics or Advertising cookies</strong> only affects tracking and ad personalization — 
-                  the game will still function, though you may see less relevant ads.
+                  Deshabilitar las <strong className="text-white">cookies esenciales</strong> impedirá que inicies sesión y juegues a KASINO21.
+                  Deshabilitar las <strong className="text-white">cookies analíticas o publicitarias</strong> solo afecta al seguimiento y a la
+                  personalización de anuncios — el juego seguirá funcionando, aunque podrías ver anuncios menos relevantes.
                 </p>
               </div>
             </div>
           </div>
         </CookieSection>
 
-        <CookieSection icon="🔗" title="Google's Cookie Usage">
+        <CookieSection icon="🔗" title="Uso de Cookies por Google">
           <p>
-            KASINO21 uses Google AdSense to display advertisements. Google uses cookies to serve ads based on your 
-            prior visits to KASINO21 or other websites on the internet. You can read more about how Google uses 
-            cookie data when you use their partners' sites or apps:
+            KASINO21 utiliza Google AdSense para mostrar anuncios. Google utiliza cookies para servir anuncios basados
+            en tus visitas previas a KASINO21 u otros sitios web en internet. Puedes obtener más información sobre
+            cómo Google utiliza los datos de cookies cuando usas los sitios o aplicaciones de sus socios:
           </p>
           <div className="mt-4 space-y-3">
             <ExternalLinkRow
-              title="Google's Privacy & Terms"
+              title="Privacidad y Términos de Google"
               url="https://policies.google.com/privacy"
-              desc="Google's comprehensive privacy policy explaining all data practices"
+              desc="Política de privacidad completa de Google que explica todas sus prácticas de datos"
             />
             <ExternalLinkRow
-              title="How Google uses cookies in advertising"
+              title="Cómo usa Google las cookies en publicidad"
               url="https://policies.google.com/technologies/ads"
-              desc="Detailed explanation of advertising cookies used by Google AdSense"
+              desc="Explicación detallada de las cookies publicitarias utilizadas por Google AdSense"
             />
             <ExternalLinkRow
-              title="Google's cookie types"
+              title="Tipos de cookies de Google"
               url="https://policies.google.com/technologies/cookies"
-              desc="Full breakdown of all cookies Google uses and their purposes"
+              desc="Desglose completo de todas las cookies que Google utiliza y sus propósitos"
             />
           </div>
         </CookieSection>
 
-        <CookieSection icon="🔄" title="Changes to This Policy">
+        <CookieSection icon="🔄" title="Cambios a Esta Política">
           <p>
-            We may update this Cookie Policy to reflect changes in cookies we use, or for operational, legal, or 
-            regulatory reasons. When we make significant changes, we will update the "Last updated" date at the top.
+            Podemos actualizar esta Política de Cookies para reflejar cambios en las cookies que utilizamos, o por
+            razones operativas, legales o reglamentarias. Cuando realicemos cambios significativos, actualizaremos
+            la fecha de "Última actualización" en la parte superior.
           </p>
           <p className="mt-3">
-            Please check this page regularly to stay informed about our use of cookies.
+            Te recomendamos que revises esta página periódicamente para mantenerte informado sobre nuestro uso de cookies.
           </p>
         </CookieSection>
 
-        <CookieSection icon="✉️" title="Contact Us">
-          <p>For any questions about our use of cookies, contact us:</p>
+        <CookieSection icon="✉️" title="Contacto">
+          <p>Si tienes alguna pregunta sobre nuestro uso de cookies, contáctanos:</p>
           <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4">
             <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center text-2xl shrink-0">
               🍪
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Cookie Inquiries</p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Consultas sobre Cookies</p>
               <a href="mailto:kansino21.service@gmail.com" className="text-casino-gold hover:text-white transition-colors font-mono text-sm">
                 kansino21.service@gmail.com
               </a>
-              <p className="text-xs text-gray-600 mt-1">Response within 30 days · English & Spanish supported</p>
+              <p className="text-xs text-gray-600 mt-1">Respuesta en 30 días · Atención en español</p>
             </div>
           </div>
         </CookieSection>
@@ -273,11 +274,11 @@ function CookieTable({
           <div className="flex items-center gap-2 mb-1">
             <h3 className={`text-sm font-black uppercase tracking-widest ${textMap[color]}`}>{category}</h3>
             <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
-              required 
-                ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' 
+              required
+                ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
                 : 'border-white/10 text-gray-600 bg-white/5'
             }`}>
-              {required ? 'Required' : 'Optional'}
+              {required ? 'Obligatorio' : 'Opcional'}
             </span>
           </div>
           <p className="text-xs text-gray-500">{description}</p>
@@ -287,10 +288,10 @@ function CookieTable({
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-white/5 bg-black/20">
-              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Cookie Name</th>
-              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Provider</th>
-              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Purpose</th>
-              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider whitespace-nowrap">Duration</th>
+              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Nombre de la Cookie</th>
+              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Proveedor</th>
+              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Propósito</th>
+              <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider whitespace-nowrap">Duración</th>
             </tr>
           </thead>
           <tbody>
@@ -353,7 +354,7 @@ function ExternalLinkRow({ title, url, desc }: { title: string; url: string; des
         rel="noopener noreferrer"
         className="text-xs text-casino-gold hover:underline font-mono shrink-0"
       >
-        Visit →
+        Visitar →
       </a>
     </div>
   );
@@ -361,9 +362,9 @@ function ExternalLinkRow({ title, url, desc }: { title: string; url: string; des
 
 function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) {
   const links = [
-    { href: '/privacy', label: 'Privacy Policy' },
-    { href: '/terms', label: 'Terms of Service' },
-    { href: '/cookies', label: 'Cookie Policy' },
+    { href: '/privacy', label: 'Política de Privacidad' },
+    { href: '/terms', label: 'Términos de Servicio' },
+    { href: '/cookies', label: 'Política de Cookies' },
   ];
 
   return (
@@ -373,7 +374,7 @@ function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) 
           <LogoK21 size={28} />
           <div>
             <p className="text-xs font-black text-white/60 uppercase tracking-widest">KASINO21</p>
-            <p className="text-[10px] text-gray-600">© 2026 · All rights reserved</p>
+            <p className="text-[10px] text-gray-600">© 2026 · Todos los derechos reservados</p>
           </div>
         </div>
         <nav className="flex gap-6">
@@ -395,7 +396,7 @@ function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) 
           href="/"
           className="text-xs bg-casino-gold/10 hover:bg-casino-gold/20 text-casino-gold border border-casino-gold/20 px-4 py-2 rounded-xl font-bold uppercase tracking-widest transition-all"
         >
-          ← Back to Game
+          ← Volver al Juego
         </a>
       </div>
     </footer>

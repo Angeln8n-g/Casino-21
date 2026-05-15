@@ -45,14 +45,14 @@ export function TermsOfService() {
             Legal / KASINO21
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-black text-white mb-4 tracking-tight">
-            Terms of <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-orange-400">Service</span>
+            Términos de <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-orange-400">Servicio</span>
           </h1>
           <p className="text-gray-400 text-base max-w-2xl leading-relaxed">
-            By accessing or playing KASINO21, you agree to be bound by these Terms of Service. 
-            Please read them carefully before registering.
+            Al acceder o jugar a KASINO21, aceptas estos Términos de Servicio.
+            Por favor, léelos atentamente antes de registrarte.
           </p>
           <p className="text-[11px] text-gray-600 mt-4 font-mono">
-            Last updated: May 11, 2026 · Effective immediately
+            Última actualización: 11 de mayo de 2026 · Vigente de inmediato
           </p>
         </div>
       </div>
@@ -62,58 +62,58 @@ export function TermsOfService() {
 
         <DisclaimerBanner />
 
-        <ToSSection icon="✅" number="1" title="Acceptance of Terms">
+        <ToSSection icon="✅" number="1" title="Aceptación de los Términos">
           <p>
-            By accessing or using KASINO21 at <strong className="text-white">kasino21.com</strong> (the "Game" or "Service"), 
-            you confirm that you are at least <strong className="text-white">13 years of age</strong> and agree to be bound by 
-            these Terms of Service ("Terms").
+            Al acceder o utilizar KASINO21 en <strong className="text-white">kasino21.com</strong> (el "Juego" o "Servicio"),
+            confirmas que tienes al menos <strong className="text-white">13 años de edad</strong> y aceptas estar sujeto a
+            estos Términos de Servicio ("Términos").
           </p>
           <p className="mt-3">
-            If you do not agree with any part of these Terms, you must discontinue use of the Service immediately. 
-            These Terms constitute a legally binding agreement between you and KASINO21.
+            Si no estás de acuerdo con alguna parte de estos Términos, debes dejar de usar el Servicio de inmediato.
+            Estos Términos constituyen un acuerdo legal vinculante entre tú y KASINO21.
           </p>
         </ToSSection>
 
-        <ToSSection icon="🎮" number="2" title="Game Purpose & Virtual Currency">
+        <ToSSection icon="🎮" number="2" title="Propósito del Juego y Moneda Virtual">
           <p>
-            KASINO21 is a <strong className="text-white">free-to-play online card game for entertainment purposes only</strong>. 
-            This is NOT a gambling service. No real money gambling occurs on this platform.
+            KASINO21 es un <strong className="text-white">juego de cartas online gratuito con fines de entretenimiento</strong>.
+            NO es un servicio de apuestas. No se realiza ningún tipo de juego de azar con dinero real en esta plataforma.
           </p>
           <div className="grid md:grid-cols-2 gap-3 mt-4">
-            <FactCard icon="🪙" title="Virtual Coins">
-              All coins, currency, and in-game items have <strong>zero monetary value</strong>. 
-              They cannot be exchanged for real money, cryptocurrency, or any goods and services outside the game.
+            <FactCard icon="🪙" title="Monedas Virtuales">
+              Todas las monedas, divisas y objetos del juego tienen <strong>valor monetario cero</strong>.
+              No se pueden canjear por dinero real, criptomonedas ni bienes o servicios fuera del juego.
             </FactCard>
-            <FactCard icon="🚫" title="No Real Gambling">
-              KASINO21 does not facilitate, enable, or encourage real money gambling. 
-              Any resemblance to gambling mechanics is purely for entertainment and skill-based play.
+            <FactCard icon="🚫" title="Sin Apuestas Reales">
+              KASINO21 no facilita, habilita ni fomenta las apuestas con dinero real.
+              Cualquier similitud con mecánicas de juego de azar es puramente por entretenimiento y juego basado en habilidad.
             </FactCard>
           </div>
         </ToSSection>
 
-        <ToSSection icon="👤" number="3" title="Account Registration">
+        <ToSSection icon="👤" number="3" title="Registro de Cuenta">
           <ul>
-            <li>You must be at least <strong className="text-white">13 years old</strong> to create an account.</li>
-            <li>You must provide a valid email address and a unique username.</li>
-            <li>You are responsible for maintaining the security of your account credentials.</li>
-            <li>One person may only maintain one active account. Multi-accounting is prohibited.</li>
-            <li>You agree to provide accurate information and update it as necessary.</li>
-            <li>You must notify us immediately of any unauthorized access to your account.</li>
+            <li>Debes tener al menos <strong className="text-white">13 años</strong> para crear una cuenta.</li>
+            <li>Debes proporcionar una dirección de correo electrónico válida y un nombre de usuario único.</li>
+            <li>Eres responsable de mantener la seguridad de las credenciales de tu cuenta.</li>
+            <li>Cada persona puede tener una sola cuenta activa. Está prohibido tener múltiples cuentas.</li>
+            <li>Aceptas proporcionar información precisa y actualizarla cuando sea necesario.</li>
+            <li>Debes notificarnos de inmediato cualquier acceso no autorizado a tu cuenta.</li>
           </ul>
         </ToSSection>
 
-        <ToSSection icon="⚖️" number="4" title="User Conduct">
-          <p>By using KASINO21, you agree <strong className="text-white">NOT</strong> to:</p>
+        <ToSSection icon="⚖️" number="4" title="Conducta del Usuario">
+          <p>Al usar KASINO21, aceptas <strong className="text-white">NO</strong>:</p>
           <div className="grid md:grid-cols-2 gap-3 mt-4">
             {[
-              { icon: '🤖', text: 'Use bots, automation scripts, or AI to play on your behalf' },
-              { icon: '🐛', text: 'Exploit bugs, glitches, or unintended game mechanics' },
-              { icon: '😤', text: 'Harass, bully, or send abusive messages to other players' },
-              { icon: '🔓', text: 'Attempt to hack, reverse-engineer, or compromise game servers' },
-              { icon: '💰', text: 'Sell, trade, or transfer your account to another person' },
-              { icon: '📢', text: 'Use the game to spam or promote external services' },
-              { icon: '🌐', text: 'Use VPNs or proxies to circumvent regional restrictions' },
-              { icon: '📜', text: 'Violate any applicable local, national, or international laws' },
+              { icon: '🤖', text: 'Usar bots, scripts de automatización o IA para jugar en tu lugar' },
+              { icon: '🐛', text: 'Explotar bugs, fallos o mecánicas de juego no previstas' },
+              { icon: '😤', text: 'Acosar, intimidar o enviar mensajes abusivos a otros jugadores' },
+              { icon: '🔓', text: 'Intentar hackear, realizar ingeniería inversa o comprometer los servidores del juego' },
+              { icon: '💰', text: 'Vender, intercambiar o transferir tu cuenta a otra persona' },
+              { icon: '📢', text: 'Usar el juego para enviar spam o promocionar servicios externos' },
+              { icon: '🌐', text: 'Usar VPNs o proxies para eludir restricciones regionales' },
+              { icon: '📜', text: 'Violar cualquier ley local, nacional o internacional aplicable' },
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-start gap-2 bg-red-500/5 border border-red-500/10 rounded-xl p-3">
                 <span className="shrink-0">{icon}</span>
@@ -122,105 +122,105 @@ export function TermsOfService() {
             ))}
           </div>
           <p className="mt-4 text-sm text-gray-500">
-            Violations may result in account suspension or permanent ban without notice or refund. 
-            We reserve the right to determine what constitutes a violation.
+            Las infracciones pueden resultar en la suspensión o el cierre permanente de la cuenta sin previo aviso ni reembolso.
+            Nos reservamos el derecho de determinar qué constituye una infracción.
           </p>
         </ToSSection>
 
-        <ToSSection icon="🏆" number="5" title="Virtual Purchases">
+        <ToSSection icon="🏆" number="5" title="Compras Virtuales">
           <p>
-            KASINO21 may offer optional virtual currency packages, avatar bundles, or VIP Passes for purchase 
-            with real money (via Stripe or other payment processors).
+            KASINO21 puede ofrecer paquetes opcionales de moneda virtual, paquetes de avatares o Pases VIP para su compra
+            con dinero real (a través de Stripe u otros procesadores de pago).
           </p>
           <ul className="mt-3">
-            <li>All purchases are <strong className="text-white">final and non-refundable</strong> except where required by applicable law.</li>
-            <li>Purchasing grants a limited, non-transferable license to use the virtual items in-game.</li>
-            <li>Virtual items are not property and have no cash value.</li>
-            <li>We reserve the right to modify, discontinue, or remove any virtual items at any time.</li>
-            <li>Prices are subject to change. We will notify users of price changes in advance where possible.</li>
+            <li>Todas las compras son <strong className="text-white">finales y no reembolsables</strong> excepto cuando lo exija la ley aplicable.</li>
+            <li>La compra otorga una licencia limitada e intransferible para usar los objetos virtuales en el juego.</li>
+            <li>Los objetos virtuales no son propiedad y no tienen valor en efectivo.</li>
+            <li>Nos reservamos el derecho de modificar, descontinuar o eliminar cualquier objeto virtual en cualquier momento.</li>
+            <li>Los precios están sujetos a cambios. Notificaremos a los usuarios sobre cambios de precio con antelación cuando sea posible.</li>
           </ul>
         </ToSSection>
 
-        <ToSSection icon="📢" number="6" title="Advertisements & Monetization">
+        <ToSSection icon="📢" number="6" title="Anuncios y Monetización">
           <p>
-            To keep KASINO21 free to play, we display advertisements provided by <strong className="text-white">Google AdSense</strong>.
+            Para mantener KASINO21 gratuito, mostramos anuncios proporcionados por <strong className="text-white">Google AdSense</strong>.
           </p>
           <ul className="mt-3">
-            <li>We may use cookies to personalize ads and analyze traffic.</li>
-            <li>Advertisements are provided by third parties; we are not responsible for the content of external sites linked in ads.</li>
-            <li>Certain game features (e.g., rewarded ads) may require you to view an advertisement in full to receive virtual game currency or bonuses.</li>
-            <li>You agree not to use ad-blockers or scripts that interfere with the delivery of advertisements on the Service.</li>
+            <li>Podemos usar cookies para personalizar anuncios y analizar el tráfico.</li>
+            <li>Los anuncios son proporcionados por terceros; no somos responsables del contenido de sitios externos enlazados en los anuncios.</li>
+            <li>Ciertas funciones del juego (p. ej., anuncios recompensados) pueden requerir que veas un anuncio completo para recibir moneda virtual o bonificaciones.</li>
+            <li>Aceptas no usar bloqueadores de anuncios o scripts que interfieran con la entrega de anuncios en el Servicio.</li>
           </ul>
         </ToSSection>
 
-        <ToSSection icon="©️" number="7" title="Intellectual Property">
+        <ToSSection icon="©️" number="7" title="Propiedad Intelectual">
           <p>
-            All content within KASINO21 — including but not limited to the game's source code, visual design, 
-            graphics, logo, name "KASINO21", card game mechanics, sound effects, music, and written texts — 
-            are the <strong className="text-white">exclusive intellectual property of Angel (KASINO21)</strong>.
+            Todo el contenido de KASINO21 — incluyendo, entre otros, el código fuente del juego, el diseño visual,
+            los gráficos, el logotipo, el nombre "KASINO21", las mecánicas del juego de cartas, los efectos de sonido,
+            la música y los textos escritos — son <strong className="text-white">propiedad intelectual exclusiva de Angel (KASINO21)</strong>.
           </p>
           <p className="mt-3">
-            You may not copy, reproduce, distribute, modify, create derivative works from, or commercially exploit 
-            any game content without prior written authorization. Screenshots for personal or non-commercial 
-            sharing are permitted with proper attribution.
+            No puedes copiar, reproducir, distribuir, modificar, crear obras derivadas ni explotar comercialmente
+            ningún contenido del juego sin autorización previa por escrito. Se permiten capturas de pantalla para
+            uso personal o no comercial con la atribución correspondiente.
           </p>
         </ToSSection>
 
-        <ToSSection icon="🚨" number="8" title="Disclaimer of Warranties">
+        <ToSSection icon="🚨" number="8" title="Exención de Garantías">
           <p>
-            KASINO21 is provided <strong className="text-white">"as is"</strong> and <strong className="text-white">"as available"</strong> without 
-            warranties of any kind, either express or implied. We do not guarantee that:
+            KASINO21 se proporciona <strong className="text-white">"tal cual"</strong> y <strong className="text-white">"según disponibilidad"</strong> sin
+            garantías de ningún tipo, ya sean expresas o implícitas. No garantizamos que:
           </p>
           <ul className="mt-3">
-            <li>The Service will be uninterrupted, error-free, or available at all times.</li>
-            <li>Virtual game items, coins, or progress will be preserved indefinitely.</li>
-            <li>The game will be free of bugs, security vulnerabilities, or data errors.</li>
+            <li>El Servicio sea ininterrumpido, libre de errores o esté disponible en todo momento.</li>
+            <li>Los objetos virtuales, monedas o el progreso se conserven indefinidamente.</li>
+            <li>El juego esté libre de bugs, vulnerabilidades de seguridad o errores de datos.</li>
           </ul>
         </ToSSection>
 
-        <ToSSection icon="🛡️" number="9" title="Limitation of Liability">
+        <ToSSection icon="🛡️" number="9" title="Limitación de Responsabilidad">
           <p>
-            To the maximum extent permitted by applicable law, KASINO21 and its creators shall not be liable for 
-            any indirect, incidental, special, consequential, or punitive damages, including but not limited to:
+            En la máxima medida permitida por la ley aplicable, KASINO21 y sus creadores no serán responsables por
+            daños indirectos, incidentales, especiales, consecuentes o punitivos, incluyendo, entre otros:
           </p>
           <ul className="mt-3">
-            <li>Loss of virtual coins, items, or game progress due to server errors, maintenance, or closure.</li>
-            <li>Interruptions to service availability or performance issues.</li>
-            <li>Unauthorized access to your account resulting from your own security negligence.</li>
+            <li>Pérdida de monedas virtuales, objetos o progreso del juego debido a errores del servidor, mantenimiento o cierre.</li>
+            <li>Interrupciones en la disponibilidad del servicio o problemas de rendimiento.</li>
+            <li>Acceso no autorizado a tu cuenta como resultado de tu propia negligencia de seguridad.</li>
           </ul>
         </ToSSection>
 
-        <ToSSection icon="🔄" number="10" title="Termination">
+        <ToSSection icon="🔄" number="10" title="Terminación">
           <p>
-            We reserve the right to suspend or terminate your account at any time, with or without notice, 
-            for violations of these Terms or for any other reason at our sole discretion.
+            Nos reservamos el derecho de suspender o cerrar tu cuenta en cualquier momento, con o sin previo aviso,
+            por violaciones de estos Términos o por cualquier otro motivo a nuestra entera discreción.
           </p>
           <p className="mt-3">
-            You may delete your account at any time by contacting us. Upon account deletion, your personal data 
-            will be handled per our <a href="/privacy" className="text-casino-gold hover:underline">Privacy Policy</a>.
+            Puedes eliminar tu cuenta en cualquier momento contactándonos. Tras la eliminación de la cuenta, tus datos
+            personales se gestionarán según nuestra <a href="/privacy" className="text-casino-gold hover:underline">Política de Privacidad</a>.
           </p>
         </ToSSection>
 
-        <ToSSection icon="📝" number="11" title="Changes to Terms">
+        <ToSSection icon="📝" number="11" title="Cambios a los Términos">
           <p>
-            We reserve the right to modify these Terms at any time. When we make material changes, we will update 
-            the "Last updated" date above. Your continued use of KASINO21 after changes become effective constitutes 
-            your acceptance of the revised Terms.
+            Nos reservamos el derecho de modificar estos Términos en cualquier momento. Cuando realicemos cambios
+            importantes, actualizaremos la fecha de "Última actualización" arriba. El uso continuado de KASINO21
+            después de que los cambios entren en vigor constituye tu aceptación de los Términos revisados.
           </p>
         </ToSSection>
 
-        <ToSSection icon="✉️" number="12" title="Contact">
-          <p>For questions about these Terms of Service, contact us:</p>
+        <ToSSection icon="✉️" number="12" title="Contacto">
+          <p>Si tienes preguntas sobre estos Términos de Servicio, contáctanos:</p>
           <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4">
             <div className="w-12 h-12 bg-casino-gold/10 border border-casino-gold/20 rounded-xl flex items-center justify-center text-2xl shrink-0">
               ⚖️
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Legal Contact</p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Contacto Legal</p>
               <a href="mailto:kasino.21@gmail.com" className="text-casino-gold hover:text-white transition-colors font-mono text-sm">
                 kasino.21@gmail.com
               </a>
-              <p className="text-xs text-gray-600 mt-1">Response within 30 days · English & Spanish supported</p>
+              <p className="text-xs text-gray-600 mt-1">Respuesta en 30 días · Atención en español</p>
             </div>
           </div>
         </ToSSection>
@@ -240,11 +240,11 @@ function DisclaimerBanner() {
     <div className="flex items-start gap-4 bg-casino-gold/5 border border-casino-gold/20 rounded-2xl p-5">
       <span className="text-3xl shrink-0">⚠️</span>
       <div>
-        <p className="text-sm font-black text-casino-gold uppercase tracking-wider mb-1">Important Disclaimer</p>
+        <p className="text-sm font-black text-casino-gold uppercase tracking-wider mb-1">Aviso Importante</p>
         <p className="text-xs text-gray-400 leading-relaxed">
-          KASINO21 is a <strong className="text-white">skill-based card game for entertainment only</strong>. 
-          No real money is wagered. All in-game coins, items, and rewards have <strong className="text-white">no monetary value</strong> 
-          and cannot be exchanged for real currency. This is not a gambling service.
+          KASINO21 es un <strong className="text-white">juego de cartas basado en habilidad solo para entretenimiento</strong>.
+          No se apuesta dinero real. Todas las monedas, objetos y recompensas del juego tienen <strong className="text-white">valor monetario cero</strong>
+          y no pueden intercambiarse por divisas reales. Esto no es un servicio de apuestas.
         </p>
       </div>
     </div>
@@ -283,9 +283,9 @@ function FactCard({ icon, title, children }: { icon: string; title: string; chil
 
 function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) {
   const links = [
-    { href: '/privacy', label: 'Privacy Policy' },
-    { href: '/terms', label: 'Terms of Service' },
-    { href: '/cookies', label: 'Cookie Policy' },
+    { href: '/privacy', label: 'Política de Privacidad' },
+    { href: '/terms', label: 'Términos de Servicio' },
+    { href: '/cookies', label: 'Política de Cookies' },
   ];
 
   return (
@@ -295,7 +295,7 @@ function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) 
           <LogoK21 size={28} />
           <div>
             <p className="text-xs font-black text-white/60 uppercase tracking-widest">KASINO21</p>
-            <p className="text-[10px] text-gray-600">© 2026 · All rights reserved</p>
+            <p className="text-[10px] text-gray-600">© 2026 · Todos los derechos reservados</p>
           </div>
         </div>
         <nav className="flex gap-6">
@@ -317,7 +317,7 @@ function LegalFooter({ current }: { current: 'privacy' | 'terms' | 'cookies' }) 
           href="/"
           className="text-xs bg-casino-gold/10 hover:bg-casino-gold/20 text-casino-gold border border-casino-gold/20 px-4 py-2 rounded-xl font-bold uppercase tracking-widest transition-all"
         >
-          ← Back to Game
+          ← Volver al Juego
         </a>
       </div>
     </footer>

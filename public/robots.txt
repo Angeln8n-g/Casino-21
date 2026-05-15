@@ -22,11 +22,8 @@ Sitemap: https://kasino21.com/sitemap.xml
 # Crawl-delay (be kind to the server)
 Crawl-delay: 1
 
-# Google AdSense bot
-User-agent: Mediapartners-Google
-Allow: /
-
 # Google Images
 User-agent: Googlebot-Image
+Allow: /
 Allow: /icons/
 Allow: /og-image.png

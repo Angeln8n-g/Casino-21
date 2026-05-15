@@ -6,7 +6,7 @@ interface StoreItem {
   id: string;
   name: string;
   description: string;
-  item_type: 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic';
+  item_type: 'avatar' | 'title' | 'board' | 'theme' | 'emotic';
   price: number;
   image_url: string | null;
   theme_key?: string | null;
@@ -99,6 +99,7 @@ export function StoreAdmin() {
     },
     boardTheme: {
       background: 'linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
+      backgroundImage: '',
       borderColor: '#2A1810',
       glowColor: 'rgba(34,211,238,0.4)',
       innerRingColor: 'rgba(253,224,71,0.35)',
@@ -107,6 +108,8 @@ export function StoreAdmin() {
     },
     isActive: true,
   });
+
+  const [boardItems, setBoardItems] = useState<StoreItem[]>([]);
 
   useEffect(() => {
     fetchItems();
@@ -214,6 +217,16 @@ export function StoreAdmin() {
     setThemesLoading(false);
   };
 
+  const fetchBoardItems = async () => {
+    const { data } = await supabase
+      .from('store_items')
+      .select('*')
+      .eq('item_type', 'board')
+      .eq('is_active', true)
+      .order('name');
+    if (data) setBoardItems(data);
+  };
+
   const handleSaveTheme = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -302,7 +315,7 @@ export function StoreAdmin() {
             Artículos
           </button>
           <button
-            onClick={() => { setActiveSection('themes'); fetchThemes(); }}
+            onClick={() => { setActiveSection('themes'); fetchThemes(); fetchBoardItems(); }}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
               activeSection === 'themes' ? 'bg-[#7C3AED] text-white' : 'text-gray-400 hover:text-white'
             }`}
@@ -343,6 +356,7 @@ export function StoreAdmin() {
                 },
                 boardTheme: {
                   background: 'linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
+                  backgroundImage: '',
                   borderColor: '#2A1810',
                   glowColor: 'rgba(34,211,238,0.4)',
                   innerRingColor: 'rgba(253,224,71,0.35)',
@@ -351,6 +365,7 @@ export function StoreAdmin() {
                 },
                 isActive: true,
               });
+              fetchBoardItems();
               setEditingTheme(true);
             }}
             className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(124,58,237,0.4)] hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] text-sm flex items-center gap-2"
@@ -408,7 +423,6 @@ export function StoreAdmin() {
                 <label htmlFor="itemType" className="block text-xs font-bold text-gray-400 uppercase mb-2">Categoría</label>
                 <select id="itemType" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all cursor-pointer" value={currentItem.item_type} onChange={e => setCurrentItem({...currentItem, item_type: e.target.value as any})}>
                   <option value="avatar">👤 Avatar</option>
-                  <option value="card_back">🃏 Reverso de Carta</option>
                   <option value="title">🏷️ Título</option>
                   <option value="board">🎲 Tapete de Mesa</option>
                   <option value="theme">🎨 Tema Premium</option>
@@ -656,6 +670,7 @@ export function StoreAdmin() {
                       },
                       boardTheme: {
                         background: 'linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
+                        backgroundImage: '',
                         borderColor: '#2A1810',
                         glowColor: 'rgba(34,211,238,0.4)',
                         innerRingColor: 'rgba(253,224,71,0.35)',
@@ -664,6 +679,7 @@ export function StoreAdmin() {
                       },
                       isActive: true,
                     });
+                    fetchBoardItems();
                     setEditingTheme(true);
                   }}
                   className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(124,58,237,0.4)] text-sm flex items-center gap-2"
@@ -769,6 +785,37 @@ export function StoreAdmin() {
                           />
                         </div>
                       ))}
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                          Tapete de fondo (opcional)
+                        </label>
+                        <div className="flex gap-3 items-start">
+                          <select
+                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#7C3AED] transition-all cursor-pointer"
+                            value={themeForm.boardTheme.backgroundImage}
+                            onChange={e => setThemeForm({
+                              ...themeForm,
+                              boardTheme: { ...themeForm.boardTheme, backgroundImage: e.target.value }
+                            })}
+                          >
+                            <option value="">— Ninguno (solo gradiente) —</option>
+                            {boardItems.map(item => (
+                              <option key={item.id} value={item.image_url || ''}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                          {themeForm.boardTheme.backgroundImage && (
+                            <div className="w-14 h-14 rounded-lg border border-white/10 overflow-hidden shrink-0 bg-black/40">
+                              <img
+                                src={themeForm.boardTheme.backgroundImage}
+                                alt="Tapete preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       {(['borderColor', 'glowColor', 'innerRingColor'] as const).map(field => (
                         <div key={field}>
                           <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
@@ -793,7 +840,14 @@ export function StoreAdmin() {
                     <div className="flex justify-center">
                       <div
                         className="w-full max-w-xs h-48 rounded-2xl flex items-center justify-center relative overflow-hidden"
-                        style={{ background: themeForm.boardTheme.background, borderColor: themeForm.boardTheme.borderColor, borderWidth: '2px', borderStyle: 'solid' }}
+                        style={{
+                          background: themeForm.boardTheme.backgroundImage
+                            ? `url("${themeForm.boardTheme.backgroundImage}") center/cover`
+                            : themeForm.boardTheme.background,
+                          borderColor: themeForm.boardTheme.borderColor,
+                          borderWidth: '2px',
+                          borderStyle: 'solid'
+                        }}
                       >
                         <div className="transform scale-75">
                           <div
@@ -891,6 +945,7 @@ export function StoreAdmin() {
                               <div className="flex justify-end gap-2">
                                 <button
                                   onClick={() => {
+                                    const bt = theme.board_theme as Record<string, unknown>;
                                     setThemeForm({
                                       id: theme.id,
                                       key: theme.key,
@@ -900,9 +955,18 @@ export function StoreAdmin() {
                                       previewColor: theme.preview_color,
                                       price: theme.price,
                                       cardTheme: theme.card_theme as ThemeForm['cardTheme'],
-                                      boardTheme: theme.board_theme as ThemeForm['boardTheme'],
+                                      boardTheme: {
+                                        background: (bt.background as string) || '',
+                                        backgroundImage: (bt.backgroundImage as string) || '',
+                                        borderColor: (bt.borderColor as string) || '#2A1810',
+                                        glowColor: (bt.glowColor as string) || 'rgba(34,211,238,0.4)',
+                                        innerRingColor: (bt.innerRingColor as string) || 'rgba(253,224,71,0.35)',
+                                        overlayGradient: (bt.overlayGradient as string) || '',
+                                        watermarkOpacity: (bt.watermarkOpacity as number) ?? 0.1,
+                                      },
                                       isActive: theme.is_active,
                                     });
+                                    fetchBoardItems();
                                     setEditingTheme(true);
                                   }}
                                   className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg transition-colors border border-white/5"

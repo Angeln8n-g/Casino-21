@@ -11,7 +11,7 @@ interface StoreItem {
   id: string;
   name: string;
   description: string;
-  item_type: 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic';
+  item_type: 'avatar' | 'title' | 'board' | 'theme' | 'emotic';
   price: number;
   image_url: string | null;
   theme_key?: string | null;
@@ -67,7 +67,7 @@ export function Store() {
   
   // Navigation & Cart State
   const [viewMode, setViewMode] = useState<'store' | 'gallery'>('store');
-  const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'card_back' | 'title' | 'board' | 'theme' | 'emotic'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'avatar' | 'title' | 'board' | 'theme' | 'emotic'>('all');
   const [cart, setCart] = useState<StoreItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   
@@ -228,7 +228,7 @@ export function Store() {
   const isItemEquipped = (item: StoreItem): boolean => {
     switch (item.item_type) {
       case 'avatar':    return profile?.equipped_avatar === item.image_url;
-      case 'card_back': return profile?.equipped_card_back === item.image_url;
+
       case 'title':     return profile?.equipped_title === item.name;
       case 'board':     return profile?.equipped_board === item.image_url;
       case 'theme':     return profile?.equipped_theme === item.theme_key;
@@ -240,7 +240,7 @@ export function Store() {
   const getCategoryLabel = (type: string) => {
     switch(type) {
       case 'avatar':    return '👤 Avatar';
-      case 'card_back': return '🃏 Reverso';
+
       case 'title':     return '🏷️ Título';
       case 'board':     return '🎲 Tapete';
       case 'theme':     return '🎨 Tema';
@@ -333,7 +333,7 @@ export function Store() {
 
         {/* Category Pills */}
         <div className="mb-8 flex gap-3 overflow-x-auto max-w-full custom-scrollbar pb-2 mask-edges">
-          {(['all', 'avatar', 'card_back', 'title', 'board', 'theme', 'emotic'] as const).map(cat => (
+          {(['all', 'avatar', 'title', 'board', 'theme', 'emotic'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => { triggerHaptic('light'); setActiveCategory(cat); }}

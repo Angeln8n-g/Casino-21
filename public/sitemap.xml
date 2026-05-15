@@ -10,6 +10,14 @@
     <priority>1.0</priority>
   </url>
 
+  <!-- How to Play -->
+  <url>
+    <loc>https://kasino21.com/como-jugar</loc>
+    <lastmod>2026-05-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
   <!-- Privacy Policy -->
   <url>
     <loc>https://kasino21.com/privacy</loc>

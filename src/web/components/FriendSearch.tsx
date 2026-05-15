@@ -141,12 +141,12 @@ export function FriendSearch() {
             return;
           } else {
             // They sent us a request - auto-accept it!
-            const { error: updateError } = await supabase
-              .from('friend_requests')
-              .update({ status: 'accepted', responded_at: new Date().toISOString() })
-              .eq('id', existing.id);
+            const { error: rpcError } = await supabase.rpc('auto_accept_friend_request', {
+              p_user_id: user.id,
+              p_other_id: receiverId
+            });
 
-            if (updateError) {
+            if (rpcError) {
               setActionFeedback({ id: receiverId, message: 'Error al aceptar solicitud', type: 'error' });
             } else {
               setRelationships(prev => ({ ...prev, [receiverId]: 'accepted' }));
@@ -158,9 +158,25 @@ export function FriendSearch() {
           }
         }
         
-        // If rejected, allow a fresh insert (the existing logic was deleting, but we can just update or insert)
+        // If rejected, allow re-sending via RPC (manages the replacement atomically)
         if (existing.status === 'rejected') {
-          await supabase.from('friend_requests').delete().eq('id', existing.id);
+          const { data: resentId, error: resendError } = await supabase.rpc('resend_friend_request', {
+            p_sender_id: user.id,
+            p_receiver_id: receiverId
+          });
+
+          if (resendError) {
+            setActionFeedback({ id: receiverId, message: `Error: ${resendError.message}`, type: 'error' });
+            setSendingRequest(false);
+            return;
+          }
+
+          setRelationships(prev => ({ ...prev, [receiverId]: 'pending_sent' }));
+          setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
+          window.dispatchEvent(new CustomEvent('friendships_changed'));
+          setTimeout(() => setSelectedPlayer(null), 1500);
+          setSendingRequest(false);
+          return;
         }
       }
 
@@ -408,7 +424,7 @@ function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 

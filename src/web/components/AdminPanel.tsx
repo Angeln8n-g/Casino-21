@@ -205,7 +205,7 @@ export function AdminPanel() {
             player1_id: p1,
             player2_id: p2,
             status: i === 0 ? 'pending' : 'pending', // Only first round is ready conceptually, but we set all to pending initially
-            game_room_id: Math.random().toString(36).substring(2, 8).toUpperCase()
+            game_room_id: 'T' + Math.random().toString(36).substring(2, 10).toUpperCase()
           });
         }
       }
