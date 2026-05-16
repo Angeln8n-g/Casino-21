@@ -52,15 +52,15 @@ export function MatchCompletedScreen({
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen text-center p-4 sm:p-8 bg-transparent relative z-10 overflow-y-auto">
+    <div className="flex flex-col items-center justify-start pt-6 sm:pt-10 pb-8 sm:pb-12 min-h-screen text-center p-4 sm:p-8 bg-transparent relative z-10 overflow-y-auto">
       <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
 
       <div className="bg-black/60 backdrop-blur-md p-6 sm:p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
-        <h1 className="text-4xl sm:text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-lg">
           ¡PARTIDA TERMINADA!
         </h1>
 
-        <h2 className="text-xl sm:text-3xl font-bold mb-6 sm:mb-10 text-white">
+        <h2 className="text-lg sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-10 text-white">
           {(() => {
             if (!gameState.winnerId) return '¡EMPATE!';
             
@@ -85,7 +85,7 @@ export function MatchCompletedScreen({
         </h2>
 
         {/* Player stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full mb-6 sm:mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 md:gap-8 w-full mb-6 sm:mb-10">
           {gameState.players.map((p) => (
             <div
               key={p.id}
@@ -150,7 +150,7 @@ export function MatchCompletedScreen({
         {/* Back-to-menu button */}
         <button
           onClick={handleBackToMenu}
-          className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-8 sm:px-12 py-3 sm:py-4 rounded-xl font-black text-lg sm:text-xl transition transform hover:scale-105 shadow-xl w-full max-w-md"
+          className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-6 sm:px-12 py-3 sm:py-4 rounded-xl font-black text-lg sm:text-xl transition transform hover:scale-105 shadow-xl w-full max-w-md"
         >
           VOLVER AL MENÚ PRINCIPAL
         </button>
