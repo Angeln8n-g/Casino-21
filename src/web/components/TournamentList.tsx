@@ -1,3 +1,8 @@
+/**
+ * @deprecated This component uses the legacy `tournaments` table.
+ * The current tournament system uses the `events` table.
+ * See `src/web/components/EventsPage.tsx` and `src/web/components/TournamentBracket.tsx`.
+ */
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
