@@ -41,6 +41,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [disconnectionMessage, setDisconnectionMessage] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [matchAbandonedData, setMatchAbandonedData] = useState<{ winnerId: string, coinsEarned: number, eloEarned: number } | null>(null);
+  const disconnectTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Escuchar eventos del servidor
   React.useEffect(() => {
@@ -71,9 +72,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       socket.on('player_disconnected', ({ message }: { message: string }) => {
         setDisconnectionMessage(message);
+        if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
+        disconnectTimerRef.current = setTimeout(() => {
+          setDisconnectionMessage(null);
+        }, 30000);
       });
       socket.on('player_reconnected', () => {
         setDisconnectionMessage(null);
+        if (disconnectTimerRef.current) {
+          clearTimeout(disconnectTimerRef.current);
+          disconnectTimerRef.current = null;
+        }
       });
 
       socket.on('room_joined', ({ playerId }: { playerId: string }) => {
@@ -141,6 +150,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('chat_history');
         currentSocket.off('match_abandoned');
         currentSocket.off('stats_updated');
+      }
+      if (disconnectTimerRef.current) {
+        clearTimeout(disconnectTimerRef.current);
+        disconnectTimerRef.current = null;
       }
     };
   }, []);
