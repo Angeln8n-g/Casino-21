@@ -51,8 +51,8 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
   };
 
   const isPlayerInMatch = currentUserId && (match.player1?.id === currentUserId || match.player2?.id === currentUserId);
-  const canJoin = (match.status === 'pending' || match.status === 'live') && isPlayerInMatch && match.player1 && match.player2;
-  const isSpectatable = match.status === 'live' || (match.status === 'pending' && match.player1 && match.player2 && match.game_room_id);
+  const canJoin = match.status !== 'completed' && isPlayerInMatch && match.player1 && match.player2;
+  const isSpectatable = match.status !== 'completed' && match.player1 && match.player2 && match.game_room_id;
   const isClickable = canJoin || isSpectatable || (isAdmin && match.status !== 'completed');
 
   return (
