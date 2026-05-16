@@ -7,6 +7,7 @@ import { FriendSearch } from './FriendSearch';
 import { ChatWindow } from './ChatWindow';
 import { FriendRequestModal, FriendRequestProfile } from './FriendRequestModal';
 import { FriendProfileModal, FriendForModal } from './FriendProfileModal';
+import { triggerHaptic } from '../utils/haptics';
 
 interface Friend {
   id: string;
@@ -331,7 +332,7 @@ export function SocialPanel() {
         {/* ── TABS ──────────────────────────────────────────── */}
         <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 shrink-0 overflow-x-auto custom-scrollbar shadow-inner">
           <button
-            onClick={() => setActiveTab('friends')}
+            onClick={() => { triggerHaptic('light'); setActiveTab('friends'); }}
             className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all relative whitespace-nowrap px-4 ${
               activeTab === 'friends' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
@@ -344,7 +345,7 @@ export function SocialPanel() {
             )}
           </button>
           <button
-            onClick={() => setActiveTab('search')}
+            onClick={() => { triggerHaptic('light'); setActiveTab('search'); }}
             className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all whitespace-nowrap px-4 ${
               activeTab === 'search' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
@@ -352,7 +353,7 @@ export function SocialPanel() {
             Buscar
           </button>
           <button
-            onClick={() => setActiveTab('chat')}
+            onClick={() => { triggerHaptic('light'); setActiveTab('chat'); }}
             className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all relative whitespace-nowrap px-4 ${
               activeTab === 'chat' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
@@ -385,7 +386,7 @@ export function SocialPanel() {
                       return (
                         <div
                           key={req.requestId}
-                          onClick={() => setSelectedRequest(req)}
+                          onClick={() => { triggerHaptic('card_tap'); setSelectedRequest(req); }}
                           className="glass-panel px-3 py-2.5 flex items-center gap-3 cursor-pointer hover:border-casino-gold/50 transition-all group border border-casino-gold/20 bg-black/20 backdrop-blur-sm hover:shadow-[0_0_15px_rgba(251,191,36,0.15)]"
                         >
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-casino-gold/40 to-casino-gold/10 flex items-center justify-center text-xs font-bold text-casino-gold shrink-0 border border-casino-gold/30 overflow-hidden">
@@ -476,7 +477,7 @@ export function SocialPanel() {
                         className="glass-panel px-3 py-2.5 flex items-center gap-3 hover:border-white/[0.15] transition-all group bg-black/20 backdrop-blur-sm shadow-[0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,255,255,0.05)]"
                       >
                         {/* Avatar + status dot */}
-                        <div className="relative shrink-0 cursor-pointer" onClick={() => openFriendModal(friend)}>
+                        <div className="relative shrink-0 cursor-pointer" onClick={() => { triggerHaptic('card_tap'); openFriendModal(friend); }}>
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-inner overflow-hidden ${
                             isOnline ? 'bg-gradient-to-br from-casino-emerald/20 to-black/50 text-white border border-casino-emerald/30' : 'bg-white/5 text-gray-500 border border-white/5'
                           }`}>
@@ -514,7 +515,7 @@ export function SocialPanel() {
                         </div>
 
                         {/* Name + status */}
-                        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => openFriendModal(friend)}>
+                        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => { triggerHaptic('card_tap'); openFriendModal(friend); }}>
                           <p className={`text-sm font-bold truncate transition-colors drop-shadow-sm ${
                             isOnline ? 'text-gray-100 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-300'
                           }`}>
@@ -542,6 +543,7 @@ export function SocialPanel() {
                         {/* Chat Button */}
                         <button
                           onClick={() => {
+                            triggerHaptic('card_tap');
                             setActiveChatFriendId(friend.id);
                             setActiveTab('chat');
                           }}
