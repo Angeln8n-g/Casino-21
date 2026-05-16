@@ -304,6 +304,26 @@ function closeRoom(roomId: string, reason: string = 'room_closed') {
   console.log(`Sala ${roomId} cerrada. Motivo: ${reason}`);
 }
 
+function notifyTournamentPlayers(gameRoomId: string, eventId: string, player1Id?: string, player2Id?: string) {
+  const targetIds = new Set([player1Id, player2Id].filter(Boolean));
+  if (targetIds.size === 0) return;
+
+  for (const [, room] of Object.entries(rooms)) {
+    for (const player of room.players) {
+      if (targetIds.has(player.userId)) {
+        const playerSocket = io.sockets.sockets.get(player.socketId);
+        if (playerSocket) {
+          playerSocket.emit('tournament_ready', {
+            gameRoomId,
+            eventId
+          });
+          console.log(`[Torneo] Notificación tournament_ready enviada a ${player.name} (sala ${gameRoomId})`);
+        }
+      }
+    }
+  }
+}
+
 function scheduleBotTurnIfNeeded(roomId: string, room: any) {
   if (!room.isBot || !room.state) return;
 
@@ -1148,85 +1168,85 @@ async function saveMatchResult(roomId: string, room: any) {
       console.log(`[Torneo] Procesando avance de torneo para la sala ${roomId}. Ganador: ${winnerId}`);
       const { data: matchData, error: matchError } = await supabase
         .from('tournament_matches')
-        .select('id, event_id, next_match_id, status')
+        .select('id, event_id, round_number, match_order, status')
         .eq('game_room_id', roomId)
         .single();
 
       if (matchError) {
-         console.error(`[Torneo] Error buscando tournament_match asociado a la sala ${roomId}:`, matchError);
+        console.error(`[Torneo] Error buscando tournament_match asociado a la sala ${roomId}:`, matchError);
       }
 
-      if (!matchError && matchData) {
-        console.log(`[Torneo] Actualizando status a 'completed' para el match ${matchData.id}`);
-        const { error: updateError } = await supabase.from('tournament_matches')
-          .update({ winner_id: winnerId, status: 'completed' })
-          .eq('id', matchData.id);
-          
-        if (updateError) {
-           console.error(`[Torneo] Error marcando partida como completada:`, updateError);
+      if (matchError || !matchData) return;
+
+      if (matchData.status === 'completed') {
+        console.log(`[Torneo] Match ${matchData.id} ya estaba completado. Saltando reprocesamiento.`);
+        return;
+      }
+
+      console.log(`[Torneo] Actualizando status a 'completed' para el match ${matchData.id}`);
+      await supabase.from('tournament_matches')
+        .update({ winner_id: winnerId, status: 'completed' })
+        .eq('id', matchData.id);
+
+      // Calcular siguiente match usando round_number + match_order (igual que AdminPanel)
+      const nextRound = matchData.round_number + 1;
+      const nextOrder = Math.ceil(matchData.match_order / 2);
+
+      const { data: nextMatch } = await supabase
+        .from('tournament_matches')
+        .select('id, player1_id, player2_id, game_room_id')
+        .eq('event_id', matchData.event_id)
+        .eq('round_number', nextRound)
+        .eq('match_order', nextOrder)
+        .single();
+
+      if (nextMatch) {
+        // Asignar ganador al slot correcto (órdenes impares → player1, pares → player2)
+        const updateData: any = {};
+        if (matchData.match_order % 2 !== 0) {
+          updateData.player1_id = winnerId;
+        } else {
+          updateData.player2_id = winnerId;
         }
 
-        if (matchData.next_match_id) {
-          const { data: nextMatch } = await supabase
-            .from('tournament_matches')
-            .select('player1_id, player2_id')
-            .eq('id', matchData.next_match_id)
-            .single();
+        await supabase.from('tournament_matches')
+          .update(updateData)
+          .eq('id', nextMatch.id);
 
-          if (nextMatch) {
-            // Verificar a qué posición pertenece el jugador que avanza (si es la partida 1 y 2, avanzan a la partida 1 del siguiente round)
-            // Es más seguro asignar explícitamente según quién está vacío, pero también debemos evitar sobrescribir si ambos están llenos por error
-            let updatePayload: any = null;
-            if (!nextMatch.player1_id) {
-              updatePayload = { player1_id: winnerId };
-            } else if (!nextMatch.player2_id) {
-              updatePayload = { player2_id: winnerId };
-            }
+        console.log(`[Torneo] Jugador ${winnerId} avanzado a ronda ${nextRound}, match ${nextMatch.id}`);
 
-            if (updatePayload) {
-              const { error: advanceError } = await supabase.from('tournament_matches')
-                .update(updatePayload)
-                .eq('id', matchData.next_match_id);
-              
-              if (advanceError) {
-                console.error(`[Torneo] Error avanzando jugador ${winnerId} a la siguiente ronda:`, advanceError);
-              } else {
-                console.log(`[Torneo] Jugador ${winnerId} avanzado a la siguiente ronda (${matchData.next_match_id})`);
-              }
-            } else {
-               console.warn(`[Torneo] Alerta: next_match_id ${matchData.next_match_id} ya tiene ambos jugadores llenos. No se pudo avanzar a ${winnerId}.`);
-            }
-          }
-        } else {
-          // Final del torneo, dar premio
-          const { data: eventData } = await supabase
-            .from('events')
-            .select('prize_pool')
-            .eq('id', matchData.event_id)
-            .single();
-          
-          let finalPrize = 0;
-          if (eventData?.prize_pool) {
-            // Extraer el primer número del prize_pool (formato: "10,000 Monedas + 500 XP")
-            const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
-            if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
-          }
+        // Si el siguiente match ya tiene ambos jugadores, notificar
+        const filledSlot = matchData.match_order % 2 !== 0 ? 'player1_id' : 'player2_id';
+        const otherSlot = filledSlot === 'player1_id' ? 'player2_id' : 'player1_id';
 
-          if (finalPrize > 0) {
-            // Verificación para evitar Doble Pago: Asegurarnos que la partida estaba 'pending' o 'in_progress'
-            if (matchData.status !== 'completed') {
-              console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
-              const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
-                event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
-              });
-              if (rewardError) {
-                 console.error(`[Torneo] Error entregando premio final:`, rewardError);
-              } else {
-                 console.log(`[Torneo] Premio entregado exitosamente.`);
-              }
-            } else {
-              console.log(`Intento de doble pago de torneo evitado para ${winnerId}`);
-            }
+        if (nextMatch[otherSlot]) {
+          const p1Id = filledSlot === 'player1_id' ? winnerId : nextMatch[otherSlot];
+          const p2Id = filledSlot === 'player2_id' ? winnerId : nextMatch[otherSlot];
+          notifyTournamentPlayers(nextMatch.game_room_id, matchData.event_id, p1Id, p2Id);
+        }
+      } else {
+        // No hay siguiente ronda → final del torneo, entregar premio
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('prize_pool')
+          .eq('id', matchData.event_id)
+          .single();
+
+        let finalPrize = 0;
+        if (eventData?.prize_pool) {
+          const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
+          if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
+        }
+
+        if (finalPrize > 0) {
+          console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
+          const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
+            event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
+          });
+          if (rewardError) {
+            console.error(`[Torneo] Error entregando premio final:`, rewardError);
+          } else {
+            console.log(`[Torneo] Premio entregado exitosamente.`);
           }
         }
       }
