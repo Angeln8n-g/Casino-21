@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
-import { useProfilePresence } from '../hooks/useProfilePresence';
+import { useProfilePresence, ONLINE_WINDOW_MS } from '../hooks/useProfilePresence';
 import { FriendSearch } from './FriendSearch';
 import { ChatWindow } from './ChatWindow';
 import { FriendRequestModal, FriendRequestProfile } from './FriendRequestModal';
@@ -21,8 +21,6 @@ interface Friend {
   avatar_url?: string | null;
   equipped_avatar?: string | null;
 }
-
-const ONLINE_WINDOW_MS = 45_000;
 
 export function SocialPanel() {
   const { user } = useAuth();

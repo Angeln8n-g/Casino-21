@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 
-const ONLINE_WINDOW_MS = 45_000;
+export const ONLINE_WINDOW_MS = 45_000;
 
 interface ProfilePresence {
   id: string;
@@ -22,10 +22,14 @@ export function useProfilePresence(friendIds: string[]): UseProfilePresenceResul
       setProfiles([]);
       return;
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, last_seen_at, current_room_id')
       .in('id', ids);
+    if (error) {
+      console.error('Error refreshing presence:', error);
+      return;
+    }
     if (data) setProfiles(data);
   }, []);
 
