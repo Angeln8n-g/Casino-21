@@ -609,7 +609,7 @@ export function SocialPanel() {
                 </h3>
                 {activeChatFriendId && (
                   <button 
-                    onClick={() => setActiveChatFriendId(null)}
+                    onClick={() => { triggerHaptic('light'); setActiveChatFriendId(null); }}
                     className="text-[10px] text-gray-500 hover:text-casino-gold font-bold uppercase transition-colors flex items-center gap-1"
                   >
                     <span>←</span> Global
