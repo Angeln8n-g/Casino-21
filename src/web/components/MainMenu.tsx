@@ -72,6 +72,7 @@ export function MainMenu() {
   const matchmakingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previousPlayersInRoomRef = useRef(0);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [pendingTournamentMatch, setPendingTournamentMatch] = useState<{gameRoomId: string; eventId: string} | null>(null);
   const joinParamHandled = useRef(false);
   const hasRequestedStateRef = useRef(false);
 
@@ -339,6 +340,11 @@ export function MainMenu() {
             setMatchFound(null);
           }, 3500);
         });
+
+        socket.on('tournament_ready', (data: { gameRoomId: string; eventId: string }) => {
+          setPendingTournamentMatch(data);
+          setTimeout(() => setPendingTournamentMatch(null), 30000);
+        });
         // ─── FIN FASE 8 ───
 
       } catch (err) {
@@ -358,6 +364,8 @@ export function MainMenu() {
         socket.off('error');
         socket.off('room_closed');
         socket.off('match_found');
+        socket.off('room_joined_as_spectator');
+        socket.off('tournament_ready');
         if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
       } catch (e) {
         // Socket might not be connected yet
@@ -901,6 +909,21 @@ export function MainMenu() {
           {error && (
             <div className="bg-red-500/10 text-red-400 p-3 rounded-xl text-center text-sm border border-red-500/20 animate-slide-down font-medium">
               {error}
+            </div>
+          )}
+
+          {/* Tournament Notification */}
+          {pendingTournamentMatch && (
+            <div className="bg-casino-gold/10 text-casino-gold p-3 rounded-xl text-center text-sm border border-casino-gold/30 animate-slide-down font-medium cursor-pointer hover:bg-casino-gold/20 transition-colors"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('join_game_from_invite', {
+                  detail: { roomId: pendingTournamentMatch.gameRoomId, isTournament: true, isSpectator: false }
+                }));
+                setPendingTournamentMatch(null);
+              }}
+            >
+              <span className="mr-1">🏆</span>
+              ¡Avanzaste a la siguiente ronda! — Haz clic para unirte a tu partida
             </div>
           )}
 
