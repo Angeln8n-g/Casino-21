@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
+import { useProfilePresence } from '../hooks/useProfilePresence';
 import { FriendSearch } from './FriendSearch';
 import { ChatWindow } from './ChatWindow';
 import { FriendRequestModal, FriendRequestProfile } from './FriendRequestModal';
@@ -32,13 +33,20 @@ export function SocialPanel() {
   const [activeChatFriendId, setActiveChatFriendId] = useState<string | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
+  const friendIds = friends.map((f) => f.id);
+  const { presenceMap, refreshPresence } = useProfilePresence(friendIds);
 
-  const isFriendOnline = useCallback((friend: Friend) => {
-    if (!friend.last_seen_at) return false;
-    const ts = Date.parse(friend.last_seen_at);
-    if (!Number.isFinite(ts)) return false;
-    return Date.now() - ts <= ONLINE_WINDOW_MS;
-  }, []);
+  const isFriendOnline = useCallback(
+    (friend: Friend) => {
+      const presence = presenceMap[friend.id];
+      if (presence) return presence.isOnline;
+      if (!friend.last_seen_at) return false;
+      const ts = Date.parse(friend.last_seen_at);
+      if (!Number.isFinite(ts)) return false;
+      return Date.now() - ts <= ONLINE_WINDOW_MS;
+    },
+    [presenceMap]
+  );
 
   // Modals
   const [selectedRequest, setSelectedRequest] = useState<FriendRequestProfile | null>(null);
@@ -102,15 +110,6 @@ export function SocialPanel() {
       if (!getIsMounted || getIsMounted()) setLoading(false);
     }
   }, [user]);
-
-  // Keep friend online/offline state fresh even when no realtime events arrive
-  useEffect(() => {
-    if (!user) return;
-    const intervalId = window.setInterval(() => {
-      fetchFriends();
-    }, 10_000);
-    return () => window.clearInterval(intervalId);
-  }, [user, fetchFriends]);
 
   // ── Fetch pending INCOMING requests ─────────────────────────
   const fetchPendingIncoming = useCallback(async (getIsMounted?: () => boolean) => {
@@ -469,8 +468,8 @@ export function SocialPanel() {
                   friends.map((friend) => {
                     const div = getDivisionFromElo(friend.elo);
                     const isOnline = isFriendOnline(friend);
-                    const roomId = friend.current_room_id;
-                    const isInRoom = !!roomId;
+                    const presence = presenceMap[friend.id];
+                    const isInRoom = presence?.isInRoom ?? !!friend.current_room_id;
                     const unread = friendUnreadMap[friend.id] || 0;
 
                     return (
@@ -568,14 +567,20 @@ export function SocialPanel() {
                     <span className="w-1.5 h-1.5 rounded-full bg-casino-emerald" />
                     <span className="text-gray-400 text-[10px]">Online</span>
                     <span className="text-white font-bold text-[10px]">
-                      {friends.filter(f => isFriendOnline(f) && !f.current_room_id).length}
+                      {friends.filter(f => {
+                        const p = presenceMap[f.id];
+                        return p ? p.isOnline && !p.isInRoom : isFriendOnline(f) && !f.current_room_id;
+                      }).length}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                     <span className="text-gray-400 text-[10px]">En partida</span>
                     <span className="text-white font-bold text-[10px]">
-                      {friends.filter(f => isFriendOnline(f) && !!f.current_room_id).length}
+                      {friends.filter(f => {
+                        const p = presenceMap[f.id];
+                        return p ? p.isInRoom : isFriendOnline(f) && !!f.current_room_id;
+                      }).length}
                     </span>
                   </div>
                 </div>
