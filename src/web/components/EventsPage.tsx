@@ -193,11 +193,89 @@ export function EventsPage() {
   const [tournamentMatches, setTournamentMatches] = useState<TournamentMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [bracketChannel, setBracketChannel] = useState<any>(null);
+
+  function mapMatchStatus(dbStatus: string): TournamentMatch['status'] {
+    switch (dbStatus) {
+      case 'ready':
+      case 'playing':
+        return 'live';
+      case 'no_show':
+      case 'completed':
+        return 'completed';
+      case 'pending':
+      default:
+        return 'pending';
+    }
+  }
+
+  const fetchBracketData = async (eventId: string) => {
+    const { data, error } = await supabase
+      .from('tournament_matches')
+      .select(`
+        id, round_number, match_order, status, winner_id,
+        player1_id,
+        player2_id,
+        game_room_id
+      `)
+      .eq('event_id', eventId);
+
+    if (error) {
+      console.error('Error fetching matches:', error);
+      return;
+    }
+    if (!data) return;
+
+    const playerIds = Array.from(new Set(data.flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean)));
+
+    let profiles: Record<string, any> = {};
+    if (playerIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, equipped_avatar')
+        .in('id', playerIds);
+
+      if (profilesError) {
+        logger.error('Error fetching profiles:', profilesError);
+      }
+
+      if (profilesData) {
+        profilesData.forEach((p: any) => {
+          profiles[p.id] = p;
+        });
+      }
+    }
+
+    const mappedMatches: TournamentMatch[] = data.map(m => {
+      const p1 = m.player1_id ? profiles[m.player1_id] : null;
+      const p2 = m.player2_id ? profiles[m.player2_id] : null;
+
+      return {
+        id: m.id,
+        round: m.round_number,
+        position: m.match_order,
+        player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
+        player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
+        status: mapMatchStatus(m.status),
+        game_room_id: m.game_room_id
+      };
+    });
+    setTournamentMatches(mappedMatches);
+  };
 
   // Modal de inscripción
   const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<'success' | 'already_enrolled' | 'error'>('success');
   const [enrollmentEventTitle, setEnrollmentEventTitle] = useState('');
+
+  const closeBracketModal = () => {
+    setBracketModalOpen(false);
+    stopLoop('event-bracket-audio');
+    if (bracketChannel) {
+      supabase.removeChannel(bracketChannel);
+      setBracketChannel(null);
+    }
+  };
 
   const handleJoinMatch = (match: TournamentMatch) => {
     if (!match.game_room_id) {
@@ -206,7 +284,7 @@ export function EventsPage() {
     }
     
     // Close the bracket modal
-    setBracketModalOpen(false);
+    closeBracketModal();
 
     // Determinar si el usuario es jugador o espectador en esta partida
     const isSpectator = !(user && (match.player1?.id === user.id || match.player2?.id === user.id));
@@ -234,62 +312,23 @@ export function EventsPage() {
       startUrlLoop('event-bracket-audio', audioUrl);
     }
 
-    const { data, error } = await supabase
-      .from('tournament_matches')
-      .select(`
-        id, round_number, match_order, status, winner_id,
-        player1_id,
-        player2_id,
-        game_room_id
-      `)
-      .eq('event_id', eventId);
-
-    if (error) {
-      console.error('Error fetching matches:', error);
-    } else if (data) {
-      // Need to fetch profiles separately because we have two foreign keys to the same table 
-      // and Supabase RPC might be tricky to format.
-      const playerIds = Array.from(new Set(data.flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean)));
-      
-      let profiles: Record<string, any> = {};
-      if (playerIds.length > 0) {
-        logger.debug('Buscando perfiles para IDs:', playerIds);
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, equipped_avatar')
-          .in('id', playerIds);
-          
-        if (profilesError) {
-          logger.error('Error fetching profiles:', profilesError);
-        }
-          
-        logger.debug('Perfiles encontrados:', profilesData);
-          
-        if (profilesData) {
-          profilesData.forEach(p => {
-            profiles[p.id] = p;
-          });
-        }
-      }
-
-      const mappedMatches: TournamentMatch[] = data.map(m => {
-        const p1 = m.player1_id ? profiles[m.player1_id] : null;
-        const p2 = m.player2_id ? profiles[m.player2_id] : null;
-        
-        return {
-          id: m.id,
-          round: m.round_number,
-          position: m.match_order,
-          player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
-          player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
-          status: m.status as any,
-          game_room_id: m.game_room_id
-        };
-      });
-      setTournamentMatches(mappedMatches);
-    }
-    
+    await fetchBracketData(eventId);
     setMatchesLoading(false);
+
+    // Subscribe to real-time changes on tournament_matches for this event
+    const channel = supabase
+      .channel(`bracket-${eventId}-${Date.now()}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tournament_matches',
+        filter: `event_id=eq.${eventId}`
+      }, () => {
+        fetchBracketData(eventId);
+      })
+      .subscribe();
+
+    setBracketChannel(channel);
   };
 
   useEffect(() => {
@@ -608,8 +647,7 @@ export function EventsPage() {
       {/* Bracket Modal */}
       {bracketModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
-          setBracketModalOpen(false);
-          stopLoop('event-bracket-audio');
+          closeBracketModal();
         }}>
           <div className="glass-panel-strong w-full max-w-7xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
             
@@ -627,10 +665,7 @@ export function EventsPage() {
                 <h2 className="text-xl md:text-2xl font-black text-white leading-tight">{selectedTournament}</h2>
               </div>
               <button 
-                onClick={() => {
-                  setBracketModalOpen(false);
-                  stopLoop('event-bracket-audio');
-                }}
+                onClick={() => closeBracketModal()}
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
               >
                 ✕
@@ -660,10 +695,7 @@ export function EventsPage() {
             
             <div className="p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
               <button 
-                onClick={() => {
-                  setBracketModalOpen(false);
-                  stopLoop('event-bracket-audio');
-                }}
+                onClick={() => closeBracketModal()}
                 className="w-full md:w-auto px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm float-right"
               >
                 Cerrar
