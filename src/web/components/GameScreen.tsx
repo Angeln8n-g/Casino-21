@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DndContext, DragOverlay, useSensor, useSensors, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
@@ -77,6 +77,24 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
   const [dragModalData, setDragModalData] = useState<DragModalData | null>(null);
+
+  // Local turn timer (counts down from 30s, resets on turn change)
+  const [localTimeRemaining, setLocalTimeRemaining] = useState(TURN_TIME_LIMIT_MS);
+  const turnKey = useMemo(() => {
+    if (!gameState) return '';
+    return `${gameState.turnCount}-${gameState.currentTurnPlayerIndex}`;
+  }, [gameState?.turnCount, gameState?.currentTurnPlayerIndex]);
+
+  useEffect(() => {
+    setLocalTimeRemaining(TURN_TIME_LIMIT_MS);
+    const interval = setInterval(() => {
+      setLocalTimeRemaining((prev) => {
+        if (prev <= 0) return 0;
+        return prev - 50;
+      });
+    }, 50);
+    return () => clearInterval(interval);
+  }, [turnKey]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -592,7 +610,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   const renderTurnPlayer = (p: any, index: number) => {
     const isTurn = index === gameState.currentTurnPlayerIndex;
-    const progress = isTurn ? Math.max(0, Math.min(1, timeRemaining / TURN_TIME_LIMIT_MS)) : 1;
+    const progress = isTurn ? Math.max(0, Math.min(1, localTimeRemaining / TURN_TIME_LIMIT_MS)) : 1;
     
     // Colores de equipo
     let isMyTeam = false;

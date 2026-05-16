@@ -2,9 +2,10 @@ import { DefaultScoreCalculator } from '../../src/application/score-calculator';
 import { GameState } from '../../src/domain/game-state';
 import { createPlayer } from '../../src/domain/player';
 import { createTeam } from '../../src/domain/team';
-import { createCard } from '../../src/domain/card';
+import { createCard, Card } from '../../src/domain/card';
 import { createBoard } from '../../src/domain/board';
 import { createDeck } from '../../src/domain/deck';
+import { Suit, Rank } from '../../src/domain/types';
 
 describe('ScoreCalculator', () => {
   let calculator: DefaultScoreCalculator;
@@ -26,7 +27,8 @@ describe('ScoreCalculator', () => {
     deck: createDeck(),
     currentTurnPlayerIndex: 0,
     turnCount: 1,
-    roundCount: 1
+    roundCount: 1,
+    roundStartPlayerIndex: 0
   });
 
   it('should award 3 points for most cards and 1 for most spades', () => {
@@ -225,9 +227,188 @@ describe('ScoreCalculator', () => {
 
     expect(newState.teams[0].score).toBe(6);
     expect(newState.teams[1].score).toBe(2);
-    
-    // Check that collectedCards and virados are reset
+
     expect(newState.players[0].virados).toBe(0);
     expect(newState.players[0].collectedCards.length).toBe(0);
+  });
+
+  describe('checkEarlyWin', () => {
+    const ALL_RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const ALL_SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
+
+    const createPlayingState = (p1Score = 0, p2Score = 0): GameState => ({
+      id: 'test-game',
+      mode: '1v1',
+      phase: 'playing',
+      players: [
+        { ...createPlayer('p1', 'Player 1'), score: p1Score },
+        { ...createPlayer('p2', 'Player 2'), score: p2Score }
+      ],
+      teams: [],
+      board: createBoard(),
+      deck: createDeck(),
+      currentTurnPlayerIndex: 0,
+      turnCount: 1,
+      roundCount: 1,
+      roundStartPlayerIndex: 0
+    });
+
+    function createManyCards(count: number, preferredSuit?: Suit): Card[] {
+      const cards: Card[] = [];
+      let suitIndex = 0;
+      let rankIndex = 0;
+      for (let i = 0; i < count; i++) {
+        const suit = preferredSuit ?? ALL_SUITS[suitIndex % ALL_SUITS.length];
+        const rank = ALL_RANKS[rankIndex % ALL_RANKS.length];
+        cards.push(createCard(suit, rank));
+        rankIndex++;
+        if (!preferredSuit && rankIndex % ALL_RANKS.length === 0) {
+          suitIndex++;
+        }
+      }
+      return cards;
+    }
+
+    it('should allow early win at score 20 with guaranteed spades majority', () => {
+      const state: GameState = {
+        ...createPlayingState(20, 10),
+        players: [
+          {
+            ...createPlayer('p1', 'Player 1'),
+            score: 20,
+            collectedCards: [
+              createCard('spades', 'A'),
+              createCard('spades', '2'),
+              createCard('spades', '3'),
+              createCard('spades', '4'),
+              createCard('spades', '5'),
+              createCard('spades', '6'),
+              createCard('spades', '7')
+            ]
+          },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(true);
+      expect(result.winnerId).toBe('p1');
+    });
+
+    it('should NOT allow early win at score 20 with guaranteed card majority (cards blocked at 20)', () => {
+      const cards: Card[] = [];
+      const ranks: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+      const nonSpadeSuits: Suit[] = ['hearts', 'diamonds', 'clubs'];
+      let rankIdx = 0;
+      let suitIdx = 0;
+      while (cards.length < 27) {
+        const suit = nonSpadeSuits[suitIdx % nonSpadeSuits.length];
+        const rank = ranks[rankIdx % ranks.length];
+        cards.push(createCard(suit, rank));
+        rankIdx++;
+        if (rankIdx % ranks.length === 0) suitIdx++;
+      }
+
+      const state: GameState = {
+        ...createPlayingState(20, 10),
+        players: [
+          {
+            ...createPlayer('p1', 'Player 1'),
+            score: 20,
+            collectedCards: cards
+          },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(false);
+    });
+
+    it('should NOT allow early win at score 20 with virados (virados blocked at 20)', () => {
+      const state: GameState = {
+        ...createPlayingState(20, 10),
+        players: [
+          { ...createPlayer('p1', 'Player 1'), score: 20, collectedCards: [], virados: 1 },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(false);
+    });
+
+    it('should NOT allow early win at score 19 with 2 virados (virados blocked at 19)', () => {
+      const state: GameState = {
+        ...createPlayingState(19, 10),
+        players: [
+          { ...createPlayer('p1', 'Player 1'), score: 19, collectedCards: [], virados: 2 },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(false);
+    });
+
+    it('should allow early win at score 17 with guaranteed cards + spades (both allowed at 17)', () => {
+      const cards = createManyCards(27, 'spades');
+
+      const state: GameState = {
+        ...createPlayingState(17, 10),
+        players: [
+          {
+            ...createPlayer('p1', 'Player 1'),
+            score: 17,
+            collectedCards: cards
+          },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(true);
+      expect(result.winnerId).toBe('p1');
+    });
+
+    it('should allow early win at score 18 with guaranteed card majority (cards allowed at 18)', () => {
+      const cards = createManyCards(27);
+
+      const state: GameState = {
+        ...createPlayingState(18, 10),
+        players: [
+          {
+            ...createPlayer('p1', 'Player 1'),
+            score: 18,
+            collectedCards: cards
+          },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(true);
+      expect(result.winnerId).toBe('p1');
+    });
+
+    it('should NOT allow early win at score 17 with virados (virados blocked at 17)', () => {
+      const state: GameState = {
+        ...createPlayingState(17, 10),
+        players: [
+          { ...createPlayer('p1', 'Player 1'), score: 17, collectedCards: [], virados: 4 },
+          { ...createPlayer('p2', 'Player 2'), score: 10, collectedCards: [] }
+        ]
+      };
+
+      const result = calculator.checkEarlyWin(state);
+
+      expect(result.isWin).toBe(false);
+    });
   });
 });

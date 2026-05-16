@@ -50,10 +50,29 @@ export class DefaultScoreCalculator implements ScoreCalculator {
         guaranteedPoints += 1;
       }
 
-      // Virados are already counted in real-time or end of round, but let's ensure we only count them if they are NOT already in entity.score.
-      // Wait, in game-engine.ts virados might not be added to entity.score until the end of the round.
-      // Actually, if we want to be safe, virados earned IN THIS ROUND are strictly added here:
-      const totalAssuredScore = currentScore + guaranteedPoints + virados;
+      // Apply score restrictions (same rules as calculateRoundScore)
+      let effectiveGuaranteed = guaranteedPoints;
+      let effectiveVirados = virados;
+
+      if (currentScore === 17) {
+        effectiveVirados = 0;
+      } else if (currentScore === 18 || currentScore === 19) {
+        effectiveVirados = 0;
+        if (!hasCardMajority) {
+          effectiveGuaranteed = 0;
+        } else {
+          effectiveGuaranteed = 3;
+        }
+      } else if (currentScore === 20) {
+        effectiveVirados = 0;
+        if (!hasSpadesMajority) {
+          effectiveGuaranteed = 0;
+        } else {
+          effectiveGuaranteed = 1;
+        }
+      }
+
+      const totalAssuredScore = currentScore + effectiveGuaranteed + effectiveVirados;
 
       if (totalAssuredScore >= 21) {
         let reason = 'Ganó por asegurar ';

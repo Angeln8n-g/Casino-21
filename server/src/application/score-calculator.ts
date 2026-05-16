@@ -50,7 +50,29 @@ export class DefaultScoreCalculator implements ScoreCalculator {
         guaranteedPoints += 1;
       }
 
-      const totalAssuredScore = currentScore + guaranteedPoints + virados;
+      // Apply score restrictions (same rules as calculateRoundScore)
+      let effectiveGuaranteed = guaranteedPoints;
+      let effectiveVirados = virados;
+
+      if (currentScore === 17) {
+        effectiveVirados = 0;
+      } else if (currentScore === 18 || currentScore === 19) {
+        effectiveVirados = 0;
+        if (!hasCardMajority) {
+          effectiveGuaranteed = 0;
+        } else {
+          effectiveGuaranteed = 3;
+        }
+      } else if (currentScore === 20) {
+        effectiveVirados = 0;
+        if (!hasSpadesMajority) {
+          effectiveGuaranteed = 0;
+        } else {
+          effectiveGuaranteed = 1;
+        }
+      }
+
+      const totalAssuredScore = currentScore + effectiveGuaranteed + effectiveVirados;
 
       if (totalAssuredScore >= 21) {
         let reason = 'Ganó por asegurar ';
