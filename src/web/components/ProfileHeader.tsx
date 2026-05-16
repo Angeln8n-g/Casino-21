@@ -127,60 +127,79 @@ export function ProfileHeader({
 
   if (compact) {
     return (
-      <div className="relative flex items-center gap-2 glass-panel p-2 rounded-xl border border-white/10">
-        <div className="flex items-center gap-3">
-          <div 
-            onClick={() => setShowAvatarGallery(true)}
-            className="w-10 h-10 rounded-lg bg-casino-surface-light flex items-center justify-center text-lg font-black text-casino-gold border border-casino-gold/20 cursor-pointer hover:border-casino-gold/60 transition-colors overflow-hidden"
-            title="Cambiar Avatar"
-          >
-            {profile?.equipped_avatar ? (
-              <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
-            ) : profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              profile?.username?.charAt(0).toUpperCase() || 'P'
-            )}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-white font-bold text-sm leading-tight">{profile?.username || 'Jugador'}</span>
-            <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-bold ${div.cssClass}`}>{div.icon} {div.label}</span>
-              <span className="text-[10px] text-casino-gold font-bold">Lvl {level}</span>
-              <span className="text-[10px] text-yellow-400 font-bold bg-yellow-900/40 px-1.5 py-0.5 rounded-md border border-yellow-500/20 flex items-center gap-1">
-                <span className="text-[10px]">🪙</span> {localCoins}
-              </span>
+      <div className="relative glass-panel p-2 rounded-xl border border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div 
+              onClick={() => setShowAvatarGallery(true)}
+              className="w-10 h-10 rounded-lg bg-casino-surface-light flex items-center justify-center text-lg font-black text-casino-gold border border-casino-gold/20 cursor-pointer hover:border-casino-gold/60 transition-colors overflow-hidden"
+              title="Cambiar Avatar"
+            >
+              {profile?.equipped_avatar ? (
+                <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                profile?.username?.charAt(0).toUpperCase() || 'P'
+              )}
             </div>
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-sm leading-tight">{profile?.username || 'Jugador'}</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold ${div.cssClass}`}>{div.icon} {div.label}</span>
+                <span className="text-[10px] text-casino-gold font-bold">Lvl {level}</span>
+                <span className="text-[10px] text-yellow-400 font-bold bg-yellow-900/40 px-1.5 py-0.5 rounded-md border border-yellow-500/20 flex items-center gap-1">
+                  <span className="text-[10px]">🪙</span> {localCoins}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto pl-2 border-l border-white/10">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowNotifications(!showNotifications);
+              }}
+              className={`
+                relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
+                border border-white/10 bg-white/[0.03]
+                ${showNotifications ? 'bg-casino-gold/20 border-casino-gold text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'}
+              `}
+              title="Notificaciones"
+            >
+              <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'animate-swing' : ''}`} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-600 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-casino-surface-light animate-bounce shadow-lg">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={signOut}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 transition-all duration-300"
+              title="Cerrar Sesión"
+            >
+              <LogOut className="w-4 h-4 translate-x-0.5" />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-2 pl-2 border-l border-white/10">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowNotifications(!showNotifications);
-            }}
-            className={`
-              relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
-              border border-white/10 bg-white/[0.03]
-              ${showNotifications ? 'bg-casino-gold/20 border-casino-gold text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'}
-            `}
-            title="Notificaciones"
-          >
-            <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'animate-swing' : ''}`} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-600 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-casino-surface-light animate-bounce shadow-lg">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={signOut}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 transition-all duration-300"
-            title="Cerrar Sesión"
-          >
-            <LogOut className="w-4 h-4 translate-x-0.5" />
-          </button>
+        {/* mini XP bar + ELO */}
+        <div className="flex items-center gap-3 mt-1.5 pt-1.5 border-t border-white/5">
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center mb-0.5">
+              <span className="text-[9px] font-bold text-gray-400">Lv.{level}</span>
+              <span className="text-[9px] font-bold text-casino-gold">{xp}/{nextLevelXp} XP</span>
+            </div>
+            <div className="h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-gradient-to-r from-casino-gold-dark via-casino-gold to-yellow-200 rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.min(progress, 100)}%` }} />
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 pl-2 border-l border-white/10">
+            <TrendingUp className="w-3 h-3 text-emerald-400" />
+            <span className="text-[10px] font-black text-emerald-400">{elo}</span>
+          </div>
         </div>
 
         {/* Avatar Gallery Modal for compact view */}

@@ -741,9 +741,10 @@ export function SocialPanel() {
 const CHALLENGE_DURATION_MS = 60_000;
 
 function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onClose: () => void }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [state, setState] = useState<'idle' | 'waiting' | 'accepted' | 'expired'>('idle');
   const [progress, setProgress] = useState(100);
+  const [betAmount, setBetAmount] = useState(0);
   const [invitationId, setInvitationId] = useState<string | null>(null);
   const [challengeRoomId, setChallengeRoomId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -791,14 +792,14 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
         socket.emit('create_room', {
           playerName: user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador',
           mode: '1v1',
-          betAmount: 0,
+          betAmount,
         });
       });
 
       const expiresAt = new Date(Date.now() + CHALLENGE_DURATION_MS).toISOString();
       const { data, error } = await supabase
         .from('game_invitations')
-        .insert({ sender_id: user.id, receiver_id: friend.id, status: 'pending', expires_at: expiresAt, room_id: roomId })
+        .insert({ sender_id: user.id, receiver_id: friend.id, status: 'pending', expires_at: expiresAt, room_id: roomId, bet_amount: betAmount })
         .select('id')
         .single();
       if (error) throw error;
@@ -806,12 +807,13 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
       setChallengeRoomId(roomId);
 
       const { data: senderProfile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+      const betText = betAmount > 0 ? ` por ${betAmount} 🪙` : '';
       await supabase.from('notifications').insert({
         player_id: friend.id,
         type: 'game_invitation',
-        content: `¡${senderProfile?.username || 'Un amigo'} te ha desafiado!`,
+        content: `¡${senderProfile?.username || 'Un amigo'} te ha desafiado${betText}!`,
         is_read: false,
-        metadata: { sender_id: user.id, invitation_id: data.id, roomId, senderName: senderProfile?.username, expiresAt },
+        metadata: { sender_id: user.id, invitation_id: data.id, roomId, senderName: senderProfile?.username, expiresAt, betAmount },
       });
 
       startCountdown(data.id, roomId);
@@ -864,9 +866,38 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
 
         <div className="px-6 py-5 space-y-4">
           {state === 'idle' && (
-            <button onClick={handleChallenge} className="w-full py-3 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/20">
-              Enviar Desafío
-            </button>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Apuesta</label>
+                <div className="flex gap-2">
+                  {[0, 50, 100, 250, 500].map(amount => (
+                    <button
+                      key={amount}
+                      onClick={() => setBetAmount(amount)}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all border ${
+                        betAmount === amount
+                          ? 'bg-casino-gold/20 border-casino-gold text-casino-gold shadow-[0_0_10px_rgba(251,191,36,0.2)]'
+                          : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                      }`}
+                    >
+                      {amount === 0 ? 'Gratis' : `${amount}`}
+                    </button>
+                  ))}
+                </div>
+                {betAmount > 0 && (
+                  <div className={`mt-1 text-[10px] font-bold ${profile?.coins !== undefined && profile.coins >= betAmount ? 'text-emerald-400' : 'text-red-400'}`}>
+                    Saldo: {profile?.coins?.toLocaleString() || '?'} 🪙
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={handleChallenge}
+                disabled={profile?.coins !== undefined && betAmount > profile.coins}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Enviar Desafío{betAmount > 0 ? ` por ${betAmount} 🪙` : ''}
+              </button>
+            </div>
           )}
           {state === 'waiting' && (
             <div className="space-y-3">
@@ -874,6 +905,9 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
                 <span className="text-white text-sm font-bold">⏳ Esperando...</span>
                 <span className={`text-sm font-mono font-bold ${secondsLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-casino-gold'}`}>{secondsLeft}s</span>
               </div>
+              {betAmount > 0 && (
+                <div className="text-center text-[10px] font-bold text-casino-gold">Apuesta: {betAmount} 🪙</div>
+              )}
               <div className="h-2 rounded-full bg-white/5 overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-casino-gold to-yellow-400 transition-all" style={{ width: `${progress}%`, transition: 'width 0.25s linear' }} />
               </div>
@@ -881,8 +915,9 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
             </div>
           )}
           {state === 'accepted' && (
-            <div className="py-3 rounded-xl text-center bg-casino-emerald/10 border border-casino-emerald/30 animate-pulse">
+            <div className="space-y-2 py-3 rounded-xl text-center bg-casino-emerald/10 border border-casino-emerald/30 animate-pulse">
               <p className="text-casino-emerald font-bold text-sm">🎮 ¡Desafío aceptado!</p>
+              {betAmount > 0 && <p className="text-casino-gold text-[10px] font-bold">Apuesta: {betAmount} 🪙</p>}
             </div>
           )}
           {state === 'expired' && (

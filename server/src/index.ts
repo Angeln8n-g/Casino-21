@@ -985,11 +985,22 @@ io.on('connection', (socket) => {
     actionTimestamps.delete(socket.id);
     if (roomId) {
       const room = rooms[roomId];
+      if (!room) return;
+
+      // Verificar si es un espectador que se desconectó
+      const spectatorIndex = room.spectators.findIndex(s => s.socketId === socket.id);
+      if (spectatorIndex !== -1) {
+        room.spectators.splice(spectatorIndex, 1);
+        console.log(`Espectador ${socket.id} eliminado de sala ${roomId}`);
+        return;
+      }
+
+      // Es un jugador — notificar a la sala
       io.to(roomId).emit('player_disconnected', { 
         userId: userId, 
         message: 'El oponente se ha desconectado. Esperando reconexión...' 
       });
-      if (room && !room.state) {
+      if (!room.state) {
         closeRoom(roomId, 'creator_disconnected');
       }
     }

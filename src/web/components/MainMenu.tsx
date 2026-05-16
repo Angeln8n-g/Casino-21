@@ -3,7 +3,6 @@ import { useGame } from '../hooks/useGame';
 import { GameMode } from '../../domain/types';
 import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
-import { ProfileHeader } from './ProfileHeader';
 import { SocialPanel } from './SocialPanel';
 import { RecentAchievements } from './RecentAchievements';
 import { QuickStats } from './QuickStats';
@@ -807,17 +806,6 @@ export function MainMenu() {
           <div className="lg:hidden">
             {mobileTab === 'social' && (
               <div className="space-y-4 animate-fade-in">
-                <div className="overflow-visible relative z-50">
-                  <ProfileHeader
-                    appNotifications={appNotifications}
-                    unreadCount={unreadCount}
-                    onMarkAllAsRead={markAllAsRead}
-                    onMarkAsRead={markNotificationAsRead}
-                    onChallengeClick={setActiveGameInvitation}
-                    onDeleteRead={deleteReadNotifications}
-                    onDeleteNotification={deleteNotification}
-                  />
-                </div>
                 <SocialPanel />
               </div>
             )}
