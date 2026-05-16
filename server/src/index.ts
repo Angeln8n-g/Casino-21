@@ -707,6 +707,16 @@ io.on('connection', (socket) => {
 
         startTurnTimer(roomId, room);
 
+        // Actualizar status del match de torneo a 'playing'
+        if (room.isTournament) {
+          supabase.from('tournament_matches')
+            .update({ status: 'playing' })
+            .eq('game_room_id', roomId)
+            .then(({ error }) => {
+              if (error) console.warn(`[Torneo] No se pudo actualizar status a playing para ${roomId}:`, error.message);
+            });
+        }
+
         // Enviar el estado inicial a cada jugador de forma segura (ocultando cartas de otros)
         broadcastGameState(roomId, room);
       }
