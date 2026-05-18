@@ -518,6 +518,14 @@ io.on('connection', (socket) => {
       console.error('Error creando notificación:', notifError);
     }
 
+    // Emitir room_created para que el remitente tenga localPlayerId
+    socket.emit('room_created', {
+      roomId,
+      playerId: userId,
+      betAmount,
+      mode: '1v1'
+    });
+
     socket.emit('challenge_sent', {
       roomId,
       invitationId: invitation.id,
