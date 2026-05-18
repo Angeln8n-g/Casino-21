@@ -815,42 +815,42 @@ export function AdminPanel() {
 
       {/* Admin Bracket Modal */}
       {bracketModalOpen && selectedTournament && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
           setBracketModalOpen(false);
           stopLoop('event-bracket-audio');
         }}>
-          <div className="glass-panel-strong w-full max-w-7xl rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
-            
-            <div className="p-4 md:p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0 relative z-10">
-              <div>
-                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">Modo Administrador - Llaves</h3>
-                <h2 className="text-xl md:text-2xl font-black text-white leading-tight">{selectedTournament.title}</h2>
+          <div className="glass-panel-strong w-full max-w-7xl rounded-2xl sm:rounded-3xl border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
+
+            <div className="p-3 sm:p-4 md:p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0 relative z-10 gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-widest mb-0.5 sm:mb-1">Modo Administrador - Llaves</h3>
+                <h2 className="text-base sm:text-xl md:text-2xl font-black text-white leading-tight truncate">{selectedTournament.title}</h2>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setBracketModalOpen(false);
                   stopLoop('event-bracket-audio');
                 }}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors shrink-0"
               >
                 ✕
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-auto relative z-10">
               {matchesLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-emerald-400 animate-pulse font-bold tracking-widest uppercase">Cargando llaves...</div>
+                <div className="flex items-center justify-center h-48 sm:h-64">
+                  <div className="text-emerald-400 animate-pulse font-bold tracking-widest uppercase text-sm sm:text-base">Cargando llaves...</div>
                 </div>
               ) : tournamentMatches.length === 0 ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-gray-400 font-bold tracking-widest uppercase">Las llaves aún no se han generado</div>
+                <div className="flex items-center justify-center h-48 sm:h-64">
+                  <div className="text-gray-400 font-bold tracking-widest uppercase text-sm sm:text-base">Las llaves aún no se han generado</div>
                 </div>
               ) : (
-                <TournamentBracket 
-                  matches={tournamentMatches} 
-                  title={selectedTournament.title} 
-                  maxParticipants={selectedTournament.max_participants} 
+                <TournamentBracket
+                  matches={tournamentMatches}
+                  title={selectedTournament.title}
+                  maxParticipants={selectedTournament.max_participants}
                   onJoinMatch={handleAdminMatchClick}
                   currentUserId={null}
                   isAdmin={true}
@@ -858,15 +858,15 @@ export function AdminPanel() {
                 />
               )}
             </div>
-            
-            <div className="p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
-              <p className="text-xs text-emerald-400 mb-2">Haz clic en cualquier encuentro activo para declarar un ganador manualmente o marcar "No Show".</p>
-              <button 
+
+            <div className="p-3 sm:p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
+              <p className="text-[10px] sm:text-xs text-emerald-400 mb-2 sm:mb-3">Haz clic en cualquier encuentro activo para declarar un ganador manualmente o marcar "No Show".</p>
+              <button
                 onClick={() => {
                   setBracketModalOpen(false);
                   stopLoop('event-bracket-audio');
                 }}
-                className="w-full md:w-auto px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm float-right"
+                className="w-full sm:w-auto px-6 sm:px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 sm:py-3 rounded-xl transition-colors uppercase tracking-wider text-xs sm:text-sm"
               >
                 Cerrar
               </button>
