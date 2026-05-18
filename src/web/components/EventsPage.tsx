@@ -216,7 +216,10 @@ export function EventsPage() {
         id, round_number, match_order, status, winner_id,
         player1_id,
         player2_id,
-        game_room_id
+        game_room_id,
+        best_of,
+        series_game,
+        series_id
       `)
       .eq('event_id', eventId);
 
@@ -257,7 +260,10 @@ export function EventsPage() {
         player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
         player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
         status: mapMatchStatus(m.status),
-        game_room_id: m.game_room_id
+        game_room_id: m.game_room_id,
+        best_of: m.best_of,
+        series_game: m.series_game,
+        series_id: m.series_id
       };
     });
     setTournamentMatches(mappedMatches);

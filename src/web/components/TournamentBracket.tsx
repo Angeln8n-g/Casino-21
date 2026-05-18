@@ -15,6 +15,9 @@ export interface TournamentMatch {
   player2: TournamentPlayer | null;
   status: 'pending' | 'live' | 'completed';
   game_room_id?: string | null;
+  best_of?: number;
+  series_game?: number;
+  series_id?: string | null;
 }
 
 export interface TournamentBracketProps {
@@ -205,19 +208,35 @@ export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxP
 
           {/* CENTER (FINAL) */}
           <div className="flex flex-col justify-center items-center relative z-20 mx-2 md:mx-4 mt-8 md:mt-16">
-             <div className="mb-6 relative flex flex-col items-center">
+             <div className="mb-4 relative flex flex-col items-center">
                <div className="absolute inset-0 bg-casino-gold/20 blur-xl rounded-full animate-pulse" />
-               <span className="text-6xl md:text-8xl drop-shadow-[0_0_20px_rgba(234,179,8,0.8)] relative z-10 mb-2">🏆</span>
+               <span className="text-5xl md:text-7xl drop-shadow-[0_0_20px_rgba(234,179,8,0.8)] relative z-10 mb-1">🏆</span>
                {prizePool && (
-                 <div className="bg-[#0F0F23]/80 border border-[#00FFCC]/50 px-4 py-1 rounded shadow-[0_0_15px_rgba(0,255,204,0.3)] backdrop-blur-sm z-10 animate-pulse mt-2">
-                   <span className="text-[#00FFCC] font-bold text-sm tracking-widest uppercase">RECOMPENSA: {prizePool}</span>
+                 <div className="bg-[#0F0F23]/80 border border-[#00FFCC]/50 px-3 py-0.5 rounded shadow-[0_0_15px_rgba(0,255,204,0.3)] backdrop-blur-sm z-10 animate-pulse mt-1">
+                   <span className="text-[#00FFCC] font-bold text-xs tracking-widest uppercase">RECOMPENSA: {prizePool}</span>
                  </div>
                )}
              </div>
-             {renderMatchNode(getMatch(4, 1), false, true)}
+             
+             {/* Best-of-3 Final: 3 sub-nodes stacked vertically */}
+             <div className="flex flex-col gap-2 relative">
+               {[1, 2, 3].map(gameNum => {
+                 const match = getMatch(4, gameNum);
+                 const isFinalNode = true;
+                 return (
+                   <div key={gameNum} className="relative">
+                     <span className="absolute -left-8 top-1/2 -translate-y-1/2 text-[9px] text-gray-500 font-mono font-bold">
+                       G{gameNum}
+                     </span>
+                     {renderMatchNode(match, false, isFinalNode)}
+                   </div>
+                 );
+               })}
+             </div>
+             
              {/* Connectors from semis to final */}
-             <div className="absolute top-[calc(50%+3rem)] md:top-[calc(50%+4rem)] -left-6 md:-left-10 w-6 md:w-10 border-t-2 border-white/20" />
-             <div className="absolute top-[calc(50%+3rem)] md:top-[calc(50%+4rem)] -right-6 md:-right-10 w-6 md:w-10 border-t-2 border-white/20" />
+             <div className="absolute top-[calc(50%+2rem)] md:top-[calc(50%+3rem)] -left-6 md:-left-10 w-6 md:w-10 border-t-2 border-white/20" />
+             <div className="absolute top-[calc(50%+2rem)] md:top-[calc(50%+3rem)] -right-6 md:-right-10 w-6 md:w-10 border-t-2 border-white/20" />
           </div>
 
           {/* RIGHT SIDE */}

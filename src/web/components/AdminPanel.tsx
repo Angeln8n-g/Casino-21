@@ -184,6 +184,9 @@ export function AdminPanel() {
       const matchesToInsert = [];
       let playerIndex = 0;
 
+      // Generate series_id for the final (best-of-3)
+      const finalSeriesId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + '-' + Date.now().toString(36);
+
       for (let i = 0; i < totalRounds; i++) {
         const round = startRound + i;
         const matchesInRound = maxP / Math.pow(2, i + 1);
@@ -198,15 +201,61 @@ export function AdminPanel() {
             if (playerIndex < players.length) p2 = players[playerIndex++];
           }
           
-          matchesToInsert.push({
-            event_id: event.id,
-            round_number: round,
-            match_order: order,
-            player1_id: p1,
-            player2_id: p2,
-            status: i === 0 ? 'pending' : 'pending', // Only first round is ready conceptually, but we set all to pending initially
-            game_room_id: 'T' + Math.random().toString(36).substring(2, 10).toUpperCase()
-          });
+          // If this is the final round (round 4), generate 3 games for best-of-3
+          if (round === 4) {
+            // Game 1: both players assigned
+            matchesToInsert.push({
+              event_id: event.id,
+              round_number: round,
+              match_order: 1,
+              player1_id: p1,
+              player2_id: p2,
+              status: 'pending',
+              game_room_id: 'T' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+              best_of: 3,
+              series_game: 1,
+              series_id: finalSeriesId
+            });
+            // Game 2: no players yet (advanced from game 1)
+            matchesToInsert.push({
+              event_id: event.id,
+              round_number: round,
+              match_order: 2,
+              player1_id: null,
+              player2_id: null,
+              status: 'pending',
+              game_room_id: 'T' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+              best_of: 3,
+              series_game: 2,
+              series_id: finalSeriesId
+            });
+            // Game 3: no players yet (only if needed)
+            matchesToInsert.push({
+              event_id: event.id,
+              round_number: round,
+              match_order: 3,
+              player1_id: null,
+              player2_id: null,
+              status: 'pending',
+              game_room_id: 'T' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+              best_of: 3,
+              series_game: 3,
+              series_id: finalSeriesId
+            });
+          } else {
+            matchesToInsert.push({
+              event_id: event.id,
+              round_number: round,
+              match_order: order,
+              player1_id: p1,
+              player2_id: p2,
+              status: 'pending',
+              game_room_id: 'T' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+              best_of: 1,
+              series_game: 1,
+              series_id: null
+            });
+          }
         }
       }
 
@@ -296,7 +345,7 @@ export function AdminPanel() {
       .from('tournament_matches')
       .select(`
         id, round_number, match_order, status, winner_id,
-        player1_id, player2_id, game_room_id
+        player1_id, player2_id, game_room_id, best_of, series_game, series_id
       `)
       .eq('event_id', event.id);
 
@@ -330,7 +379,10 @@ export function AdminPanel() {
           player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
           player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
           status: m.status as any,
-          game_room_id: m.game_room_id
+          game_room_id: m.game_room_id,
+          best_of: m.best_of,
+          series_game: m.series_game,
+          series_id: m.series_id
         };
       });
       setTournamentMatches(mappedMatches);
@@ -378,29 +430,74 @@ export function AdminPanel() {
 
       // Advance the winner if there's one
       if (winnerId && tMatch && selectedTournament) {
-        const nextRound = tMatch.round_number + 1;
-        const nextOrder = Math.ceil(tMatch.match_order / 2);
-        
-        const { data: nextMatch } = await supabase
-          .from('tournament_matches')
-          .select('id, player1_id, player2_id')
-          .eq('event_id', selectedTournament.id)
-          .eq('round_number', nextRound)
-          .eq('match_order', nextOrder)
-          .single();
-          
-        if (nextMatch) {
-          const updateData: any = {};
-          if (tMatch.match_order % 2 !== 0) {
-            updateData.player1_id = winnerId;
-          } else {
-            updateData.player2_id = winnerId;
-          }
-          
-          await supabase
+        // Check if this is a best-of series
+        if (tMatch.best_of > 1) {
+          // Count wins in the series
+          const { data: seriesMatches } = await supabase
             .from('tournament_matches')
-            .update(updateData)
-            .eq('id', nextMatch.id);
+            .select('winner_id')
+            .eq('series_id', tMatch.series_id)
+            .not('winner_id', 'is', null);
+
+          const p1Wins = seriesMatches?.filter(m => m.winner_id === tMatch.player1_id).length || 0;
+          const p2Wins = seriesMatches?.filter(m => m.winner_id === tMatch.player2_id).length || 0;
+          const requiredWins = Math.ceil(tMatch.best_of / 2);
+
+          if (p1Wins >= requiredWins || p2Wins >= requiredWins) {
+            // Serie terminada — no hay avance
+            console.log(`[Admin] Serie completada. ${p1Wins}-${p2Wins}`);
+          } else {
+            // Avanzar al siguiente game de la serie
+            const nextGame = tMatch.series_game + 1;
+            const { data: nextMatch } = await supabase
+              .from('tournament_matches')
+              .select('id, player1_id, player2_id')
+              .eq('series_id', tMatch.series_id)
+              .eq('series_game', nextGame)
+              .single();
+
+            if (nextMatch) {
+              const updateData: any = {
+                player1_id: winnerId,
+                player2_id: winnerId // Both get same winner for now, will be corrected when other player advances
+              };
+              // Actually, both players should be the same two finalists
+              // Copy players from the current match
+              updateData.player1_id = tMatch.player1_id;
+              updateData.player2_id = tMatch.player2_id;
+              
+              await supabase
+                .from('tournament_matches')
+                .update(updateData)
+                .eq('id', nextMatch.id);
+            }
+          }
+        } else {
+          // Standard single-match advancement
+          const nextRound = tMatch.round_number + 1;
+          const nextOrder = Math.ceil(tMatch.match_order / 2);
+          
+          const { data: nextMatch } = await supabase
+            .from('tournament_matches')
+            .select('id, player1_id, player2_id')
+            .eq('event_id', selectedTournament.id)
+            .eq('round_number', nextRound)
+            .eq('match_order', nextOrder)
+            .single();
+            
+          if (nextMatch) {
+            const updateData: any = {};
+            if (tMatch.match_order % 2 !== 0) {
+              updateData.player1_id = winnerId;
+            } else {
+              updateData.player2_id = winnerId;
+            }
+            
+            await supabase
+              .from('tournament_matches')
+              .update(updateData)
+              .eq('id', nextMatch.id);
+          }
         }
       }
 

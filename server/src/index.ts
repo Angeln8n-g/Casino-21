@@ -330,6 +330,32 @@ function notifyTournamentPlayers(gameRoomId: string, eventId: string, player1Id?
   }
 }
 
+async function handleTournamentFinal(matchData: any, winnerId: string) {
+  const { data: eventData } = await supabase
+    .from('events')
+    .select('prize_pool')
+    .eq('id', matchData.event_id)
+    .single();
+
+  let finalPrize = 0;
+  if (eventData?.prize_pool) {
+    const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
+    if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
+  }
+
+  if (finalPrize > 0) {
+    console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
+    const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
+      event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
+    });
+    if (rewardError) {
+      console.error(`[Torneo] Error entregando premio final:`, rewardError);
+    } else {
+      console.log(`[Torneo] Premio entregado exitosamente.`);
+    }
+  }
+}
+
 function scheduleBotTurnIfNeeded(roomId: string, room: any) {
   if (!room.isBot || !room.state) return;
 
@@ -1272,7 +1298,7 @@ async function saveMatchResult(roomId: string, room: any) {
       console.log(`[Torneo] Procesando avance de torneo para la sala ${roomId}. Ganador: ${winnerId}`);
       const { data: matchData, error: matchError } = await supabase
         .from('tournament_matches')
-        .select('id, event_id, round_number, match_order, status')
+        .select('id, event_id, round_number, match_order, status, best_of, series_game, series_id, player1_id, player2_id')
         .eq('game_room_id', roomId)
         .single();
 
@@ -1292,66 +1318,87 @@ async function saveMatchResult(roomId: string, room: any) {
         .update({ winner_id: winnerId, status: 'completed' })
         .eq('id', matchData.id);
 
-      // Calcular siguiente match usando round_number + match_order (igual que AdminPanel)
-      const nextRound = matchData.round_number + 1;
-      const nextOrder = Math.ceil(matchData.match_order / 2);
+      // Check if this is a best-of series
+      if (matchData.best_of > 1) {
+        // Count wins in the series
+        const { data: seriesMatches } = await supabase
+          .from('tournament_matches')
+          .select('winner_id')
+          .eq('series_id', matchData.series_id)
+          .not('winner_id', 'is', null);
 
-      const { data: nextMatch } = await supabase
-        .from('tournament_matches')
-        .select('id, player1_id, player2_id, game_room_id')
-        .eq('event_id', matchData.event_id)
-        .eq('round_number', nextRound)
-        .eq('match_order', nextOrder)
-        .single();
+        const p1Wins = seriesMatches?.filter(m => m.winner_id === matchData.player1_id).length || 0;
+        const p2Wins = seriesMatches?.filter(m => m.winner_id === matchData.player2_id).length || 0;
+        const requiredWins = Math.ceil(matchData.best_of / 2);
 
-      if (nextMatch) {
-        // Asignar ganador al slot correcto (órdenes impares → player1, pares → player2)
-        const updateData: any = {};
-        if (matchData.match_order % 2 !== 0) {
-          updateData.player1_id = winnerId;
+        console.log(`[Torneo] Serie: ${p1Wins}-${p2Wins} (necesario: ${requiredWins})`);
+
+        if (p1Wins >= requiredWins || p2Wins >= requiredWins) {
+          // Serie terminada — entregar premio
+          const seriesWinner = p1Wins >= requiredWins ? matchData.player1_id : matchData.player2_id;
+          console.log(`[Torneo] Serie completada. Ganador: ${seriesWinner} (${p1Wins}-${p2Wins})`);
+          handleTournamentFinal(matchData, seriesWinner);
         } else {
-          updateData.player2_id = winnerId;
-        }
+          // Avanzar al siguiente game de la serie
+          const nextGame = matchData.series_game + 1;
+          const { data: nextGameMatch } = await supabase
+            .from('tournament_matches')
+            .select('id, player1_id, player2_id, game_room_id')
+            .eq('series_id', matchData.series_id)
+            .eq('series_game', nextGame)
+            .single();
 
-        await supabase.from('tournament_matches')
-          .update(updateData)
-          .eq('id', nextMatch.id);
+          if (nextGameMatch) {
+            // Ambos jugadores son los mismos finalistas
+            await supabase.from('tournament_matches')
+              .update({
+                player1_id: matchData.player1_id,
+                player2_id: matchData.player2_id
+              })
+              .eq('id', nextGameMatch.id);
 
-        console.log(`[Torneo] Jugador ${winnerId} avanzado a ronda ${nextRound}, match ${nextMatch.id}`);
-
-        // Si el siguiente match ya tiene ambos jugadores, notificar
-        const filledSlot = matchData.match_order % 2 !== 0 ? 'player1_id' : 'player2_id';
-        const otherSlot = filledSlot === 'player1_id' ? 'player2_id' : 'player1_id';
-
-        if (nextMatch[otherSlot]) {
-          const p1Id = filledSlot === 'player1_id' ? winnerId : nextMatch[otherSlot];
-          const p2Id = filledSlot === 'player2_id' ? winnerId : nextMatch[otherSlot];
-          notifyTournamentPlayers(nextMatch.game_room_id, matchData.event_id, p1Id, p2Id);
+            console.log(`[Torneo] Avanzado a game ${nextGame} de la serie (${nextGameMatch.id})`);
+            notifyTournamentPlayers(nextGameMatch.game_room_id, matchData.event_id, matchData.player1_id, matchData.player2_id);
+          }
         }
       } else {
-        // No hay siguiente ronda → final del torneo, entregar premio
-        const { data: eventData } = await supabase
-          .from('events')
-          .select('prize_pool')
-          .eq('id', matchData.event_id)
+        // Standard single-match advancement
+        const nextRound = matchData.round_number + 1;
+        const nextOrder = Math.ceil(matchData.match_order / 2);
+
+        const { data: nextMatch } = await supabase
+          .from('tournament_matches')
+          .select('id, player1_id, player2_id, game_room_id')
+          .eq('event_id', matchData.event_id)
+          .eq('round_number', nextRound)
+          .eq('match_order', nextOrder)
           .single();
 
-        let finalPrize = 0;
-        if (eventData?.prize_pool) {
-          const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
-          if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
-        }
-
-        if (finalPrize > 0) {
-          console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
-          const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
-            event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
-          });
-          if (rewardError) {
-            console.error(`[Torneo] Error entregando premio final:`, rewardError);
+        if (nextMatch) {
+          const updateData: any = {};
+          if (matchData.match_order % 2 !== 0) {
+            updateData.player1_id = winnerId;
           } else {
-            console.log(`[Torneo] Premio entregado exitosamente.`);
+            updateData.player2_id = winnerId;
           }
+
+          await supabase.from('tournament_matches')
+            .update(updateData)
+            .eq('id', nextMatch.id);
+
+          console.log(`[Torneo] Jugador ${winnerId} avanzado a ronda ${nextRound}, match ${nextMatch.id}`);
+
+          const filledSlot = matchData.match_order % 2 !== 0 ? 'player1_id' : 'player2_id';
+          const otherSlot = filledSlot === 'player1_id' ? 'player2_id' : 'player1_id';
+
+          if (nextMatch[otherSlot]) {
+            const p1Id = filledSlot === 'player1_id' ? winnerId : nextMatch[otherSlot];
+            const p2Id = filledSlot === 'player2_id' ? winnerId : nextMatch[otherSlot];
+            notifyTournamentPlayers(nextMatch.game_room_id, matchData.event_id, p1Id, p2Id);
+          }
+        } else {
+          // No hay siguiente ronda → final del torneo, entregar premio
+          handleTournamentFinal(matchData, winnerId);
         }
       }
     }
@@ -1423,6 +1470,36 @@ setInterval(async () => {
     console.error('Error en cleanup de invitaciones:', err);
   }
 }, 5 * 60 * 1000);
+
+// ─── Auto-inicio de Eventos Programados ───
+async function checkScheduledEvents() {
+  try {
+    const { data: events, error } = await supabase
+      .from('events')
+      .update({ status: 'live' })
+      .eq('status', 'upcoming')
+      .lte('start_date', new Date().toISOString())
+      .select('id, title');
+
+    if (error) {
+      console.error('[Eventos] Error verificando eventos programados:', error);
+      return;
+    }
+
+    if (events && events.length > 0) {
+      for (const event of events) {
+        console.log(`[Eventos] Evento "${event.title}" iniciado automáticamente`);
+        io.emit('event_started', { eventId: event.id, title: event.title });
+      }
+    }
+  } catch (err) {
+    console.error('[Eventos] Error en checkScheduledEvents:', err);
+  }
+}
+
+const EVENT_CHECK_INTERVAL = 60 * 1000;
+setInterval(checkScheduledEvents, EVENT_CHECK_INTERVAL);
+checkScheduledEvents(); // Ejecución inicial al arrancar
 
 const CLUSTER_PORT = process.env.NODE_APP_INSTANCE
   ? parseInt(process.env.PORT || '4000', 10) + parseInt(process.env.NODE_APP_INSTANCE, 10)
