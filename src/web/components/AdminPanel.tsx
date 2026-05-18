@@ -117,15 +117,18 @@ export function AdminPanel() {
     e.preventDefault();
     setError('');
 
-    // Calculate dates roughly (for MVP)
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7); // Default to 1 week
+    // Convert datetime-local values to ISO format, or use defaults
+    const defaultStart = new Date();
+    const defaultEnd = new Date();
+    defaultEnd.setDate(defaultEnd.getDate() + 7);
+
+    const startDate = currentEvent.start_date ? new Date(currentEvent.start_date).toISOString() : defaultStart.toISOString();
+    const endDate = currentEvent.end_date ? new Date(currentEvent.end_date).toISOString() : defaultEnd.toISOString();
 
     const payload = {
       ...currentEvent,
-      start_date: currentEvent.start_date || startDate.toISOString(),
-      end_date: currentEvent.end_date || endDate.toISOString()
+      start_date: startDate,
+      end_date: endDate
     };
 
     if (currentEvent.id) {
@@ -548,7 +551,7 @@ export function AdminPanel() {
           {activeTab === 'events' && (
             <button 
               onClick={() => {
-                setCurrentEvent({ title: '', description: '', rules: '', type: 'torneo', status: 'draft', entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', board_theme_url: '', max_participants: 16 });
+                setCurrentEvent({ title: '', description: '', rules: '', type: 'torneo', status: 'draft', entry_fee: 0, prize_pool: '', min_elo: 0, image_url: '', board_theme_url: '', max_participants: 16, start_date: '', end_date: '' });
                 setIsEditing(true);
               }}
               className="bg-casino-gold text-black px-4 py-2 rounded-xl font-bold hover:bg-yellow-400 transition whitespace-nowrap"
@@ -597,6 +600,14 @@ export function AdminPanel() {
                   <option value="live">En Vivo</option>
                   <option value="completed">Finalizado</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha de Inicio</label>
+                <input type="datetime-local" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white [color-scheme:dark]" value={currentEvent.start_date || ''} onChange={e => setCurrentEvent({...currentEvent, start_date: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha de Fin</label>
+                <input type="datetime-local" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white [color-scheme:dark]" value={currentEvent.end_date || ''} onChange={e => setCurrentEvent({...currentEvent, end_date: e.target.value})} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Costo de Entrada (Monedas)</label>
