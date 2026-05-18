@@ -1321,25 +1321,40 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
-// ─── Auto-inicio de Eventos Programados ───
+// ─── Auto-inicio y Auto-finalización de Eventos Programados ───
 async function checkScheduledEvents() {
   try {
-    const { data: events, error } = await supabase
+    // Auto-start upcoming events whose start_date has passed
+    const { data: startedEvents, error: startError } = await supabase
       .from('events')
       .update({ status: 'live' })
       .eq('status', 'upcoming')
       .lte('start_date', new Date().toISOString())
       .select('id, title');
 
-    if (error) {
-      console.error('[Eventos] Error verificando eventos programados:', error);
-      return;
-    }
-
-    if (events && events.length > 0) {
-      for (const event of events) {
+    if (startError) {
+      console.error('[Eventos] Error auto-iniciando eventos:', startError);
+    } else if (startedEvents && startedEvents.length > 0) {
+      for (const event of startedEvents) {
         console.log(`[Eventos] Evento "${event.title}" iniciado automáticamente`);
         io.emit('event_started', { eventId: event.id, title: event.title });
+      }
+    }
+
+    // Auto-complete live events whose end_date has passed
+    const { data: completedEvents, error: completeError } = await supabase
+      .from('events')
+      .update({ status: 'completed' })
+      .eq('status', 'live')
+      .lte('end_date', new Date().toISOString())
+      .select('id, title');
+
+    if (completeError) {
+      console.error('[Eventos] Error auto-finalizando eventos:', completeError);
+    } else if (completedEvents && completedEvents.length > 0) {
+      for (const event of completedEvents) {
+        console.log(`[Eventos] Evento "${event.title}" finalizado automáticamente`);
+        io.emit('event_completed', { eventId: event.id, title: event.title });
       }
     }
   } catch (err) {
