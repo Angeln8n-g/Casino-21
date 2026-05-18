@@ -296,14 +296,31 @@ export function AdminPanel() {
     
     const { data, error } = await supabase
       .from('event_entries')
-      .select('id, player_id, score, joined_at, profiles!inner(id, username, avatar_url, elo)')
+      .select('id, player_id, score, joined_at, profiles!inner(id, username, avatar_url, elo, wins, losses)')
       .eq('event_id', eventId);
       
     if (error) {
       console.error("Error fetching participants:", error);
       setError("Error al cargar participantes.");
     } else {
-      setCurrentEventParticipants(data || []);
+      const { data: allMatches } = await supabase
+        .from('tournament_matches')
+        .select('player1_id, player2_id')
+        .eq('event_id', eventId);
+
+      const matchCountMap = new Map<string, number>();
+      if (allMatches) {
+        for (const m of allMatches) {
+          if (m.player1_id) matchCountMap.set(m.player1_id, (matchCountMap.get(m.player1_id) || 0) + 1);
+          if (m.player2_id) matchCountMap.set(m.player2_id, (matchCountMap.get(m.player2_id) || 0) + 1);
+        }
+      }
+
+      const enriched = (data || []).map(p => ({
+        ...p,
+        matches_played: matchCountMap.get(p.player_id) || 0,
+      }));
+      setCurrentEventParticipants(enriched);
     }
     setParticipantsLoading(false);
   };
@@ -769,7 +786,12 @@ export function AdminPanel() {
                         </div>
                         <div>
                           <div className="font-bold text-sm text-white">{p.profiles.username}</div>
-                          <div className="text-xs text-gray-400">ELO: {p.profiles.elo}</div>
+                          <div className="flex gap-3 text-xs text-gray-400">
+                            <span>ELO: {p.profiles.elo}</span>
+                            <span className="text-emerald-400">V: {p.profiles.wins || 0}</span>
+                            <span className="text-red-400">D: {p.profiles.losses || 0}</span>
+                            <span className="text-blue-400">PJ: {p.matches_played || 0}</span>
+                          </div>
                         </div>
                       </div>
                       <button 
