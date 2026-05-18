@@ -457,6 +457,75 @@ io.on('connection', (socket) => {
     console.log(`Sala Bot [${difficulty}] ${roomId} creada por ${playerName}`);
   });
 
+  // 1.75 Enviar Desafío (crea sala + game_invitation + notificación, atómico del lado servidor)
+  socket.on('send_challenge', async (data: { receiverId: string, playerName: string, betAmount?: number }) => {
+    const { receiverId, playerName, betAmount = 0 } = data;
+    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // 1. Crear sala (1v1, solo el remitente)
+    rooms[roomId] = {
+      engine: new DefaultGameEngine(),
+      state: null,
+      players: [{ socketId: socket.id, playerId: userId, name: playerName, userId }],
+      spectators: [],
+      maxPlayers: 2,
+      chatHistory: new RingBuffer<ChatMessage>(100),
+      betAmount,
+      prizePool: 0
+    };
+    socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
+
+    // 2. Insertar game_invitation
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    const { data: invitation, error: invError } = await supabase
+      .from('game_invitations')
+      .insert({
+        sender_id: userId,
+        receiver_id: receiverId,
+        room_id: roomId,
+        bet_amount: betAmount,
+        status: 'pending',
+        expires_at: expiresAt
+      })
+      .select('id')
+      .single();
+
+    if (invError || !invitation) {
+      console.error('Error creando game_invitation:', invError);
+      delete rooms[roomId];
+      socket.emit('error', 'Error al crear el desafío');
+      return;
+    }
+
+    // 3. Crear notificación vía RPC
+    const betText = betAmount > 0 ? ` por ${betAmount} 🪙` : '';
+    const { error: notifError } = await supabase.rpc('create_notification', {
+      p_player_id: receiverId,
+      p_type: 'game_invitation',
+      p_content: `¡${playerName} te ha desafiado${betText}!`,
+      p_metadata: JSON.stringify({
+        sender_id: userId,
+        sender_name: playerName,
+        invitation_id: invitation.id,
+        room_id: roomId,
+        bet_amount: betAmount,
+        expires_at: expiresAt
+      })
+    });
+
+    if (notifError) {
+      console.error('Error creando notificación:', notifError);
+    }
+
+    socket.emit('challenge_sent', {
+      roomId,
+      invitationId: invitation.id,
+      receiverId
+    });
+    console.log(`Desafío ${roomId} enviado por ${playerName} a ${receiverId}`);
+  });
+
   // 2. Unirse a Sala
   socket.on('join_room', async ({ roomId, playerName, isTournament, isSpectator }: { roomId: string, playerName: string, isTournament?: boolean, isSpectator?: boolean }) => {
     let room = rooms[roomId];
@@ -1309,6 +1378,37 @@ function broadcastGameState(roomId: string, room: any) {
     });
   }
 }
+
+// ── Cleanup programado ─────────────────────────────────────
+// Limpia notificaciones leídas > 30 días cada hora
+setInterval(async () => {
+  try {
+    const { data, error } = await supabase.rpc('cleanup_old_notifications', {
+      p_days: 30
+    });
+    if (error) {
+      console.error('Error en cleanup de notificaciones:', error);
+    } else if (data && data > 0) {
+      console.log(`Notificaciones limpiadas: ${data}`);
+    }
+  } catch (err) {
+    console.error('Error en cleanup de notificaciones:', err);
+  }
+}, 60 * 60 * 1000);
+
+// Limpia invitaciones expiradas cada 5 minutos
+setInterval(async () => {
+  try {
+    const { data, error } = await supabase.rpc('cleanup_expired_invitations');
+    if (error) {
+      console.error('Error en cleanup de invitaciones:', error);
+    } else if (data && data > 0) {
+      console.log(`Invitaciones expiradas limpiadas: ${data}`);
+    }
+  } catch (err) {
+    console.error('Error en cleanup de invitaciones:', err);
+  }
+}, 5 * 60 * 1000);
 
 const CLUSTER_PORT = process.env.NODE_APP_INSTANCE
   ? parseInt(process.env.PORT || '4000', 10) + parseInt(process.env.NODE_APP_INSTANCE, 10)

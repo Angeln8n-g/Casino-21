@@ -29,6 +29,7 @@ interface GameContextType {
   sendMessage: (roomId: string, text: string) => void;
   abandonMatch: (roomId: string) => void;
   matchAbandonedData: { winnerId: string, coinsEarned: number, eloEarned: number } | null;
+  statsData: { eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -41,6 +42,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [disconnectionMessage, setDisconnectionMessage] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [matchAbandonedData, setMatchAbandonedData] = useState<{ winnerId: string, coinsEarned: number, eloEarned: number } | null>(null);
+  const [statsData, setStatsData] = useState<{ eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null>(null);
   const disconnectTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Escuchar eventos del servidor
@@ -95,6 +97,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       socket.on('game_state_update', (state: GameState) => {
         setGameState(state);
+        if (state.phase !== 'completed') {
+          setStatsData(null);
+        }
       });
 
       socket.on('receive_message', (msg: ChatMessage) => {
@@ -111,7 +116,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       // Fix #2: Escuchar cuando el servidor confirma que las stats fueron guardadas en DB
       // Esto garantiza que fetchProfile() lea los datos ya actualizados (ELO, coins, XP)
-      socket.on('stats_updated', () => {
+      socket.on('stats_updated', (data: { playerId: string; eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean }) => {
+        setStatsData(data);
         window.dispatchEvent(new CustomEvent('profile_updated'));
         window.dispatchEvent(new CustomEvent('coins_updated'));
         window.dispatchEvent(new CustomEvent('elo_updated'));
@@ -209,7 +215,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         chatMessages,
         sendMessage,
         abandonMatch,
-        matchAbandonedData
+        matchAbandonedData,
+        statsData
       }}
     >
       {children}

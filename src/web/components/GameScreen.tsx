@@ -47,7 +47,7 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 };
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
-  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData } = useGame();
+  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData, statsData } = useGame();
   const { profile, user } = useAuth();
   // Local player's card theme (personal)
   const localCardTheme = useGameTheme();
@@ -585,6 +585,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         showCelebration={showCelebration}
         celebrationSeed={celebrationSeed}
         localPlayerId={localPlayerId}
+        statsData={statsData}
       />
     );
   }

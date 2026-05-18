@@ -92,7 +92,7 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
         {/* Main glassmorphic card */}
         <div className="relative w-full max-w-4xl bg-[#08111e]/90 border border-yellow-500/40 rounded-2xl sm:rounded-[1.5rem] md:rounded-[2rem] p-3 sm:p-5 md:p-8 lg:p-10 shadow-[0_0_40px_rgba(234,179,8,0.12)] sm:shadow-[0_0_60px_rgba(234,179,8,0.15)] backdrop-blur-xl">
           {/* Inner golden border effect (decorative) */}
-          <div className="absolute inset-1.5 sm:inset-2 border border-yellow-600/20 sm:border-2 rounded-xl sm:rounded-[1.25rem] md:rounded-[1.5rem] pointer-events-none" />
+          <div className="absolute inset-2 sm:inset-2 border border-yellow-600/20 sm:border-2 rounded-xl sm:rounded-[1.25rem] md:rounded-[1.5rem] pointer-events-none" />
 
           {/* ---- Branding ---- */}
           <div className="flex flex-col items-center mb-3 sm:mb-4 md:mb-6">
@@ -266,7 +266,7 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
           </div>
 
           {/* ---- Continue Button ---- */}
-          <div className="flex justify-center pt-1 sm:pt-2 h-[40px] sm:h-[44px] md:h-[52px]">
+          <div className="flex justify-center pt-1 sm:pt-2 min-h-[40px] sm:min-h-[44px] md:min-h-[52px]">
             <button
               onClick={onContinue}
               disabled={isReady}
@@ -283,8 +283,8 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
                 <>
                   Siguiente Ronda
                   {/* Decorative diamond accents */}
-                  <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -left-0.5 sm:-left-1 top-1/2 -translate-y-1/2" />
-                  <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -right-0.5 sm:-right-1 top-1/2 -translate-y-1/2" />
+                  <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -left-0.5 sm:-left-1 top-1/2 -translate-y-1/2 hidden sm:block" />
+                  <span className="absolute w-1 h-1 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-yellow-400 rotate-45 -right-0.5 sm:-right-1 top-1/2 -translate-y-1/2 hidden sm:block" />
                 </>
               )}
             </button>

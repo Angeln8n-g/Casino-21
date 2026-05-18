@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO } from '../utils/seo';
 
 export function ComoJugar() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateSEO({
       title: 'Cómo Jugar Casino 21 — Reglas del Juego de Cartas Online | KASINO21',
       description: 'Aprende a jugar Casino 21: objetivo, valor de cartas, puntuación, virado, sumatorias y todo sobre el juego de cartas online de KASINO21.',

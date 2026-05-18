@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from '../LogoK21';
 import { updateSEO, resetSEO } from '../../utils/seo';
 
 export function CookiePolicy() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateSEO({
       title: 'Política de Cookies — KASINO21 | Juego de Cartas Online',
       description: 'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales, analíticas de Google Analytics y publicitarias de Google AdSense. Cumplimiento GDPR/ePrivacy.',

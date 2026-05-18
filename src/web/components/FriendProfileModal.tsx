@@ -81,78 +81,32 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
     setChallengeState('waiting');
 
     try {
-      // 1. Connect to socket and create a private room
       const socket = await socketService.connect();
+      const playerName = user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador';
       
-      // We wrap the wait in a Promise
-      const roomId = await new Promise<string>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Timeout creating room")), 10000);
-        
-        socket.once('room_created', ({ roomId }: { roomId: string }) => {
+      const { invitationId, roomId } = await new Promise<{ invitationId: string; roomId: string }>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Timeout creating challenge")), 10000);
+        socket.once('challenge_sent', ({ roomId, invitationId }: { roomId: string; invitationId: string }) => {
           clearTimeout(timeout);
-          resolve(roomId);
+          resolve({ invitationId, roomId });
         });
-
-        socket.emit('create_room', { 
-          playerName: user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador',
-          mode: '1v1',
+        socket.emit('send_challenge', {
+          receiverId: friend.id,
+          playerName,
           betAmount: 0
         });
       });
 
-      const expiresAt = new Date(Date.now() + CHALLENGE_DURATION_MS).toISOString();
-
-      // 2. Create game invitation in DB with the ROOM ID
-      const { data, error } = await supabase
-        .from('game_invitations')
-        .insert({
-          sender_id: user.id,
-          receiver_id: friend.id,
-          status: 'pending',
-          expires_at: expiresAt,
-          room_id: roomId, // CRITICAL: Now we have a room!
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      setInvitationId(data.id);
+      setInvitationId(invitationId);
       setChallengeRoomId(roomId);
 
-      // 3. Create rich notification
-      const { data: senderProfile } = await supabase
-        .from('profiles')
-        .select('username, elo, level, wins, losses, xp')
-        .eq('id', user.id)
-        .single();
+      startCountdown(invitationId, roomId);
 
-      await supabase.from('notifications').insert({
-        player_id: friend.id,
-        type: 'game_invitation',
-        content: `¡${senderProfile?.username || 'Un amigo'} te ha desafiado a una partida!`,
-        is_read: false,
-        metadata: { 
-          sender_id: user.id, 
-          invitation_id: data.id,
-          roomId: roomId,
-          senderName: senderProfile?.username,
-          sender_elo: senderProfile?.elo,
-          sender_level: senderProfile?.level,
-          sender_wins: senderProfile?.wins,
-          sender_losses: senderProfile?.losses,
-          sender_xp: senderProfile?.xp,
-          expiresAt: expiresAt
-        },
-      });
-
-      startCountdown(data.id, roomId);
-
-      // 4. Listen for acceptance
       const channel = supabase
-        .channel(`invitation_${data.id}_${Math.random()}`)
+        .channel(`invitation_${invitationId}_${Math.random()}`)
         .on(
           'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'game_invitations', filter: `id=eq.${data.id}` },
+          { event: 'UPDATE', schema: 'public', table: 'game_invitations', filter: `id=eq.${invitationId}` },
           (payload) => {
             if (payload.new.status === 'accepted') {
               if (timerRef.current) clearInterval(timerRef.current);

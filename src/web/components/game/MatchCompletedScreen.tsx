@@ -13,6 +13,7 @@ interface MatchCompletedScreenProps {
   showCelebration: boolean;
   celebrationSeed: number;
   localPlayerId?: string | null;
+  statsData?: { eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null;
 }
 
 /**
@@ -38,6 +39,7 @@ export function MatchCompletedScreen({
   showCelebration,
   celebrationSeed,
   localPlayerId,
+  statsData,
 }: MatchCompletedScreenProps) {
   // Disparar eventos al montar el componente para refrescar estadísticas
   useEffect(() => {
@@ -51,8 +53,31 @@ export function MatchCompletedScreen({
     });
   }, []);
 
+  const getEloDisplay = (playerId: string): { text: string; colorClass: string } => {
+    const eloMagnitude = statsData ? Math.abs(statsData.eloChange) : 25;
+    const isWinner = playerId === gameState.winnerId;
+    const otherPlayer = gameState.players.find((o) => o.id !== playerId);
+    const isTie = otherPlayer
+      ? gameState.players.find((p) => p.id === playerId)?.score === otherPlayer.score
+      : false;
+
+    if (isWinner) {
+      return { text: `+${eloMagnitude} ▲`, colorClass: 'text-green-400' };
+    }
+    if (isTie) {
+      return { text: '+0 ▬', colorClass: 'text-gray-400' };
+    }
+    return { text: `-${eloMagnitude} ▼`, colorClass: 'text-red-400' };
+  };
+
   return (
-    <div className="flex flex-col items-center justify-start pt-6 sm:pt-10 pb-8 sm:pb-12 min-h-screen text-center p-4 sm:p-8 bg-transparent relative z-10 overflow-y-auto">
+    <div
+      className="flex flex-col items-center justify-start h-screen text-center p-4 sm:p-8 bg-transparent relative z-10 overflow-y-auto"
+      style={{
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+      }}
+    >
       <CelebrationConfetti active={showCelebration} seed={celebrationSeed} />
 
       <div className="bg-black/60 backdrop-blur-md p-6 sm:p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] max-w-3xl w-full">
@@ -60,7 +85,7 @@ export function MatchCompletedScreen({
           ¡PARTIDA TERMINADA!
         </h1>
 
-        <h2 className="text-lg sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-10 text-white">
+        <h2 className="text-lg sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-10 text-white break-words">
           {(() => {
             if (!gameState.winnerId) return '¡EMPATE!';
             
@@ -95,53 +120,44 @@ export function MatchCompletedScreen({
                   : 'bg-white/5 border-white/10'
               }`}
             >
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 text-white flex items-center justify-center gap-2">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 text-white flex items-center justify-center gap-2 min-w-0">
                 {p.id === gameState.winnerId && (
-                  <span className="text-yellow-400 text-3xl">👑</span>
+                  <span className="text-yellow-400 text-3xl shrink-0">👑</span>
                 )}
-                {p.name}
+                <span className="truncate">{p.name}</span>
               </h3>
 
               <div className="space-y-3">
                 {/* Score */}
                 <div className="flex justify-between bg-black/30 p-3 rounded-lg">
-                  <span className="text-gray-400 font-bold">Puntuación</span>
+                  <span className="text-gray-400 font-bold truncate min-w-0">Puntuación</span>
                   <span className="text-blue-400 font-black text-xl">{p.score} pts</span>
                 </div>
 
                 {/* Collected cards */}
                 <div className="flex justify-between bg-black/30 p-3 rounded-lg">
-                  <span className="text-gray-400 font-bold">Cartas Recogidas</span>
+                  <span className="text-gray-400 font-bold truncate min-w-0">Cartas Recogidas</span>
                   <span className="text-white font-bold">{p.collectedCards.length}</span>
                 </div>
 
                 {/* Virados */}
                 <div className="flex justify-between bg-black/30 p-3 rounded-lg">
-                  <span className="text-gray-400 font-bold">Virados</span>
+                  <span className="text-gray-400 font-bold truncate min-w-0">Virados</span>
                   <span className="text-yellow-400 font-bold">{p.virados}</span>
                 </div>
 
                 {/* ELO change indicator */}
-                <div className="flex justify-between p-2 mt-4 border-t border-white/10">
-                  <span className="text-gray-400 font-bold text-sm">Rango ELO</span>
-                  <span
-                    className={`font-black text-sm ${
-                      p.id === gameState.winnerId
-                        ? 'text-green-400'
-                        : p.score ===
-                          gameState.players.find((o) => o.id !== p.id)?.score
-                        ? 'text-gray-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {p.id === gameState.winnerId
-                      ? '+25 ▲'
-                      : p.score ===
-                        gameState.players.find((o) => o.id !== p.id)?.score
-                      ? '+0 ▬'
-                      : '-25 ▼'}
-                  </span>
-                </div>
+                {(() => {
+                  const elo = getEloDisplay(p.id);
+                  return (
+                    <div className="flex justify-between p-2 mt-4 border-t border-white/10">
+                      <span className="text-gray-400 font-bold text-sm truncate min-w-0">Rango ELO</span>
+                      <span className={`font-black text-sm ${elo.colorClass}`}>
+                        {elo.text}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ))}

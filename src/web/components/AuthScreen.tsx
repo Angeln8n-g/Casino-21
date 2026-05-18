@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { LogoK21 } from './LogoK21';
+import { updateSEO, resetSEO } from '../utils/seo';
 import splashBg from '../../Public/splash.webp';
 
 export function AuthScreen() {
@@ -14,6 +15,15 @@ export function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    updateSEO({
+      title: 'KASINO21 — Juego de Cartas Competitivo Online Gratis | 1v1 y 2v2 Multijugador',
+      description: 'KASINO21 es el juego de cartas competitivo multijugador online gratis. Juega partidas ranked 1v1 y 2v2, sube de rango ELO, completa misiones diarias, desbloquea logros y compite en torneos semanales. ¡Juega ahora desde tu navegador!',
+      canonical: 'https://kasino21.com/',
+    });
+    return () => resetSEO();
+  }, []);
 
   const handleOAuth = async (provider: 'google' | 'discord') => {
     setLoading(true);

@@ -783,44 +783,28 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
     setState('waiting');
     try {
       const socket = await socketService.connect();
-      const roomId = await new Promise<string>((resolve, reject) => {
+      const playerName = user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador';
+      const { invitationId, roomId } = await new Promise<{ invitationId: string; roomId: string }>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
-        socket.once('room_created', ({ roomId }: { roomId: string }) => {
+        socket.once('challenge_sent', ({ roomId, invitationId }: { roomId: string; invitationId: string }) => {
           clearTimeout(timeout);
-          resolve(roomId);
+          resolve({ invitationId, roomId });
         });
-        socket.emit('create_room', {
-          playerName: user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador',
-          mode: '1v1',
+        socket.emit('send_challenge', {
+          receiverId: friend.id,
+          playerName,
           betAmount,
         });
       });
 
-      const expiresAt = new Date(Date.now() + CHALLENGE_DURATION_MS).toISOString();
-      const { data, error } = await supabase
-        .from('game_invitations')
-        .insert({ sender_id: user.id, receiver_id: friend.id, status: 'pending', expires_at: expiresAt, room_id: roomId, bet_amount: betAmount })
-        .select('id')
-        .single();
-      if (error) throw error;
-      setInvitationId(data.id);
+      setInvitationId(invitationId);
       setChallengeRoomId(roomId);
 
-      const { data: senderProfile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
-      const betText = betAmount > 0 ? ` por ${betAmount} 🪙` : '';
-      await supabase.from('notifications').insert({
-        player_id: friend.id,
-        type: 'game_invitation',
-        content: `¡${senderProfile?.username || 'Un amigo'} te ha desafiado${betText}!`,
-        is_read: false,
-        metadata: { sender_id: user.id, invitation_id: data.id, roomId, senderName: senderProfile?.username, expiresAt, betAmount },
-      });
-
-      startCountdown(data.id, roomId);
+      startCountdown(invitationId, roomId);
 
       const channel = supabase
-        .channel(`quick_challenge_${data.id}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_invitations', filter: `id=eq.${data.id}` }, (payload) => {
+        .channel(`quick_challenge_${invitationId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_invitations', filter: `id=eq.${invitationId}` }, (payload) => {
           if (payload.new.status === 'accepted') {
             if (timerRef.current) clearInterval(timerRef.current);
             setState('accepted');

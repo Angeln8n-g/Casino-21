@@ -50,6 +50,7 @@ export function updateSEO(config: SEOConfig): void {
   setMetaProperty('og:description', config.ogDescription || config.description);
   setMetaProperty('og:url', config.canonical || `${BASE_URL}${window.location.pathname}`);
   setMetaProperty('og:image', config.ogImage || DEFAULT_OG_IMAGE);
+  setMetaProperty('og:locale', 'es_ES');
 
   // Twitter Card
   setMeta('twitter:title', config.ogTitle || config.title);

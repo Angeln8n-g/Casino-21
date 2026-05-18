@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from '../LogoK21';
 import { updateSEO, resetSEO } from '../../utils/seo';
 
 export function TermsOfService() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateSEO({
       title: 'Términos de Servicio — KASINO21 | Juego de Cartas Online',
       description: 'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios, propiedad intelectual y política de publicidad.',

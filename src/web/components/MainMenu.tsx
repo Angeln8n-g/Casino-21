@@ -3,6 +3,7 @@ import { useGame } from '../hooks/useGame';
 import { GameMode } from '../../domain/types';
 import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
+import { updateSEO, resetSEO } from '../utils/seo';
 import { SocialPanel } from './SocialPanel';
 import { RecentAchievements } from './RecentAchievements';
 import { QuickStats } from './QuickStats';
@@ -77,6 +78,15 @@ export function MainMenu() {
   const hasRequestedStateRef = useRef(false);
 
   const showLobbyDesktop = desktopTab === 'all' || desktopTab === 'lobby';
+
+  useEffect(() => {
+    updateSEO({
+      title: 'KASINO21 — Juego de Cartas Competitivo Online Gratis | 1v1 y 2v2 Multijugador',
+      description: 'KASINO21 es el juego de cartas competitivo multijugador online gratis. Juega partidas ranked 1v1 y 2v2, sube de rango ELO, completa misiones diarias, desbloquea logros y compite en torneos semanales. ¡Juega ahora desde tu navegador!',
+      canonical: 'https://kasino21.com/',
+    });
+    return () => resetSEO();
+  }, []);
 
   useEffect(() => {
     try {

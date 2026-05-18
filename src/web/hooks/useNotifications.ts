@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from './useAuth';
 import { useGame } from './useGame';
@@ -214,7 +214,11 @@ export function useNotifications() {
           });
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[Realtime] Error en canal notifications:', status, err);
+        }
+      });
 
     // Subscribe to friend_requests
     const friendSubscription = supabase
@@ -269,7 +273,11 @@ export function useNotifications() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[Realtime] Error en canal friend_requests:', status, err);
+        }
+      });
 
     // Subscribe to game_invitations
     const gameSubscription = supabase
@@ -318,7 +326,11 @@ export function useNotifications() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[Realtime] Error en canal game_invitations:', status, err);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -410,51 +422,52 @@ export function useNotifications() {
     });
   };
 
-  // DB column is player_id, not user_id
-  const markNotificationAsRead = async (id: string) => {
-    removeNotificationFromState(id);
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('id', id)
-      .eq('player_id', user?.id || '');
-    if (error) {
-      console.error('Error eliminando notificación:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
+  const markNotificationAsRead = useCallback(async (id: string) => {
     if (!user) return;
-    // Update local state immediately so UI reacts without waiting for Realtime
+    setAppNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    const { error } = await supabase.rpc('mark_notification_read', {
+      p_notification_id: id,
+      p_player_id: user.id
+    });
+    if (error) {
+      console.error('Error marcando notificación como leída:', error);
+    }
+  }, [user]);
+
+  const markAllAsRead = useCallback(async () => {
+    if (!user) return;
     setAppNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
-    // Persist to DB
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('player_id', user.id)
-      .eq('is_read', false);
-  };
+    const { error } = await supabase.rpc('mark_all_notifications_read', {
+      p_player_id: user.id
+    });
+    if (error) {
+      console.error('Error marcando notificaciones como leídas:', error);
+    }
+  }, [user]);
 
-  const deleteReadNotifications = async () => {
+  const deleteReadNotifications = useCallback(async () => {
     if (!user) return;
-    // Remove from local state
     setAppNotifications(prev => prev.filter(n => !n.is_read));
-    // Persist
-    await supabase.from('notifications').delete().eq('player_id', user.id).eq('is_read', true);
-  };
+    const { error } = await supabase.rpc('delete_read_notifications', {
+      p_player_id: user.id
+    });
+    if (error) {
+      console.error('Error borrando notificaciones leídas:', error);
+    }
+  }, [user]);
 
-  const deleteNotification = async (id: string) => {
+  const deleteNotification = useCallback(async (id: string) => {
     removeNotificationFromState(id);
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('id', id)
-      .eq('player_id', user?.id || '');
+    const { error } = await supabase.rpc('delete_notification', {
+      p_notification_id: id,
+      p_player_id: user?.id || ''
+    });
     if (error) {
       console.error('Error eliminando notificación:', error);
     }
-  };
+  }, [user]);
 
   return {
     pendingFriendRequests,

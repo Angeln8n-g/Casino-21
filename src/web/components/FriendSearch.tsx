@@ -200,29 +200,7 @@ export function FriendSearch() {
         return;
       }
 
-      // 3. Create notification for receiver
-      try {
-        const { data: senderProfile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', user.id)
-          .single();
-
-        const senderName = senderProfile?.username || 'Un jugador';
-
-        await supabase
-          .from('notifications')
-          .insert({
-            player_id: receiverId,
-            type: 'friend_request',
-            content: `${senderName} te ha enviado una solicitud de amistad.`,
-            is_read: false,
-            metadata: { sender_id: user.id, sender_username: senderName }
-          });
-      } catch (notifErr) {
-        console.warn('Failed to send notification:', notifErr);
-      }
-
+      // 3. Notificación creada automáticamente por trigger DB
       setRelationships(prev => ({ ...prev, [receiverId]: 'pending_sent' }));
       setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
       

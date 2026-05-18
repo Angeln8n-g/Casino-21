@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from '../LogoK21';
 import { updateSEO, resetSEO } from '../../utils/seo';
 
 export function PrivacyPolicy() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateSEO({
       title: 'Política de Privacidad — KASINO21 | Juego de Cartas Online',
       description: 'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, Google AdSense, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
