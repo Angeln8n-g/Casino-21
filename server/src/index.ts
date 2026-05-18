@@ -250,8 +250,14 @@ setInterval(() => {
         const s1 = io.sockets.sockets.get(p1.socketId);
         const s2 = io.sockets.sockets.get(p2.socketId);
         
-        if (s1) s1.join(roomId);
-        if (s2) s2.join(roomId);
+        if (s1) {
+          s1.join(roomId);
+          socketToRoomMap.set(s1.id, roomId);
+        }
+        if (s2) {
+          s2.join(roomId);
+          socketToRoomMap.set(s2.id, roomId);
+        }
 
         console.log(`¡Matchmaking exitoso! ${p1.name} (${p1.elo}) vs ${p2.name} (${p2.elo}) -> Sala ${roomId}`);
 
