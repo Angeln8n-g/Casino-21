@@ -1,9 +1,10 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { GameProvider, useGame } from './hooks/useGame';
-import { AudioProvider } from './hooks/useAudio';
+import { AudioProvider, useAudio } from './hooks/useAudio';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { triggerHaptic } from './utils/haptics';
 import { loadThemes } from './themes/themeRegistry';
+import { socketService } from './services/socket';
 // ── Lazy-loaded components (code splitting) ───────────────────────────────────
 // These components are NOT needed on initial page load. By lazy-loading them,
 // the main JS bundle shrinks dramatically and the critical path speeds up.
@@ -29,10 +30,48 @@ function LoadingFallback() {
   );
 }
 
+function EventToast({ message, type }: { message: string; type: 'start' | 'end' }) {
+  return (
+    <div className="fixed top-4 right-4 z-[100] animate-fade-in">
+      <div className={`px-4 py-3 rounded-xl border shadow-lg backdrop-blur-md ${
+        type === 'start'
+          ? 'bg-cyan-900/80 border-cyan-500/30 text-cyan-200'
+          : 'bg-emerald-900/80 border-emerald-500/30 text-emerald-200'
+      }`}>
+        <p className="text-sm font-bold">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
   const { user, loading } = useAuth();
   const { gameState } = useGame();
+  const { playSfx } = useAudio();
   const [isRecovery, setIsRecovery] = useState(false);
+  const [eventToast, setEventToast] = useState<{ message: string; type: 'start' | 'end' } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    socketService.connect().then(socket => {
+      if (!mounted) return;
+      socket.on('event_started', (data: { eventId: string; title: string }) => {
+        if (mounted) {
+          setEventToast({ message: `\ud83c\udfb2 "${data.title}" ha comenzado automáticamente`, type: 'start' });
+          playSfx('alert');
+          setTimeout(() => { if (mounted) setEventToast(null); }, 10000);
+        }
+      });
+      socket.on('event_completed', (data: { eventId: string; title: string }) => {
+        if (mounted) {
+          setEventToast({ message: `\u2705 "${data.title}" ha finalizado`, type: 'end' });
+          playSfx('alert');
+          setTimeout(() => { if (mounted) setEventToast(null); }, 10000);
+        }
+      });
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [playSfx]);
 
   useEffect(() => {
     // Detectar si venimos de un enlace de recuperación de contraseña de Supabase
@@ -55,37 +94,65 @@ function AppContent() {
   }, []);
   
   if (isRecovery) {
-    return <UpdatePassword />;
+    return (
+      <>
+        <UpdatePassword />
+        {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+      </>
+    );
   }
 
   
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="relative">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-casino-gold to-casino-gold-dark animate-pulse shadow-gold" />
-          <div className="absolute inset-0 w-14 h-14 rounded-2xl border-2 border-casino-gold/20 animate-ping" />
+      <>
+        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-casino-gold to-casino-gold-dark animate-pulse shadow-gold" />
+            <div className="absolute inset-0 w-14 h-14 rounded-2xl border-2 border-casino-gold/20 animate-ping" />
+          </div>
+          <p className="text-gray-500 text-xs uppercase tracking-[0.2em] font-bold animate-pulse">Cargando</p>
         </div>
-        <p className="text-gray-500 text-xs uppercase tracking-[0.2em] font-bold animate-pulse">Cargando</p>
-      </div>
+        {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+      </>
     );
   }
 
   if (!user) {
-    return <AuthScreen />;
+    return (
+      <>
+        <AuthScreen />
+        {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+      </>
+    );
   }
 
   if (!gameState) {
-    return <MainMenu />;
+    return (
+      <>
+        <MainMenu />
+        {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+      </>
+    );
   }
   
   if ((gameState.phase as any) === 'setup') {
-    return <MainMenu />;
+    return (
+      <>
+        <MainMenu />
+        {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+      </>
+    );
   }
   
   const isSpectator = !!localStorage.getItem('casino21_spectatorRoomId');
   
-  return <GameScreen isSpectator={isSpectator} />;
+  return (
+    <>
+      <GameScreen isSpectator={isSpectator} />
+      {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+    </>
+  );
 }
 
 export default function App() {
