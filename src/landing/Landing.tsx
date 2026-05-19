@@ -3,6 +3,7 @@ import Hero from './sections/Hero';
 import StatsBar from './sections/StatsBar';
 import HowToPlay from './sections/HowToPlay';
 import Features from './sections/Features';
+import SocialProof from './sections/SocialProof';
 import Leaderboard from './sections/Leaderboard';
 import Tournaments from './sections/Tournaments';
 import Footer from './sections/Footer';
@@ -42,6 +43,7 @@ export default function Landing() {
         <StatsBar stats={stats} loading={loading} />
         <HowToPlay />
         <Features />
+        <SocialProof />
         <div className="max-w-6xl mx-auto px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12">
           <Leaderboard entries={leaderboard} loading={loading} />
           <Tournaments tournaments={tournaments} loading={loading} />
