@@ -22,13 +22,32 @@ export default function Footer() {
         </div>
       </section>
 
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-gray-500 text-sm">
-          <div className="flex items-center gap-2">
-            <img src={brand21Icon} alt="Kasino21" className="w-6 h-6 rounded object-contain opacity-60" />
-            <span className="font-black text-white/60">KASINO21</span>
+      <footer className="border-t border-white/5 py-10 px-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Content Links */}
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-6 text-sm">
+            <a href="/blog" className="text-gray-400 hover:text-casino-gold transition-colors">Blog</a>
+            <a href="/faq" className="text-gray-400 hover:text-casino-gold transition-colors">FAQ</a>
+            <a href="/como-jugar" className="text-gray-400 hover:text-casino-gold transition-colors">Cómo Jugar</a>
+            <a href="/about" className="text-gray-400 hover:text-casino-gold transition-colors">Sobre Nosotros</a>
+            <a href="/contact" className="text-gray-400 hover:text-casino-gold transition-colors">Contacto</a>
           </div>
-          <span>Juego de cartas competitivo online · {new Date().getFullYear()}</span>
+
+          {/* Legal Links */}
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-6 text-xs text-gray-600">
+            <a href="/privacy" className="hover:text-gray-400 transition-colors">Privacidad</a>
+            <a href="/terms" className="hover:text-gray-400 transition-colors">Términos</a>
+            <a href="/cookies" className="hover:text-gray-400 transition-colors">Cookies</a>
+          </div>
+
+          {/* Copyright */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-gray-600 text-xs">
+            <div className="flex items-center gap-2">
+              <img src={brand21Icon} alt="Kasino21" className="w-5 h-5 rounded object-contain opacity-50" />
+              <span className="font-black text-white/40">KASINO21</span>
+            </div>
+            <span>Juego de cartas competitivo online · {new Date().getFullYear()}</span>
+          </div>
         </div>
       </footer>
     </>
