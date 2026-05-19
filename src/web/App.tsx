@@ -21,6 +21,7 @@ const Contact = lazy(() => import('./components/Contact').then(m => ({ default: 
 const FAQ = lazy(() => import('./components/FAQ').then(m => ({ default: m.FAQ })));
 const Blog = lazy(() => import('./components/Blog').then(m => ({ default: m.Blog })));
 const BlogPost = lazy(() => import('./components/BlogPost').then(m => ({ default: m.BlogPost })));
+const Landing = lazy(() => import('../landing/Landing').then(m => ({ default: m.default })));
 import { CookieConsent } from './components/CookieConsent';
 
 // Minimal loading fallback matching the app's existing design
@@ -124,10 +125,28 @@ function AppContent() {
     );
   }
 
+  const pathname = window.location.pathname;
+  if (pathname === '/login') {
+    if (user) {
+      window.location.href = '/';
+      return null;
+    }
+    return (
+      <>
+        <Suspense fallback={<LoadingFallback />}>
+          <AuthScreen />
+        </Suspense>
+        {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
+      </>
+    );
+  }
+
   if (!user) {
     return (
       <>
-        <AuthScreen />
+        <Suspense fallback={<LoadingFallback />}>
+          <Landing />
+        </Suspense>
         {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
       </>
     );

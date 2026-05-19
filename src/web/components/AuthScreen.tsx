@@ -112,11 +112,11 @@ export function AuthScreen() {
           {/* Header / Logo */}
           <div className="flex flex-col items-center mb-6 sm:mb-8 relative">
             <div className="absolute inset-0 bg-casino-gold/20 blur-[40px] rounded-full" />
-            <div className="relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.4)] animate-float">
+            <a href="/" className="relative z-10 drop-shadow-[0_0_15px_rgba(212,175,55,0.4)] animate-float hover:scale-105 transition-transform cursor-pointer" title="Volver al inicio">
               <div className="w-[72px] sm:w-[96px]">
                 <LogoK21 size={96} />
               </div>
-            </div>
+            </a>
             <h1 className="text-2xl sm:text-3xl font-display font-black text-yellow-600 mt-3 sm:mt-4 tracking-wider uppercase">
               KASINO <span className="text-transparent bg-clip-text bg-gradient-to-r from-casino-gold to-casino-gold-dark">21</span>
             </h1>

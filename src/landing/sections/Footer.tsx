@@ -1,6 +1,20 @@
 import React from 'react';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
+const CONTENT_LINKS = [
+  { href: '/blog', label: 'Blog' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/about', label: 'Sobre Nosotros' },
+  { href: '/contact', label: 'Contacto' },
+];
+
+const LEGAL_LINKS = [
+  { href: '/terms', label: 'Términos de Servicio' },
+  { href: '/privacy', label: 'Política de Privacidad' },
+  { href: '/cookies', label: 'Política de Cookies' },
+  { href: '/como-jugar', label: 'Cómo Jugar' },
+];
+
 export default function Footer() {
   return (
     <>
@@ -14,7 +28,7 @@ export default function Footer() {
             Crea tu cuenta gratis y empieza a subir en el ranking hoy mismo.
           </p>
           <a
-            href="/index.html"
+            href="/login"
             className="inline-block bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black text-xl px-14 py-5 rounded-2xl hover:scale-105 transition-transform shadow-[0_0_40px_rgba(234,179,8,0.25)]"
           >
             EMPEZAR AHORA — ES GRATIS
@@ -26,18 +40,28 @@ export default function Footer() {
         <div className="max-w-6xl mx-auto">
           {/* Content Links */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-6 text-sm">
-            <a href="/blog" className="text-gray-400 hover:text-casino-gold transition-colors">Blog</a>
-            <a href="/faq" className="text-gray-400 hover:text-casino-gold transition-colors">FAQ</a>
-            <a href="/como-jugar" className="text-gray-400 hover:text-casino-gold transition-colors">Cómo Jugar</a>
-            <a href="/about" className="text-gray-400 hover:text-casino-gold transition-colors">Sobre Nosotros</a>
-            <a href="/contact" className="text-gray-400 hover:text-casino-gold transition-colors">Contacto</a>
+            {CONTENT_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-gray-400 hover:text-casino-gold transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
 
           {/* Legal Links */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-6 text-xs text-gray-600">
-            <a href="/privacy" className="hover:text-gray-400 transition-colors">Privacidad</a>
-            <a href="/terms" className="hover:text-gray-400 transition-colors">Términos</a>
-            <a href="/cookies" className="hover:text-gray-400 transition-colors">Cookies</a>
+            {LEGAL_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="hover:text-gray-400 transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
 
           {/* Copyright */}

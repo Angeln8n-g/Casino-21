@@ -81,6 +81,15 @@ const PAGES = {
     ogDescription:
       'Aprende a jugar mejor con nuestras guías, estrategias y consejos para Kasino21, el juego de cartas 21 online en español.',
   },
+  login: {
+    title: 'Iniciar Sesión | Kasino21 — Juego de Cartas Online',
+    description:
+      'Inicia sesión en Kasino21 para jugar al juego de cartas 21 online. Compite en partidas ranked 1v1 y 2v2, sube de rango ELO y participa en torneos.',
+    canonical: 'https://kasino21.com/login',
+    ogTitle: 'Iniciar Sesión | Kasino21 — Juego de Cartas Online',
+    ogDescription:
+      'Inicia sesión en Kasino21 para jugar al juego de cartas 21 online. Compite en partidas ranked 1v1 y 2v2, sube de rango ELO y participa en torneos.',
+  },
 };
 
 const indexHtml = readFileSync(`${distDir}/index.html`, 'utf-8');

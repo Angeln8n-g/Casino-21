@@ -67,13 +67,13 @@ export default function Hero() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="/index.html"
+            href="/login"
             className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black text-lg px-10 py-4 rounded-2xl hover:scale-105 transition-transform shadow-[0_0_30px_rgba(234,179,8,0.3)]"
           >
             JUGAR GRATIS
           </a>
           <a
-            href="#como-jugar"
+            href="/como-jugar"
             className="bg-white/5 border border-white/10 text-white font-bold text-lg px-10 py-4 rounded-2xl hover:bg-white/10 transition-colors"
           >
             Cómo jugar
