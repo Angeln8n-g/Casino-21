@@ -166,6 +166,7 @@ export default function App() {
   if (pathname === '/cookies') return <Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense>;
   if (pathname === '/como-jugar') return <Suspense fallback={<LoadingFallback />}><ComoJugar /></Suspense>;
   if (pathname === '/about') return <Suspense fallback={<LoadingFallback />}><About /></Suspense>;
+  if (pathname === '/contact') return <Suspense fallback={<LoadingFallback />}><Contact /></Suspense>;
 
   // Global event listener for button haptics
   useEffect(() => {
