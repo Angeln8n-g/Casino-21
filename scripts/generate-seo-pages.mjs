@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { blogPosts } from '../src/web/data/blog-posts.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = resolve(__dirname, '..', 'dist');
@@ -61,6 +62,24 @@ const PAGES = {
     ogTitle: 'Contacto | Kasino21 — Juego de Cartas Online',
     ogDescription:
       '¿Tienes preguntas o sugerencias? Contáctanos. Respondemos en 24-48 horas.',
+  },
+  faq: {
+    title: 'Preguntas Frecuentes | Kasino21 — Juego de Cartas Online',
+    description:
+      'Respuestas a las preguntas más comunes sobre Kasino21: juego, cuentas, torneos, monedas y más.',
+    canonical: 'https://kasino21.com/faq',
+    ogTitle: 'Preguntas Frecuentes | Kasino21 — Juego de Cartas Online',
+    ogDescription:
+      'Respuestas a las preguntas más comunes sobre Kasino21: juego, cuentas, torneos, monedas y más.',
+  },
+  blog: {
+    title: 'Blog | Kasino21 — Guías, Estrategias y Noticias del Juego de Cartas',
+    description:
+      'Aprende a jugar mejor con nuestras guías, estrategias y consejos para Kasino21, el juego de cartas 21 online en español.',
+    canonical: 'https://kasino21.com/blog',
+    ogTitle: 'Blog | Kasino21 — Guías, Estrategias y Noticias del Juego de Cartas',
+    ogDescription:
+      'Aprende a jugar mejor con nuestras guías, estrategias y consejos para Kasino21, el juego de cartas 21 online en español.',
   },
 };
 
@@ -128,3 +147,61 @@ for (const [route, meta] of Object.entries(PAGES)) {
 }
 
 console.log('SEO pages generated successfully.');
+
+// Generate static HTML for each blog post
+for (const post of blogPosts) {
+  let html = indexHtml;
+
+  html = html.replace(
+    /<title>.*?<\/title>/,
+    `<title>${post.title} | Kasino21</title>`,
+  );
+
+  html = html.replace(
+    /<link rel="canonical"[^>]*>/,
+    `<link rel="canonical" href="https://kasino21.com/blog/${post.slug}" />`,
+  );
+
+  html = html.replace(
+    /<meta name="description"[^>]*>/,
+    `<meta name="description" content="${post.excerpt}" />`,
+  );
+
+  html = html.replace(
+    /<meta property="og:title"[^>]*>/,
+    `<meta property="og:title" content="${post.title} | Kasino21" />`,
+  );
+
+  html = html.replace(
+    /<meta property="og:description"[^>]*>/,
+    `<meta property="og:description" content="${post.excerpt}" />`,
+  );
+
+  html = html.replace(
+    /<meta property="og:url"[^>]*>/,
+    `<meta property="og:url" content="https://kasino21.com/blog/${post.slug}" />`,
+  );
+
+  html = html.replace(
+    /<meta name="twitter:title"[^>]*>/,
+    `<meta name="twitter:title" content="${post.title} | Kasino21" />`,
+  );
+
+  html = html.replace(
+    /<meta name="twitter:description"[^>]*>/,
+    `<meta name="twitter:description" content="${post.excerpt}" />`,
+  );
+
+  html = html.replace(
+    /(<noscript[\s\S]*?<h1[^>]*>).*?(<\/h1>)/,
+    `$1${post.title}$2`,
+  );
+
+  // Write to dist/blog/<slug>.html
+  const blogDir = `${distDir}/blog`;
+  if (!existsSync(blogDir)) {
+    mkdirSync(blogDir, { recursive: true });
+  }
+  writeFileSync(`${blogDir}/${post.slug}.html`, html, 'utf-8');
+  console.log(`✓ Generated ${blogDir}/${post.slug}.html`);
+}
