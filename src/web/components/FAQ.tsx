@@ -1,131 +1,9 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO } from '../utils/seo';
+import { faqData, getFAQCategories } from '../data/faq-data';
 
-type FAQCategory = 'general' | 'cuenta' | 'juego' | 'monedas' | 'tecnico';
-
-interface FAQItem {
-  question: string;
-  answer: string;
-  category: FAQCategory;
-}
-
-const faqData: FAQItem[] = [
-  {
-    category: 'general',
-    question: '¿Qué es Kasino21?',
-    answer: 'Kasino21 es un juego de cartas online gratuito basado en el clásico juego del 21 (blackjack). Puedes jugar contra otros jugadores en tiempo real o contra bots, todo desde tu navegador sin necesidad de descargar nada.',
-  },
-  {
-    category: 'general',
-    question: '¿Es gratuito jugar?',
-    answer: 'Sí, Kasino21 es completamente gratuito. No hay apuestas con dinero real. Las monedas del juego son virtuales y no tienen valor monetario. No se pueden comprar ni vender.',
-  },
-  {
-    category: 'general',
-    question: '¿Necesito descargar algo?',
-    answer: 'No. Kasino21 funciona directamente en tu navegador web. Solo necesitas una cuenta y conexión a internet para jugar.',
-  },
-  {
-    category: 'general',
-    question: '¿En qué idiomas está disponible?',
-    answer: 'Actualmente Kasino21 está disponible en español. Estamos trabajando en añadir más idiomas en el futuro.',
-  },
-  {
-    category: 'cuenta',
-    question: '¿Cómo creo una cuenta?',
-    answer: 'Puedes registrarte directamente desde la página principal usando tu correo electrónico. También puedes iniciar sesión con tu cuenta de Google si lo prefieres.',
-  },
-  {
-    category: 'cuenta',
-    question: 'Olvidé mi contraseña, ¿qué hago?',
-    answer: 'En la pantalla de inicio de sesión, haz clic en "¿Olvidaste tu contraseña?" y sigue las instrucciones. Recibirás un correo electrónico con un enlace para restablecerla.',
-  },
-  {
-    category: 'cuenta',
-    question: '¿Puedo cambiar mi nombre de usuario?',
-    answer: 'Actualmente el nombre de usuario se asigna al crear la cuenta. Si necesitas cambiarlo, contáctanos a través de la página de Contacto y te ayudaremos.',
-  },
-  {
-    category: 'cuenta',
-    question: '¿Cómo elimino mi cuenta?',
-    answer: 'Si deseas eliminar tu cuenta, envíanos un correo a kansino21.service@gmail.com desde el email asociado a tu cuenta. Procesaremos la solicitud en un plazo de 30 días.',
-  },
-  {
-    category: 'juego',
-    question: '¿Cómo se juega al 21?',
-    answer: 'El objetivo es sumar 21 puntos o acercarse lo más posible sin pasarse. Las cartas numéricas valen su número, las figuras (J, Q, K) valen 10, y el As vale 1 u 11. Si te pasas de 21, pierdes automáticamente.',
-  },
-  {
-    category: 'juego',
-    question: '¿Puedo jugar contra amigos?',
-    answer: 'Sí. Puedes crear una sala privada y compartir el enlace con tus amigos para jugar juntos. También puedes usar el emparejamiento automático para jugar contra otros jugadores.',
-  },
-  {
-    category: 'juego',
-    question: '¿Qué es el sistema ELO?',
-    answer: 'ELO es un sistema de puntuación que mide tu nivel de juego. Se usa para emparejarte con jugadores de nivel similar y garantizar partidas equilibradas. Ganas puntos al ganar y los pierdes al perder.',
-  },
-  {
-    category: 'juego',
-    question: '¿Puedo jugar contra un bot?',
-    answer: 'Sí. Si no quieres esperar a otro jugador, puedes jugar contra un bot. Hay diferentes niveles de dificultad disponibles para que practiques y mejores tu estrategia.',
-  },
-  {
-    category: 'juego',
-    question: '¿Qué pasa si me desconecto durante una partida?',
-    answer: 'Si te desconectas, tienes 30 segundos para volver a conectarte y reanudar la partida. Si no vuelves a tiempo, se considera que te has rendido y perderás la partida.',
-  },
-  {
-    category: 'monedas',
-    question: '¿Cómo consigo monedas?',
-    answer: 'Recibes monedas iniciales al crear tu cuenta. Después, puedes ganar más monedas jugando partidas, completando misiones diarias y participando en torneos y eventos especiales.',
-  },
-  {
-    category: 'monedas',
-    question: '¿Las monedas tienen valor real?',
-    answer: 'No. Las monedas de Kasino21 son completamente virtuales y no tienen ningún valor monetario real. No se pueden comprar, vender ni intercambiar por dinero real.',
-  },
-  {
-    category: 'monedas',
-    question: '¿Qué pasa si me quedo sin monedas?',
-    answer: 'Si te quedas sin monedas, recibirás una recarga gratuita después de un tiempo. También puedes completar misiones diarias para ganar monedas adicionales.',
-  },
-  {
-    category: 'monedas',
-    question: '¿Puedo comprar monedas?',
-    answer: 'No. Kasino21 no permite la compra de monedas con dinero real. Todas las monedas se obtienen jugando y completando desafíos dentro del juego.',
-  },
-  {
-    category: 'tecnico',
-    question: '¿En qué dispositivos puedo jugar?',
-    answer: 'Kasino21 funciona en cualquier dispositivo con un navegador web moderno: computadoras, tablets y smartphones. El diseño se adapta automáticamente al tamaño de tu pantalla.',
-  },
-  {
-    category: 'tecnico',
-    question: '¿Qué navegadores son compatibles?',
-    answer: 'Kasino21 es compatible con Chrome, Firefox, Safari, Edge y otros navegadores modernos. Recomendamos mantener tu navegador actualizado para la mejor experiencia.',
-  },
-  {
-    category: 'tecnico',
-    question: 'El juego va lento, ¿qué puedo hacer?',
-    answer: 'Intenta cerrar otras pestañas del navegador, limpiar la caché o usar una conexión a internet más estable. Si el problema persiste, contáctanos con detalles de tu dispositivo y navegador.',
-  },
-  {
-    category: 'tecnico',
-    question: '¿Cómo reporto un bug o problema?',
-    answer: 'Puedes reportar bugs a través de la página de Contacto o enviando un correo a kansino21.service@gmail.com. Incluye una descripción del problema, tu dispositivo y navegador.',
-  },
-];
-
-const categories: { key: FAQCategory | 'todas'; label: string }[] = [
-  { key: 'todas', label: 'Todas' },
-  { key: 'general', label: 'General' },
-  { key: 'cuenta', label: 'Cuenta' },
-  { key: 'juego', label: 'Juego' },
-  { key: 'monedas', label: 'Monedas' },
-  { key: 'tecnico', label: 'Técnico' },
-];
+const categories = ['Todos', ...getFAQCategories()];
 
 export function FAQ() {
   useLayoutEffect(() => {
@@ -137,10 +15,10 @@ export function FAQ() {
     return () => resetSEO();
   }, []);
 
-  const [activeCategory, setActiveCategory] = useState<FAQCategory | 'todas'>('todas');
+  const [activeCategory, setActiveCategory] = useState<string>('Todos');
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  const filtered = activeCategory === 'todas'
+  const filtered = activeCategory === 'Todos'
     ? faqData
     : faqData.filter(f => f.category === activeCategory);
 
@@ -193,15 +71,15 @@ export function FAQ() {
         <div className="flex flex-wrap gap-2">
           {categories.map(cat => (
             <button
-              key={cat.key}
-              onClick={() => { setActiveCategory(cat.key); setOpenIndex(null); }}
+              key={cat}
+              onClick={() => { setActiveCategory(cat); setOpenIndex(null); }}
               className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                activeCategory === cat.key
+                activeCategory === cat
                   ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg'
                   : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20'
               }`}
             >
-              {cat.label}
+              {cat}
             </button>
           ))}
         </div>

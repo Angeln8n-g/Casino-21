@@ -1,86 +1,18 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO } from '../utils/seo';
+import { blogPosts, getBlogCategories, getPostsByCategory } from '../data/blog-posts';
 
-interface BlogArticle {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  date: string;
-  readTime: string;
-  image: string;
-  slug: string;
-}
+const CATEGORIES = ['Todos', ...getBlogCategories()];
 
-const ARTICLES: BlogArticle[] = [
-  {
-    id: '1',
-    title: 'Guía Completa del 21: Estrategias para Principiantes',
-    excerpt: 'Aprende las reglas básicas y las primeras estrategias para empezar a ganar partidas en Kasino21.',
-    category: 'Guías',
-    date: '2026-05-15',
-    readTime: '5 min',
-    image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=800',
-    slug: 'guia-21-principiantes',
-  },
-  {
-    id: '2',
-    title: 'Cómo Funciona el Sistema ELO en Kasino21',
-    excerpt: 'Descubre cómo se calcula tu puntuación ELO y cómo afecta a tus emparejamientos en partidas ranked.',
-    category: 'Mecánicas',
-    date: '2026-05-10',
-    readTime: '4 min',
-    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800',
-    slug: 'sistema-elo-kasino21',
-  },
-  {
-    id: '3',
-    title: 'Las 5 Mejores Formaciones para Ganar',
-    excerpt: 'Analizamos las combinaciones de cartas más efectivas y cuándo usarlas durante la partida.',
-    category: 'Estrategia',
-    date: '2026-05-05',
-    readTime: '6 min',
-    image: 'https://images.unsplash.com/photo-1603484477859-abe6a73f9366?auto=format&fit=crop&q=80&w=800',
-    slug: 'mejores-formaciones-ganar',
-  },
-  {
-    id: '4',
-    title: 'Novedades de la Temporada 3: Nuevos Torneos',
-    excerpt: 'Conoce los nuevos formatos de torneo, recompensas exclusivas y cambios en el sistema de ligas.',
-    category: 'Noticias',
-    date: '2026-04-28',
-    readTime: '3 min',
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800',
-    slug: 'temporada-3-nuevos-torneos',
-  },
-  {
-    id: '5',
-    title: 'Misiones Diarias: Cómo Maximizar tus Recompensas',
-    excerpt: 'Estrategias para completar las misiones diarias de forma eficiente y acumular más monedas y XP.',
-    category: 'Guías',
-    date: '2026-04-20',
-    readTime: '4 min',
-    image: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&q=80&w=800',
-    slug: 'misiones-diarias-recompensas',
-  },
-  {
-    id: '6',
-    title: 'Historia del 21: Del Casino al Digital',
-    excerpt: 'Un recorrido por la evolución del juego de cartas 21, desde sus orígenes hasta la era digital.',
-    category: 'Historia',
-    date: '2026-04-15',
-    readTime: '7 min',
-    image: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&q=80&w=800',
-    slug: 'historia-del-21',
-  },
-];
-
-const CATEGORIES = ['Todos', 'Guías', 'Estrategia', 'Noticias', 'Mecánicas', 'Historia'];
-
-function getArticleUrl(slug: string): string {
-  return `/blog/${slug}`;
-}
+const DEFAULT_IMAGES: Record<string, string> = {
+  'Guías': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=800',
+  'Estrategia': 'https://images.unsplash.com/photo-1603484477859-abe6a79798f07?auto=format&fit=crop&q=80&w=800',
+  'Noticias': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800',
+  'Mecánicas': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800',
+  'Historia': 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&q=80&w=800',
+  'Consejos': 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&q=80&w=800',
+};
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -100,8 +32,8 @@ export function Blog() {
   const [activeCategory, setActiveCategory] = useState('Todos');
 
   const filteredArticles = activeCategory === 'Todos'
-    ? ARTICLES
-    : ARTICLES.filter(a => a.category === activeCategory);
+    ? blogPosts
+    : getPostsByCategory(activeCategory);
 
   const categoryColors: Record<string, string> = {
     'Guías': 'from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400',
@@ -177,7 +109,7 @@ export function Blog() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredArticles.map(article => (
             <article
-              key={article.id}
+              key={article.slug}
               className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] hover:border-casino-gold/50 hover:shadow-[0_0_25px_rgba(234,179,8,0.15)] hover:-translate-y-1 transition-all duration-300"
             >
               {/* Image */}
@@ -185,7 +117,7 @@ export function Blog() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent z-10" />
                 <div
                   className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-500"
-                  style={{ backgroundImage: `url(${article.image})` }}
+                  style={{ backgroundImage: `url(${DEFAULT_IMAGES[article.category] || DEFAULT_IMAGES['Noticias']})` }}
                 />
                 {/* Category badge */}
                 <div className="absolute top-4 left-4 z-20">
@@ -200,7 +132,7 @@ export function Blog() {
                 <div className="flex items-center gap-3 text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3">
                   <time>{formatDate(article.date)}</time>
                   <span className="w-1 h-1 rounded-full bg-gray-600" />
-                  <span>{article.readTime} lectura</span>
+                  <span>{article.readTime} min lectura</span>
                 </div>
 
                 <h2 className="text-lg font-display font-black text-white mb-2 group-hover:text-casino-gold transition-colors leading-tight line-clamp-2">
@@ -212,7 +144,7 @@ export function Blog() {
                 </p>
 
                 <a
-                  href={getArticleUrl(article.slug)}
+                  href={`/blog/${article.slug}`}
                   className="inline-flex items-center gap-2 text-xs font-bold text-casino-gold uppercase tracking-wider group-hover:gap-3 transition-all"
                 >
                   Leer más
