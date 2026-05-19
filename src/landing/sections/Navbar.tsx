@@ -4,7 +4,7 @@ import brand21Icon from '../../Public/brand21Icon-164.webp';
 const NAV_LINKS = [
   { href: '/blog', label: 'Blog' },
   { href: '/faq', label: 'FAQ' },
-  { href: '/como-jugar', label: 'C贸mo Jugar' },
+  { href: '/como-jugar', label: 'Cómo Jugar' },
   { href: '/about', label: 'Sobre Nosotros' },
   { href: '/contact', label: 'Contacto' },
 ];

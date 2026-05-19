@@ -75,13 +75,13 @@ export function Contact() {
             <ContactCard
               icon="🎮"
               title="Soporte del Juego"
-              email="kansino21.service@gmail.com"
+              email="kasino21.service@gmail.com"
               desc="Problemas técnicos, bugs, cuentas"
             />
             <ContactCard
               icon="💼"
               title="Negocios y Publicidad"
-              email="kasino.21@gmail.com"
+              email="kasino21.service@gmail.com"
               desc="Consultas generales, colaboraciones"
             />
           </div>

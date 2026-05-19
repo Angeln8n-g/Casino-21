@@ -60,7 +60,7 @@ export function About() {
 
         <Section icon="👤" title="¿Quién está detrás de Kasino21?">
           <p>
-            Kasino21 fue creado por <strong>Angel</strong>, un desarrollador apasionado por los juegos de cartas
+            Kasino21 fue creado por <strong>Angel Santana</strong>, un desarrollador apasionado por los juegos de cartas
             y la programación. La idea nació de querer tener un juego de 21 digital que pudiera compartir
             con amigos y la comunidad hispanohablante, sin necesidad de descargar nada.
           </p>
@@ -139,7 +139,7 @@ export function About() {
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Escríbenos</p>
               <a href="mailto:kasino.21@gmail.com" className="text-casino-gold hover:text-white transition-colors font-mono text-sm">
-                kasino.21@gmail.com
+                kasino21.service@gmail.com
               </a>
               <p className="text-xs text-gray-600 mt-1">Respondemos en 24-48 horas</p>
             </div>
