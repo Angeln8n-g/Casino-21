@@ -19,6 +19,7 @@ const ComoJugar = lazy(() => import('./components/ComoJugar').then(m => ({ defau
 const About = lazy(() => import('./components/About').then(m => ({ default: m.About })));
 const Contact = lazy(() => import('./components/Contact').then(m => ({ default: m.Contact })));
 const FAQ = lazy(() => import('./components/FAQ').then(m => ({ default: m.FAQ })));
+const Blog = lazy(() => import('./components/Blog').then(m => ({ default: m.Blog })));
 import { CookieConsent } from './components/CookieConsent';
 
 // Minimal loading fallback matching the app's existing design
@@ -169,6 +170,7 @@ export default function App() {
   if (pathname === '/about') return <Suspense fallback={<LoadingFallback />}><About /></Suspense>;
   if (pathname === '/contact') return <Suspense fallback={<LoadingFallback />}><Contact /></Suspense>;
   if (pathname === '/faq') return <Suspense fallback={<LoadingFallback />}><FAQ /></Suspense>;
+  if (pathname === '/blog') return <Suspense fallback={<LoadingFallback />}><Blog /></Suspense>;
 
   // Global event listener for button haptics
   useEffect(() => {
