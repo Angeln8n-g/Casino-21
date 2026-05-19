@@ -16,6 +16,8 @@ const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy').then
 const TermsOfService = lazy(() => import('./components/legal/TermsOfService').then(m => ({ default: m.TermsOfService })));
 const CookiePolicy = lazy(() => import('./components/legal/CookiePolicy').then(m => ({ default: m.CookiePolicy })));
 const ComoJugar = lazy(() => import('./components/ComoJugar').then(m => ({ default: m.ComoJugar })));
+const About = lazy(() => import('./components/About').then(m => ({ default: m.About })));
+const Contact = lazy(() => import('./components/Contact').then(m => ({ default: m.Contact })));
 import { CookieConsent } from './components/CookieConsent';
 
 // Minimal loading fallback matching the app's existing design
@@ -163,6 +165,7 @@ export default function App() {
   if (pathname === '/terms')   return <Suspense fallback={<LoadingFallback />}><TermsOfService /></Suspense>;
   if (pathname === '/cookies') return <Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense>;
   if (pathname === '/como-jugar') return <Suspense fallback={<LoadingFallback />}><ComoJugar /></Suspense>;
+  if (pathname === '/about') return <Suspense fallback={<LoadingFallback />}><About /></Suspense>;
 
   // Global event listener for button haptics
   useEffect(() => {
