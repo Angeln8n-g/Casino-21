@@ -16,6 +16,7 @@ const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy').then
 const TermsOfService = lazy(() => import('./components/legal/TermsOfService').then(m => ({ default: m.TermsOfService })));
 const CookiePolicy = lazy(() => import('./components/legal/CookiePolicy').then(m => ({ default: m.CookiePolicy })));
 const ComoJugar = lazy(() => import('./components/ComoJugar').then(m => ({ default: m.ComoJugar })));
+import { CookieConsent } from './components/CookieConsent';
 
 // Minimal loading fallback matching the app's existing design
 function LoadingFallback() {
@@ -194,6 +195,7 @@ export default function App() {
               <AppContent />
             </Suspense>
           </div>
+          <CookieConsent />
         </GameProvider>
       </AudioProvider>
     </AuthProvider>
