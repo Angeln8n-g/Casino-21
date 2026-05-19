@@ -9,22 +9,24 @@ Allow: /privacy
 Allow: /terms
 Allow: /cookies
 Allow: /como-jugar
+Allow: /blog
+Allow: /blog/
+Allow: /faq
+Allow: /about
+Allow: /contact
 
-# Block internal app routes that shouldn't be indexed
+# Block internal app routes and API endpoints
 Disallow: /api/
-Disallow: /assets/
-Disallow: /*.js$
-Disallow: /*.css$
+Disallow: /test-estadisticas.html
+
+# NOTE: Do NOT block *.js or *.css — Google needs these
+# to render the SPA correctly for indexing.
 
 # Sitemap location
 Sitemap: https://kasino21.com/sitemap.xml
 
 # Crawl-delay (be kind to the server)
 Crawl-delay: 1
-
-# Dev/test pages — noindex
-User-agent: *
-Disallow: /test-estadisticas.html
 
 # Google Images
 User-agent: Googlebot-Image

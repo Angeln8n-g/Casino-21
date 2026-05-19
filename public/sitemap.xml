@@ -18,12 +18,55 @@
     <priority>0.6</priority>
   </url>
 
-  <!-- Blog -->
+  <!-- Blog Index -->
   <url>
     <loc>https://kasino21.com/blog</loc>
     <lastmod>2026-05-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+
+  <!-- Blog Posts -->
+  <url>
+    <loc>https://kasino21.com/blog/que-es-el-veintiuno-reglas-basicas</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kasino21.com/blog/estrategia-basica-veintiuno-tabla</loc>
+    <lastmod>2026-01-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kasino21.com/blog/gestion-bankroll-juego-responsable</loc>
+    <lastmod>2026-02-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kasino21.com/blog/historia-veintiuno-origen-evolucion</loc>
+    <lastmod>2026-02-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kasino21.com/blog/variantes-veintiuno-reglas-especiales</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kasino21.com/blog/psicologia-juego-cartas-control-emociones</loc>
+    <lastmod>2026-03-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 
   <!-- FAQ -->

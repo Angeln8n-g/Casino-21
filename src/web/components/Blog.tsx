@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
-import { updateSEO, resetSEO } from '../utils/seo';
+import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { blogPosts, getBlogCategories, getPostsByCategory } from '../data/blog-posts';
 
 const CATEGORIES = ['Todos', ...getBlogCategories()];
@@ -26,7 +26,30 @@ export function Blog() {
       description: 'Lee guías, estrategias y noticias sobre Kasino21. Aprende a jugar mejor, descubre mecánicas del juego y mantente al día con las novedades.',
       canonical: 'https://kasino21.com/blog',
     });
-    return () => resetSEO();
+
+    // CollectionPage + ItemList structured data
+    injectJSONLD('blog-collection', {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      'name': 'Blog de Kasino21',
+      'description': 'Guías, estrategias y noticias sobre el juego de cartas 21 online.',
+      'url': 'https://kasino21.com/blog',
+      'inLanguage': 'es',
+      'mainEntity': {
+        '@type': 'ItemList',
+        'itemListElement': blogPosts.map((post, index) => ({
+          '@type': 'ListItem',
+          'position': index + 1,
+          'url': `https://kasino21.com/blog/${post.slug}`,
+          'name': post.title,
+        })),
+      },
+    });
+
+    return () => {
+      resetSEO();
+      removeJSONLD('blog-collection');
+    };
   }, []);
 
   const [activeCategory, setActiveCategory] = useState('Todos');

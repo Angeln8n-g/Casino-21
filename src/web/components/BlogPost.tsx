@@ -1,6 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from './LogoK21';
-import { updateSEO, resetSEO } from '../utils/seo';
+import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { getBlogPostBySlug, getRelatedPosts } from '../data/blog-posts';
 
 export function BlogPost() {
@@ -15,8 +15,45 @@ export function BlogPost() {
         description: post.excerpt,
         canonical: `https://kasino21.com/blog/${post.slug}`,
       });
+
+      // BlogPosting structured data for article rich results
+      injectJSONLD('blog-post', {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        'headline': post.title,
+        'description': post.excerpt,
+        'datePublished': post.date,
+        'dateModified': post.date,
+        'url': `https://kasino21.com/blog/${post.slug}`,
+        'inLanguage': 'es',
+        'mainEntityOfPage': {
+          '@type': 'WebPage',
+          '@id': `https://kasino21.com/blog/${post.slug}`,
+        },
+        'author': {
+          '@type': 'Organization',
+          'name': 'KASINO21',
+          'url': 'https://kasino21.com',
+        },
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'KASINO21',
+          'url': 'https://kasino21.com',
+          'logo': {
+            '@type': 'ImageObject',
+            'url': 'https://kasino21.com/icons/icon-512x512.png',
+          },
+        },
+        'image': 'https://kasino21.com/og-image.png',
+        'articleSection': post.category,
+        'wordCount': post.content.replace(/<[^>]*>/g, '').split(/\s+/).length,
+        'timeRequired': `PT${post.readTime}M`,
+      });
     }
-    return () => resetSEO();
+    return () => {
+      resetSEO();
+      removeJSONLD('blog-post');
+    };
   }, [post]);
 
   if (!post) {

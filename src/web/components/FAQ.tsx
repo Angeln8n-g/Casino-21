@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
-import { updateSEO, resetSEO } from '../utils/seo';
+import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { faqData, getFAQCategories } from '../data/faq-data';
 
 const categories = ['Todos', ...getFAQCategories()];
@@ -12,7 +12,25 @@ export function FAQ() {
       description: 'Resuelve tus dudas sobre Kasino21. Cómo jugar, crear cuenta, monedas virtuales, soporte técnico y más.',
       canonical: 'https://kasino21.com/faq',
     });
-    return () => resetSEO();
+
+    // FAQPage structured data for rich snippets
+    injectJSONLD('faq-page', {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': faqData.map(faq => ({
+        '@type': 'Question',
+        'name': faq.question,
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': faq.answer,
+        },
+      })),
+    });
+
+    return () => {
+      resetSEO();
+      removeJSONLD('faq-page');
+    };
   }, []);
 
   const [activeCategory, setActiveCategory] = useState<string>('Todos');

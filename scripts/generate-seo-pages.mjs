@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { blogPosts } from '../src/web/data/blog-posts.ts';
+import { faqData } from '../src/web/data/faq-data.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = resolve(__dirname, '..', 'dist');
@@ -92,8 +93,99 @@ const PAGES = {
   },
 };
 
+// ─── Helper: Generate JSON-LD script tag ──────────────────────────────────
+function jsonLdTag(data) {
+  return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
+}
+
+// ─── Helper: Build FAQ Page structured data ──────────────────────────────
+function buildFAQSchema() {
+  return jsonLdTag({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqData.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  });
+}
+
+// ─── Helper: Build Blog Collection structured data ───────────────────────
+function buildBlogCollectionSchema() {
+  return jsonLdTag({
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Blog de Kasino21',
+    description: 'Guías, estrategias y noticias sobre el juego de cartas 21 online.',
+    url: 'https://kasino21.com/blog',
+    inLanguage: 'es',
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: blogPosts.map((post, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `https://kasino21.com/blog/${post.slug}`,
+        name: post.title,
+      })),
+    },
+  });
+}
+
+// ─── Helper: Build BlogPosting structured data ───────────────────────────
+function buildBlogPostSchema(post) {
+  return jsonLdTag({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.date,
+    dateModified: post.date,
+    url: `https://kasino21.com/blog/${post.slug}`,
+    inLanguage: 'es',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://kasino21.com/blog/${post.slug}`,
+    },
+    author: {
+      '@type': 'Organization',
+      name: 'KASINO21',
+      url: 'https://kasino21.com',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'KASINO21',
+      url: 'https://kasino21.com',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://kasino21.com/icons/icon-512x512.png',
+      },
+    },
+    image: 'https://kasino21.com/og-image.png',
+    articleSection: post.category,
+    wordCount: post.content.replace(/<[^>]*>/g, '').split(/\s+/).length,
+  });
+}
+
+// ─── Helper: Get extra structured data for a route ───────────────────────
+function getExtraSchemaForRoute(route) {
+  if (route === 'faq') return buildFAQSchema();
+  if (route === 'blog') return buildBlogCollectionSchema();
+  return '';
+}
+
+// ─── Helper: Inject structured data before </head> ──────────────────────
+function injectSchema(html, schemaTag) {
+  if (!schemaTag) return html;
+  return html.replace('</head>', `    ${schemaTag}\n  </head>`);
+}
+
 const indexHtml = readFileSync(`${distDir}/index.html`, 'utf-8');
 
+// ─── Generate static SEO pages ───────────────────────────────────────────
 for (const [route, meta] of Object.entries(PAGES)) {
   let html = indexHtml;
 
@@ -151,13 +243,17 @@ for (const [route, meta] of Object.entries(PAGES)) {
     `$1${meta.title}$2`,
   );
 
+  // Inject route-specific structured data
+  const extraSchema = getExtraSchemaForRoute(route);
+  html = injectSchema(html, extraSchema);
+
   writeFileSync(`${distDir}/${route}.html`, html, 'utf-8');
   console.log(`✓ Generated ${distDir}/${route}.html`);
 }
 
 console.log('SEO pages generated successfully.');
 
-// Generate static HTML for each blog post
+// ─── Generate static HTML for each blog post ─────────────────────────────
 for (const post of blogPosts) {
   let html = indexHtml;
 
@@ -201,10 +297,20 @@ for (const post of blogPosts) {
     `<meta name="twitter:description" content="${post.excerpt}" />`,
   );
 
+  // Enhance noscript: include article content as plain text for crawlers
+  const plainTextContent = post.content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 2000);
+
   html = html.replace(
-    /(<noscript[\s\S]*?<h1[^>]*>).*?(<\/h1>)/,
-    `$1${post.title}$2`,
+    /(<noscript[\s\S]*?<h1[^>]*>).*?(<\/h1>[\s\S]*?<h2[^>]*>).*?(<\/h2>[\s\S]*?<p[^>]*>).*?(<\/p>)/,
+    `$1${post.title}$2${post.category} · ${post.readTime} min lectura$3${plainTextContent}$4`,
   );
+
+  // Inject BlogPosting structured data
+  html = injectSchema(html, buildBlogPostSchema(post));
 
   // Write to dist/blog/<slug>.html
   const blogDir = `${distDir}/blog`;

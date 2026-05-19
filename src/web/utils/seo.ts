@@ -70,6 +70,34 @@ export function resetSEO(): void {
   });
 }
 
+// ─── JSON-LD Structured Data ────────────────────────────────────────
+
+/**
+ * Injects a JSON-LD structured data script into the document <head>.
+ * Each script is identified by a unique `data-seo-id` to allow cleanup.
+ * Call removeJSONLD(id) on component unmount to clean up.
+ */
+export function injectJSONLD(id: string, data: Record<string, unknown>): void {
+  // Remove existing script with same id to avoid duplicates
+  removeJSONLD(id);
+
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.setAttribute('data-seo-id', id);
+  script.textContent = JSON.stringify(data);
+  document.head.appendChild(script);
+}
+
+/**
+ * Removes a previously injected JSON-LD script by its data-seo-id.
+ */
+export function removeJSONLD(id: string): void {
+  const existing = document.querySelector(`script[data-seo-id="${id}"]`);
+  if (existing) {
+    existing.remove();
+  }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function setMeta(name: string, content: string): void {
