@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "build": "vite build && node scripts/generate-seo-pages.mjs",
+    "build": "vite build && npx tsx scripts/generate-seo-pages.mjs",
     "build:server": "npm --prefix server run build",
     "build:prod": "npm run build && npm run build:server",
     "start": "vite preview",
