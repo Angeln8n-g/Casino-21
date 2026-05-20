@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}'],
+          globIgnores: ['**/source-icon.png'],
           maximumFileSizeToCacheInBytes: 50 * 1024 * 1024, // 50MB limit
           runtimeCaching: [
             {
