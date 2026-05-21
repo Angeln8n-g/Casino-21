@@ -36,6 +36,11 @@ export function clearCookieConsent(): void {
   }
 }
 
+export function hasAdConsent(): boolean {
+  const consent = getCookieConsent();
+  return consent?.accepted === true;
+}
+
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
