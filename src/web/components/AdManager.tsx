@@ -227,8 +227,7 @@ function createModal(
 /**
  * Marks the ad pipeline as initialised.
  *
- * The AdSense Auto Ads script lives in index.html; this function acts as a
- * programmatic handshake so the display helpers know the script is available.
+ * Checks cookie consent and initializes the Adsterra provider.
  * Safe to call multiple times — subsequent invocations are no-ops.
  */
 export const initializeAds = (): void => {
@@ -244,7 +243,7 @@ export const initializeAds = (): void => {
 /**
  * Shows a full-screen interstitial-style ad modal.
  *
- * Displays an AdSense display unit in a centred card overlay. The "Continue"
+ * Displays an Adsterra interstitial in a centred card overlay. The "Continue"
  * button becomes clickable after 5 seconds. Enforces the global 60s cooldown.
  *
  * Consumers:
