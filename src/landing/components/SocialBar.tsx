@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { getCookieConsent } from '../../web/components/CookieConsent';
+import { trackAdEvent } from '../../web/services/analytics';
 
 export default function SocialBar() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -15,10 +16,15 @@ export default function SocialBar() {
     script.dataset.cfasync = 'false';
     containerRef.current.appendChild(script);
 
+    const timeout = setTimeout(() => {
+      trackAdEvent('ad_social_bar_impression', 0.001);
+    }, 2000);
+
     return () => {
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
       }
+      clearTimeout(timeout);
     };
   }, [consent?.accepted]);
 

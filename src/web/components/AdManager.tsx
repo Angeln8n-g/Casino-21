@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { adsterraProvider, AdConsent } from '../services/adProviders';
 import { getCookieConsent } from './CookieConsent';
+import { trackAdEvent } from '../services/analytics';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,6 +97,7 @@ const AdModal: React.FC<AdModalProps> = ({
         if (adRef.current && adRef.current.offsetHeight === 0 && mounted) {
           setBlocked(true);
           state.isAdBlocked = true;
+          trackAdEvent('ad_blocker_detected');
         }
       }, 1500);
     }, 50);
@@ -253,6 +255,7 @@ export const initializeAds = (): void => {
  */
 export const showInterstitialAd = (): void => {
   if (!state.isLoaded || state.isAdBlocked || !cooldownOk()) return;
+  trackAdEvent('ad_interstitial_shown', 0.01);
 
   createModal(
     {
@@ -289,6 +292,7 @@ export const showRewardedAd = (
     onReward(rewardAmount);
     return;
   }
+  trackAdEvent('ad_rewarded_shown', 0.02);
 
   createModal(
     {
@@ -300,7 +304,10 @@ export const showRewardedAd = (
       closeLabel: `Reclamar +${rewardAmount} monedas`,
       showCountdown: true,
     },
-    () => onReward(rewardAmount)
+    () => {
+      trackAdEvent('ad_rewarded_claimed', 0.03);
+      onReward(rewardAmount);
+    }
   );
 };
 
@@ -336,6 +343,7 @@ export const showGateAdForBots = (onClose: () => void): void => {
     onClose();
     return;
   }
+  trackAdEvent('ad_gate_shown', 0.01);
 
   createModal(
     {
