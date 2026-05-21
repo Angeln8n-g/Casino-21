@@ -6,7 +6,7 @@ export function CookiePolicy() {
   useLayoutEffect(() => {
     updateSEO({
       title: 'Política de Cookies — KASINO21 | Juego de Cartas Online',
-      description: 'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales, analíticas de Google Analytics y publicitarias de Google AdSense. Cumplimiento GDPR/ePrivacy.',
+      description: 'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales, analíticas de Google Analytics y publicitarias de Adsterra. Cumplimiento GDPR/ePrivacy.',
       canonical: 'https://kasino21.com/cookies',
     });
     return () => resetSEO();
@@ -49,7 +49,7 @@ export function CookiePolicy() {
           </h1>
           <p className="text-gray-400 text-base max-w-2xl leading-relaxed">
             Esta Política de Cookies explica cómo KASINO21 utiliza cookies y tecnologías de seguimiento similares,
-            requerida por la ley de la UE (GDPR/Directiva ePrivacy) para sitios que usan Google AdSense.
+            requerida por la ley de la UE (GDPR/Directiva ePrivacy) para sitios que usan Adsterra.
           </p>
           <p className="text-[11px] text-gray-600 mt-4 font-mono">
             Última actualización: 11 de mayo de 2026 · Requerido para cumplimiento UE
@@ -102,15 +102,12 @@ export function CookiePolicy() {
             />
 
             <CookieTable
-              category="Publicitarias (Google AdSense)"
+              category="Publicitarias (Adsterra)"
               color="amber"
               required={false}
-              description="Google AdSense coloca cookies para mostrar anuncios relevantes que ayudan a financiar KASINO21 como juego gratuito. Estas cookies pueden recopilar datos sobre tus hábitos de navegación en otros sitios."
+              description="Adsterra coloca cookies para mostrar anuncios relevantes que ayudan a financiar KASINO21 como juego gratuito. Estas cookies pueden recopilar datos sobre tus hábitos de navegación en otros sitios."
               cookies={[
-                { name: '__gads / __gpi', provider: 'Google AdSense', purpose: 'Registra impresiones de anuncios y evita la duplicación', duration: '13 meses' },
-                { name: 'IDE', provider: 'Google DoubleClick', purpose: 'Registra e informa interacciones con anuncios para seguimiento de conversiones', duration: '13 meses' },
-                { name: 'NID / ANID', provider: 'Google', purpose: 'Almacena preferencias del usuario para personalización de anuncios', duration: '6 meses' },
-                { name: 'DSID', provider: 'Google', purpose: 'Identifica usuarios autenticados para segmentación entre dispositivos', duration: '2 semanas' },
+                { name: 'adsterra_uid / ast_session', provider: 'Adsterra', purpose: 'Control de frecuencia de anuncios y segmentación básica', duration: '30 días' },
               ]}
             />
           </div>
@@ -134,10 +131,9 @@ export function CookiePolicy() {
             <ControlCard
               icon="🎯"
               title="Personalización de Anuncios"
-              description="Exclúyete de la publicidad personalizada de Google o gestiona tu configuración de anuncios:"
+              description="Exclúyete de la publicidad personalizada de Adsterra o gestiona tu configuración de anuncios:"
               links={[
-                { label: 'Configuración de Anuncios de Google', url: 'https://adssettings.google.com' },
-                { label: 'Exclusión de Google Analytics', url: 'https://tools.google.com/dlpage/gaoptout' },
+                { label: 'Privacidad de Adsterra', url: 'https://adsterra.com/privacy-policy/' },
                 { label: 'Tus Opciones Online (UE)', url: 'https://www.youronlinechoices.com' },
                 { label: 'Exclusión NAI (EE. UU.)', url: 'https://optout.networkadvertising.org' },
               ]}
@@ -159,29 +155,22 @@ export function CookiePolicy() {
           </div>
         </CookieSection>
 
-        <CookieSection icon="🔗" title="Uso de Cookies por Google">
+        <CookieSection icon="🔗" title="Cookies de Publicidad">
           <p>
-            KASINO21 utiliza Google AdSense para mostrar anuncios. Google utiliza cookies para servir anuncios basados
-            en tus visitas previas a KASINO21 u otros sitios web en internet. Puedes obtener más información sobre
-            cómo Google utiliza los datos de cookies cuando usas los sitios o aplicaciones de sus socios:
+            KASINO21 utiliza Adsterra para mostrar anuncios. Adsterra utiliza cookies para servir anuncios relevantes
+            que ayudan a financiar KASINO21 como juego gratuito.
           </p>
-          <div className="mt-4 space-y-3">
-            <ExternalLinkRow
-              title="Privacidad y Términos de Google"
-              url="https://policies.google.com/privacy"
-              desc="Política de privacidad completa de Google que explica todas sus prácticas de datos"
-            />
-            <ExternalLinkRow
-              title="Cómo usa Google las cookies en publicidad"
-              url="https://policies.google.com/technologies/ads"
-              desc="Explicación detallada de las cookies publicitarias utilizadas por Google AdSense"
-            />
-            <ExternalLinkRow
-              title="Tipos de cookies de Google"
-              url="https://policies.google.com/technologies/cookies"
-              desc="Desglose completo de todas las cookies que Google utiliza y sus propósitos"
-            />
-          </div>
+          <p className="text-gray-400 text-sm mt-2">
+            Puedes optar por no recibir publicidad personalizada visitando{' '}
+            <a
+              href="https://adsterra.com/privacy-policy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-yellow-400 hover:underline"
+            >
+              la política de privacidad de Adsterra
+            </a>.
+          </p>
         </CookieSection>
 
         <CookieSection icon="🔄" title="Cambios a Esta Política">

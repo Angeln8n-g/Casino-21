@@ -6,7 +6,7 @@ export function PrivacyPolicy() {
   useLayoutEffect(() => {
     updateSEO({
       title: 'Política de Privacidad — KASINO21 | Juego de Cartas Online',
-      description: 'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, Google AdSense, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
+      description: 'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, Adsterra, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
       canonical: 'https://kasino21.com/privacy',
     });
     return () => resetSEO();
@@ -73,7 +73,7 @@ export function PrivacyPolicy() {
               <strong>Datos analíticos:</strong> Estadísticas de uso anónimas a través de Google Analytics (p. ej., duración de la sesión, páginas visitadas, tipo de dispositivo). Estos datos no pueden identificarte personalmente.
             </li>
             <li>
-              <strong>Datos publicitarios:</strong> Google AdSense puede recopilar datos mediante cookies y tecnologías similares para mostrar anuncios relevantes. Consulta la Sección 4 para más detalles.
+              <strong>Datos publicitarios:</strong> Adsterra puede recopilar datos mediante cookies y tecnologías similares para mostrar anuncios relevantes. Consulta la Sección 4 para más detalles.
             </li>
           </ul>
           <p className="text-sm text-gray-500 italic mt-2">
@@ -99,7 +99,7 @@ export function PrivacyPolicy() {
             <CookieCard
               type="Publicitarias"
               color="amber"
-              items={['Personalización de Google AdSense', 'Control de frecuencia de anuncios', 'Entrega de anuncios basada en intereses']}
+              items={['Personalización de Adsterra', 'Control de frecuencia de anuncios', 'Entrega de anuncios basada en intereses']}
               canDisable={true}
             />
           </div>
@@ -115,7 +115,7 @@ export function PrivacyPolicy() {
             <li>Guardar y mostrar tu progreso, rango y logros en el juego</li>
             <li>Facilitar el emparejamiento multijugador y las sesiones de juego en tiempo real</li>
             <li>Analizar patrones de uso para mejorar la experiencia de juego</li>
-            <li>Mostrar anuncios relevantes a través de Google AdSense</li>
+            <li>Mostrar anuncios relevantes a través de Adsterra</li>
             <li>Enviar correos transaccionales (p. ej., restablecimiento de contraseña) — sin correos de marketing</li>
           </ul>
           <p className="mt-3 text-sm text-gray-500 italic">
@@ -127,9 +127,9 @@ export function PrivacyPolicy() {
           <p>KASINO21 utiliza los siguientes servicios de terceros, cada uno con sus propias políticas de privacidad:</p>
           <div className="space-y-3 mt-4">
             <ThirdPartyRow
-              name="Google AdSense"
+              name="Adsterra"
               purpose="Publicidad contextual para mantener el juego gratuito"
-              url="https://policies.google.com/technologies/ads"
+              url="https://adsterra.com/privacy-policy/"
             />
             <ThirdPartyRow
               name="Google Analytics"

@@ -143,7 +143,7 @@ export function TermsOfService() {
 
         <ToSSection icon="📢" number="6" title="Anuncios y Monetización">
           <p>
-            Para mantener KASINO21 gratuito, mostramos anuncios proporcionados por <strong className="text-white">Google AdSense</strong>.
+            Para mantener KASINO21 gratuito, mostramos anuncios proporcionados por <strong className="text-white">Adsterra</strong>.
           </p>
           <ul className="mt-3">
             <li>Podemos usar cookies para personalizar anuncios y analizar el tráfico.</li>
