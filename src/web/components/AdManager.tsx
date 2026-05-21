@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot, Root } from 'react-dom/client';
+import { adsterraProvider, AdConsent } from '../services/adProviders';
+import { getCookieConsent } from './CookieConsent';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,7 +15,7 @@ interface AdState {
 
 interface AdModalProps {
   onClose: () => void;
-  slotId: string;
+  renderAd: (container: HTMLDivElement) => Promise<void>;
   minWaitMs: number;
   title?: string;
   subtitle?: string;
@@ -25,9 +27,6 @@ interface AdModalProps {
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-
-const ADSENSE_CLIENT = 'ca-pub-7975398244257516';
-const SLOT_PLACEHOLDER = '8983998797';
 
 const COOLDOWN_MS = 60_000;
 const REWARD_WAIT_MS = 15_000;
@@ -66,27 +65,13 @@ function markShown(): void {
   state.lastAdAt = Date.now();
 }
 
-/**
- * Calls adsbygoogle.push({}) to initialise any uninitialised <ins> elements
- * on the page. Wrapped in try/catch to gracefully handle ad blockers or
- * cases where the AdSense script hasn't loaded.
- */
-function pushAdSense(): void {
-  try {
-    (window as any).adsbygoogle = (window as any).adsbygoogle || [];
-    (window as any).adsbygoogle.push({});
-  } catch {
-    /* ad blocker or script not loaded — handled by the modal fallback */
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Internal Modal Component — imperatively rendered via createRoot
 // ---------------------------------------------------------------------------
 
 const AdModal: React.FC<AdModalProps> = ({
   onClose,
-  slotId,
+  renderAd,
   minWaitMs,
   title,
   subtitle,
@@ -101,26 +86,29 @@ const AdModal: React.FC<AdModalProps> = ({
 
   useEffect(() => {
     let detectTimer: ReturnType<typeof setTimeout>;
+    let mounted = true;
 
-    const initTimer = setTimeout(() => {
-      pushAdSense();
-
+    const initTimer = setTimeout(async () => {
+      if (adRef.current && mounted) {
+        await renderAd(adRef.current);
+      }
       detectTimer = setTimeout(() => {
-        if (adRef.current && adRef.current.offsetHeight === 0) {
+        if (adRef.current && adRef.current.offsetHeight === 0 && mounted) {
           setBlocked(true);
           state.isAdBlocked = true;
         }
       }, 1500);
     }, 50);
 
-    const closeTimer = setTimeout(() => setCanClose(true), minWaitMs);
+    const closeTimer = setTimeout(() => { if (mounted) setCanClose(true); }, minWaitMs);
 
     return () => {
       clearTimeout(initTimer);
       clearTimeout(detectTimer);
       clearTimeout(closeTimer);
+      mounted = false;
     };
-  }, [minWaitMs]);
+  }, [minWaitMs, renderAd]);
 
   useEffect(() => {
     if (!showCountdown || seconds <= 0) return;
@@ -166,16 +154,7 @@ const AdModal: React.FC<AdModalProps> = ({
               </p>
             </div>
           ) : (
-            <div ref={adRef} className="w-full flex justify-center">
-              <ins
-                className="adsbygoogle"
-                style={{ display: 'block', width: '100%' }}
-                data-ad-client={ADSENSE_CLIENT}
-                data-ad-slot={slotId}
-                data-ad-format="autorelaxed"
-                data-full-width-responsive="true"
-              />
-            </div>
+            <div ref={adRef} className="w-full flex justify-center min-h-[200px]" />
           )}
         </div>
 
@@ -254,6 +233,10 @@ function createModal(
  */
 export const initializeAds = (): void => {
   if (!state.isLoaded) {
+    const consentData = getCookieConsent();
+    const consent: AdConsent = !consentData ? 'unknown'
+      : consentData.accepted ? 'accepted' : 'rejected';
+    adsterraProvider.init(consent);
     state.isLoaded = true;
   }
 };
@@ -274,16 +257,14 @@ export const showInterstitialAd = (): void => {
 
   createModal(
     {
-      slotId: SLOT_PLACEHOLDER,
+      renderAd: (container) => adsterraProvider.showInterstitial(container),
       minWaitMs: INTERSTITIAL_WAIT_MS,
       title: 'KASINO21',
       subtitle: 'Gracias por apoyar el juego',
       waitMsg: 'La publicidad nos ayuda a mantener el juego gratis...',
       closeLabel: 'Continuar',
     },
-    () => {
-      /* no additional callback needed for interstitial */
-    }
+    () => { /* no additional callback */ }
   );
 };
 
@@ -312,7 +293,7 @@ export const showRewardedAd = (
 
   createModal(
     {
-      slotId: SLOT_PLACEHOLDER,
+      renderAd: (container) => adsterraProvider.showRewarded(container),
       minWaitMs: REWARD_WAIT_MS,
       title: 'Mensaje Patrocinado',
       subtitle: `Mira el anuncio para ganar ${rewardAmount} monedas`,
@@ -359,7 +340,7 @@ export const showGateAdForBots = (onClose: () => void): void => {
 
   createModal(
     {
-      slotId: SLOT_PLACEHOLDER,
+      renderAd: (container) => adsterraProvider.showInterstitial(container),
       minWaitMs: INTERSTITIAL_WAIT_MS,
       title: 'Jugar contra el Bot',
       subtitle: `Mira el anuncio para desbloquear ${BOT_GAMES} partidas`,
