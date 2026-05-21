@@ -99,9 +99,9 @@ export default defineConfig(({ mode }) => {
           // Images: self + Supabase Storage + Unsplash (used in EventsPage)
           `img-src 'self' data: blob: https://${SUPABASE_HOST} https://images.unsplash.com https://api.dicebear.com`,
           // API calls + WebSocket (Supabase realtime uses wss://)
-          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.google-analytics.com https://analytics.google.com`,
+          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com https://www.google-analytics.com https://analytics.google.com https://adsterra.com`,
           // AdSense iframes + Google services
-          "frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://adservice.google.com",
+          "frame-src https://adsterra.com",
           // No plugins
           "object-src 'none'",
           // Force HTTPS in production
