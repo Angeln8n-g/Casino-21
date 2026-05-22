@@ -1,1 +1,1 @@
-adsterra.com, YOUR_PUBLISHER_ID, DIRECT
+adsterra.com, 3303062, DIRECT

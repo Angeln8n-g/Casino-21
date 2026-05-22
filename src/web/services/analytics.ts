@@ -22,7 +22,7 @@ export function trackAdEvent(
       window.gtag('event', eventName, {
         value: estimatedValue,
         currency: 'USD',
-        send_to: 'G-XXXXXXXXXX',
+        send_to: 'G-JQE3R8SW8H',
       });
     }
   } catch {
@@ -35,7 +35,7 @@ export function trackPageView(path: string): void {
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'page_view', {
         page_path: path,
-        send_to: 'G-XXXXXXXXXX',
+        send_to: 'G-JQE3R8SW8H',
       });
     }
   } catch {

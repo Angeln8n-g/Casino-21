@@ -11,7 +11,7 @@ export default function SocialBar() {
     if (!containerRef.current) return;
 
     const script = document.createElement('script');
-    script.src = `https://adsterra.com/www/delivery/asyncjs.php?zoneid=YOUR_SOCIAL_BAR_ZONE_ID`;
+    script.src = 'https://pl29515854.effectivecpmnetwork.com/db/ef/6d/dbef6d6530a7ac6860c1927ddf4bf786.js';
     script.async = true;
     script.dataset.cfasync = 'false';
     containerRef.current.appendChild(script);
