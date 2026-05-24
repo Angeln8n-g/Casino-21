@@ -88,7 +88,7 @@ export default function ContentCarousel() {
 
       {/* Floating decorative cards - static, no mouse interaction */}
       <div className="absolute inset-0 pointer-events-none select-none" aria-hidden="true" style={{ zIndex: 0 }}>
-        {['A♠', 'K♦', 'Q♥', 'J♣'].map((card, i) => (
+        {['♠','♠️', '♦','♦️', '♥️', '♥', '♣️', '♣'].map((card, i) => (
           <div
             key={card}
             className="absolute text-3xl font-black opacity-[0.015]"

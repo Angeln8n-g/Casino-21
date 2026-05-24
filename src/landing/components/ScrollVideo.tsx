@@ -48,7 +48,7 @@ export default function ScrollVideo() {
             </a>
             <a
               href="/como-jugar"
-              className="border-cyber-strong bg-white/[0.05] text-yellow-200 hover:text-yellow-400 font-bold text-sm sm:text-base px-8 py-3.5 sm:px-10 sm:py-4 rounded-2xl hover:bg-white/[0.1] transition-all duration-300 font-['Chakra_Petch'] w-full sm:w-auto text-center"
+              className="border-cyber-strong bg-white/[0.1] text-yellow-400 hover:text-yellow-400 font-bold text-sm sm:text-base px-8 py-3.5 sm:px-10 sm:py-4 rounded-2xl hover:bg-white/[0.1] transition-all duration-300 font-['Chakra_Petch'] w-full sm:w-auto text-center"
             >
               Cómo jugar
             </a>

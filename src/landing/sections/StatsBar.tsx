@@ -10,7 +10,7 @@ export default function StatsBar({ stats, loading }: Props) {
   const items = [
     { label: 'Jugadores registrados', value: loading ? '...' : stats.totalPlayers.toLocaleString() },
     { label: 'Partidas jugadas', value: loading ? '...' : stats.totalMatches.toLocaleString() },
-    { label: 'Torneos activos', value: loading ? '...' : stats.activeTournaments.toString() },
+    { label: 'Torneos activos', value: loading ? '...' : stats.activeEvents.toString() },
     { label: 'Modos de juego', value: '2' },
   ];
 

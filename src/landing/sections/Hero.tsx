@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
-const CARDS = ['A♠', 'K♥', 'Q♦', '7♣', 'J♠'];
+const CARDS = ['♠', '♥', '♦', '♣', '♠️', '♣️', '♥️', '♦️'];
 
 export default function Hero() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
