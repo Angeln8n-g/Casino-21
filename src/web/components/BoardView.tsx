@@ -77,7 +77,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
   return (
     <div
-      className={`w-full max-w-5xl rounded-2xl md:rounded-[4rem] p-3 md:p-6 ring-4 ring-black/80 transition-all relative overflow-hidden ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[400px]'} flex-1 flex flex-col`}
+      className={`w-full max-w-5xl rounded-2xl md:rounded-[4rem] p-3 md:p-6 ring-4 ring-black/80 transition-all relative overflow-hidden ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[300px] lg:min-h-[400px]'} flex-1 flex flex-col`}
       style={{
         ...boardBackgroundStyle,
         transform: isMobile ? `scale(${boardScale})` : undefined,

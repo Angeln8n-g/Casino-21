@@ -385,3 +385,205 @@
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
+
+/* ══════════════════════════════════════════════
+   CYBERPUNK / RETRO-FUTURISM EFFECTS
+   ══════════════════════════════════════════════ */
+
+/* CRT Scanlines Overlay */
+.crt-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* Neon Gold Glow */
+.neon-gold {
+  text-shadow:
+    0 0 7px rgba(251, 191, 36, 0.6),
+    0 0 20px rgba(251, 191, 36, 0.4),
+    0 0 40px rgba(251, 191, 36, 0.2);
+}
+.neon-gold-strong {
+  text-shadow:
+    0 0 7px rgba(251, 191, 36, 0.8),
+    0 0 20px rgba(251, 191, 36, 0.6),
+    0 0 50px rgba(251, 191, 36, 0.4),
+    0 0 80px rgba(251, 191, 36, 0.2);
+}
+.neon-box-gold {
+  box-shadow:
+    0 0 5px rgba(251, 191, 36, 0.3),
+    inset 0 0 5px rgba(251, 191, 36, 0.1),
+    0 0 15px rgba(251, 191, 36, 0.15);
+}
+.neon-box-gold-strong {
+  box-shadow:
+    0 0 10px rgba(251, 191, 36, 0.4),
+    inset 0 0 10px rgba(251, 191, 36, 0.15),
+    0 0 30px rgba(251, 191, 36, 0.2),
+    0 0 60px rgba(251, 191, 36, 0.1);
+}
+
+/* Cyberpunk Gold Border */
+.border-cyber {
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow:
+    0 0 5px rgba(251, 191, 36, 0.15),
+    inset 0 0 5px rgba(251, 191, 36, 0.05);
+}
+.border-cyber-strong {
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow:
+    0 0 10px rgba(251, 191, 36, 0.25),
+    inset 0 0 10px rgba(251, 191, 36, 0.1);
+}
+
+/* Power-on Screen Effect */
+@keyframes powerOn {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    filter: brightness(3) saturate(0);
+  }
+  10% {
+    clip-path: inset(0 0 0 0);
+    filter: brightness(3) saturate(0);
+  }
+  15% {
+    filter: brightness(1.5) saturate(1.5);
+  }
+  20% {
+    filter: brightness(1) saturate(1);
+  }
+  25% {
+    filter: brightness(1.2) saturate(0.5);
+  }
+  30% {
+    filter: brightness(1) saturate(1);
+  }
+  35% {
+    filter: brightness(1.1);
+  }
+  40% {
+    filter: brightness(1);
+  }
+}
+.animate-power-on {
+  animation: powerOn 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Glitch Animation */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  1% {
+    transform: translate(-2px, 1px);
+  }
+  2% {
+    transform: translate(2px, -1px);
+  }
+  3% {
+    transform: translate(0);
+  }
+  5% {
+    transform: translate(1px, -1px);
+  }
+  6% {
+    transform: translate(0);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+.animate-glitch {
+  animation: glitch 4s infinite;
+}
+.animate-glitch-fast {
+  animation: glitch 2s infinite;
+}
+
+/* Count-up utility (used with IntersectionObserver) */
+.count-up {
+  transition: opacity 0.5s ease-out;
+}
+
+/* CTA Pulse Glow */
+@keyframes ctaPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 15px rgba(251, 191, 36, 0.4),
+      0 0 30px rgba(251, 191, 36, 0.2),
+      0 0 60px rgba(251, 191, 36, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 25px rgba(251, 191, 36, 0.6),
+      0 0 50px rgba(251, 191, 36, 0.3),
+      0 0 80px rgba(251, 191, 36, 0.15);
+  }
+}
+.animate-cta-pulse {
+  animation: ctaPulse 3s ease-in-out infinite;
+}
+
+/* Holographic shimmer for leaderboard */
+@keyframes holoShimmer {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.6;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 1;
+  }
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.6;
+  }
+}
+.holo-text {
+  background: linear-gradient(90deg, rgba(251,191,36,0.5), rgba(251,191,36,0.8), rgba(251,191,36,0.5));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: holoShimmer 3s ease-in-out infinite;
+}
+
+/* Parallax card decoration */
+.parallax-card {
+  will-change: transform;
+  transition: transform 0.1s ease-out;
+}
+
+/* Scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-glitch,
+  .animate-glitch-fast,
+  .animate-cta-pulse,
+  .animate-power-on,
+  .holo-text {
+    animation: none !important;
+    transition: none !important;
+  }
+  .crt-overlay::after {
+    display: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

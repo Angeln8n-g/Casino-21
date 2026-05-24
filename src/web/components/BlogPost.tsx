@@ -2,6 +2,7 @@ import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { getBlogPostBySlug, getRelatedPosts } from '../data/blog-posts';
+import AdBanner from './AdBanner';
 
 export function BlogPost() {
   const slug = window.location.pathname.replace('/blog/', '');
@@ -126,6 +127,8 @@ export function BlogPost() {
               </a>
             </div>
 
+            <AdBanner />
+
             {/* Related Posts */}
             {related.length > 0 && (
               <div>
@@ -190,7 +193,7 @@ function BlogNotFound() {
 
 function BlogPostFooter() {
   return (
-    <footer className="mt-16 border-t border-white/5 bg-black/20">
+    <footer className="hidden md:block mt-16 border-t border-white/5 bg-black/20">
       <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <LogoK21 size={28} />

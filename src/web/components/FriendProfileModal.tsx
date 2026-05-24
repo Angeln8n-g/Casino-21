@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
 import { socketService } from '../services/socket';
+import { ChatWindow } from './ChatWindow';
 
 export interface FriendForModal {
   id: string;
@@ -143,9 +144,10 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
     setChallengeRoomId(null);
   };
 
+  const [showChat, setShowChat] = useState(false);
+
   const handleChat = () => {
-    onClose();
-    onOpenChat();
+    setShowChat(true);
   };
 
   // ── Seconds remaining label ──────────────────────────────────
@@ -156,7 +158,9 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
       <div
-        className="relative w-full max-w-sm rounded-2xl border border-white/[0.08] overflow-hidden animate-fade-in"
+        className={`relative w-full max-w-sm rounded-2xl border border-white/[0.08] overflow-hidden animate-fade-in transition-all duration-300 ${
+          showChat ? 'h-[550px] max-h-[85vh] flex flex-col' : ''
+        }`}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'linear-gradient(135deg, rgba(30,41,59,0.97) 0%, rgba(2,6,23,0.99) 100%)',
@@ -173,222 +177,270 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
           </svg>
         </button>
 
-        {/* Header Banner */}
-        <div className={`h-20 relative flex items-end px-5 pb-2 ${
-          friend.isOnline
-            ? isInRoom
-              ? 'bg-gradient-to-r from-purple-600/20 via-purple-500/10 to-purple-600/20'
-              : 'bg-gradient-to-r from-casino-emerald/20 via-casino-gold/10 to-casino-emerald/20'
-            : 'bg-gradient-to-r from-gray-700/20 via-gray-600/10 to-gray-700/20'
-        }`}>
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px)" }}
-          />
-          <span className={`relative text-[10px] uppercase tracking-[0.15em] font-bold px-2 py-0.5 rounded-full ${
-            friend.isOnline
-              ? isInRoom
-                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                : 'bg-casino-emerald/20 text-casino-emerald border border-casino-emerald/30'
-              : 'bg-gray-700/30 text-gray-500 border border-gray-600/30'
-          }`}>
-            {friend.isOnline ? (isInRoom ? '🎮 En partida' : '🟢 En línea') : '⚫ Desconectado'}
-          </span>
-        </div>
+        {showChat ? (
+          <div className="flex flex-col h-full overflow-hidden">
+            {/* Chat Header */}
+            <div className="flex items-center gap-3 px-4 py-3 bg-black/40 border-b border-white/5 shrink-0 min-h-[56px] pr-12">
+              <button
+                onClick={() => setShowChat(false)}
+                className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
+                title="Volver al perfil"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
 
-        {/* Avatar */}
-        <div className="flex justify-center -mt-10 relative z-10">
-          <div className="relative">
-            <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-casino-bg shadow-xl overflow-hidden ${
-              isHighElo ? 'text-casino-gold' : 'text-gray-300'
-            }`}>
-              {friend.equipped_avatar ? (
-                <img 
-                  src={friend.equipped_avatar} 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover" 
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
-                  }}
-                />
-              ) : friend.avatar_url ? (
-                <img 
-                  src={friend.avatar_url} 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover" 
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
-                  }}
-                />
-              ) : (
-                friend.username.charAt(0).toUpperCase()
-              )}
-            </div>
-            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-casino-bg ${
-              friend.isOnline
-                ? isInRoom ? 'bg-purple-500' : 'bg-casino-emerald'
-                : 'bg-gray-600'
-            }`} />
-          </div>
-        </div>
-
-        {/* Player Info */}
-        <div className="px-6 pt-3 pb-5 space-y-4">
-          <div className="text-center">
-            <h3 className={`text-lg font-bold ${isHighElo ? 'text-casino-gold' : 'text-white'}`}>
-              {friend.username}
-            </h3>
-            <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full text-xs font-semibold ${div.cssClass}`}>
-              {div.icon} {div.label}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <StatBox label="Nivel" value={`${friend.level}`} icon="⭐" />
-            <StatBox label="ELO" value={`${friend.elo}`} icon="🏆" />
-            <StatBox label="XP" value={friend.xp >= 1000 ? `${(friend.xp / 1000).toFixed(1)}k` : `${friend.xp}`} icon="✨" />
-          </div>
-
-          <div className="glass-panel px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400 text-xs">Récord (W/L)</span>
-              <span className="text-white text-sm font-bold">{friend.wins}W / {friend.losses}L</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-casino-emerald to-emerald-400"
-                  style={{ width: `${winRate}%` }}
-                />
+              <div className="relative">
+                <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
+                  {friend.equipped_avatar ? (
+                    <img src={friend.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : friend.avatar_url ? (
+                    <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    friend.username.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0B101A] transition-colors shadow-sm ${
+                  friend.isOnline
+                    ? isInRoom ? 'bg-purple-500' : 'bg-casino-emerald'
+                    : 'bg-gray-600'
+                }`} />
               </div>
-              <span className={`text-xs font-bold ${winRate >= 50 ? 'text-casino-emerald' : 'text-red-400'}`}>
-                {winRate}%
+
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate">{friend.username}</p>
+                <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                  {friend.isOnline ? (isInRoom ? 'En partida' : 'En línea') : 'Desconectado'}
+                </p>
+              </div>
+            </div>
+
+            {/* Chat Body */}
+            <div className="flex-1 overflow-hidden p-4 pt-2">
+              <ChatWindow receiverId={friend.id} />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header Banner */}
+            <div className={`h-20 relative flex items-end px-5 pb-2 ${
+              friend.isOnline
+                ? isInRoom
+                  ? 'bg-gradient-to-r from-purple-600/20 via-purple-500/10 to-purple-600/20'
+                  : 'bg-gradient-to-r from-casino-emerald/20 via-casino-gold/10 to-casino-emerald/20'
+                : 'bg-gradient-to-r from-gray-700/20 via-gray-600/10 to-gray-700/20'
+            }`}>
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px)" }}
+              />
+              <span className={`relative text-[10px] uppercase tracking-[0.15em] font-bold px-2 py-0.5 rounded-full ${
+                friend.isOnline
+                  ? isInRoom
+                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                    : 'bg-casino-emerald/20 text-casino-emerald border border-casino-emerald/30'
+                  : 'bg-gray-700/30 text-gray-500 border border-gray-600/30'
+              }`}>
+                {friend.isOnline ? (isInRoom ? '🎮 En partida' : '🟢 En línea') : '⚫ Desconectado'}
               </span>
             </div>
-          </div>
 
-          {/* Action Zone */}
-          {!friend.isOnline && (
-            <div className="space-y-3">
-              <div className="py-3 rounded-xl text-center text-sm text-gray-500 bg-white/[0.02] border border-white/5">
-                ⚫ Jugador desconectado
+            {/* Avatar */}
+            <div className="flex justify-center -mt-10 relative z-10">
+              <div className="relative">
+                <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-[#0B101A] shadow-xl overflow-hidden ${
+                  isHighElo ? 'text-casino-gold' : 'text-gray-300'
+                }`}>
+                  {friend.equipped_avatar ? (
+                    <img 
+                      src={friend.equipped_avatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
+                      }}
+                    />
+                  ) : friend.avatar_url ? (
+                    <img 
+                      src={friend.avatar_url} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
+                      }}
+                    />
+                  ) : (
+                    friend.username.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0B101A] ${
+                  friend.isOnline
+                    ? isInRoom ? 'bg-purple-500' : 'bg-casino-emerald'
+                    : 'bg-gray-600'
+                }`} />
               </div>
-              <button
-                onClick={handleChat}
-                className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Chat
-              </button>
             </div>
-          )}
 
-          {friend.isOnline && isInRoom && (
-            <div className="space-y-3">
-              <div className="py-3 rounded-xl text-center bg-purple-500/10 border border-purple-500/20 space-y-1">
-                <p className="text-purple-400 font-bold text-sm">🎮 En partida activa</p>
-                <p className="text-gray-500 text-xs">Podrás desafiarle cuando termine</p>
+            {/* Player Info */}
+            <div className="px-6 pt-3 pb-5 space-y-4">
+              <div className="text-center">
+                <h3 className={`text-lg font-bold ${isHighElo ? 'text-casino-gold' : 'text-white'}`}>
+                  {friend.username}
+                </h3>
+                <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full text-xs font-semibold ${div.cssClass}`}>
+                  {div.icon} {div.label}
+                </div>
               </div>
-              <button
-                onClick={handleChat}
-                className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Chat
-              </button>
-            </div>
-          )}
 
-          {friend.isOnline && !isInRoom && (
-            <div className="space-y-3">
-              {challengeState === 'idle' && (
-                <div className="flex gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                <StatBox label="Nivel" value={`${friend.level}`} icon="⭐" />
+                <StatBox label="ELO" value={`${friend.elo}`} icon="🏆" />
+                <StatBox label="XP" value={friend.xp >= 1000 ? `${(friend.xp / 1000).toFixed(1)}k` : `${friend.xp}`} icon="✨" />
+              </div>
+
+              <div className="glass-panel px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-400 text-xs">Récord (W/L)</span>
+                  <span className="text-white text-sm font-bold">{friend.wins}W / {friend.losses}L</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-casino-emerald to-emerald-400"
+                      style={{ width: `${winRate}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-bold ${winRate >= 50 ? 'text-casino-emerald' : 'text-red-400'}`}>
+                    {winRate}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Zone */}
+              {!friend.isOnline && (
+                <div className="space-y-3">
+                  <div className="py-3 rounded-xl text-center text-sm text-gray-500 bg-white/[0.02] border border-white/5">
+                    ⚫ Jugador desconectado
+                  </div>
                   <button
                     onClick={handleChat}
-                    className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                     Chat
                   </button>
+                </div>
+              )}
+
+              {friend.isOnline && isInRoom && (
+                <div className="space-y-3">
+                  <div className="py-3 rounded-xl text-center bg-purple-500/10 border border-purple-500/20 space-y-1">
+                    <p className="text-purple-400 font-bold text-sm">🎮 En partida activa</p>
+                    <p className="text-gray-500 text-xs">Podrás desafiarle cuando termine</p>
+                  </div>
                   <button
-                    onClick={handleChallenge}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/20 flex items-center justify-center gap-2"
+                    onClick={handleChat}
+                    className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m18 16 4-4-4-4M6 8l-4 4 4 4m8.5-12-5 16" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    Desafiar
+                    Chat
                   </button>
                 </div>
               )}
 
-              {challengeState === 'waiting' && (
+              {friend.isOnline && !isInRoom && (
                 <div className="space-y-3">
-                  <div className="glass-panel p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-white text-sm font-bold">⏳ Esperando respuesta...</p>
-                      <span className={`text-sm font-mono font-bold tabular-nums ${
-                        secondsLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-casino-gold'
-                      }`}>
-                        {secondsLeft}s
-                      </span>
+                  {challengeState === 'idle' && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleChat}
+                        className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Chat
+                      </button>
+                      <button
+                        onClick={handleChallenge}
+                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/20 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m18 16 4-4-4-4M6 8l-4 4 4 4m8.5-12-5 16" />
+                        </svg>
+                        Desafiar
+                      </button>
                     </div>
-                    <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          secondsLeft <= 10
-                            ? 'bg-gradient-to-r from-red-500 to-red-400'
-                            : 'bg-gradient-to-r from-casino-gold to-yellow-400'
-                        }`}
-                        style={{ width: `${progress}%`, transition: 'width 0.25s linear' }}
-                      />
+                  )}
+
+                  {challengeState === 'waiting' && (
+                    <div className="space-y-3">
+                      <div className="glass-panel p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-white text-sm font-bold">⏳ Esperando respuesta...</p>
+                          <span className={`text-sm font-mono font-bold tabular-nums ${
+                            secondsLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-casino-gold'
+                          }`}>
+                            {secondsLeft}s
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              secondsLeft <= 10
+                                ? 'bg-gradient-to-r from-red-500 to-red-400'
+                                : 'bg-gradient-to-r from-casino-gold to-yellow-400'
+                            }`}
+                            style={{ width: `${progress}%`, transition: 'width 0.25s linear' }}
+                          />
+                        </div>
+                        <p className="text-gray-500 text-xs text-center">
+                          Invitación enviada a <span className="text-gray-300">{friend.username}</span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleCancelChallenge}
+                        className="w-full py-2 rounded-xl bg-white/5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 font-bold text-xs border border-white/10 hover:border-red-500/20 transition-all"
+                      >
+                        Cancelar desafío
+                      </button>
                     </div>
-                    <p className="text-gray-500 text-xs text-center">
-                      Invitación enviada a <span className="text-gray-300">{friend.username}</span>
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleCancelChallenge}
-                    className="w-full py-2 rounded-xl bg-white/5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 font-bold text-xs border border-white/10 hover:border-red-500/20 transition-all"
-                  >
-                    Cancelar desafío
-                  </button>
-                </div>
-              )}
+                  )}
 
-              {challengeState === 'accepted' && (
-                <div className="py-3 rounded-xl text-center bg-casino-emerald/10 border border-casino-emerald/30 animate-pulse">
-                  <p className="text-casino-emerald font-bold text-sm">🎮 ¡Desafío aceptado! Entrando...</p>
-                </div>
-              )}
+                  {challengeState === 'accepted' && (
+                    <div className="py-3 rounded-xl text-center bg-casino-emerald/10 border border-casino-emerald/30 animate-pulse">
+                      <p className="text-casino-emerald font-bold text-sm">🎮 ¡Desafío aceptado! Entrando...</p>
+                    </div>
+                  )}
 
-              {challengeState === 'expired' && (
-                <div className="space-y-2">
-                  <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
-                    <p className="text-red-400 font-bold text-sm">⏱ Sin respuesta</p>
-                    <p className="text-gray-500 text-xs mt-0.5">El desafío ha expirado</p>
-                  </div>
-                  <button
-                    onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
-                    className="w-full py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white text-xs font-bold border border-white/10 transition-all"
-                  >
-                    Intentar de nuevo
-                  </button>
+                  {challengeState === 'expired' && (
+                    <div className="space-y-2">
+                      <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
+                        <p className="text-red-400 font-bold text-sm">⏱ Sin respuesta</p>
+                        <p className="text-gray-500 text-xs mt-0.5">El desafío ha expirado</p>
+                      </div>
+                      <button
+                        onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
+                        className="w-full py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white text-xs font-bold border border-white/10 transition-all"
+                      >
+                        Intentar de nuevo
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

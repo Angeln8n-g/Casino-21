@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 import { StoreAdmin } from './StoreAdmin';
 import { QuestManager } from './QuestManager';
+import { AdManagerAdmin } from './AdManagerAdmin';
 import { useAudio } from '../hooks/useAudio';
 
 interface EventData {
@@ -27,7 +28,7 @@ interface EventData {
 
 export function AdminPanel() {
   const { startUrlLoop, stopLoop } = useAudio();
-  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests' | 'ads'>('events');
   
   useEffect(() => {
     // Tab tracking — only for dev diagnostics
@@ -563,6 +564,14 @@ export function AdminPanel() {
             >
               Misiones
             </button>
+            <button 
+              onClick={() => setActiveTab('ads')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                activeTab === 'ads' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              Anuncios
+            </button>
           </div>
 
           {activeTab === 'events' && (
@@ -877,8 +886,10 @@ export function AdminPanel() {
           </>
         ) : activeTab === 'store' ? (
           <StoreAdmin />
-        ) : (
+        ) : activeTab === 'quests' ? (
           <QuestManager />
+        ) : (
+          <AdManagerAdmin />
         )}
       </div>
     </div>

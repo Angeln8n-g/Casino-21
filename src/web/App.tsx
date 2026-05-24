@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { triggerHaptic } from './utils/haptics';
 import { loadThemes } from './themes/themeRegistry';
 import { socketService } from './services/socket';
+import { getCookieConsent } from './components/CookieConsent';
 // ── Lazy-loaded components (code splitting) ───────────────────────────────────
 // These components are NOT needed on initial page load. By lazy-loading them,
 // the main JS bundle shrinks dramatically and the critical path speeds up.
@@ -180,25 +181,57 @@ function AppContent() {
   );
 }
 
+// ─── Wrapper for public pages that need ad initialization ─────────────────────
+// Pages like /como-jugar, /faq, /blog are rendered via early returns in App(),
+// so the main useEffect that initialises ads never runs. This wrapper component
+// provides its own ad init + CookieConsent overlay for those routes.
+function PublicAdPage({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const init = async () => {
+      const { initializeAds } = await import('./components/AdManager');
+      initializeAds();
+    };
+    init();
+
+    const handleConsentChange = async () => {
+      const { reinitializeAds } = await import('./components/AdManager');
+      reinitializeAds();
+    };
+    window.addEventListener('cookie_consent_changed', handleConsentChange);
+    return () => window.removeEventListener('cookie_consent_changed', handleConsentChange);
+  }, []);
+
+  return (
+    <>
+      <Suspense fallback={<LoadingFallback />}>
+        {children}
+      </Suspense>
+      <CookieConsent />
+    </>
+  );
+}
+
 export default function App() {
   // ─── Legal Page Router (public, no auth required) ─────────────────────────
   const pathname = window.location.pathname;
   if (pathname === '/privacy') return <Suspense fallback={<LoadingFallback />}><PrivacyPolicy /></Suspense>;
   if (pathname === '/terms')   return <Suspense fallback={<LoadingFallback />}><TermsOfService /></Suspense>;
   if (pathname === '/cookies') return <Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense>;
-  if (pathname === '/como-jugar') return <Suspense fallback={<LoadingFallback />}><ComoJugar /></Suspense>;
   if (pathname === '/about') return <Suspense fallback={<LoadingFallback />}><About /></Suspense>;
   if (pathname === '/contact') return <Suspense fallback={<LoadingFallback />}><Contact /></Suspense>;
-  if (pathname === '/faq') return <Suspense fallback={<LoadingFallback />}><FAQ /></Suspense>;
-  if (pathname === '/blog') return <Suspense fallback={<LoadingFallback />}><Blog /></Suspense>;
-  if (pathname.startsWith('/blog/')) return <Suspense fallback={<LoadingFallback />}><BlogPost /></Suspense>;
+
+  // ─── Public pages with ad support ─────────────────────────────────────────
+  if (pathname === '/como-jugar') return <PublicAdPage><ComoJugar /></PublicAdPage>;
+  if (pathname === '/faq') return <PublicAdPage><FAQ /></PublicAdPage>;
+  if (pathname === '/blog') return <PublicAdPage><Blog /></PublicAdPage>;
+  if (pathname.startsWith('/blog/')) return <PublicAdPage><BlogPost /></PublicAdPage>;
+
 
   // Global event listener for button haptics
   useEffect(() => {
     loadThemes();
     const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
-      // Check if the clicked element or its parent is a button
       const button = target.closest('button');
       if (button && !button.disabled) {
         triggerHaptic('light');
@@ -209,6 +242,22 @@ export default function App() {
     return () => {
       document.removeEventListener('click', handleGlobalClick, { capture: true });
     };
+  }, []);
+
+  // ── AdManager init (persists across all routes) ───────────────────────
+  useEffect(() => {
+    const init = async () => {
+      const { initializeAds } = await import('./components/AdManager');
+      initializeAds();
+    };
+    init();
+
+    const handleConsentChange = async () => {
+      const { reinitializeAds } = await import('./components/AdManager');
+      reinitializeAds();
+    };
+    window.addEventListener('cookie_consent_changed', handleConsentChange);
+    return () => window.removeEventListener('cookie_consent_changed', handleConsentChange);
   }, []);
 
   return (

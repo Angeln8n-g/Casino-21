@@ -953,7 +953,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           className={`
             flex-grow flex flex-col items-center justify-center relative
             bg-cover bg-center bg-no-repeat transition-all duration-1000
-            ${isMobile ? 'min-h-0 overflow-y-auto' : ''}
+            overflow-y-auto min-h-0
           `}
           style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(${profile.equipped_board})` } : {}}
         >

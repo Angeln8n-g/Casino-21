@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { faqData, getFAQCategories } from '../data/faq-data';
+import AdBanner from './AdBanner';
 
 const categories = ['Todos', ...getFAQCategories()];
 
@@ -121,6 +122,8 @@ export function FAQ() {
           </div>
         )}
 
+        <AdBanner />
+
         {/* Still need help */}
         <div className="mt-12 bg-gradient-to-r from-violet-900/30 to-indigo-900/30 border border-violet-500/20 rounded-2xl p-8 text-center">
           <div className="text-3xl mb-3">💬</div>
@@ -177,7 +180,7 @@ function FAQAccordion({ question, answer, isOpen, onToggle }: {
 
 function FAQFooter() {
   return (
-    <footer className="mt-16 border-t border-white/5 bg-black/20">
+    <footer className="hidden md:block mt-16 border-t border-white/5 bg-black/20">
       <div className="max-w-4xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <LogoK21 size={28} />

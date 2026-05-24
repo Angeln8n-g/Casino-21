@@ -13,30 +13,33 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-md border-b border-white/5">
-      <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+    <nav className="fixed top-4 left-4 right-4 z-50 max-w-6xl mx-auto bg-black/50 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+      <div className="px-5 py-3 flex items-center justify-between">
         {/* Logo */}
-        <a href="/" className="flex items-center gap-3">
-          <img src={brand21Icon} alt="Kasino21" className="w-8 h-8 rounded-lg object-contain" />
-          <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
+        <a href="/" className="flex items-center gap-3 group">
+          <div className="relative">
+            <img src={brand21Icon} alt="Kasino21" className="w-8 h-8 rounded-lg object-contain relative z-10" />
+            <div className="absolute inset-0 bg-yellow-500/20 blur-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </div>
+          <span className="text-xl font-black font-['Russo_One'] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
             KASINO21
           </span>
         </a>
 
         {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-5">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-gray-300 hover:text-casino-gold transition-colors text-sm font-semibold"
+              className="text-gray-400 hover:text-yellow-400 transition-colors duration-300 text-sm font-semibold font-['Chakra_Petch']"
             >
               {link.label}
             </a>
           ))}
           <a
             href="/login"
-            className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black px-6 py-2 rounded-xl hover:scale-105 transition-transform text-sm"
+            className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black px-6 py-2.5 rounded-xl hover:scale-105 transition-transform duration-300 text-sm font-['Russo_One'] tracking-wider shadow-[0_0_20px_rgba(251,191,36,0.2)]"
           >
             JUGAR AHORA
           </a>
@@ -46,7 +49,7 @@ export default function Navbar() {
         <button
           className="md:hidden text-white p-2"
           onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Men煤"
+          aria-label="Menú"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {menuOpen ? (
@@ -60,12 +63,12 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-black/90 backdrop-blur-lg border-t border-white/5 px-6 py-4 space-y-3">
+        <div className="md:hidden border-t border-white/[0.06] px-5 py-4 space-y-3 bg-black/90 backdrop-blur-xl rounded-b-2xl">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="block text-gray-300 hover:text-casino-gold transition-colors text-base font-semibold py-2"
+              className="block text-gray-400 hover:text-yellow-400 transition-colors duration-300 text-base font-semibold font-['Chakra_Petch'] py-2"
               onClick={() => setMenuOpen(false)}
             >
               {link.label}
@@ -73,7 +76,7 @@ export default function Navbar() {
           ))}
           <a
             href="/login"
-            className="block bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black text-center px-6 py-3 rounded-xl hover:scale-105 transition-transform text-sm"
+            className="block bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black text-center px-6 py-3 rounded-xl hover:scale-105 transition-transform duration-300 text-sm font-['Russo_One'] tracking-wider"
             onClick={() => setMenuOpen(false)}
           >
             JUGAR AHORA

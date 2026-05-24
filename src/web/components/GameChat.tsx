@@ -15,12 +15,40 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [hasNewBelow, setHasNewBelow] = useState(false);
+  const isNearBottomRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
   const prevMessagesLength = useRef(chatMessages.length);
 
-  // Auto-scroll al final cuando llegan mensajes nuevos
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    isNearBottomRef.current = nearBottom;
+    setIsNearBottom(nearBottom);
+    if (nearBottom) setHasNewBelow(false);
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    isNearBottomRef.current = true;
+    setIsNearBottom(true);
+    setHasNewBelow(false);
+  };
+
+  // Auto-scroll al final cuando llegan mensajes nuevos (solo si el usuario está cerca del fondo)
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+    const currentCount = chatMessages.length;
+    if (currentCount === prevMessageCountRef.current) return;
+    prevMessageCountRef.current = currentCount;
+
+    if (isNearBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setHasNewBelow(true);
     }
   }, [chatMessages, isOpen, activeTab]);
 
@@ -73,7 +101,7 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
 
       {/* Panel de Chat */}
       {isOpen && (
-        <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10 w-80 max-w-[calc(100vw-3rem)] h-96 bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl flex flex-col z-50 shadow-[0_0_30px_rgba(0,0,0,0.8)] overflow-hidden animate-slide-up">
+        <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10 w-80 max-w-[calc(100vw-3rem)] h-96 bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl flex flex-col z-50 shadow-[0_0_30px_rgba(0,0,0,0.8)] animate-slide-up">
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5">
             <h3 className="font-display font-bold text-white flex items-center gap-2">
@@ -107,7 +135,7 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
           )}
 
           {/* Lista de Mensajes */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar flex flex-col">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar flex flex-col" onScroll={handleScroll} ref={containerRef}>
             {visibleMessages.length === 0 ? (
               <div className="m-auto text-gray-500 text-xs text-center px-4">
                 {activeTab === 'global' 
@@ -147,6 +175,14 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
             )}
             <div ref={messagesEndRef} />
           </div>
+          {hasNewBelow && !isNearBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce"
+            >
+              ↓ Nuevos mensajes
+            </button>
+          )}
 
           {/* Input Area */}
           <form onSubmit={handleSend} className="p-2 border-t border-white/10 bg-black/40 flex gap-2">

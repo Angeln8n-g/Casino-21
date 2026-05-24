@@ -362,7 +362,7 @@ export function SocialPanel() {
 
   return (
     <>
-      <div className="flex flex-col h-full space-y-5 glass-panel p-4 md:p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md shadow-lg relative z-10">
+      <div className="flex flex-col h-[calc(100vh-170px)] lg:h-[700px] xl:h-[780px] space-y-5 glass-panel p-3 pb-2 md:p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md shadow-lg relative z-10">
         {/* ── TABS ──────────────────────────────────────────── */}
         <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 shrink-0 overflow-x-auto custom-scrollbar shadow-inner">
           <button
@@ -630,31 +630,7 @@ export function SocialPanel() {
                 )}
               </div>
 
-              {/* Online counter summary */}
-              <div className="glass-panel px-4 py-2.5 flex items-center justify-between shrink-0 mt-auto bg-black/20 backdrop-blur-md shadow-[0_-5px_15px_rgba(0,0,0,0.2)]">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-casino-emerald" />
-                    <span className="text-gray-400 text-[10px]">Online</span>
-                    <span className="text-white font-bold text-[10px]">
-                      {friends.filter(f => {
-                        const p = presenceMap[f.id];
-                        return p ? p.isOnline && !p.isInRoom : isFriendOnline(f) && !f.current_room_id;
-                      }).length}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                    <span className="text-gray-400 text-[10px]">En partida</span>
-                    <span className="text-white font-bold text-[10px]">
-                      {friends.filter(f => {
-                        const p = presenceMap[f.id];
-                        return p ? p.isInRoom : isFriendOnline(f) && !!f.current_room_id;
-                      }).length}
-                    </span>
-                  </div>
-                </div>
-              </div>
+
             </div>
           )}
 
@@ -686,6 +662,98 @@ export function SocialPanel() {
                   </button>
                 )}
               </div>
+
+              {/* Horizontal Chat Selector Carousel */}
+              <div className="flex gap-3 overflow-x-auto pb-2 mb-3 shrink-0 border-b border-white/5 custom-scrollbar select-none">
+                {/* Global Chat Item */}
+                <div 
+                  onClick={() => { triggerHaptic('light'); setActiveChatFriendId(null); }}
+                  className="flex flex-col items-center gap-1 cursor-pointer group shrink-0"
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all relative ${
+                    activeChatFriendId === null 
+                      ? 'bg-gradient-to-br from-casino-gold/30 to-yellow-500/20 text-casino-gold border-2 border-casino-gold shadow-[0_0_10px_rgba(251,191,36,0.3)]' 
+                      : 'bg-white/5 text-gray-400 border border-white/10 hover:border-white/20 hover:text-white'
+                  }`}>
+                    <span>🌍</span>
+                    {unreadMessagesCount > 0 && activeChatFriendId !== null && (
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center px-0.5 animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.5)] z-10">
+                        {unreadMessagesCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[8px] font-black uppercase tracking-wider max-w-[48px] truncate transition-colors ${
+                    activeChatFriendId === null ? 'text-casino-gold font-black' : 'text-gray-500 group-hover:text-gray-300'
+                  }`}>
+                    Global
+                  </span>
+                </div>
+
+                {/* Friends Items */}
+                {friends.length > 0 && [...friends]
+                  .sort((a, b) => {
+                    const aUnread = friendUnreadMap[a.id] || 0;
+                    const bUnread = friendUnreadMap[b.id] || 0;
+                    if (aUnread !== bUnread) return bUnread - aUnread; // unread first
+                    
+                    const aOnline = isFriendOnline(a);
+                    const bOnline = isFriendOnline(b);
+                    if (aOnline !== bOnline) return aOnline ? -1 : 1; // online next
+                    
+                    return a.username.localeCompare(b.username);
+                  })
+                  .map(friend => {
+                    const isSelected = activeChatFriendId === friend.id;
+                    const unread = friendUnreadMap[friend.id] || 0;
+                    const isOnline = isFriendOnline(friend);
+                    const presence = presenceMap[friend.id];
+                    const isInRoom = presence?.isInRoom ?? !!friend.current_room_id;
+
+                    return (
+                      <div 
+                        key={friend.id}
+                        onClick={() => { triggerHaptic('light'); setActiveChatFriendId(friend.id); }}
+                        className="flex flex-col items-center gap-1 cursor-pointer group shrink-0"
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all relative overflow-hidden ${
+                          isSelected 
+                            ? 'bg-gradient-to-br from-casino-emerald/30 to-black/30 border-2 border-casino-emerald shadow-[0_0_10px_rgba(16,185,129,0.3)]' 
+                            : isOnline 
+                              ? 'bg-gradient-to-br from-white/5 to-black/30 border border-casino-emerald/30 hover:border-casino-emerald/60' 
+                              : 'bg-white/5 text-gray-500 border border-white/10 hover:border-white/20'
+                        }`}>
+                          {friend.equipped_avatar ? (
+                            <img src={friend.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : friend.avatar_url ? (
+                            <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            friend.username.charAt(0).toUpperCase()
+                          )}
+                          
+                          {/* Online status indicator */}
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0B101A] ${
+                            !isOnline ? 'bg-gray-600'
+                            : isInRoom ? 'bg-purple-500 animate-pulse'
+                            : 'bg-casino-emerald'
+                          }`} />
+
+                          {/* Unread badge */}
+                          {unread > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center px-0.5 animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.5)] z-10">
+                              {unread}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[8px] font-bold max-w-[48px] truncate transition-colors ${
+                          isSelected ? 'text-casino-emerald font-black' : isOnline ? 'text-gray-300 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-300'
+                        }`}>
+                          {friend.username}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+
               <div className="flex-1 overflow-hidden">
                 <ChatWindow receiverId={activeChatFriendId || undefined} />
               </div>

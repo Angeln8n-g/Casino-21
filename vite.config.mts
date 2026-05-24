@@ -25,8 +25,8 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 50 * 1024 * 1024, // 50MB limit
           runtimeCaching: [
             {
-              // Cache static assets and images
-              urlPattern: ({ request }) => request.destination === 'image' || request.destination === 'style' || request.destination === 'script' || request.destination === 'font',
+              // Cache static assets and images (same-origin only — third-party scripts like GTM must go directly to the network)
+              urlPattern: ({ request, url }) => url.origin === self.location.origin && (request.destination === 'image' || request.destination === 'style' || request.destination === 'script' || request.destination === 'font'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'static-assets-cache',
@@ -91,17 +91,17 @@ export default defineConfig(({ mode }) => {
         'Content-Security-Policy': [
           "default-src 'self'",
           // Scripts: only from this origin ('unsafe-inline' needed for dev HMR)
-          "script-src 'self' 'unsafe-inline'",
+          "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
           // Styles: allow inline (Tailwind/CSS-in-JS)
-          "style-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           // Fonts
-          "font-src 'self'",
+          "font-src 'self' https://fonts.gstatic.com",
           // Images: self + Supabase Storage + Unsplash (used in EventsPage)
           `img-src 'self' data: blob: https://${SUPABASE_HOST} https://images.unsplash.com https://api.dicebear.com`,
           // API calls + WebSocket (Supabase realtime uses wss://)
-          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com https://www.google-analytics.com https://analytics.google.com https://adsterra.com`,
+          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com https://www.google-analytics.com https://analytics.google.com`,
           // AdSense iframes + Google services
-          "frame-src https://adsterra.com",
+           "frame-src 'none'",
           // No plugins
           "object-src 'none'",
           // Force HTTPS in production

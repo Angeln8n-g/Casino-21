@@ -1041,6 +1041,14 @@ io.on('connection', (socket) => {
   });
   // ─── FIN FASE 9 ───
 
+  socket.on('request_timer', () => {
+    const roomId = socketToRoomMap.get(socket.id);
+    const room = roomId ? rooms[roomId] : null;
+    if (!room?.lastActionTime) return;
+    const remaining = Math.max(0, TURN_TIME_LIMIT_MS - (Date.now() - room.lastActionTime));
+    io.to(socket.id).emit('timer_update', { remaining });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Usuario desconectado: ${socket.id}`);
     matchmakingQueue = matchmakingQueue.filter(p => p.socketId !== socket.id);

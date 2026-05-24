@@ -41,6 +41,12 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const disposedRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [hasNewBelow, setHasNewBelow] = useState(false);
+  const forceScrollRef = useRef(false);
+  const isNearBottomRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
 
   const getMessageTime = (m: ChatMessage) => m.created_at || m.timestamp || new Date().toISOString();
 
@@ -64,6 +70,10 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     setChatError(null);
     setRealtimeStatus('connecting');
     setMessages([]); // Reset on switch
+    isNearBottomRef.current = true;
+    setIsNearBottom(true);
+    setHasNewBelow(false);
+    prevMessageCountRef.current = 0;
     fetchMessages();
     
     const conversationKey = receiverId
@@ -164,8 +174,17 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
   }, [user, receiverId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, otherUserTyping]);
+    const currentCount = messages.length;
+    if (currentCount === prevMessageCountRef.current) return;
+    prevMessageCountRef.current = currentCount;
+
+    if (forceScrollRef.current || isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      forceScrollRef.current = false;
+    } else {
+      setHasNewBelow(true);
+    }
+  }, [messages]);
 
   const fetchNewMessageProfile = async (msgData: any) => {
     if (disposedRef.current) return;
@@ -260,6 +279,30 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     }, 2000);
   };
 
+  const handleInputFocus = () => {
+    setTimeout(() => {
+      if (!isNearBottomRef.current) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 200);
+  };
+
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    isNearBottomRef.current = nearBottom;
+    setIsNearBottom(nearBottom);
+    if (nearBottom) setHasNewBelow(false);
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    isNearBottomRef.current = true;
+    setIsNearBottom(true);
+    setHasNewBelow(false);
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !user) return;
@@ -286,6 +329,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         elo: 1000,
       },
     };
+    forceScrollRef.current = true;
     upsertMessage(optimisticMessage);
 
     try {
@@ -324,7 +368,8 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
 
   return (
     <div className="flex flex-col h-full min-h-[300px]">
-      <div className="flex-1 overflow-y-auto mb-3 space-y-3 pr-2 custom-scrollbar">
+      <div className="flex-1 relative mb-3">
+        <div className="absolute inset-0 overflow-y-auto space-y-3 pr-2 custom-scrollbar" onScroll={handleScroll} ref={containerRef}>
         {chatError && (
           <div className="mx-1 mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-300 flex items-center justify-between">
             <span>{chatError}</span>
@@ -339,20 +384,22 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
             const profile = m.profiles || { username: 'Jugador', avatar_url: null, level: 1, elo: 1000 };
             return (
               <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up mb-3`}>
-                <div className={`flex items-end gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
-                    {profile.equipped_avatar ? (
-                      <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      profile.username.charAt(0).toUpperCase()
-                    )}
+                {!isMe && (
+                  <div className="flex items-end gap-2 mb-1 px-1 flex-row">
+                    <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
+                      {profile.equipped_avatar ? (
+                        <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : profile.avatar_url ? (
+                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        profile.username.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold tracking-wide text-casino-gold/70">
+                      {profile.username}
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-bold tracking-wide ${isMe ? 'text-gray-500' : 'text-casino-gold/70'}`}>
-                    {profile.username}
-                  </span>
-                </div>
+                )}
                 <div className={`px-3 py-2 rounded-2xl max-w-[85%] text-sm shadow-lg ${
                   isMe 
                     ? 'bg-gradient-to-br from-casino-gold/30 to-casino-gold/10 text-white border border-casino-gold/20 rounded-tr-none' 
@@ -386,6 +433,15 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           </div>
         )}
         <div ref={messagesEndRef} />
+        </div>
+        {hasNewBelow && !isNearBottom && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce"
+          >
+            ↓ Nuevos mensajes
+          </button>
+        )}
       </div>
 
       <form onSubmit={sendMessage} className="relative mt-auto">
@@ -393,8 +449,9 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           type="text" 
           value={input}
           onChange={handleInputChange}
+          onFocus={handleInputFocus}
           placeholder={receiverId ? "Mensaje privado..." : "Chat global..."}
-          className="input-casino w-full pr-12 text-sm bg-black/40 border-white/5 focus:border-casino-gold/50"
+          className="input-casino w-full pr-12 text-base md:text-sm bg-black/40 border-white/5 focus:border-casino-gold/50"
           maxLength={200}
         />
         <button 

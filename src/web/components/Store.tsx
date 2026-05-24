@@ -571,10 +571,10 @@ export function Store() {
 
       {/* Shopping Cart Drawer / Modal */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex items-center justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsCartOpen(false)}></div>
           
-          <div className="w-full max-w-md bg-[#09090B] border-l border-white/10 h-[100dvh] flex flex-col relative z-10 animate-slide-left shadow-2xl">
+          <div className="w-full max-w-md bg-[#09090B] border border-white/10 max-h-[85vh] flex flex-col relative z-10 animate-slide-left shadow-2xl rounded-l-2xl">
             <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#18181B] shrink-0">
               <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
                 <span aria-hidden="true">🛒</span> Tu Carrito
@@ -586,7 +586,7 @@ export function Store() {
 
             <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-[#A1A1AA] opacity-70">
+                <div className="py-12 flex flex-col items-center justify-center text-[#A1A1AA] opacity-70">
                   <div className="text-6xl mb-4">🛒</div>
                   <p>El carrito está vacío</p>
                 </div>

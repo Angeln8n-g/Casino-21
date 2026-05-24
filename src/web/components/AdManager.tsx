@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { adsterraProvider, AdConsent } from '../services/adProviders';
+import { adProvider, AdConsent } from '../services/adProviders';
 import { getCookieConsent } from './CookieConsent';
 import { trackAdEvent } from '../services/analytics';
 
@@ -156,7 +156,7 @@ const AdModal: React.FC<AdModalProps> = ({
               </p>
             </div>
           ) : (
-            <div ref={adRef} className="w-full flex justify-center min-h-[200px]" />
+            <div ref={adRef} className="w-full flex justify-center h-[300px]" />
           )}
         </div>
 
@@ -229,23 +229,38 @@ function createModal(
 /**
  * Marks the ad pipeline as initialised.
  *
- * Checks cookie consent and initializes the Adsterra provider.
- * Safe to call multiple times — subsequent invocations are no-ops.
+ * Reads config from the database dynamically. Safe to call multiple
+ * times — subsequent invocations are no-ops. If consent is 'unknown'
+ * (user hasn't decided yet), does NOT mark as loaded so a later
+ * reinitialization can pick up their decision.
  */
 export const initializeAds = (): void => {
   if (!state.isLoaded) {
     const consentData = getCookieConsent();
     const consent: AdConsent = !consentData ? 'unknown'
       : consentData.accepted ? 'accepted' : 'rejected';
-    adsterraProvider.init(consent);
-    state.isLoaded = true;
+    adProvider.init(consent);
+    if (consent !== 'unknown') {
+      state.isLoaded = true;
+    }
   }
+};
+
+/**
+ * Forgets the previous initialization result so the next call to
+ * initializeAds() will re-evaluate consent and re-init the provider.
+ * Used when the user changes their cookie consent decision.
+ */
+export const reinitializeAds = (): void => {
+  state.isLoaded = false;
+  adProvider.reset();
+  initializeAds();
 };
 
 /**
  * Shows a full-screen interstitial-style ad modal.
  *
- * Displays an Adsterra interstitial in a centred card overlay. The "Continue"
+ * Displays an interstitial in a centred card overlay. The "Continue"
  * button becomes clickable after 5 seconds. Enforces the global 60s cooldown.
  *
  * Consumers:
@@ -259,7 +274,7 @@ export const showInterstitialAd = (): void => {
 
   createModal(
     {
-      renderAd: (container) => adsterraProvider.showInterstitial(container),
+      renderAd: (container) => adProvider.showInterstitial(container),
       minWaitMs: INTERSTITIAL_WAIT_MS,
       title: 'KASINO21',
       subtitle: 'Gracias por apoyar el juego',
@@ -296,7 +311,7 @@ export const showRewardedAd = (
 
   createModal(
     {
-      renderAd: (container) => adsterraProvider.showRewarded(container),
+      renderAd: (container) => adProvider.showRewarded(container),
       minWaitMs: REWARD_WAIT_MS,
       title: 'Mensaje Patrocinado',
       subtitle: `Mira el anuncio para ganar ${rewardAmount} monedas`,
@@ -347,7 +362,7 @@ export const showGateAdForBots = (onClose: () => void): void => {
 
   createModal(
     {
-      renderAd: (container) => adsterraProvider.showInterstitial(container),
+      renderAd: (container) => adProvider.showInterstitial(container),
       minWaitMs: INTERSTITIAL_WAIT_MS,
       title: 'Jugar contra el Bot',
       subtitle: `Mira el anuncio para desbloquear ${BOT_GAMES} partidas`,

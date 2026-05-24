@@ -5,13 +5,17 @@ export function useLandingAds(isAuthenticated: boolean): void {
   useEffect(() => {
     if (isAuthenticated) return;
 
-    const consent = getCookieConsent();
-    if (!consent?.accepted) return;
-
-    const init = async () => {
+    const tryInit = async () => {
       const { initializeAds } = await import('../../web/components/AdManager');
       initializeAds();
     };
-    init();
+    tryInit();
+
+    const handleConsentChange = async () => {
+      const { reinitializeAds } = await import('../../web/components/AdManager');
+      reinitializeAds();
+    };
+    window.addEventListener('cookie_consent_changed', handleConsentChange);
+    return () => window.removeEventListener('cookie_consent_changed', handleConsentChange);
   }, [isAuthenticated]);
 }

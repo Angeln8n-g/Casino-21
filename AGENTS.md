@@ -86,3 +86,11 @@ Backend (`server/.env`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRE
 - JWT auth: Socket.io middleware validates via `supabase.auth.getUser(token)` (RS256 + HS256). `ALLOW_INSECURE_JWT_FALLBACK` skips verification (debug only).
 - `server/src/supabase.js` is stale compiled CommonJS output alongside `supabase.ts` — ts-node uses the .ts file.
 - `.gitignore` additionally excludes: `*.local`, `.trae`, `.agents`, `.config.kiro`, `.vscode`, `partida_*.json`.
+
+## CSP / Security headers
+
+**The CSP is defined in TWO places that must be kept in sync:**
+1. **Nginx** (production): `/etc/nginx/sites-available/kasino21.com.conf` — this is what users actually receive.
+2. **Vite dev server** (development only): `vite.config.mts` `server.headers` block.
+
+The project copy at `deploy/nginx/casino21.conf` is a reference only — the active Nginx config is the one in `/etc/nginx/sites-available/`. After editing either, run `nginx -t && nginx -s reload` to apply.

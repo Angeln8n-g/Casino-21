@@ -240,20 +240,20 @@ git commit -m "feat: nginx upstream with ip_hash sticky sessions"
 **Files:**
 - Modify: `server/src/index.ts`
 
-- [ ] **Step 1: Add socketToRoomMap (after `rooms` declaration, line 129)**
+- [x] **Step 1: Add socketToRoomMap (IMPLEMENTADO)**
 
 ```typescript
 const socketToRoomMap = new Map<string, string>();
 ```
 
-- [ ] **Step 2: Populate map when sockets join rooms**
+- [x] **Step 2: Populate map when sockets join rooms (IMPLEMENTADO)**
 
 In `create_room`, `join_room`, `join_as_spectator` handlers, after `socket.join(roomId)`:
 ```typescript
 socketToRoomMap.set(socket.id, roomId);
 ```
 
-- [ ] **Step 3: Replace O(n) lookup in play_action handler (line 731)**
+- [x] **Step 3: Replace O(n) lookup in play_action handler (IMPLEMENTADO)**
 
 Replace:
 ```typescript
@@ -264,7 +264,7 @@ With:
 const roomId = socketToRoomMap.get(socket.id);
 ```
 
-- [ ] **Step 4: Replace O(n) lookup in disconnect handler (line 883)**
+- [x] **Step 4: Replace O(n) lookup in disconnect handler (IMPLEMENTADO)**
 
 Replace:
 ```typescript
@@ -276,7 +276,7 @@ const roomId = socketToRoomMap.get(socket.id);
 socketToRoomMap.delete(socket.id);
 ```
 
-- [ ] **Step 5: Clean up in closeRoom function**
+- [x] **Step 5: Clean up in closeRoom function (IMPLEMENTADO)**
 
 ```typescript
 room.players.forEach(p => socketToRoomMap.delete(p.socketId));
@@ -296,7 +296,7 @@ git commit -m "perf: O(1) room lookups via socketToRoomMap"
 **Files:**
 - Modify: `server/src/index.ts`
 
-- [ ] **Step 1: Add RingBuffer class after imports (around line 13)**
+- [x] **Step 1: Add RingBuffer class after imports (IMPLEMENTADO)**
 
 ```typescript
 class RingBuffer<T> {
@@ -333,19 +333,19 @@ class RingBuffer<T> {
 }
 ```
 
-- [ ] **Step 2: Update chatHistory type in rooms Record (line 124)**
+- [x] **Step 2: Update chatHistory type in rooms Record (IMPLEMENTADO)**
 
 Change `chatHistory: ChatMessage[]` to `chatHistory: RingBuffer<ChatMessage>`.
 
-- [ ] **Step 3: Update room initialization**
+- [x] **Step 3: Update room initialization (IMPLEMENTADO)**
 
 When creating new rooms, use `new RingBuffer<ChatMessage>(100)` instead of `[]`.
 
-- [ ] **Step 4: Replace shift() logic (lines 863-866)**
+- [x] **Step 4: Remove shift() logic — RingBuffer handles it (IMPLEMENTADO)**
 
 Remove the `if (room.chatHistory.length > 100) { room.chatHistory.shift(); }` block — RingBuffer handles it automatically.
 
-- [ ] **Step 5: Update any chatHistory reads for toArray()**
+- [x] **Step 5: Update chatHistory reads with toArray() (IMPLEMENTADO)**
 
 Wherever code reads `room.chatHistory` as a plain array (e.g., sending history to new joiners), call `.toArray()`:
 ```typescript
@@ -365,30 +365,14 @@ git commit -m "perf: ring buffer for chat replaces O(n) Array.shift"
 **Files:**
 - Modify: `server/src/index.ts`
 
-- [ ] **Step 1: Add rate limit maps after socketToRoomMap**
+> **Nota:** NO se implementa rate limiting por IP. Detrás de Nginx, `socket.handshake.address` siempre es `127.0.0.1` para todos los usuarios, lo que lo hace inefectivo. Usar solo rate limiting por socket (`isRateLimited`), que previene spam sin falsos positivos.
+
+- [x] **Step 1: Add event rate limiter helper (YA IMPLEMENTADO)**
 
 ```typescript
-const connectionCountByIP = new Map<string, number>();
-const MAX_CONNECTIONS_PER_IP = 5;
 const actionTimestamps = new Map<string, number>();
 const RATE_LIMIT_MS = 500;
-```
 
-- [ ] **Step 2: Add connection rate limit in io.use middleware**
-
-At the start of the `io.use(async (socket, next) => {` callback:
-```typescript
-const clientIP = socket.handshake.address;
-const currentCount = connectionCountByIP.get(clientIP) || 0;
-if (currentCount >= MAX_CONNECTIONS_PER_IP) {
-  return next(new Error('Rate limit: demasiadas conexiones desde esta IP'));
-}
-connectionCountByIP.set(clientIP, currentCount + 1);
-```
-
-- [ ] **Step 3: Add event rate limiter helper after io.use**
-
-```typescript
 function isRateLimited(socketId: string): boolean {
   const lastAction = actionTimestamps.get(socketId);
   const now = Date.now();
@@ -398,27 +382,26 @@ function isRateLimited(socketId: string): boolean {
 }
 ```
 
-- [ ] **Step 4: Apply to play_action handler**
+- [x] **Step 2: Apply to play_action handler (YA IMPLEMENTADO)**
 
-At the top of `socket.on('play_action', ...)`:
+Al inicio de `socket.on('play_action', ...)`:
 ```typescript
 if (isRateLimited(socket.id)) return;
 ```
 
-- [ ] **Step 5: Clean up on disconnect**
+- [ ] **Step 3: Clean up on disconnect**
 
-In the disconnect handler, add:
+En el disconnect handler, agregar:
 ```typescript
-connectionCountByIP.delete(socket.handshake.address);
 actionTimestamps.delete(socket.id);
 ```
 
-- [ ] **Step 6: Build and commit**
+- [ ] **Step 4: Build and commit**
 
 ```bash
 cd server && npm run build
 git add server/src/index.ts
-git commit -m "feat: connection and event rate limiting"
+git commit -m "feat: cleanup actionTimestamps on socket disconnect"
 ```
 
 ### Task 7: Optimize timer (setTimeout instead of setInterval)
@@ -426,7 +409,7 @@ git commit -m "feat: connection and event rate limiting"
 **Files:**
 - Modify: `server/src/index.ts` lines 897-938
 
-- [ ] **Step 1: Replace startTurnTimer with setTimeout-based approach**
+- [x] **Step 1: Replace startTurnTimer with setTimeout-based approach (IMPLEMENTADO)**
 
 ```typescript
 function startTurnTimer(roomId: string, room: any) {
@@ -475,7 +458,7 @@ function startTurnTimer(roomId: string, room: any) {
 }
 ```
 
-**Note:** This removes the 1-second `timer_update` emit. If the client needs server timer sync, add a `request_timer` event:
+**Note:** The `request_timer` event handler (below) has been added to `server/src/index.ts`. The client can emit `request_timer` to get the authoritative remaining time from the server.
 
 ```typescript
 socket.on('request_timer', () => {
@@ -487,7 +470,7 @@ socket.on('request_timer', () => {
 });
 ```
 
-- [ ] **Step 2: Build and commit**
+- [x] **Step 3: Build and commit (IMPLEMENTADO)**
 
 ```bash
 cd server && npm run build
@@ -500,7 +483,7 @@ git commit -m "perf: replace per-room setInterval with setTimeout at expiration"
 **Files:**
 - Modify: `server/src/index.ts` lines 1164-1191
 
-- [ ] **Step 1: Replace JSON.parse(JSON.stringify) with Object.assign**
+- [x] **Step 1: Replace JSON.parse(JSON.stringify) with Object.assign (IMPLEMENTADO)**
 
 ```typescript
 function broadcastGameState(roomId: string, room: any) {
@@ -536,10 +519,4 @@ function broadcastGameState(roomId: string, room: any) {
 }
 ```
 
-- [ ] **Step 2: Build and commit**
-
-```bash
-cd server && npm run build
-git add server/src/index.ts
-git commit -m "perf: replace JSON.parse(JSON.stringify) with Object.assign"
-```
+- [x] **Step 2: Build and commit (IMPLEMENTADO)**

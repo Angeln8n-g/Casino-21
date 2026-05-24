@@ -56,11 +56,13 @@ export function CookieConsent() {
   const handleAccept = () => {
     setCookieConsent(true);
     setVisible(false);
+    window.dispatchEvent(new CustomEvent('cookie_consent_changed', { detail: { accepted: true } }));
   };
 
   const handleReject = () => {
     setCookieConsent(false);
     setVisible(false);
+    window.dispatchEvent(new CustomEvent('cookie_consent_changed', { detail: { accepted: false } }));
   };
 
   return (

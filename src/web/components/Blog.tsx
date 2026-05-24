@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { blogPosts, getBlogCategories, getPostsByCategory } from '../data/blog-posts';
+import AdBanner from './AdBanner';
 
 const CATEGORIES = ['Todos', ...getBlogCategories()];
 
@@ -127,6 +128,8 @@ export function Blog() {
         </div>
       </div>
 
+      <AdBanner />
+
       {/* Articles Grid */}
       <main className="max-w-6xl mx-auto px-6 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -201,7 +204,7 @@ export function Blog() {
 
 function BlogFooter() {
   return (
-    <footer className="mt-16 border-t border-white/5 bg-black/20">
+    <footer className="hidden md:block mt-16 border-t border-white/5 bg-black/20">
       <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <LogoK21 size={28} />

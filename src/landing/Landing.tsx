@@ -6,8 +6,10 @@ import ContentCarousel from './sections/ContentCarousel';
 import Footer from './sections/Footer';
 import SocialBar from './components/SocialBar';
 import AdBanner from './components/AdBanner';
+import { useLandingAds } from './hooks/useLandingAds';
 
 export default function Landing() {
+  useLandingAds(false);
   return (
     <div className="h-full bg-[#0a0f1e] text-white overflow-x-hidden overflow-y-auto">
       <div className="crt-overlay" aria-hidden="true" />
