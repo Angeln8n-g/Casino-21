@@ -1,1 +1,2 @@
 adsterra.com, 3303062, DIRECT
+google.com, pub-7975398244257516, DIRECT, f08c47fec0942fa0

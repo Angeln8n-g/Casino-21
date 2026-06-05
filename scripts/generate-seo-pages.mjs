@@ -305,7 +305,7 @@ for (const post of blogPosts) {
     .substring(0, 2000);
 
   html = html.replace(
-    /(<noscript[\s\S]*?<h1[^>]*>).*?(<\/h1>[\s\S]*?<h2[^>]*>).*?(<\/h2>[\s\S]*?<p[^>]*>).*?(<\/p>)/,
+    /(<noscript[\s\S]*?<h1[^>]*>)[\s\S]*?(<\/h1>[\s\S]*?<h2[^>]*>)[\s\S]*?(<\/h2>[\s\S]*?<p[^>]*>)[\s\S]*?(<\/p>)/,
     `$1${post.title}$2${post.category} · ${post.readTime} min lectura$3${plainTextContent}$4`,
   );
 

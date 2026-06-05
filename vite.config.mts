@@ -90,18 +90,18 @@ export default defineConfig(({ mode }) => {
         // Adjust 'connect-src' when the production socket URL is known.
         'Content-Security-Policy': [
           "default-src 'self'",
-          // Scripts: only from this origin ('unsafe-inline' needed for dev HMR)
-          "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
+          // Scripts: AdSense + Google Analytics + dev HMR
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://adservice.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://www.gstatic.com https://www.googletagservices.com",
           // Styles: allow inline (Tailwind/CSS-in-JS)
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           // Fonts
           "font-src 'self' https://fonts.gstatic.com",
-          // Images: self + Supabase Storage + Unsplash (used in EventsPage)
-          `img-src 'self' data: blob: https://${SUPABASE_HOST} https://images.unsplash.com https://api.dicebear.com`,
-          // API calls + WebSocket (Supabase realtime uses wss://)
-          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com https://www.google-analytics.com https://analytics.google.com`,
+          // Images: self + Supabase Storage + Unsplash + Google AdSense
+          `img-src 'self' data: blob: https://${SUPABASE_HOST} https://images.unsplash.com https://api.dicebear.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://adservice.google.com https://www.google.com https://*.doubleclick.net`,
+          // API calls + WebSocket + AdSense Reporting
+          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://api.dicebear.com https://www.google-analytics.com https://analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://tpc.googlesyndication.com https://www.google.com`,
           // AdSense iframes + Google services
-           "frame-src 'none'",
+          "frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.doubleclick.net",
           // No plugins
           "object-src 'none'",
           // Force HTTPS in production
