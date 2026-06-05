@@ -1,0 +1,8 @@
+{
+  "total": 240,
+  "pattern": "frame_%04d.jpg",
+  "extension": "jpg",
+  "width": 1920,
+  "height": 1080,
+  "fps": 24
+}
