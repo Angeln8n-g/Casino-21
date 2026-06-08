@@ -39,6 +39,7 @@ services:
       - backend
     networks:
       - default
+      - fx0i0zfg2d56g4di15lu499b
 
 networks:
   default:
