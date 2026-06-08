@@ -16,8 +16,8 @@ services:
       - REDIS_URL=${REDIS_URL}
       - USE_REDIS_ADAPTER=${USE_REDIS_ADAPTER:-false}
     restart: always
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
 
   frontend:
     build:
@@ -30,8 +30,8 @@ services:
         - VITE_SHOW_RULES_VERSION=${VITE_SHOW_RULES_VERSION:-false}
     container_name: casino21_frontend
     restart: always
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - backend
 
@@ -39,4 +39,5 @@ networks:
   default:
     name: coolify
     external: true
+
 
