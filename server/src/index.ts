@@ -71,7 +71,7 @@ let io: Server;
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-if (process.env.NODE_ENV === 'production' || process.env.USE_REDIS_ADAPTER === 'true') {
+if (process.env.USE_REDIS_ADAPTER === 'true') {
   const { createAdapter } = require('@socket.io/redis-adapter');
   const { Redis } = require('ioredis');
   const pubClient = new Redis(REDIS_URL);
