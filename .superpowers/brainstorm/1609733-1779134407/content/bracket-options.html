@@ -1,0 +1,139 @@
+<h2>Bracket Modal — Diseño Responsive</h2>
+<p class="subtitle">El bracket actual tiene min-w: 800px — no funciona en móvil. ¿Cuál enfoque prefieres?</p>
+
+<div class="section">
+  <h3>Estado Actual (Problema)</h3>
+  <p class="subtitle">El bracket se sale de la pantalla en móvil. Scroll horizontal incómodo.</p>
+  <div class="mockup">
+    <div class="mockup-header">Desktop (OK) — Mobile (Problema)</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div class="label" style="color:#10b981;margin-bottom:8px;">Desktop 1024px+</div>
+          <div style="background:#0F0F23;border:1px solid #2A2A4A;border-radius:8px;padding:12px;font-size:11px;">
+            <div style="display:flex;gap:8px;overflow:visible;">
+              <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:60px;text-align:center;">R1<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+              <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:60px;text-align:center;">R2<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+              <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:60px;text-align:center;">R3<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+              <div style="background:#1A1A3A;border:1px solid #FF0055;border-radius:4px;padding:6px;min-width:60px;text-align:center;">FINAL<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div class="label" style="color:#ef4444;margin-bottom:8px;">Mobile 375px</div>
+          <div style="background:#0F0F23;border:1px solid #2A2A4A;border-radius:8px;padding:12px;font-size:11px;overflow:hidden;width:180px;position:relative;">
+            <div style="display:flex;gap:8px;width:300px;">
+              <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:60px;text-align:center;">R1<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+              <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:60px;text-align:center;">R2<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+              <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:60px;text-align:center;">R3<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+              <div style="background:#1A1A3A;border:1px solid #FF0055;border-radius:4px;padding:6px;min-width:60px;text-align:center;">FINAL<br><span style="color:#00FFCC;">P1</span><br><span style="color:#555;">P2</span></div>
+            </div>
+            <div style="position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(to right,transparent,#0F0F23);pointer-events:none;"></div>
+          </div>
+          <div style="color:#888;font-size:10px;margin-top:4px;">← contenido cortado, scroll horizontal →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Las 3 Opciones</h3>
+</div>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0F0F23;padding:16px;min-height:180px;">
+      <div class="label" style="color:#10b981;margin-bottom:8px;">Opción A — Vertical Stack</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:8px;">
+          <div style="color:#888;font-size:10px;margin-bottom:4px;">CUARTOS DE FINAL</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;background:#0F0F23;border-radius:3px;"><span style="color:#00FFCC;">Player1</span><span style="color:#555;">Player2</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;background:#0F0F23;border-radius:3px;"><span style="color:#00FFCC;">Player3</span><span style="color:#555;">Player4</span></div>
+          </div>
+        </div>
+        <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:8px;">
+          <div style="color:#888;font-size:10px;margin-bottom:4px;">SEMIFINALES</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;background:#0F0F23;border-radius:3px;"><span style="color:#00FFCC;">Player1</span><span style="color:#555;">Player3</span></div>
+          </div>
+        </div>
+        <div style="background:#1A1A3A;border:1px solid #FF0055;border-radius:4px;padding:8px;">
+          <div style="color:#FF0055;font-size:10px;margin-bottom:4px;">🏆 FINAL</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;background:#0F0F23;border-radius:3px;"><span style="color:#00FFCC;">Player1</span><span style="color:#555;">Player5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Vertical Stack</h3>
+      <p>Cada ronda es una sección vertical. Se apilan de cuartos → semis → final. Conectores verticales simples. Natural para scroll vertical.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0F0F23;padding:16px;min-height:180px;">
+      <div class="label" style="color:#fbbf24;margin-bottom:8px;">Opción B — Tabs por Ronda</div>
+      <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
+        <div style="background:#7C3AED;color:white;font-size:10px;padding:4px 10px;border-radius:12px;">Cuartos</div>
+        <div style="background:#1A1A3A;color:#888;font-size:10px;padding:4px 10px;border-radius:12px;border:1px solid #2A2A4A;">Semis</div>
+        <div style="background:#1A1A3A;color:#888;font-size:10px;padding:4px 10px;border-radius:12px;border:1px solid #2A2A4A;">Final</div>
+      </div>
+      <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:8px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 10px;background:#0F0F23;border-radius:3px;border-left:3px solid #00FFCC;">
+            <span style="color:#00FFCC;font-weight:bold;">Player1</span><span style="color:#555;">Player2</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 10px;background:#0F0F23;border-radius:3px;border-left:3px solid #555;">
+            <span style="color:#555;">Player3</span><span style="color:#555;">Player4</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 10px;background:#0F0F23;border-radius:3px;border-left:3px solid #555;">
+            <span style="color:#555;">Player5</span><span style="color:#555;">Player6</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:6px 10px;background:#0F0F23;border-radius:3px;border-left:3px solid #555;">
+            <span style="color:#555;">Player7</span><span style="color:#555;">Player8</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Tabs por Ronda</h3>
+      <p>Una pestaña por ronda. Solo ves los partidos de esa ronda. Compacto, enfocado. Ideal para móvil.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0F0F23;padding:16px;min-height:180px;">
+      <div class="label" style="color:#7C3AED;margin-bottom:8px;">Opción C — Híbrido</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;">
+          <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:80px;text-align:center;font-size:10px;flex-shrink:0;">
+            <div style="color:#888;font-size:8px;">R1</div>
+            <div style="color:#00FFCC;">P1</div>
+            <div style="color:#555;">P2</div>
+          </div>
+          <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:80px;text-align:center;font-size:10px;flex-shrink:0;">
+            <div style="color:#888;font-size:8px;">R1</div>
+            <div style="color:#00FFCC;">P3</div>
+            <div style="color:#555;">P4</div>
+          </div>
+          <div style="background:#1A1A3A;border:1px solid #2A2A4A;border-radius:4px;padding:6px;min-width:80px;text-align:center;font-size:10px;flex-shrink:0;">
+            <div style="color:#888;font-size:8px;">R2</div>
+            <div style="color:#00FFCC;">P1</div>
+            <div style="color:#555;">P3</div>
+          </div>
+          <div style="background:#1A1A3A;border:1px solid #FF0055;border-radius:4px;padding:6px;min-width:80px;text-align:center;font-size:10px;flex-shrink:0;">
+            <div style="color:#FF0055;font-size:8px;">🏆</div>
+            <div style="color:#00FFCC;">P1</div>
+            <div style="color:#555;">P5</div>
+          </div>
+        </div>
+        <div style="color:#888;font-size:9px;text-align:center;">← scroll horizontal con nodos más compactos →</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Híbrido — Mini Nodos</h3>
+      <p>Mantiene el bracket horizontal pero con nodos más compactos. Scroll horizontal suave. Menos información visual pero conserva la estructura de árbol.</p>
+    </div>
+  </div>
+</div>

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Server } from 'socket.io';
+import { RoomStore } from './room-store';
 
 export async function handleTournamentFinal(matchData: any, winnerId: string) {
   const { data: eventData } = await supabase
@@ -29,7 +30,7 @@ export async function handleTournamentFinal(matchData: any, winnerId: string) {
 
 export function notifyTournamentPlayers(
   io: Server,
-  rooms: Record<string, any>,
+  roomStore: RoomStore,
   gameRoomId: string,
   eventId: string,
   player1Id?: string,
@@ -38,14 +39,11 @@ export function notifyTournamentPlayers(
   const targetIds = new Set([player1Id, player2Id].filter(Boolean));
   if (targetIds.size === 0) return;
 
-  for (const [, room] of Object.entries(rooms)) {
+  for (const [, room] of roomStore.getLocalEntries()) {
     for (const player of room.players) {
       if (targetIds.has(player.userId)) {
-        const playerSocket = io.sockets.sockets.get(player.socketId);
-        if (playerSocket) {
-          playerSocket.emit('tournament_ready', { gameRoomId, eventId });
-          console.log(`[Torneo] Notificación tournament_ready enviada a ${player.name} (sala ${gameRoomId})`);
-        }
+        io.to(player.socketId).emit('tournament_ready', { gameRoomId, eventId });
+        console.log(`[Torneo] Notificación tournament_ready enviada a ${player.name} (sala ${gameRoomId})`);
       }
     }
   }
@@ -53,7 +51,7 @@ export function notifyTournamentPlayers(
 
 export async function processTournamentAdvancement(
   io: Server,
-  rooms: Record<string, any>,
+  roomStore: RoomStore,
   roomId: string,
   winnerId: string,
   isTournament: boolean
@@ -84,9 +82,9 @@ export async function processTournamentAdvancement(
     .eq('id', matchData.id);
 
   if (matchData.best_of > 1) {
-    await handleBestOfSeriesAdvancement(matchData, winnerId, io, rooms);
+    await handleBestOfSeriesAdvancement(matchData, winnerId, io, roomStore);
   } else {
-    await handleSingleMatchAdvancement(matchData, winnerId, io, rooms);
+    await handleSingleMatchAdvancement(matchData, winnerId, io, roomStore);
   }
 }
 
@@ -94,7 +92,7 @@ async function handleBestOfSeriesAdvancement(
   matchData: any,
   winnerId: string,
   io: Server,
-  rooms: Record<string, any>
+  roomStore: RoomStore
 ) {
   const { data: seriesMatches } = await supabase
     .from('tournament_matches')
@@ -130,7 +128,7 @@ async function handleBestOfSeriesAdvancement(
         .eq('id', nextGameMatch.id);
 
       console.log(`[Torneo] Avanzado a game ${nextGame} de la serie (${nextGameMatch.id})`);
-      notifyTournamentPlayers(io, rooms, nextGameMatch.game_room_id, matchData.event_id, matchData.player1_id, matchData.player2_id);
+      notifyTournamentPlayers(io, roomStore, nextGameMatch.game_room_id, matchData.event_id, matchData.player1_id, matchData.player2_id);
     }
   }
 }
@@ -139,7 +137,7 @@ async function handleSingleMatchAdvancement(
   matchData: any,
   winnerId: string,
   io: Server,
-  rooms: Record<string, any>
+  roomStore: RoomStore
 ) {
   const nextRound = matchData.round_number + 1;
   const nextOrder = Math.ceil(matchData.match_order / 2);
@@ -172,7 +170,7 @@ async function handleSingleMatchAdvancement(
     if (nextMatch[otherSlot]) {
       const p1Id = filledSlot === 'player1_id' ? winnerId : nextMatch[otherSlot];
       const p2Id = filledSlot === 'player2_id' ? winnerId : nextMatch[otherSlot];
-      notifyTournamentPlayers(io, rooms, nextMatch.game_room_id, matchData.event_id, p1Id, p2Id);
+      notifyTournamentPlayers(io, roomStore, nextMatch.game_room_id, matchData.event_id, p1Id, p2Id);
     }
   } else {
     await handleTournamentFinal(matchData, winnerId);
