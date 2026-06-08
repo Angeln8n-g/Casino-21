@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instalar todas las dependencias (incluyendo devDependencies para poder compilar con tsc)
-RUN npm ci
+RUN npm install
 
 # Copiar el código fuente y la configuración de TypeScript
 COPY src ./src
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instalar solo las dependencias de producción
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Copiar el código JavaScript compilado desde el builder
 COPY --from=builder /app/dist ./dist
