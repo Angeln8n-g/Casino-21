@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: casino21_backend
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - ALLOW_INSECURE_JWT_FALLBACK=${ALLOW_INSECURE_JWT_FALLBACK:-false}
+      - EXPOSE_RULES_VERSION=${EXPOSE_RULES_VERSION:-false}
+      - REDIS_URL=${REDIS_URL}
+      - USE_REDIS_ADAPTER=${USE_REDIS_ADAPTER:-false}
+    restart: always
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL}
+        - VITE_SHOW_RULES_VERSION=${VITE_SHOW_RULES_VERSION:-false}
+    container_name: casino21_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
