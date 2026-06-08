@@ -18,6 +18,9 @@ services:
     restart: always
     expose:
       - "4000"
+    networks:
+      - default
+      - fx0i0zfg2d56g4di15lu499b
 
   frontend:
     build:
@@ -34,10 +37,15 @@ services:
       - "80"
     depends_on:
       - backend
+    networks:
+      - default
 
 networks:
   default:
     name: coolify
+    external: true
+  fx0i0zfg2d56g4di15lu499b:
+    name: fx0i0zfg2d56g4di15lu499b
     external: true
 
 
