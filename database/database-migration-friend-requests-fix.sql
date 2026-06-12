@@ -195,8 +195,8 @@ BEGIN
       BEGIN
         EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', tbl);
       EXCEPTION
-        WHEN duplicate_table THEN
-          NULL; -- ya existe en la publicación
+        WHEN others THEN
+          NULL; -- ignorar cualquier error (si ya existe o no existe)
       END;
     END LOOP;
   END IF;
