@@ -30,6 +30,8 @@ interface GameContextType {
   abandonMatch: (roomId: string) => void;
   matchAbandonedData: { winnerId: string, coinsEarned: number, eloEarned: number } | null;
   statsData: { eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null;
+  scoringTimeoutReady: string[];
+  claimRoundVictory: (roomId: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -43,7 +45,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [matchAbandonedData, setMatchAbandonedData] = useState<{ winnerId: string, coinsEarned: number, eloEarned: number } | null>(null);
   const [statsData, setStatsData] = useState<{ eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null>(null);
-  const disconnectTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [scoringTimeoutReady, setScoringTimeoutReady] = useState<string[]>([]);
+  const disconnectTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Escuchar eventos del servidor
   React.useEffect(() => {
@@ -63,6 +66,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('chat_history');
       socket.off('match_abandoned');
       socket.off('stats_updated');
+      socket.off('scoring_timeout');
 
       socket.on('action_error', (msg: string) => {
         setError(msg);
@@ -100,6 +104,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (state.phase !== 'completed') {
           setStatsData(null);
         }
+        // Limpiar el timeout de scoring cuando la fase avanza
+        if (state.phase === 'playing' || state.phase === 'completed') {
+          setScoringTimeoutReady([]);
+        }
       });
 
       socket.on('receive_message', (msg: ChatMessage) => {
@@ -121,6 +129,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent('profile_updated'));
         window.dispatchEvent(new CustomEvent('coins_updated'));
         window.dispatchEvent(new CustomEvent('elo_updated'));
+      });
+
+      // Temporizador de fase scoring: el servidor avisa si no todos presionaron continuar
+      socket.on('scoring_timeout', ({ readyPlayers }: { readyPlayers: string[] }) => {
+        setScoringTimeoutReady(readyPlayers);
       });
     };
 
@@ -156,6 +169,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('chat_history');
         currentSocket.off('match_abandoned');
         currentSocket.off('stats_updated');
+        currentSocket.off('scoring_timeout');
       }
       if (disconnectTimerRef.current) {
         clearTimeout(disconnectTimerRef.current);
@@ -199,6 +213,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.emit('abandon_match', { roomId });
   }, []);
 
+  const claimRoundVictory = useCallback((roomId: string) => {
+    const socket = socketService.getSocket();
+    socket.emit('claim_round_victory', { roomId });
+  }, []);
+
   return (
     <GameContext.Provider 
       value={{ 
@@ -216,7 +235,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         sendMessage,
         abandonMatch,
         matchAbandonedData,
-        statsData
+        statsData,
+        scoringTimeoutReady,
+        claimRoundVictory,
       }}
     >
       {children}

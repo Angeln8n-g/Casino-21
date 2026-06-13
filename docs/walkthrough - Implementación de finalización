@@ -1,0 +1,77 @@
+# Temporizador de Abandono entre Rondas — Walkthrough
+
+## Resumen
+
+Se implementó un temporizador de **60 segundos** para la fase `scoring` (entre rondas). Si un jugador no presiona "Siguiente Ronda" en ese tiempo, el jugador que sí lo hizo puede **reclamar la victoria** por abandono.
+
+---
+
+## Archivos Modificados
+
+### 1. [`server/src/index.ts`](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/server/src/index.ts)
+
+- **`scoringTimers`** — nuevo `Map<string, NodeJS.Timeout>` para un timer por sala.
+- **`SCORING_TIMEOUT_MS = 60_000`** — constante de 60 segundos.
+- **`startScoringTimer(roomId, room)`** — función que lanza el timer al entrar a `scoring`. Al expirar, emite `scoring_timeout` con `readyPlayers: string[]`. No aplica a partidas vs Bot.
+- **`claim_round_victory`** — nuevo evento Socket. Valida que el solicitante ya esté en `readyForNextRound` y el oponente no. Declara al solicitante ganador, guarda resultado y emite `match_abandoned`.
+- Se llama `startScoringTimer` en `play_action` (cuando entra a `scoring`) y en `continue_round` (si la fase sigue en `scoring` después de que uno presionó).
+- Se limpian los `scoringTimers` en `closeRoom`, en `continue_round` (cuando avanza a `playing`/`completed`) y en `claim_round_victory`.
+
+### 2. [`src/web/hooks/useGame.tsx`](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/hooks/useGame.tsx)
+
+- Nuevo estado `scoringTimeoutReady: string[]`.
+- Escucha el evento `scoring_timeout` → actualiza `scoringTimeoutReady`.
+- Limpia `scoringTimeoutReady` cuando el `game_state_update` llega con fase `playing` o `completed`.
+- Nuevo callback `claimRoundVictory(roomId)` → emite `claim_round_victory`.
+- Ambos expuestos en el contexto.
+
+### 3. [`src/web/components/GameScreen.tsx`](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/GameScreen.tsx)
+
+- Destructura `scoringTimeoutReady` y `claimRoundVictory` de `useGame`.
+- Crea `handleClaimVictory` que llama a `claimRoundVictory(roomId)`.
+- Pasa `scoringTimeoutReady` y `onClaimVictory` a `<RoundSummaryScreen>`.
+
+### 4. [`src/web/components/game/RoundSummaryScreen.tsx`](file:///c:/Users/angel/Desktop/Develop/Web%20all%20projects/casino-21-card-game/src/web/components/game/RoundSummaryScreen.tsx)
+
+- Nuevas props opcionales: `scoringTimeoutReady` y `onClaimVictory`.
+- **Countdown local**: `useState(60)` + `useEffect` que cuenta regresivamente.
+- **Anillo SVG**: visible solo cuando el jugador local ya presionó "continuar". El anillo se vuelve rojo en los últimos 10 segundos.
+- El botón "Siguiente Ronda" cambia a "✓ Listo" cuando `isReady = true`.
+- **Botón "🏆 Reclamar Victoria"**: aparece cuando `canClaim = true` (el jugador está listo + el servidor emitió `scoring_timeout` con el local en `readyPlayers` + el oponente no está en `readyPlayers`).
+
+---
+
+## Flujo de Usuario
+
+```
+Ronda termina → fase: scoring
+  ↓
+Ambos clientes: RoundSummaryScreen con countdown de 60s
+
+Jugador A presiona "Siguiente Ronda"
+  → botón cambia a "✓ Listo"
+  → anillo SVG empieza a contar
+  
+Jugador B no presiona (60s pasan)
+  → Servidor emite scoring_timeout { readyPlayers: [A] }
+  → Cliente A: canClaim = true
+  → Aparece botón "🏆 Reclamar Victoria" + mensaje de aviso
+
+A presiona "Reclamar Victoria"
+  → Servidor valida y emite match_abandoned { winnerId: A }
+  → Ambos clientes van a MatchAbandonedScreen / MatchCompletedScreen
+  → ELO, monedas y resultado guardados en DB
+```
+
+---
+
+## Verificación Manual
+
+1. Abrir dos navegadores/pestañas con dos cuentas diferentes en la misma sala.
+2. Jugar hasta completar una ronda (llegar a la pantalla de resultados).
+3. Solo en el navegador del **Jugador A**, presionar "Siguiente Ronda".
+4. Observar que el anillo de cuenta regresiva aparece en A.
+5. Esperar 60 segundos sin tocar el navegador de B.
+6. Verificar que en A aparece el mensaje y el botón "🏆 Reclamar Victoria".
+7. Presionar el botón → ambos clientes deben ir a la pantalla de victoria/derrota.
+8. Verificar en la DB (tabla `match_history`, `profiles` ELO y coins) que el resultado se guardó correctamente.

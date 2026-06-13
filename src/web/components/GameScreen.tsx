@@ -47,7 +47,7 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 };
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
-  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData, statsData } = useGame();
+  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData, statsData, scoringTimeoutReady, claimRoundVictory } = useGame();
   const { profile, user } = useAuth();
   // Local player's card theme (personal)
   const localCardTheme = useGameTheme();
@@ -565,7 +565,16 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const getEntities = () => gameState.mode === '1v1' ? gameState.players : gameState.teams;
 
   if (gameState.phase === 'scoring') {
-    return <RoundSummaryScreen gameState={gameState} localPlayerId={localPlayerId} onContinue={continueToNextRound} />;
+    const handleClaimVictory = () => claimRoundVictory(roomId);
+    return (
+      <RoundSummaryScreen
+        gameState={gameState}
+        localPlayerId={localPlayerId}
+        onContinue={continueToNextRound}
+        scoringTimeoutReady={scoringTimeoutReady}
+        onClaimVictory={handleClaimVictory}
+      />
+    );
   }
 
   if (matchAbandonedData && !isSpectator) {

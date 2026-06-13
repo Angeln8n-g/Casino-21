@@ -140,6 +140,8 @@ const matchmakingStore = new MatchmakingStore();
 
 const socketToRoomMap = new Map<string, string>();
 const roomTimers = new Map<string, NodeJS.Timeout>();
+const scoringTimers = new Map<string, NodeJS.Timeout>();
+const SCORING_TIMEOUT_MS = 60_000; // 1 minuto para que ambos presionen "continuar"
 
 const joinPub = new Redis(REDIS_URL);
 const joinSub = new Redis(REDIS_URL);
@@ -182,6 +184,12 @@ async function closeRoom(roomId: string, reason: string = 'room_closed') {
   if (timer) {
     clearTimeout(timer);
     roomTimers.delete(roomId);
+  }
+
+  const sTimer = scoringTimers.get(roomId);
+  if (sTimer) {
+    clearTimeout(sTimer);
+    scoringTimers.delete(roomId);
   }
 
   room.players.forEach(p => socketToRoomMap.delete(p.socketId));
@@ -862,10 +870,13 @@ io.on('connection', (socket) => {
       if (room.state.phase === 'completed') {
         const timer = roomTimers.get(roomId);
         if (timer) { clearTimeout(timer); roomTimers.delete(roomId); }
+        const sTimer = scoringTimers.get(roomId);
+        if (sTimer) { clearTimeout(sTimer); scoringTimers.delete(roomId); }
         saveMatchResult(roomId, room);
       } else if (room.state.phase === 'scoring') {
         const timer = roomTimers.get(roomId);
         if (timer) { clearTimeout(timer); roomTimers.delete(roomId); }
+        startScoringTimer(roomId, room);
         scheduleBotTurnIfNeeded(roomId, room);
       } else {
         startTurnTimer(roomId, room);
@@ -930,16 +941,62 @@ io.on('connection', (socket) => {
       if (room.state.phase === 'completed') {
         const timer = roomTimers.get(roomId);
         if (timer) { clearTimeout(timer); roomTimers.delete(roomId); }
+        const sTimer = scoringTimers.get(roomId);
+        if (sTimer) { clearTimeout(sTimer); scoringTimers.delete(roomId); }
         broadcastGameState(roomId, room);
         saveMatchResult(roomId, room);
       } else if (room.state.phase === 'playing') {
+        const sTimer = scoringTimers.get(roomId);
+        if (sTimer) { clearTimeout(sTimer); scoringTimers.delete(roomId); }
         startTurnTimer(roomId, room);
         broadcastGameState(roomId, room);
         scheduleBotTurnIfNeeded(roomId, room);
       } else {
+        // Sigue en scoring (el oponente aún no presionó continuar)
+        // El scoringTimer sigue corriendo — no lo cancelamos aquí
         broadcastGameState(roomId, room);
       }
     }
+  });
+
+  socket.on('claim_round_victory', async ({ roomId }: { roomId: string }) => {
+    const room = await roomStore.get(roomId);
+    if (!room?.state || room.state.phase !== 'scoring') return;
+
+    const requester = room.players.find(p => p.userId === userId);
+    if (!requester) return;
+
+    const readyList = room.state.readyForNextRound ?? [];
+    const alreadyReady = readyList.includes(userId);
+    const opponentNotReady = room.players.some(
+      p => p.userId !== userId && !readyList.includes(p.userId)
+    );
+
+    if (!alreadyReady || !opponentNotReady) {
+      socket.emit('error', 'No puedes reclamar victoria en este momento.');
+      return;
+    }
+
+    // Cancelar el scoring timer
+    const sTimer = scoringTimers.get(roomId);
+    if (sTimer) { clearTimeout(sTimer); scoringTimers.delete(roomId); }
+
+    // Declarar al solicitante como ganador (abandono del oponente)
+    room.state = { ...room.state, phase: 'completed', winnerId: userId };
+    await persistRoom(roomId, room);
+    saveMatchResult(roomId, room);
+
+    const prizePool = room.prizePool || 0;
+    const coinsEarned = room.maxPlayers === 4 ? Math.floor(prizePool / 2) : prizePool;
+    const eloEarned = 25;
+
+    io.to(roomId).emit('match_abandoned', {
+      winnerId: userId,
+      coinsEarned,
+      eloEarned
+    });
+
+    console.log(`[ScoringTimeout] ${requester.name} reclamó victoria por abandono en sala ${roomId}`);
   });
 
   socket.on('send_message', async ({ roomId, text }: { roomId: string, text: string }) => {
@@ -1078,6 +1135,38 @@ async function startTurnTimer(roomId: string, room: Room) {
   }, TURN_TIME_LIMIT_MS);
 
   roomTimers.set(roomId, timer);
+}
+
+async function startScoringTimer(roomId: string, room: Room) {
+  // Solo para partidas humano vs humano (no bots)
+  if (room.isBot) return;
+
+  const existing = scoringTimers.get(roomId);
+  if (existing) clearTimeout(existing);
+
+  const timer = setTimeout(async () => {
+    const currentRoom = await roomStore.get(roomId);
+    if (!currentRoom?.state || currentRoom.state.phase !== 'scoring') {
+      scoringTimers.delete(roomId);
+      return;
+    }
+
+    const readyList = currentRoom.state.readyForNextRound ?? [];
+    const allPlayerIds = currentRoom.players.map(p => p.userId);
+    const allReady = allPlayerIds.every(id => readyList.includes(id));
+
+    if (allReady) {
+      scoringTimers.delete(roomId);
+      return;
+    }
+
+    // Notificar a todos en la sala quién ya está listo
+    io.to(roomId).emit('scoring_timeout', { readyPlayers: readyList });
+    scoringTimers.delete(roomId);
+    console.log(`[ScoringTimeout] Sala ${roomId}: timeout de 60s en fase scoring. Listos: ${readyList.join(', ')}`);
+  }, SCORING_TIMEOUT_MS);
+
+  scoringTimers.set(roomId, timer);
 }
 
 async function saveMatchResult(roomId: string, room: Room) {

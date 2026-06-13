@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameState } from '../../../domain/game-state';
 import casinoBackground from '../../../Public/background.jpg';
 import k21Logo from '../../../Public/brand21Icon.png';
-import titleImage from '../../../Public/Reultados de la ronda.png';
 
 /**
  * Props for the RoundSummaryScreen component.
  * @property gameState - The current game state (must be in 'scoring' phase).
  * @property onContinue - Callback to proceed to the next round.
+ * @property scoringTimeoutReady - List of player IDs that already pressed continue when server timeout fired.
+ * @property onClaimVictory - Callback to claim victory by abandonment after timeout.
  */
 interface RoundSummaryScreenProps {
   gameState: GameState;
   localPlayerId: string | null;
   onContinue: () => void;
+  scoringTimeoutReady?: string[];
+  onClaimVictory?: () => void;
 }
 
 /**
@@ -66,8 +69,30 @@ function ScoreRow({
  *  - Safe-area padding via `env()` for devices with notches.
  *  - Content capped at `max-w-4xl` and centered horizontally.
  */
-export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: RoundSummaryScreenProps) {
+export function RoundSummaryScreen({ gameState, localPlayerId, onContinue, scoringTimeoutReady = [], onClaimVictory }: RoundSummaryScreenProps) {
   const isReady = localPlayerId ? gameState.readyForNextRound?.includes(localPlayerId) : false;
+
+  // Countdown local de 60s — empieza al montar el componente
+  const SCORING_TIMEOUT_S = 60;
+  const [secondsLeft, setSecondsLeft] = useState(SCORING_TIMEOUT_S);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const id = setTimeout(() => setSecondsLeft(s => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [secondsLeft]);
+
+  // canClaim: el countdown llegó a 0, el jugador local ya presionó continuar,
+  // el servidor confirmó el timeout (scoringTimeoutReady incluye al local)
+  // y el oponente NO está en scoringTimeoutReady.
+  const localInTimeout = localPlayerId ? scoringTimeoutReady.includes(localPlayerId) : false;
+  const opponentStillMissing = gameState.players.some(
+    p => p.id !== localPlayerId && !scoringTimeoutReady.includes(p.id)
+  );
+  const canClaim = isReady && localInTimeout && opponentStillMissing;
+
+  // Porcentaje del countdown para el anillo visual
+  const countdownPct = secondsLeft / SCORING_TIMEOUT_S;
 
   return (
     <div
@@ -265,20 +290,60 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
             })}
           </div>
 
-          {/* ---- Continue Button ---- */}
-          <div className="flex justify-center pt-1 sm:pt-2 min-h-[40px] sm:min-h-[44px] md:min-h-[52px]">
+          {/* ---- Continue Button + Countdown ---- */}
+          <div className="flex flex-col items-center gap-3 pt-1 sm:pt-2">
+            {/* Countdown ring (visible only when waiting for opponent) */}
+            {isReady && !canClaim && (
+              <div className="flex flex-col items-center gap-2">
+                {/* SVG countdown ring */}
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
+                    {/* Background track */}
+                    <circle
+                      cx="28" cy="28" r="24"
+                      fill="none"
+                      stroke="rgba(234,179,8,0.1)"
+                      strokeWidth="4"
+                    />
+                    {/* Countdown arc */}
+                    <circle
+                      cx="28" cy="28" r="24"
+                      fill="none"
+                      stroke={secondsLeft <= 10 ? '#ef4444' : '#eab308'}
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 24}`}
+                      strokeDashoffset={`${2 * Math.PI * 24 * (1 - countdownPct)}`}
+                      className="transition-all duration-1000 ease-linear"
+                    />
+                  </svg>
+                  {/* Seconds number */}
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center text-sm sm:text-base font-black tabular-nums
+                      ${secondsLeft <= 10 ? 'text-red-400' : 'text-yellow-400'}`}
+                  >
+                    {secondsLeft}
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest animate-pulse text-center">
+                  Esperando oponente…
+                </p>
+              </div>
+            )}
+
+            {/* Main action button */}
             <button
               onClick={onContinue}
               disabled={isReady}
               className={`relative overflow-hidden group bg-transparent border text-xs sm:text-sm md:text-lg tracking-[0.12em] sm:tracking-[0.15em] uppercase transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.15)] rounded-lg sm:rounded-xl font-bold px-5 py-2 sm:px-7 sm:py-2.5 md:px-12 md:py-3.5
-                ${isReady 
-                  ? 'border-yellow-500/30 text-yellow-400/50 cursor-not-allowed scale-95' 
+                ${isReady
+                  ? 'border-yellow-500/30 text-yellow-400/50 cursor-not-allowed scale-95'
                   : 'border-yellow-500/50 hover:border-yellow-400 active:border-yellow-300 text-yellow-400 hover:text-yellow-300 hover:shadow-[0_0_30px_rgba(234,179,8,0.3)] active:scale-95 hover:-translate-y-0.5 touch-manipulation'
                 }`}
             >
               {!isReady && <div className="absolute inset-0 bg-gradient-to-r from-yellow-600/0 via-yellow-500/10 to-yellow-600/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />}
               {isReady ? (
-                <span className="animate-pulse block min-w-[150px] sm:min-w-[180px] md:min-w-[240px]">Esperando oponente...</span>
+                <span className="block min-w-[150px] sm:min-w-[180px] md:min-w-[240px]">✓ Listo</span>
               ) : (
                 <>
                   Siguiente Ronda
@@ -288,9 +353,26 @@ export function RoundSummaryScreen({ gameState, localPlayerId, onContinue }: Rou
                 </>
               )}
             </button>
+
+            {/* Claim Victory — appears when server confirms opponent didn't continue */}
+            {canClaim && onClaimVictory && (
+              <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <p className="text-xs sm:text-sm text-orange-300 font-bold text-center max-w-xs">
+                  ⏰ El tiempo se agotó. Tu oponente no continuó la partida.
+                </p>
+                <button
+                  onClick={onClaimVictory}
+                  className="relative overflow-hidden group bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 border border-orange-400/60 text-white text-xs sm:text-sm md:text-base tracking-[0.1em] uppercase font-black px-6 py-2.5 sm:px-8 sm:py-3 rounded-xl shadow-[0_0_20px_rgba(234,88,12,0.4)] hover:shadow-[0_0_35px_rgba(234,88,12,0.6)] transition-all duration-300 active:scale-95 touch-manipulation"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
+                  🏆 Reclamar Victoria
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
