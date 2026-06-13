@@ -1,0 +1,44 @@
+# Walkthrough - Resumen de Soluciones
+
+Hemos solucionado los dos problemas reportados en el servidor de producción.
+
+## 1. Solución al Error 400 en XHRPATCH `/profiles`
+El error `400 Bad Request` al intentar actualizar el perfil (`last_seen_at` y `current_room_id` para el latido de presencia) se debía a que las columnas correspondientes no estaban presentes en la tabla `profiles` de la base de datos en producción.
+
+**Acciones tomadas:**
+- Nos conectamos de forma segura mediante SSH a la VPS.
+- Ejecutamos la migración correspondiente para agregar los campos a la base de datos de producción:
+  ```sql
+  ALTER TABLE public.profiles 
+    ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ, 
+    ADD COLUMN IF NOT EXISTS current_room_id TEXT;
+  
+  CREATE INDEX IF NOT EXISTS idx_profiles_last_seen_at ON public.profiles(last_seen_at DESC);
+  ```
+- El latido (heartbeat) de presencia ahora se está enviando y guardando correctamente (verificado en la base de datos).
+
+---
+
+## 2. Acceso al Panel de Administración
+El usuario con el que estabas probando (`322c2de4-1185-470e-b36b-da22ffca9423` / `El-Miedo`) no tenía privilegios de administrador en la tabla `profiles`, por lo que el botón y la pestaña del panel no se mostraban en el juego.
+
+**Acciones tomadas:**
+- Actualizamos tu usuario en la base de datos de producción:
+  ```sql
+  UPDATE public.profiles SET is_admin = true WHERE id = '322c2de4-1185-470e-b36b-da22ffca9423';
+  ```
+- Verificamos que tu perfil ahora tenga `is_admin: true` y los datos de presencia actualizados. Ya puedes ingresar al **Panel Administrativo** directamente desde el menú del juego.
+
+---
+
+## 3. Exposición de Supabase Studio
+Para que puedas acceder al panel de administración de la base de datos (Supabase Studio) directamente:
+
+**Acciones tomadas:**
+- Modificamos la configuración de Coolify (`docker-compose`) del servicio de Supabase para exponer el puerto `3000` de Supabase Studio hacia el puerto `54321` del host.
+- Reiniciamos el servicio en Coolify para aplicar la nueva configuración.
+- Ya puedes acceder a la interfaz de administración de la base de datos a través de:
+  **URL:** [http://84.247.169.189:54321](http://84.247.169.189:54321)
+  **Credenciales de Acceso:**
+  - **Usuario:** `q3gLgFvjBJodPrE9`
+  - **Contraseña:** `o98eaV29SniERhmDlkZjK4I3amiNK2Go`
