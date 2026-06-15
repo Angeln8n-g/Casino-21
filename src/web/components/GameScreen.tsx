@@ -4,6 +4,7 @@ import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
 import { useGameTheme } from '../hooks/useGameTheme';
+import { useGameMusic } from '../hooks/useGameMusic';
 import { supabase } from '../services/supabase';
 import { BoardView } from './BoardView';
 import { HandView } from './HandView';
@@ -53,6 +54,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const localCardTheme = useGameTheme();
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const { playSfx } = useAudio();
+
+  // Custom hook to handle match music sequences reactively based on game round/phase
+  useGameMusic(gameState);
   
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
   const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
@@ -564,6 +568,18 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   const getEntities = () => gameState.mode === '1v1' ? gameState.players : gameState.teams;
 
+  // match_abandoned tiene prioridad sobre cualquier fase — incluso scoring.
+  // Esto permite que "Reclamar Victoria" transite inmediatamente a la pantalla de abandono.
+  if (matchAbandonedData && !isSpectator) {
+    return (
+      <MatchAbandonedScreen
+        data={matchAbandonedData}
+        localPlayerId={localPlayerId}
+        celebrationSeed={celebrationSeed}
+      />
+    );
+  }
+
   if (gameState.phase === 'scoring') {
     const handleClaimVictory = () => claimRoundVictory(roomId);
     return (
@@ -577,17 +593,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     );
   }
 
-  if (matchAbandonedData && !isSpectator) {
-    return (
-      <MatchAbandonedScreen
-        data={matchAbandonedData}
-        localPlayerId={localPlayerId}
-        celebrationSeed={celebrationSeed}
-      />
-    );
-  }
-
   if (gameState.phase === 'completed') {
+
     return (
       <MatchCompletedScreen
         gameState={gameState}

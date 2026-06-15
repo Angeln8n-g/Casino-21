@@ -22,6 +22,7 @@ import { WelcomeModal } from './WelcomeModal';
 import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
+import { LobbyMusicSelector } from './LobbyMusicSelector';
 import mainMenuBg from '../../Public/background.jpg';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
@@ -913,6 +914,11 @@ export function MainMenu() {
               <p className="text-gray-500 text-[10px] mt-1 uppercase tracking-[0.3em] font-bold">
                 Juego de cartas competitivo
               </p>
+            </div>
+
+            {/* ─── Lobby Music Selector ─── */}
+            <div className="max-w-sm mx-auto">
+              <LobbyMusicSelector />
             </div>
 
           {/* Error */}

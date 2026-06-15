@@ -46,3 +46,34 @@ USING (
         WHERE id = auth.uid() AND is_admin = true
     )
 );
+
+-- Crear el bucket store_assets (público para lectura)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'store_assets',
+  'store_assets',
+  true,
+  5242880,  -- 5 MB
+  ARRAY['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Política: cualquiera puede leer (público)
+CREATE POLICY "store_assets_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'store_assets');
+
+-- Política: solo admins pueden subir/borrar
+CREATE POLICY "store_assets_admin_upload"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'store_assets'
+  AND auth.role() = 'authenticated'
+);
+
+CREATE POLICY "store_assets_admin_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'store_assets'
+  AND auth.role() = 'authenticated'
+);
