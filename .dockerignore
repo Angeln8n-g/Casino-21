@@ -1,3 +1,14 @@
+# Tool directories and artifacts
+.agent
+.agents
+.antigravitycli
+.gemini
+.opencode
+.superpowers
+.trae
+artifacts
+coolify_temp
+
 node_modules
 dist
 dev-dist

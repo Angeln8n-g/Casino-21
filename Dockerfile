@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instalar dependencias
-RUN npm ci
+RUN npm ci --no-audit --no-fund --maxsockets=1
 
 # Copiar el código fuente necesario para compilar
 COPY src ./src
