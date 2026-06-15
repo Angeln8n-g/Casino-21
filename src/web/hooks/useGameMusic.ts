@@ -49,7 +49,7 @@ export function useGameMusic(gameState: GameState | null) {
       loop: true, // Loops during each mazo
       volume: 0,
       preload: true,
-      html5: true, // Use HTML5 audio to handle large files efficiently
+      html5: false, // Forces Web Audio API for stutter-free audio mixing
     });
 
     howlsRef.current.set(index, howl);

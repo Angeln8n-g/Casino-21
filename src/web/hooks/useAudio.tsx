@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Howl } from 'howler';
 import cardDealSrc from '../../Public/card_deal.mp3';
 import cardPlaySrc from '../../Public/card_play.mp3';
 import chipsClinkSrc from '../../Public/clips_click.mp3';
@@ -99,8 +100,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  const templatesRef = useRef<Map<AudioCue, HTMLAudioElement>>(new Map());
-  const loopPlayersRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const templatesRef = useRef<Map<AudioCue, Howl>>(new Map());
+  const loopPlayersRef = useRef<Map<string, Howl>>(new Map());
   const lastPlayAtRef = useRef<Map<AudioCue, number>>(new Map());
 
   useEffect(() => {
@@ -116,35 +117,38 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [muted, volume]);
 
   useEffect(() => {
-    const templates = new Map<AudioCue, HTMLAudioElement>();
+    const templates = new Map<AudioCue, Howl>();
 
     (Object.keys(AUDIO_CATALOG) as AudioCue[]).forEach((cue) => {
-      const audio = new Audio(AUDIO_CATALOG[cue].src);
-      audio.preload = 'auto';
-      audio.load();
-      templates.set(cue, audio);
+      const howl = new Howl({
+        src: [AUDIO_CATALOG[cue].src],
+        preload: true,
+        html5: false, // Forces Web Audio API for stutter-free audio mixing
+      });
+      templates.set(cue, howl);
     });
 
     templatesRef.current = templates;
 
     return () => {
-      loopPlayersRef.current.forEach((audio) => {
-        audio.pause();
-        audio.src = '';
+      loopPlayersRef.current.forEach((howl) => {
+        howl.stop();
+        howl.unload();
       });
       loopPlayersRef.current.clear();
-      templates.forEach((audio) => {
-        audio.src = '';
+      templates.forEach((howl) => {
+        howl.stop();
+        howl.unload();
       });
     };
   }, []);
 
   useEffect(() => {
-    loopPlayersRef.current.forEach((audio) => {
-      const cue = (audio.dataset.cue as AudioCue | undefined) ?? 'alert';
-      const config = AUDIO_CATALOG[cue];
-      audio.muted = muted;
-      audio.volume = clamp(volume * config.baseVolume, 0, 1);
+    loopPlayersRef.current.forEach((howl) => {
+      const baseVol = (howl as any)._baseVolume ?? 1.0;
+      const volMultiplier = (howl as any)._volumeMultiplier ?? 1.0;
+      howl.volume(clamp(volume * baseVol * volMultiplier, 0, 1));
+      howl.mute(muted);
     });
   }, [muted, volume]);
 
@@ -168,22 +172,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       lastPlayAtRef.current.set(cue, now);
 
-      const template = templatesRef.current.get(cue);
-      const audio = (template?.cloneNode(true) as HTMLAudioElement | undefined) ?? new Audio(config.src);
-
-      audio.volume = clamp(volume * config.baseVolume * (options?.volumeMultiplier ?? 1), 0, 1);
-      audio.playbackRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
-      audio.muted = muted;
-
-      audio.play().catch(() => {});
-
-      const cleanup = () => {
-        audio.pause();
-        audio.src = '';
-        audio.removeEventListener('ended', cleanup);
-      };
-
-      audio.addEventListener('ended', cleanup);
+      const howl = templatesRef.current.get(cue);
+      if (howl) {
+        const targetVol = clamp(volume * config.baseVolume * (options?.volumeMultiplier ?? 1), 0, 1);
+        const playRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
+        
+        howl.volume(targetVol);
+        howl.rate(playRate);
+        howl.mute(muted);
+        howl.play();
+      }
     },
     [muted, volume]
   );
@@ -194,33 +192,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const audio = new Audio(url);
-      audio.volume = clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1);
-      audio.playbackRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
-      audio.muted = muted;
-
-      audio.play().catch(() => {});
-
-      const cleanup = () => {
-        audio.pause();
-        audio.src = '';
-        audio.removeEventListener('ended', cleanup);
-      };
-
-      audio.addEventListener('ended', cleanup);
+      const howl = new Howl({
+        src: [url],
+        volume: clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1),
+        rate: clamp(options?.playbackRate ?? 1, 0.6, 1.8),
+        mute: muted,
+        html5: false,
+        onend: () => {
+          howl.unload();
+        }
+      });
+      howl.play();
     },
     [muted, volume]
   );
 
   const stopLoop = useCallback((id: string) => {
-    const current = loopPlayersRef.current.get(id);
-    if (!current) {
+    const howl = loopPlayersRef.current.get(id);
+    if (!howl) {
       return;
     }
 
-    current.pause();
-    current.currentTime = 0;
-    current.src = '';
+    howl.stop();
+    howl.unload();
     loopPlayersRef.current.delete(id);
   }, []);
 
@@ -229,15 +223,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       stopLoop(id);
 
       const config = AUDIO_CATALOG[cue];
-      const audio = new Audio(config.src);
-      audio.loop = true;
-      audio.dataset.cue = cue;
-      audio.volume = clamp(volume * config.baseVolume * (options?.volumeMultiplier ?? 1), 0, 1);
-      audio.playbackRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
-      audio.muted = muted;
+      const howl = new Howl({
+        src: [config.src],
+        loop: true,
+        volume: clamp(volume * config.baseVolume * (options?.volumeMultiplier ?? 1), 0, 1),
+        rate: clamp(options?.playbackRate ?? 1, 0.6, 1.8),
+        mute: muted,
+        html5: false,
+      });
 
-      loopPlayersRef.current.set(id, audio);
-      audio.play().catch(() => {});
+      // Save custom fields for volume syncing
+      (howl as any)._baseVolume = config.baseVolume;
+      (howl as any)._volumeMultiplier = options?.volumeMultiplier ?? 1;
+
+      loopPlayersRef.current.set(id, howl);
+      howl.play();
     },
     [muted, stopLoop, volume]
   );
@@ -247,14 +247,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       stopLoop(id);
       if (!url) return;
 
-      const audio = new Audio(url);
-      audio.loop = true;
-      audio.volume = clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1);
-      audio.playbackRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
-      audio.muted = muted;
+      const howl = new Howl({
+        src: [url],
+        loop: true,
+        volume: clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1),
+        rate: clamp(options?.playbackRate ?? 1, 0.6, 1.8),
+        mute: muted,
+        html5: false,
+      });
 
-      loopPlayersRef.current.set(id, audio);
-      audio.play().catch(() => {});
+      (howl as any)._baseVolume = 1.0;
+      (howl as any)._volumeMultiplier = options?.volumeMultiplier ?? 1;
+
+      loopPlayersRef.current.set(id, howl);
+      howl.play();
     },
     [muted, stopLoop, volume]
   );
