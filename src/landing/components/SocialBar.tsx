@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getCookieConsent } from '../../web/components/CookieConsent';
 import { trackAdEvent } from '../../web/services/analytics';
 import { useAdConfig } from '../../web/hooks/useAdConfigs';
+import { logAdEventToDb } from '../../web/services/adLogger';
 
 export default function SocialBar() {
   const config = useAdConfig('social_bar');
@@ -24,6 +25,9 @@ export default function SocialBar() {
     script.async = true;
     script.dataset.cfasync = 'false';
     document.body.appendChild(script);
+
+    // Track social bar impression in DB
+    logAdEventToDb('social_bar', 'impression', { configName: config.name });
 
     const timeout = setTimeout(() => {
       trackAdEvent('ad_social_bar_impression', 0.001);

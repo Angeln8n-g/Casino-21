@@ -28,6 +28,11 @@ export function useGameMusic(gameState: GameState | null) {
   const isTransitioningRef = useRef(false);
   const mountedRef = useRef(true);
 
+  // Track the number of scoring phases seen to determine which track to play.
+  // We advance the track only when scoring happens, NOT on every mid-round re-deal.
+  const scoringCountRef = useRef(0);
+  const prevPhaseRef = useRef<string | null>(null);
+
   const getTargetVolume = () => {
     return muted ? 0 : masterVolume * MUSIC_VOLUME_SCALE;
   };
@@ -71,15 +76,24 @@ export function useGameMusic(gameState: GameState | null) {
     });
   }, [masterVolume, muted]);
 
-  // Handle music transitions when roundCount or phase changes
+  // Handle music transitions based on phase changes only.
+  // The track index advances only when we detect a scoring transition,
+  // so mid-round re-deals (which increment roundCount) do NOT restart the music.
   useEffect(() => {
     if (!gameState) return;
 
     mountedRef.current = true;
-    const { roundCount, phase } = gameState;
-    const trackIndex = roundCount % 4; // Safely cycle round sequence 1-4
-    const shouldPlay = phase === 'playing';
+    const { phase } = gameState;
+    const prevPhase = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
 
+    // Detect transition INTO scoring — this means a mazo just ended
+    if (phase === 'scoring' && prevPhase !== null && prevPhase !== 'scoring') {
+      scoringCountRef.current += 1;
+    }
+
+    const trackIndex = scoringCountRef.current % 4;
+    const shouldPlay = phase === 'playing';
     const activeIndex = activeTrackIndexRef.current;
 
     if (shouldPlay) {
@@ -116,7 +130,7 @@ export function useGameMusic(gameState: GameState | null) {
           }
         }, FADE_IN_MS);
       } else {
-        // Ensure the current track is playing (e.g. if returning to 'playing' phase)
+        // Same track — ensure it's still playing (e.g. returning from scoring to playing)
         const howl = getOrCreateHowl(trackIndex);
         if (!howl.playing()) {
           howl.mute(muted);
@@ -150,7 +164,7 @@ export function useGameMusic(gameState: GameState | null) {
         activeTrackIndexRef.current = null;
       }
     }
-  }, [gameState?.roundCount, gameState?.phase]);
+  }, [gameState?.phase, gameState?.roundCount]);
 
   // Clean up all resources when component unmounts
   useEffect(() => {

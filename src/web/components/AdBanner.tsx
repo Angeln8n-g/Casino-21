@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getCookieConsent } from './CookieConsent';
 import { useAdConfig } from '../hooks/useAdConfigs';
+import { logAdEventToDb } from '../services/adLogger';
 
 export default function AdBanner() {
   const config = useAdConfig('banner');
@@ -27,6 +28,9 @@ export default function AdBanner() {
     script.async = true;
     script.dataset.cfasync = 'false';
     containerRef.current.appendChild(script);
+
+    // Track banner impression in DB
+    logAdEventToDb('banner', 'impression', { configName: config.name });
   }, [consent?.accepted, tick, config]);
 
   if (!config) return null;

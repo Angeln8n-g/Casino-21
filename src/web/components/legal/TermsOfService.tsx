@@ -217,8 +217,8 @@ export function TermsOfService() {
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Contacto Legal</p>
-              <a href="mailto:kasino.21@gmail.com" className="text-casino-gold hover:text-white transition-colors font-mono text-sm">
-                kasino.21@gmail.com
+              <a href="mailto:kasino21.service@gmail.com" className="text-casino-gold hover:text-white transition-colors font-mono text-sm">
+                kasino21.service@gmail.com
               </a>
               <p className="text-xs text-gray-600 mt-1">Respuesta en 30 días · Atención en español</p>
             </div>

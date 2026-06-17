@@ -3,6 +3,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { adProvider, AdConsent } from '../services/adProviders';
 import { getCookieConsent } from './CookieConsent';
 import { trackAdEvent } from '../services/analytics';
+import { logAdEventToDb } from '../services/adLogger';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,6 +24,7 @@ interface AdModalProps {
   waitMsg: string;
   closeLabel: string;
   showCountdown?: boolean;
+  adType: 'interstitial' | 'rewarded';
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +81,7 @@ const AdModal: React.FC<AdModalProps> = ({
   waitMsg,
   closeLabel,
   showCountdown,
+  adType,
 }) => {
   const [canClose, setCanClose] = useState(false);
   const [seconds, setSeconds] = useState(Math.ceil(minWaitMs / 1000));
@@ -98,6 +101,7 @@ const AdModal: React.FC<AdModalProps> = ({
           setBlocked(true);
           state.isAdBlocked = true;
           trackAdEvent('ad_blocker_detected');
+          logAdEventToDb(adType, 'blocked');
         }
       }, 1500);
     }, 50);
@@ -271,17 +275,24 @@ export const reinitializeAds = (): void => {
 export const showInterstitialAd = (): void => {
   if (!state.isLoaded || state.isAdBlocked || !cooldownOk()) return;
   trackAdEvent('ad_interstitial_shown', 0.01);
+  logAdEventToDb('interstitial', 'impression');
 
   createModal(
     {
-      renderAd: (container) => adProvider.showInterstitial(container),
+      renderAd: (container) =>
+        adProvider.showInterstitial(container, () => {
+          logAdEventToDb('interstitial', 'click');
+        }),
       minWaitMs: INTERSTITIAL_WAIT_MS,
       title: 'KASINO21',
       subtitle: 'Gracias por apoyar el juego',
       waitMsg: 'La publicidad nos ayuda a mantener el juego gratis...',
       closeLabel: 'Continuar',
+      adType: 'interstitial',
     },
-    () => { /* no additional callback */ }
+    () => {
+      logAdEventToDb('interstitial', 'complete');
+    }
   );
 };
 
@@ -308,19 +319,25 @@ export const showRewardedAd = (
     return;
   }
   trackAdEvent('ad_rewarded_shown', 0.02);
+  logAdEventToDb('rewarded', 'impression');
 
   createModal(
     {
-      renderAd: (container) => adProvider.showRewarded(container),
+      renderAd: (container) =>
+        adProvider.showRewarded(container, () => {
+          logAdEventToDb('rewarded', 'click');
+        }),
       minWaitMs: REWARD_WAIT_MS,
       title: 'Mensaje Patrocinado',
       subtitle: `Mira el anuncio para ganar ${rewardAmount} monedas`,
       waitMsg: 'Recompensa disponible en',
       closeLabel: `Reclamar +${rewardAmount} monedas`,
       showCountdown: true,
+      adType: 'rewarded',
     },
     () => {
       trackAdEvent('ad_rewarded_claimed', 0.03);
+      logAdEventToDb('rewarded', 'complete', { rewardAmount });
       onReward(rewardAmount);
     }
   );
@@ -359,18 +376,24 @@ export const showGateAdForBots = (onClose: () => void): void => {
     return;
   }
   trackAdEvent('ad_gate_shown', 0.01);
+  logAdEventToDb('interstitial', 'impression', { context: 'gate_bots' });
 
   createModal(
     {
-      renderAd: (container) => adProvider.showInterstitial(container),
+      renderAd: (container) =>
+        adProvider.showInterstitial(container, () => {
+          logAdEventToDb('interstitial', 'click', { context: 'gate_bots' });
+        }),
       minWaitMs: INTERSTITIAL_WAIT_MS,
       title: 'Jugar contra el Bot',
       subtitle: `Mira el anuncio para desbloquear ${BOT_GAMES} partidas`,
       waitMsg: 'Desbloqueando partidas contra bots...',
       closeLabel: 'Jugar vs Bot',
+      adType: 'interstitial',
     },
     () => {
       sessionStorage.setItem(BOT_STORAGE_KEY, String(BOT_GAMES - 1));
+      logAdEventToDb('interstitial', 'complete', { context: 'gate_bots' });
       onClose();
     }
   );
