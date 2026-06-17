@@ -87,7 +87,7 @@ export function LobbyMusicSelector() {
           loop: false, // We handle looping via onend
           volume: 0,
           preload: true,
-          html5: false, // Forces Web Audio API for stutter-free audio mixing
+          html5: true, // Use HTML5 audio to handle large files efficiently (streaming, low memory)
           onend: function () {
             if (!mountedRef.current) return;
             // Advance to the next track in the same style

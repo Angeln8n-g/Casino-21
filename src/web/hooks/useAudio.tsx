@@ -253,7 +253,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         volume: clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1),
         rate: clamp(options?.playbackRate ?? 1, 0.6, 1.8),
         mute: muted,
-        html5: false,
+        html5: true,
       });
 
       (howl as any)._baseVolume = 1.0;

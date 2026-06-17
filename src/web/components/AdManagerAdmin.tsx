@@ -23,6 +23,7 @@ interface AdConfig {
   script_url: string | null;
   container_id: string | null;
   smartlink_url: string | null;
+  image_url: string | null;
   csp_domains: string[];
   priority: number;
   created_at: string;
@@ -44,6 +45,15 @@ const AD_TYPE_LABELS: Record<string, string> = {
   rewarded: 'Recompensada',
 };
 
+const AVAILABLE_CONTAINERS = [
+  { id: 'ad-banner-container', label: 'Contenedor General (ad-banner-container)' },
+  { id: 'ad-banner-landing', label: 'Página de Inicio (ad-banner-landing)' },
+  { id: 'ad-banner-blog', label: 'Página de Blog (ad-banner-blog)' },
+  { id: 'ad-banner-faq', label: 'Página de Preguntas Frecuentes (ad-banner-faq)' },
+  { id: 'ad-banner-howtoplay', label: 'Página de Cómo Jugar (ad-banner-howtoplay)' },
+  { id: 'ad-banner-sidebar', label: 'Barra Lateral (ad-banner-sidebar)' },
+];
+
 const emptyForm: Omit<AdConfig, 'id' | 'created_at' | 'updated_at'> = {
   name: '',
   ad_type: 'banner',
@@ -51,6 +61,7 @@ const emptyForm: Omit<AdConfig, 'id' | 'created_at' | 'updated_at'> = {
   script_url: '',
   container_id: '',
   smartlink_url: '',
+  image_url: '',
   csp_domains: [],
   priority: 0,
 };
@@ -68,6 +79,7 @@ export function AdManagerAdmin() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [domainInput, setDomainInput] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [showCustomContainerInput, setShowCustomContainerInput] = useState(false);
 
   // Dashboard / Analytics State
   const [logs, setLogs] = useState<AdLog[]>([]);
@@ -142,6 +154,7 @@ export function AdManagerAdmin() {
       script_url: form.script_url || null,
       container_id: form.container_id || null,
       smartlink_url: form.smartlink_url || null,
+      image_url: form.image_url || null,
     };
 
     if (editingId) {
@@ -161,17 +174,22 @@ export function AdManagerAdmin() {
   };
 
   const handleEdit = (cfg: AdConfig) => {
+    const containerId = cfg.container_id || '';
+    const isPredefined = AVAILABLE_CONTAINERS.some(c => c.id === containerId) || containerId === '';
+
     setForm({
       name: cfg.name,
       ad_type: cfg.ad_type,
       enabled: cfg.enabled,
       script_url: cfg.script_url || '',
-      container_id: cfg.container_id || '',
+      container_id: containerId,
       smartlink_url: cfg.smartlink_url || '',
+      image_url: cfg.image_url || '',
       csp_domains: cfg.csp_domains || [],
       priority: cfg.priority,
     });
     setEditingId(cfg.id);
+    setShowCustomContainerInput(!isPredefined);
     setIsEditing(true);
   };
 
@@ -939,7 +957,12 @@ export function AdManagerAdmin() {
               </p>
             </div>
             <button
-              onClick={() => { setForm(emptyForm); setEditingId(null); setIsEditing(true); }}
+              onClick={() => { 
+                setForm(emptyForm); 
+                setEditingId(null); 
+                setShowCustomContainerInput(false); 
+                setIsEditing(true); 
+              }}
               className="bg-casino-gold text-black px-4 py-2 rounded-xl font-bold hover:bg-yellow-400 transition whitespace-nowrap"
             >
               + Nueva Red
@@ -973,15 +996,54 @@ export function AdManagerAdmin() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1">ID del Contenedor</label>
-                    <input type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
-                      placeholder="container-xxx" value={form.container_id || ''}
-                      onChange={e => setForm({ ...form, container_id: e.target.value })} />
+                    <select
+                      className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                      value={
+                        form.container_id === ''
+                          ? ''
+                          : AVAILABLE_CONTAINERS.some(c => c.id === form.container_id)
+                          ? form.container_id
+                          : 'custom'
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          setShowCustomContainerInput(true);
+                          setForm({ ...form, container_id: '' });
+                        } else {
+                          setShowCustomContainerInput(false);
+                          setForm({ ...form, container_id: val });
+                        }
+                      }}
+                    >
+                      <option value="">Ninguno / Por defecto</option>
+                      {AVAILABLE_CONTAINERS.map(c => (
+                        <option key={c.id} value={c.id}>{c.label}</option>
+                      ))}
+                      <option value="custom">Otro (Personalizado...)</option>
+                    </select>
+                    {showCustomContainerInput && (
+                      <input
+                        type="text"
+                        required
+                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white mt-2 animate-fade-in text-sm"
+                        placeholder="Escribe el ID del contenedor personalizado"
+                        value={form.container_id || ''}
+                        onChange={(e) => setForm({ ...form, container_id: e.target.value })}
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Smartlink URL (Interstitial/Rewarded)</label>
                     <input type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       placeholder="https://..." value={form.smartlink_url || ''}
                       onChange={e => setForm({ ...form, smartlink_url: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Imagen del Anuncio (URL - Opcional)</label>
+                    <input type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                      placeholder="https://.../anuncio.jpg" value={form.image_url || ''}
+                      onChange={e => setForm({ ...form, image_url: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Prioridad</label>
