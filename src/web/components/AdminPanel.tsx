@@ -5,6 +5,7 @@ import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 import { StoreAdmin } from './StoreAdmin';
 import { QuestManager } from './QuestManager';
 import { AdManagerAdmin } from './AdManagerAdmin';
+import { AudioAdmin } from './AudioAdmin';
 import { useAudio } from '../hooks/useAudio';
 
 interface EventData {
@@ -28,7 +29,7 @@ interface EventData {
 
 export function AdminPanel() {
   const { startUrlLoop, stopLoop } = useAudio();
-  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests' | 'ads'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests' | 'ads' | 'audio'>('events');
   
   useEffect(() => {
     // Tab tracking — only for dev diagnostics
@@ -572,6 +573,14 @@ export function AdminPanel() {
             >
               Anuncios
             </button>
+            <button 
+              onClick={() => setActiveTab('audio')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                activeTab === 'audio' ? 'bg-pink-500/20 text-pink-400' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              Audio
+            </button>
           </div>
 
           {activeTab === 'events' && (
@@ -888,8 +897,10 @@ export function AdminPanel() {
           <StoreAdmin />
         ) : activeTab === 'quests' ? (
           <QuestManager />
-        ) : (
+        ) : activeTab === 'ads' ? (
           <AdManagerAdmin />
+        ) : (
+          <AudioAdmin />
         )}
       </div>
     </div>

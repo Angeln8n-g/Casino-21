@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Howl } from 'howler';
 import { useAudio } from './useAudio';
 import { GameState } from '../../domain/game-state';
+import { supabase } from '../services/supabase';
 
 const MUSIC_VOLUME_SCALE = 0.45; // Sits at 45% of master volume to keep sfx audible
 const FADE_OUT_MS = 1000;
@@ -22,9 +23,44 @@ export function useGameMusic(gameState: GameState | null) {
     return 'classic';
   });
 
+  const [tracks, setTracks] = useState<string[]>(() => {
+    const fileSuffix = style === 'classic' ? 'clasic' : 'moderna';
+    return [
+      `/audio/secuencia_${fileSuffix}_1.mp3`,
+      `/audio/secuencia_${fileSuffix}_2.mp3`,
+      `/audio/secuencia_${fileSuffix}_3.mp3`,
+      `/audio/secuencia_${fileSuffix}_4.mp3`,
+    ];
+  });
+
   const howlsRef = useRef<Map<number, Howl>>(new Map());
   const activeTrackIndexRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    const fetchGameTracks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('audio_tracks')
+          .select('src')
+          .eq('category', 'game')
+          .eq('style', style)
+          .order('track_order');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          howlsRef.current.forEach(h => { h.stop(); h.unload(); });
+          howlsRef.current.clear();
+          activeTrackIndexRef.current = null;
+          setTracks(data.map(t => t.src));
+        }
+      } catch (err) {
+        console.error('Error fetching game tracks:', err);
+      }
+    };
+    fetchGameTracks();
+  }, [style]);
 
   // Track the number of scoring phases seen to determine which track to play.
   // We advance the track only when scoring happens, NOT on every mid-round re-deal.
@@ -41,9 +77,7 @@ export function useGameMusic(gameState: GameState | null) {
       return howlsRef.current.get(index)!;
     }
 
-    const fileSuffix = style === 'classic' ? 'clasic' : 'moderna';
-    const trackNum = index + 1;
-    const src = `/audio/secuencia_${fileSuffix}_${trackNum}.mp3`;
+    const src = tracks[index % tracks.length];
 
     console.log(`[useGameMusic] Initializing Howl instance for: ${src}`);
 
@@ -88,7 +122,9 @@ export function useGameMusic(gameState: GameState | null) {
       scoringCountRef.current += 1;
     }
 
-    const trackIndex = scoringCountRef.current % 4;
+    if (tracks.length === 0) return;
+
+    const trackIndex = scoringCountRef.current % tracks.length;
     const shouldPlay = phase === 'playing';
     const activeIndex = activeTrackIndexRef.current;
 
@@ -138,7 +174,7 @@ export function useGameMusic(gameState: GameState | null) {
         activeTrackIndexRef.current = null;
       }
     }
-  }, [gameState?.phase, gameState?.roundCount]);
+  }, [gameState?.phase, gameState?.roundCount, tracks, muted]);
 
   // Clean up all resources when component unmounts
   useEffect(() => {

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Howl } from 'howler';
 import { useAudio } from '../hooks/useAudio';
 import { Music, Pause, Play, SkipForward, ChevronDown, ChevronUp, Volume2, VolumeX } from 'lucide-react';
+import { supabase } from '../services/supabase';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type MusicStyle = 'classic' | 'modern';
@@ -14,7 +15,7 @@ interface PlaylistEntry {
 }
 
 // ─── Playlist Configuration ─────────────────────────────────────────────────────
-const PLAYLISTS: Record<MusicStyle, PlaylistEntry[]> = {
+const FALLBACK_PLAYLISTS: Record<MusicStyle, PlaylistEntry[]> = {
   classic: [
     { src: '/audio/lobby_clasic_1.mp3', label: 'Clásico 1' },
     { src: '/audio/lobby_clasic_2.mp3', label: 'Clásico 2' },
@@ -33,6 +34,45 @@ const LOBBY_MUSIC_SETTINGS_KEY = 'casino21_lobby_music';
 // ─── Component ──────────────────────────────────────────────────────────────────
 export function LobbyMusicSelector() {
   const { volume: masterVolume, muted, setVolume, toggleMuted } = useAudio();
+  const [playlists, setPlaylists] = useState<Record<MusicStyle, PlaylistEntry[]>>(FALLBACK_PLAYLISTS);
+
+  useEffect(() => {
+    const fetchLobbyTracks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('audio_tracks')
+          .select('*')
+          .eq('category', 'lobby')
+          .order('style')
+          .order('track_order');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const newPlaylists: Record<MusicStyle, PlaylistEntry[]> = {
+            classic: [],
+            modern: []
+          };
+          data.forEach(track => {
+            if (track.style === 'classic' || track.style === 'modern') {
+              newPlaylists[track.style].push({
+                src: track.src,
+                label: track.name
+              });
+            }
+          });
+          // Fallbacks for empty categories
+          if (newPlaylists.classic.length === 0) newPlaylists.classic = FALLBACK_PLAYLISTS.classic;
+          if (newPlaylists.modern.length === 0) newPlaylists.modern = FALLBACK_PLAYLISTS.modern;
+          
+          setPlaylists(newPlaylists);
+        }
+      } catch (err) {
+        console.error('Error fetching lobby tracks:', err);
+      }
+    };
+    fetchLobbyTracks();
+  }, []);
 
   // ── Persisted state ─────────────────────────────────────────────────────────
   const [style, setStyle] = useState<MusicStyle>(() => {
@@ -78,9 +118,11 @@ export function LobbyMusicSelector() {
   useEffect(() => {
     mountedRef.current = true;
     const howls = new Map<string, Howl>();
+    const wasPlaying = isPlaying;
+    const oldKey = activeHowlKeyRef.current;
 
-    (Object.keys(PLAYLISTS) as MusicStyle[]).forEach((s) => {
-      PLAYLISTS[s].forEach((entry, idx) => {
+    (Object.keys(playlists) as MusicStyle[]).forEach((s) => {
+      playlists[s].forEach((entry, idx) => {
         const key = `${s}_${idx}`;
         const howl = new Howl({
           src: [entry.src],
@@ -91,7 +133,7 @@ export function LobbyMusicSelector() {
           onend: function () {
             if (!mountedRef.current) return;
             // Advance to the next track in the same style
-            const playlist = PLAYLISTS[s];
+            const playlist = playlists[s];
             const nextIdx = (idx + 1) % playlist.length;
             const nextKey = `${s}_${nextIdx}`;
 
@@ -112,6 +154,22 @@ export function LobbyMusicSelector() {
     });
 
     howlsRef.current = howls;
+    
+    // Resume playback if it was playing and we just reinitialized
+    if (wasPlaying && oldKey) {
+      const parts = oldKey.split('_');
+      const oldStyle = parts[0] as MusicStyle;
+      const oldIdx = parseInt(parts[1], 10);
+      
+      const newKey = getHowlKey(oldStyle, 0); // restart from first track of current style
+      const newHowl = howls.get(newKey);
+      if (newHowl) {
+        trackIndexRef.current = 0;
+        activeHowlKeyRef.current = newKey;
+        newHowl.volume(getTargetVolume());
+        newHowl.play();
+      }
+    }
 
     return () => {
       mountedRef.current = false;
@@ -122,7 +180,7 @@ export function LobbyMusicSelector() {
       howls.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [playlists]);
 
   // ── Sync volume with master ─────────────────────────────────────────────────
   useEffect(() => {
@@ -210,7 +268,7 @@ export function LobbyMusicSelector() {
     if (!isPlaying || isTransitioningRef.current) return;
     isTransitioningRef.current = true;
 
-    const playlist = PLAYLISTS[style];
+    const playlist = playlists[style];
     const oldKey = activeHowlKeyRef.current;
     const oldHowl = oldKey ? howlsRef.current.get(oldKey) : null;
 
@@ -238,7 +296,7 @@ export function LobbyMusicSelector() {
 
   // ── Current track label ─────────────────────────────────────────────────────
   const currentTrackLabel =
-    PLAYLISTS[style][trackIndexRef.current]?.label ?? PLAYLISTS[style][0].label;
+    playlists[style][trackIndexRef.current]?.label ?? playlists[style][0]?.label ?? 'Pista';
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
