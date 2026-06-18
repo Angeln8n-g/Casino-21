@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS public.audio_tracks (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Otorgar permisos a los roles de Supabase
+GRANT ALL ON public.audio_tracks TO postgres, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.audio_tracks TO authenticated;
+GRANT SELECT ON public.audio_tracks TO anon;
+
 -- Habilitar RLS en la tabla
 ALTER TABLE public.audio_tracks ENABLE ROW LEVEL SECURITY;
 

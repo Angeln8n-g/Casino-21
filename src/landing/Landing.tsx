@@ -86,8 +86,10 @@ export default function Landing() {
         </motion.div>
 
         {/* Ad Banner (Promociones) */}
-        <div className="py-6 bg-black/10">
-          <AdBanner />
+        <div className="py-12 relative z-10">
+          <div className="max-w-6xl mx-auto px-6">
+            <AdBanner />
+          </div>
         </div>
 
         {/* Section 6: Rankings & Tournaments */}

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Palette, CheckCircle } from 'lucide-react';
+import { Sparkles, Palette, CheckCircle, Layers, Zap, Crown, Compass } from 'lucide-react';
 
 interface PreviewTheme {
   key: string;
   name: string;
-  emoji: string;
+  icon: React.ComponentType<{ className?: string }>;
   description: string;
   previewColor: string;
   boardStyle: React.CSSProperties;
@@ -18,7 +18,7 @@ const PREVIEW_THEMES: PreviewTheme[] = [
   {
     key: 'classic',
     name: 'Casino Clásico',
-    emoji: '🃏',
+    icon: Layers,
     description: 'El estilo tradicional del fieltro verde de casino, elegante y sobrio.',
     previewColor: '#10b981',
     boardStyle: {
@@ -43,7 +43,7 @@ const PREVIEW_THEMES: PreviewTheme[] = [
   {
     key: 'cyberpunk',
     name: 'Cyberpunk Neon',
-    emoji: '⚡',
+    icon: Zap,
     description: 'Bordes de neón brillante, rejilla holográfica y colores cian y magenta.',
     previewColor: '#ec4899',
     boardStyle: {
@@ -67,7 +67,7 @@ const PREVIEW_THEMES: PreviewTheme[] = [
   {
     key: 'royal',
     name: 'Royal Wood',
-    emoji: '👑',
+    icon: Crown,
     description: 'Estilo de madera noble de caoba y oro premium, digno de un gran rey.',
     previewColor: '#fbbf24',
     boardStyle: {
@@ -91,7 +91,7 @@ const PREVIEW_THEMES: PreviewTheme[] = [
   {
     key: 'space',
     name: 'Deep Space',
-    emoji: '🌌',
+    icon: Compass,
     description: 'Nebulosas de polvo cósmico y constelaciones lejanas con tono violeta.',
     previewColor: '#a78bfa',
     boardStyle: {
@@ -161,24 +161,25 @@ export default function ThemesPreview() {
             <div className="space-y-3">
               {PREVIEW_THEMES.map((theme) => {
                 const isActive = activeTheme.key === theme.key;
+                const Icon = theme.icon;
                 return (
                   <button
                     key={theme.key}
                     onClick={() => setActiveTheme(theme)}
-                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start gap-4 ${
+                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start gap-4 cursor-pointer ${
                       isActive
                         ? 'bg-white/[0.04] border-yellow-500/30 shadow-[0_4px_20px_rgba(251,191,36,0.05)]'
                         : 'bg-white/[0.01] border-white/[0.06] hover:bg-white/[0.02] hover:border-white/[0.1]'
                     }`}
                   >
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{
-                        background: theme.previewColor + '20',
+                        background: theme.previewColor + '18',
                         border: `1px solid ${theme.previewColor}30`,
                       }}
                     >
-                      {theme.emoji}
+                      <Icon className="w-5 h-5" style={{ color: theme.previewColor }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">

@@ -192,6 +192,7 @@ export default function MiniGameDemo() {
                   <AnimatePresence>
                     {dealerHand.map((card, i) => {
                       const isHidden = gameStatus === 'playing' && i === 1;
+                      const isRed = card.suit === '♥' || card.suit === '♦';
                       return (
                         <motion.div
                           key={`dealer-card-${i}-${card.rank}-${card.suit}`}
@@ -201,8 +202,8 @@ export default function MiniGameDemo() {
                           transition={{ duration: 0.4, delay: i * 0.15 }}
                           className={`w-16 h-24 sm:w-20 sm:h-28 rounded-xl flex flex-col justify-between p-3 border relative overflow-hidden select-none ${
                             isHidden
-                              ? 'bg-gradient-to-br from-yellow-600 via-amber-700 to-yellow-600 border-yellow-500/40 shadow-[0_0_15px_rgba(251,191,36,0.15)]'
-                              : 'bg-white text-black border-gray-300 shadow-lg'
+                              ? 'bg-gradient-to-br from-yellow-600 via-amber-700 to-yellow-600 border-yellow-500/40 shadow-[0_0_15px_rgba(251,191,36,0.2)] animate-pulse'
+                              : 'bg-black/75 text-white border-yellow-500/30 shadow-[0_0_15px_rgba(251,191,36,0.15)] backdrop-blur-md'
                           }`}
                         >
                           {isHidden ? (
@@ -212,17 +213,17 @@ export default function MiniGameDemo() {
                           ) : (
                             <>
                               <div className="flex justify-between items-start">
-                                <span className="text-base sm:text-lg font-black leading-none">{card.rank}</span>
-                                <span className={`text-base sm:text-lg leading-none ${card.suit === '♥' || card.suit === '♦' ? 'text-red-500' : 'text-black'}`}>
+                                <span className="text-base sm:text-lg font-black leading-none text-yellow-400">{card.rank}</span>
+                                <span className={`text-base sm:text-lg leading-none ${isRed ? 'text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.5)]' : 'text-yellow-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]'}`}>
                                   {card.suit}
                                 </span>
                               </div>
-                              <div className={`text-3xl sm:text-4xl self-center font-black ${card.suit === '♥' || card.suit === '♦' ? 'text-red-500' : 'text-black'}`}>
+                              <div className={`text-3xl sm:text-4xl self-center font-black ${isRed ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]'}`}>
                                 {card.suit}
                               </div>
                               <div className="flex justify-between items-end rotate-180">
-                                <span className="text-base sm:text-lg font-black leading-none">{card.rank}</span>
-                                <span className={`text-base sm:text-lg leading-none ${card.suit === '♥' || card.suit === '♦' ? 'text-red-500' : 'text-black'}`}>
+                                <span className="text-base sm:text-lg font-black leading-none text-yellow-400">{card.rank}</span>
+                                <span className={`text-base sm:text-lg leading-none ${isRed ? 'text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.5)]' : 'text-yellow-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]'}`}>
                                   {card.suit}
                                 </span>
                               </div>
@@ -277,32 +278,35 @@ export default function MiniGameDemo() {
                   <div className="absolute inset-0 bg-radial-felt pointer-events-none opacity-20" />
 
                   <AnimatePresence>
-                    {playerHand.map((card, i) => (
-                      <motion.div
-                        key={`player-card-${i}-${card.rank}-${card.suit}`}
-                        initial={{ opacity: 0, scale: 0.8, y: 100, rotate: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.4, delay: i * 0.15 }}
-                        className="w-16 h-24 sm:w-20 sm:h-28 bg-white text-black border border-gray-300 rounded-xl flex flex-col justify-between p-3 relative shadow-lg select-none"
-                      >
-                        <div className="flex justify-between items-start">
-                          <span className="text-base sm:text-lg font-black leading-none">{card.rank}</span>
-                          <span className={`text-base sm:text-lg leading-none ${card.suit === '♥' || card.suit === '♦' ? 'text-red-500' : 'text-black'}`}>
+                    {playerHand.map((card, i) => {
+                      const isRed = card.suit === '♥' || card.suit === '♦';
+                      return (
+                        <motion.div
+                          key={`player-card-${i}-${card.rank}-${card.suit}`}
+                          initial={{ opacity: 0, scale: 0.8, y: 100, rotate: 20 }}
+                          animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.4, delay: i * 0.15 }}
+                          className="w-16 h-24 sm:w-20 sm:h-28 bg-black/75 text-white border border-cyan-500/30 rounded-xl flex flex-col justify-between p-3 relative shadow-[0_0_15px_rgba(56,189,248,0.15)] backdrop-blur-md select-none"
+                        >
+                          <div className="flex justify-between items-start">
+                            <span className="text-base sm:text-lg font-black leading-none text-cyan-400">{card.rank}</span>
+                            <span className={`text-base sm:text-lg leading-none ${isRed ? 'text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.5)]' : 'text-cyan-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]'}`}>
+                              {card.suit}
+                            </span>
+                          </div>
+                          <div className={`text-3xl sm:text-4xl self-center font-black ${isRed ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'text-cyan-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.6)]'}`}>
                             {card.suit}
-                          </span>
-                        </div>
-                        <div className={`text-3xl sm:text-4xl self-center font-black ${card.suit === '♥' || card.suit === '♦' ? 'text-red-500' : 'text-black'}`}>
-                          {card.suit}
-                        </div>
-                        <div className="flex justify-between items-end rotate-180">
-                          <span className="text-base sm:text-lg font-black leading-none">{card.rank}</span>
-                          <span className={`text-base sm:text-lg leading-none ${card.suit === '♥' || card.suit === '♦' ? 'text-red-500' : 'text-black'}`}>
-                            {card.suit}
-                          </span>
-                        </div>
-                      </motion.div>
-                    ))}
+                          </div>
+                          <div className="flex justify-between items-end rotate-180">
+                            <span className="text-base sm:text-lg font-black leading-none text-cyan-400">{card.rank}</span>
+                            <span className={`text-base sm:text-lg leading-none ${isRed ? 'text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.5)]' : 'text-cyan-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]'}`}>
+                              {card.suit}
+                            </span>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               </div>

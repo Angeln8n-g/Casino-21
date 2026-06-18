@@ -634,3 +634,12 @@ html {
   pointer-events: none;
 }
 
+/* Repeating felt dot pattern for game tables */
+.bg-radial-felt {
+  background-color: transparent;
+  background-image: radial-gradient(rgb(255 255 255 / 8%) 1.2px, transparent 0),
+                    radial-gradient(rgb(255 255 255 / 8%) 1.2px, transparent 0);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
