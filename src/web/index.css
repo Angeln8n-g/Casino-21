@@ -587,3 +587,50 @@ html {
     scroll-behavior: auto;
   }
 }
+
+/* ─── Cyberpunk Premium glassmorphism ─── */
+.glass-cyber {
+  background: linear-gradient(135deg, rgba(6, 10, 20, 0.75) 0%, rgba(3, 5, 12, 0.45) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 40px rgba(0, 0, 0, 0.7);
+}
+
+.glass-cyber-gold {
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 20px rgba(251, 191, 36, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.75);
+}
+
+.glass-cyber-cyan {
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 20px rgba(56, 189, 248, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.75);
+}
+
+/* Card Glowing trail borders */
+.cyber-card-glowing {
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-card-glowing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, #fbbf24 0%, transparent 40%, transparent 60%, #38bdf8 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+

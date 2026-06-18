@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLandingData } from '../hooks/useLandingData';
 import TournamentCarousel from './TournamentCarousel';
-import { Trophy, Users, Activity, ShieldAlert, Award } from 'lucide-react';
+import { Trophy, Users, Activity, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
+import type { LeaderboardEntry, EventItem, LandingStats } from '../hooks/useLandingData';
 
 function CountUp({ value, suffix = '' }: { value: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -54,8 +54,14 @@ function getDivisionStyle(elo: number): { name: string; class: string } {
   return { name: 'Bronce', class: 'division-bronze' };
 }
 
-export default function CompetitiveHub() {
-  const { leaderboard, events, stats, loading } = useLandingData();
+interface Props {
+  leaderboard: LeaderboardEntry[];
+  events: EventItem[];
+  stats: LandingStats;
+  loading: boolean;
+}
+
+export default function CompetitiveHub({ leaderboard, events, stats, loading }: Props) {
   const top5 = leaderboard.slice(0, 5);
 
   // Live activity simulated notifications feed

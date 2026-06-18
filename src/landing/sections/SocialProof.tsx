@@ -1,41 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Star, ShieldCheck, Users, Flame, Percent } from 'lucide-react';
+import type { TestimonialEntry } from '../hooks/useLandingData';
 
-const TESTIMONIALS = [
-  {
-    name: 'Carlos M.',
-    text: 'El mejor juego de 21 online que he probado. Los torneos semanales son altamente competitivos y el matchmaking por ELO funciona de maravilla.',
-    rating: 5,
-    rank: 'Diamante',
-    rankClass: 'division-diamond',
-    elo: 2150,
-  },
-  {
-    name: 'María L.',
-    text: 'Me encanta poder crear salas privadas y jugar con amigos en tiempo real. La interfaz corre súper fluida tanto en móvil como en PC.',
-    rating: 5,
-    rank: 'Platino',
-    rankClass: 'division-platinum',
-    elo: 1890,
-  },
-  {
-    name: 'Javier R.',
-    text: 'Llevo 3 temporadas compitiendo en el circuito de torneos. El balance de cartas es impecable y la comunidad en Discord es muy activa.',
-    rating: 5,
-    rank: 'Oro',
-    rankClass: 'division-gold',
-    elo: 1620,
-  },
-  {
-    name: 'Ana P.',
-    text: 'El sistema de logros diarios te motiva a jugar una partida rápida todos los días. Empecé en Bronce y ya voy subiendo poco a poco.',
-    rating: 4,
-    rank: 'Plata',
-    rankClass: 'division-silver',
-    elo: 1410,
-  },
-];
+interface Props {
+  testimonials: TestimonialEntry[];
+  loading: boolean;
+}
 
 function Stars({ count }: { count: number }) {
   return (
@@ -65,7 +36,7 @@ const itemVariants = {
   show: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 };
 
-export default function SocialProof() {
+export default function SocialProof({ testimonials, loading }: Props) {
   return (
     <section className="py-24 px-6 relative overflow-hidden bg-gradient-to-b from-black to-[#020617]">
       <div className="max-w-6xl mx-auto relative z-10">
@@ -81,53 +52,61 @@ export default function SocialProof() {
           </p>
         </div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '-100px' }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20"
-        >
-          {TESTIMONIALS.map((t) => (
-            <motion.div
-              key={t.name}
-              variants={itemVariants}
-              whileHover={{ y: -5, borderColor: 'rgba(251,191,36,0.15)' }}
-              className="bg-white/[0.015] border border-white/[0.06] rounded-2xl p-6 backdrop-blur-xl relative transition-all duration-300 flex flex-col justify-between"
-              style={{
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02), 0 4px 25px rgba(0,0,0,0.5)',
-              }}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center text-xs font-black text-yellow-400 font-['Russo_One'] border border-yellow-500/20">
-                      {t.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs text-white flex items-center gap-1 font-['Chakra_Petch']">
-                        {t.name} <ShieldCheck size={12} className="text-yellow-400" />
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-44 bg-white/[0.02] border border-white/[0.06] rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-100px' }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20"
+          >
+            {testimonials.map((t) => (
+              <motion.div
+                key={t.name}
+                variants={itemVariants}
+                whileHover={{ y: -5, borderColor: 'rgba(251,191,36,0.15)' }}
+                className="bg-white/[0.015] border border-white/[0.06] rounded-2xl p-6 backdrop-blur-xl relative transition-all duration-300 flex flex-col justify-between"
+                style={{
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02), 0 4px 25px rgba(0,0,0,0.5)',
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center text-xs font-black text-yellow-400 font-['Russo_One'] border border-yellow-500/20">
+                        {t.name.charAt(0)}
                       </div>
-                      <Stars count={t.rating} />
+                      <div>
+                        <div className="font-bold text-xs text-white flex items-center gap-1 font-['Chakra_Petch']">
+                          {t.name} <ShieldCheck size={12} className="text-yellow-400" />
+                        </div>
+                        <Stars count={t.rating} />
+                      </div>
                     </div>
                   </div>
+                  <p className="text-xs text-gray-400 leading-relaxed font-['Chakra_Petch']">
+                    "{t.text}"
+                  </p>
                 </div>
-                <p className="text-xs text-gray-400 leading-relaxed font-['Chakra_Petch']">
-                  "{t.text}"
-                </p>
-              </div>
 
-              <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between">
-                <span className={`division-badge ${t.rankClass} text-[8px] py-0 px-2 rounded-full font-bold uppercase`}>
-                  {t.rank}
-                </span>
-                <span className="text-[10px] text-yellow-500 font-bold font-['Chakra_Petch']">
-                  {t.elo} ELO
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+                <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between">
+                  <span className={`division-badge ${t.rankClass} text-[8px] py-0 px-2 rounded-full font-bold uppercase`}>
+                    {t.rank}
+                  </span>
+                  <span className="text-[10px] text-yellow-500 font-bold font-['Chakra_Petch']">
+                    {t.elo} ELO
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
 
         {/* Global Stats Counter */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto text-center border border-white/[0.06] bg-white/[0.01] rounded-3xl p-8 backdrop-blur-xl">

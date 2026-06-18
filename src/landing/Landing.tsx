@@ -13,6 +13,7 @@ import Footer from './sections/Footer';
 import SocialBar from './components/SocialBar';
 import AdBanner from './components/AdBanner';
 import { useLandingAds } from './hooks/useLandingAds';
+import { useLandingData } from './hooks/useLandingData';
 
 const scrollRevealVariants = {
   hidden: { opacity: 0, y: 40 },
@@ -25,6 +26,7 @@ const scrollRevealVariants = {
 
 export default function Landing() {
   useLandingAds(false);
+  const { leaderboard, events, stats, testimonials, loading } = useLandingData();
 
   return (
     <div className="h-full bg-[#020617] text-white overflow-x-hidden overflow-y-auto scroll-smooth">
@@ -95,7 +97,12 @@ export default function Landing() {
           viewport={{ once: true, margin: '-150px' }}
           variants={scrollRevealVariants}
         >
-          <CompetitiveHub />
+          <CompetitiveHub 
+            leaderboard={leaderboard}
+            events={events}
+            stats={stats}
+            loading={loading}
+          />
         </motion.div>
 
         {/* Section 7: Content Carousel */}
@@ -115,7 +122,10 @@ export default function Landing() {
           viewport={{ once: true, margin: '-150px' }}
           variants={scrollRevealVariants}
         >
-          <SocialProof />
+          <SocialProof 
+            testimonials={testimonials}
+            loading={loading}
+          />
         </motion.div>
       </main>
 

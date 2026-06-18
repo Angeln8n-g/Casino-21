@@ -156,7 +156,7 @@ export default function MiniGameDemo() {
           </p>
         </div>
 
-        <div className="border border-yellow-500/10 bg-black/60 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="glass-cyber border border-yellow-500/15 rounded-3xl p-6 sm:p-8">
           {gameStatus === 'idle' ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-20 h-20 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-6 animate-pulse shadow-[0_0_20px_rgba(251,191,36,0.15)]">

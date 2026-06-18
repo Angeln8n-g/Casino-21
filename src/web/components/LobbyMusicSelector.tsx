@@ -155,8 +155,8 @@ export function LobbyMusicSelector() {
       const howl = howlsRef.current.get(key);
       if (howl) {
         activeHowlKeyRef.current = key;
+        howl.volume(getTargetVolume());
         howl.play();
-        howl.fade(0, getTargetVolume(), FADE_IN_MS);
       }
       setIsPlaying(true);
     }
@@ -196,9 +196,8 @@ export function LobbyMusicSelector() {
         const newHowl = howlsRef.current.get(newKey);
         if (newHowl) {
           activeHowlKeyRef.current = newKey;
-          newHowl.volume(0);
+          newHowl.volume(getTargetVolume());
           newHowl.play();
-          newHowl.fade(0, getTargetVolume(), FADE_IN_MS);
         }
         isTransitioningRef.current = false;
       }, FADE_OUT_MS + 100);
@@ -230,9 +229,8 @@ export function LobbyMusicSelector() {
       const newHowl = howlsRef.current.get(newKey);
       if (newHowl) {
         activeHowlKeyRef.current = newKey;
-        newHowl.volume(0);
+        newHowl.volume(getTargetVolume());
         newHowl.play();
-        newHowl.fade(0, getTargetVolume(), FADE_IN_MS / 2);
       }
       isTransitioningRef.current = false;
     }, FADE_OUT_MS / 2 + 50);
