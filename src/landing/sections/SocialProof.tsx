@@ -1,29 +1,39 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Star, ShieldCheck, Users, Flame, Percent } from 'lucide-react';
 
 const TESTIMONIALS = [
   {
     name: 'Carlos M.',
-    avatar: '🎰',
-    text: 'El mejor juego de 21 online que he probado. Los torneos son adictivos y el sistema ELO te engancha.',
+    text: 'El mejor juego de 21 online que he probado. Los torneos semanales son altamente competitivos y el matchmaking por ELO funciona de maravilla.',
     rating: 5,
+    rank: 'Diamante',
+    rankClass: 'division-diamond',
+    elo: 2150,
   },
   {
     name: 'María L.',
-    avatar: '🃏',
-    text: 'Me encanta poder jugar con amigos en tiempo real. La interfaz es limpia y las partidas son rápidas.',
+    text: 'Me encanta poder crear salas privadas y jugar con amigos en tiempo real. La interfaz corre súper fluida tanto en móvil como en PC.',
     rating: 5,
+    rank: 'Platino',
+    rankClass: 'division-platinum',
+    elo: 1890,
   },
   {
     name: 'Javier R.',
-    avatar: '🏆',
-    text: 'Llevo 3 temporadas compitiendo. El matchmaking es justo y siempre hay rivales de mi nivel.',
+    text: 'Llevo 3 temporadas compitiendo en el circuito de torneos. El balance de cartas es impecable y la comunidad en Discord es muy activa.',
     rating: 5,
+    rank: 'Oro',
+    rankClass: 'division-gold',
+    elo: 1620,
   },
   {
     name: 'Ana P.',
-    avatar: '⭐',
-    text: 'Empecé sin saber nada y ahora estoy en división Oro. La curva de aprendizaje es perfecta.',
+    text: 'El sistema de logros diarios te motiva a jugar una partida rápida todos los días. Empecé en Bronce y ya voy subiendo poco a poco.',
     rating: 4,
+    rank: 'Plata',
+    rankClass: 'division-silver',
+    elo: 1410,
   },
 ];
 
@@ -31,60 +41,118 @@ function Stars({ count }: { count: number }) {
   return (
     <div className="flex gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
-        <span
+        <Star
           key={i}
-          className={`text-sm ${i < count ? 'text-yellow-400' : 'text-gray-600'}`}
-        >
-          ★
-        </span>
+          size={12}
+          className={i < count ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}
+        />
       ))}
     </div>
   );
 }
 
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, scale: 0.95, y: 20 },
+  show: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+};
+
 export default function SocialProof() {
   return (
-    <section className="py-24 px-6 bg-gradient-to-b from-black/20 to-black/40">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-24 px-6 relative overflow-hidden bg-gradient-to-b from-black to-[#020617]">
+      <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-black mb-4">Lo que dicen nuestros jugadores</h2>
-          <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            Miles de jugadores ya disfrutan de Kasino21. Únete a la comunidad.
+          <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500 font-bold mb-2 font-['Chakra_Petch']">
+            Opinión de la Comunidad
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-black font-['Russo_One'] text-white">
+            Lo que dicen nuestros <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 neon-gold">jugadores</span>
+          </h2>
+          <p className="text-gray-400 text-sm mt-3 font-['Chakra_Petch'] max-w-md mx-auto">
+            Únete a una comunidad en crecimiento con miles de duelos disputados a diario.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-100px' }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20"
+        >
           {TESTIMONIALS.map((t) => (
-            <div
+            <motion.div
               key={t.name}
-              className="bg-white/3 border border-white/8 rounded-2xl p-6 hover:bg-white/5 hover:border-white/15 transition-all group"
+              variants={itemVariants}
+              whileHover={{ y: -5, borderColor: 'rgba(251,191,36,0.15)' }}
+              className="bg-white/[0.015] border border-white/[0.06] rounded-2xl p-6 backdrop-blur-xl relative transition-all duration-300 flex flex-col justify-between"
+              style={{
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02), 0 4px 25px rgba(0,0,0,0.5)',
+              }}
             >
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">{t.avatar}</span>
-                <div>
-                  <div className="font-bold text-sm group-hover:text-yellow-400 transition-colors">{t.name}</div>
-                  <Stars count={t.rating} />
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center text-xs font-black text-yellow-400 font-['Russo_One'] border border-yellow-500/20">
+                      {t.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-white flex items-center gap-1 font-['Chakra_Petch']">
+                        {t.name} <ShieldCheck size={12} className="text-yellow-400" />
+                      </div>
+                      <Stars count={t.rating} />
+                    </div>
+                  </div>
                 </div>
+                <p className="text-xs text-gray-400 leading-relaxed font-['Chakra_Petch']">
+                  "{t.text}"
+                </p>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">{t.text}</p>
-            </div>
-          ))}
-        </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-8 text-center">
-          <div>
-            <div className="text-3xl font-black text-yellow-400">4.8/5</div>
-            <div className="text-gray-400 text-xs uppercase tracking-widest mt-1">Valoración media</div>
+              <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between">
+                <span className={`division-badge ${t.rankClass} text-[8px] py-0 px-2 rounded-full font-bold uppercase`}>
+                  {t.rank}
+                </span>
+                <span className="text-[10px] text-yellow-500 font-bold font-['Chakra_Petch']">
+                  {t.elo} ELO
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Global Stats Counter */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto text-center border border-white/[0.06] bg-white/[0.01] rounded-3xl p-8 backdrop-blur-xl">
+          <div className="space-y-1">
+            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-3 text-yellow-400">
+              <Star size={18} fill="currentColor" />
+            </div>
+            <div className="text-2xl font-black text-white font-['Russo_One']">4.8/5</div>
+            <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest font-['Chakra_Petch']">Valoración Media</div>
           </div>
-          <div className="w-px h-10 bg-white/10 hidden sm:block" />
-          <div>
-            <div className="text-3xl font-black text-yellow-400">+10K</div>
-            <div className="text-gray-400 text-xs uppercase tracking-widest mt-1">Partidas diarias</div>
+          <div className="w-full h-px bg-white/5 sm:hidden" />
+          <div className="space-y-1">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto mb-3 text-cyan-400">
+              <Flame size={18} />
+            </div>
+            <div className="text-2xl font-black text-white font-['Russo_One']">+10K</div>
+            <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest font-['Chakra_Petch']">Partidas Diarias</div>
           </div>
-          <div className="w-px h-10 bg-white/10 hidden sm:block" />
-          <div>
-            <div className="text-3xl font-black text-yellow-400">99.9%</div>
-            <div className="text-gray-400 text-xs uppercase tracking-widest mt-1">Uptime</div>
+          <div className="w-full h-px bg-white/5 sm:hidden" />
+          <div className="space-y-1">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 text-emerald-400">
+              <Percent size={18} />
+            </div>
+            <div className="text-2xl font-black text-white font-['Russo_One']">99.9%</div>
+            <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest font-['Chakra_Petch']">Uptime del Servidor</div>
           </div>
         </div>
       </div>

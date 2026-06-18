@@ -337,7 +337,6 @@ export const showRewardedAd = (
     },
     () => {
       trackAdEvent('ad_rewarded_claimed', 0.03);
-      logAdEventToDb('rewarded', 'complete', { rewardAmount });
       onReward(rewardAmount);
     }
   );

@@ -367,19 +367,28 @@ export function Store() {
                   showRewardedAd(async (amount) => {
                     if (!user) return;
                     try {
-                      // Usar RPC o actualizar directamente (esto dependerá de tu API, asumiendo update directo para el demo)
-                      // Idealmente esto debería ser un RPC en backend seguro.
-                      const currentCoins = profile?.coins || 0;
-                      const { error } = await supabase
-                        .from('players')
-                        .update({ coins: currentCoins + amount })
-                        .eq('id', user.id);
-                      if (!error) {
+                      const { data, error } = await supabase.rpc('claim_rewarded_ad_coins', {
+                        p_reward_amount: amount
+                      });
+                      
+                      if (error) throw error;
+                      
+                      if (data?.success) {
                         window.dispatchEvent(new CustomEvent('coins_updated'));
                         playSfx('victory');
+                      } else {
+                        const errMsg = data?.error === 'ON_COOLDOWN'
+                          ? 'Debes esperar un momento antes de ver otro anuncio y reclamar más monedas.'
+                          : `Error al reclamar monedas: ${data?.error || 'Desconocido'}`;
+                        alert(errMsg);
+                        playSfx('error');
+                        triggerHaptic('error');
                       }
                     } catch (e) {
                       console.error('Error rewarding player', e);
+                      alert('Error de conexión al reclamar tu recompensa.');
+                      playSfx('error');
+                      triggerHaptic('error');
                     }
                   }, 500);
                 });
