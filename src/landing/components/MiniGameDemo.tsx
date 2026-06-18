@@ -137,7 +137,7 @@ export default function MiniGameDemo() {
   const dealerScore = calculateScore(dealerHand);
 
   return (
-    <section className="py-24 px-6 relative bg-gradient-to-b from-[#020617] via-[#0b0f19] to-[#020617] overflow-hidden">
+    <section className="py-24 px-6 relative bg-transparent overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-yellow-500/[0.02] rounded-full blur-3xl" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(251,191,36,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(251,191,36,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem]" />

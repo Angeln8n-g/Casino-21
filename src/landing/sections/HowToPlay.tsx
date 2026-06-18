@@ -53,7 +53,7 @@ const itemVariants = {
 
 export default function HowToPlay() {
   return (
-    <section id="como-jugar" className="py-24 px-6 relative overflow-hidden bg-black/5">
+    <section id="como-jugar" className="py-24 px-6 relative overflow-hidden bg-transparent">
       {/* Light glow elements */}
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-yellow-500/[0.015] rounded-full blur-3xl pointer-events-none" />
 

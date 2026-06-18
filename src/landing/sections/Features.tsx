@@ -63,7 +63,7 @@ const itemVariants = {
 
 export default function Features() {
   return (
-    <section className="py-24 px-6 relative overflow-hidden bg-black/15">
+    <section className="py-24 px-6 relative overflow-hidden bg-transparent">
       {/* Grid overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 

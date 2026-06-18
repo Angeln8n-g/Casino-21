@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 const NAV_LINKS = [
-  { href: '/blog', label: 'Blog' },
-  { href: '/faq', label: 'FAQ' },
-  { href: '/como-jugar', label: 'Cómo Jugar' },
-  { href: '/about', label: 'Sobre Nosotros' },
-  { href: '/contact', label: 'Contacto' },
+  { href: '#hero', label: 'JUGAR YA' },
+  { href: '#demo', label: 'LOBBY' },
+  { href: '#temas', label: 'CARTAS' },
+  { href: '#competitivo', label: 'RANKINGS' },
+  { href: '#temas', label: 'TIENDA' },
+  { href: '#footer', label: 'SOPORTE' },
 ];
 
 export default function Navbar() {
@@ -28,8 +29,9 @@ export default function Navbar() {
             <img src={brand21Icon} alt="Kasino21" className="w-8 h-8 rounded-lg object-contain relative z-10" />
             <div className="absolute inset-0 bg-yellow-500/30 blur-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
-          <span className="text-xl font-black font-['Russo_One'] tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">
-            KASINO21
+          <span className="text-xl font-black font-['Russo_One'] tracking-wider drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500">KASINO</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-500">21</span>
           </span>
         </a>
 
@@ -61,11 +63,11 @@ export default function Navbar() {
 
           <a
             href="/login"
-            className="relative overflow-hidden group bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-400 text-black font-black px-6 py-2.5 rounded-xl hover:scale-105 transition-transform duration-300 text-xs font-['Russo_One'] tracking-widest shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:shadow-[0_0_30px_rgba(251,191,36,0.55)]"
+            className="relative overflow-hidden group border border-cyan-500/50 hover:border-cyan-400 bg-cyan-950/20 text-cyan-400 hover:text-white font-black px-6 py-2.5 rounded-xl hover:scale-105 transition-all duration-300 text-xs font-['Russo_One'] tracking-widest shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_25px_rgba(6,182,212,0.35)]"
           >
             {/* Shimmer sweep */}
-            <span className="absolute inset-0 w-[50%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 translate-x-[-120%] group-hover:animate-[shimmer_1.5s_infinite_linear]" style={{ backgroundSize: '200% 100%' }} />
-            JUGAR AHORA
+            <span className="absolute inset-0 w-[50%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-120%] group-hover:animate-[shimmer_1.5s_infinite_linear]" style={{ backgroundSize: '200% 100%' }} />
+            LOGIN / REGISTRO
           </a>
         </div>
 
@@ -107,10 +109,10 @@ export default function Navbar() {
             ))}
             <a
               href="/login"
-              className="block bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-black text-center px-6 py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-sm font-['Russo_One'] tracking-wider shadow-[0_4px_15px_rgba(251,191,36,0.2)]"
+              className="block border border-cyan-500/50 bg-cyan-950/20 text-cyan-400 font-black text-center px-6 py-3 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-sm font-['Russo_One'] tracking-wider shadow-[0_4px_15px_rgba(6,182,212,0.15)]"
               onClick={() => setMenuOpen(false)}
             >
-              JUGAR AHORA
+              LOGIN / REGISTRO
             </a>
           </motion.div>
         )}

@@ -2,9 +2,9 @@
   "version": 1,
   "skills": {
     "frontend-design": {
-      "source": "anthropics/skills",
+      "source": "anthropics/claude-code",
       "sourceType": "github",
-      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+      "computedHash": "3e0be122a3db8206b6d0d6b07cca898b5c75fb9b7b2101abe143fb2851734d2e"
     },
     "supabase": {
       "source": "supabase/agent-skills",

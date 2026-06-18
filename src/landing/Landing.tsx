@@ -29,13 +29,24 @@ export default function Landing() {
   const { leaderboard, events, stats, testimonials, loading } = useLandingData();
 
   return (
-    <div className="h-full bg-[#020617] text-white overflow-x-hidden overflow-y-auto scroll-smooth">
-      <div className="crt-overlay pointer-events-none" aria-hidden="true" />
+    <div 
+      className="h-full text-white overflow-x-hidden overflow-y-auto scroll-smooth relative"
+      style={{
+        background: 'radial-gradient(circle at 50% 30%, #0d1a30 0%, #020617 75%, #000000 100%)'
+      }}
+    >
+      <div className="crt-overlay pointer-events-none z-40" aria-hidden="true" />
 
-      {/* Floating background ambient orbs */}
+      {/* Floating background ambient grid & orbs */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-500/[0.02] rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-purple-500/[0.02] rounded-full blur-3xl" />
+        {/* Grid lines running continuously */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.012)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.012)_1px,transparent_1px)] bg-[size:36px_36px]" />
+
+        {/* Ambient Pulsing Orbs */}
+        <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-yellow-500/[0.03] rounded-full blur-[130px] animate-pulse-slow" />
+        <div className="absolute top-[35%] right-[10%] w-[450px] h-[450px] bg-cyan-500/[0.03] rounded-full blur-[130px] animate-pulse-slow" />
+        <div className="absolute top-[60%] left-[15%] w-[500px] h-[500px] bg-purple-500/[0.025] rounded-full blur-[130px] animate-pulse-slow" />
+        <div className="absolute top-[85%] right-[15%] w-[450px] h-[450px] bg-yellow-500/[0.02] rounded-full blur-[130px] animate-pulse-slow" />
       </div>
 
       <Navbar />
@@ -47,6 +58,7 @@ export default function Landing() {
 
         {/* Section 2: Interactive Demo */}
         <motion.div
+          id="demo"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}
@@ -77,6 +89,7 @@ export default function Landing() {
 
         {/* Section 5: Themes Customization */}
         <motion.div
+          id="temas"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}
@@ -94,6 +107,7 @@ export default function Landing() {
 
         {/* Section 6: Rankings & Tournaments */}
         <motion.div
+          id="competitivo"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}

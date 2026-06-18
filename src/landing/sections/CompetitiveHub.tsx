@@ -84,7 +84,7 @@ export default function CompetitiveHub({ leaderboard, events, stats, loading }: 
   }, []);
 
   return (
-    <section className="py-24 px-6 relative overflow-hidden bg-gradient-to-b from-[#020617] to-black">
+    <section className="py-24 px-6 relative overflow-hidden bg-transparent">
       {/* Background Orbs */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-yellow-500/[0.02] rounded-full blur-3xl" />

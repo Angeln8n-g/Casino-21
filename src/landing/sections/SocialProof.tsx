@@ -38,7 +38,7 @@ const itemVariants = {
 
 export default function SocialProof({ testimonials, loading }: Props) {
   return (
-    <section className="py-24 px-6 relative overflow-hidden bg-gradient-to-b from-black to-[#020617]">
+    <section className="py-24 px-6 relative overflow-hidden bg-transparent">
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16">
           <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500 font-bold mb-2 font-['Chakra_Petch']">
