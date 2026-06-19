@@ -5,7 +5,7 @@ import { Sparkles, Palette, CheckCircle, Layers, Zap, Crown, Compass } from 'luc
 interface PreviewTheme {
   key: string;
   name: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   description: string;
   previewColor: string;
   boardStyle: React.CSSProperties;

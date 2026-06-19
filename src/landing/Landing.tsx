@@ -22,7 +22,7 @@ const scrollRevealVariants = {
     y: 0, 
     transition: { duration: 0.8, ease: 'easeOut' } 
   }
-};
+} as const;
 
 export default function Landing() {
   useLandingAds(false);

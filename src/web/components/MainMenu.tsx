@@ -23,7 +23,7 @@ import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
 import { LobbyMusicSelector } from './LobbyMusicSelector';
-import mainMenuBg from '../../Public/background.jpg';
+import mainMenuBg from '../../Public/background.webp';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 export function MainMenu() {

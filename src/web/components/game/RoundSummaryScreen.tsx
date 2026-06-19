@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GameState } from '../../../domain/game-state';
-import casinoBackground from '../../../Public/background.jpg';
+import casinoBackground from '../../../Public/background.webp';
 import k21Logo from '../../../Public/brand21Icon.png';
 
 /**

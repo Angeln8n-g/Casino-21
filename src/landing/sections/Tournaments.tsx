@@ -1,5 +1,14 @@
 import React from 'react';
-import { ActiveTournament } from '../hooks/useLandingData';
+
+export interface ActiveTournament {
+  id: string;
+  code: string;
+  name: string;
+  max_players: number;
+  current_players: number;
+  status: 'waiting' | 'in_progress' | 'completed';
+  created_at: string;
+}
 
 interface Props {
   tournaments: ActiveTournament[];
