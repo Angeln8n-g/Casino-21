@@ -2,11 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Navbar from './sections/Navbar';
 import ScrollVideo from './components/ScrollVideo';
-import MiniGameDemo from './components/MiniGameDemo';
+import CompetitiveHub from './sections/CompetitiveHub';
 import HowToPlay from './sections/HowToPlay';
 import Features from './sections/Features';
 import ThemesPreview from './components/ThemesPreview';
-import CompetitiveHub from './sections/CompetitiveHub';
 import ContentCarousel from './sections/ContentCarousel';
 import SocialProof from './sections/SocialProof';
 import Footer from './sections/Footer';
@@ -55,17 +54,6 @@ export default function Landing() {
       <main className="pt-0 relative z-10">
         {/* Section 1: Hero Video */}
         <ScrollVideo />
-
-        {/* Section 2: Interactive Demo */}
-        <motion.div
-          id="demo"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-150px' }}
-          variants={scrollRevealVariants}
-        >
-          <MiniGameDemo />
-        </motion.div>
 
         {/* Section 3: How To Play */}
         <motion.div

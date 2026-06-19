@@ -67,6 +67,7 @@
   }
   .btn-gold:hover {
     box-shadow: 0 6px 25px rgba(251, 191, 36, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    animation: btnVibrate 0.15s ease-in-out;
   }
   .btn-gold::after {
     content: '';
@@ -228,6 +229,15 @@
 @keyframes btnShimmer {
   0% { left: -100%; }
   100% { left: 200%; }
+}
+
+@keyframes btnVibrate {
+  0% { transform: scale(1.03) translate(0); }
+  20% { transform: scale(1.03) translate(-1px, 1px); }
+  40% { transform: scale(1.03) translate(-1px, -1px); }
+  60% { transform: scale(1.03) translate(1px, 1px); }
+  80% { transform: scale(1.03) translate(1px, -1px); }
+  100% { transform: scale(1.03) translate(0); }
 }
 
 @keyframes carousel-slide {

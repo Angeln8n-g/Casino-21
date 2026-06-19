@@ -4,7 +4,6 @@ import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 const NAV_LINKS = [
   { href: '#hero', label: 'JUGAR YA' },
-  { href: '#demo', label: 'LOBBY' },
   { href: '#temas', label: 'CARTAS' },
   { href: '#competitivo', label: 'RANKINGS' },
   { href: '#temas', label: 'TIENDA' },

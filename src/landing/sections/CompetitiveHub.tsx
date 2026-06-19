@@ -54,6 +54,60 @@ function getDivisionStyle(elo: number): { name: string; class: string } {
   return { name: 'Bronce', class: 'division-bronze' };
 }
 
+function getDivisionGlow(elo: number): string {
+  if (elo >= 2100) return 'hover:border-violet-500/25 hover:shadow-[0_0_15px_rgba(139,92,246,0.1)]';
+  if (elo >= 1800) return 'hover:border-cyan-500/25 hover:shadow-[0_0_15px_rgba(6,182,212,0.1)]';
+  if (elo >= 1500) return 'hover:border-yellow-500/25 hover:shadow-[0_0_15px_rgba(251,191,36,0.1)]';
+  if (elo >= 1200) return 'hover:border-gray-400/20 hover:shadow-[0_0_12px_rgba(156,163,175,0.05)]';
+  return 'hover:border-amber-700/20 hover:shadow-[0_0_12px_rgba(180,83,9,0.05)]';
+}
+
+function RankBadge({ index }: { index: number }) {
+  if (index === 0) {
+    return (
+      <div className="relative w-8 h-8 flex items-center justify-center flex-shrink-0 select-none">
+        <Trophy size={18} className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
+        <span className="absolute bottom-0 right-0 bg-yellow-500 text-black text-[8px] font-black font-['Russo_One'] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-black shadow">1</span>
+      </div>
+    );
+  }
+  if (index === 1) {
+    return (
+      <div className="relative w-8 h-8 flex items-center justify-center flex-shrink-0 select-none">
+        <Trophy size={18} className="text-gray-300 drop-shadow-[0_0_8px_rgba(209,213,219,0.5)]" />
+        <span className="absolute bottom-0 right-0 bg-gray-400 text-black text-[8px] font-black font-['Russo_One'] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-black shadow">2</span>
+      </div>
+    );
+  }
+  if (index === 2) {
+    return (
+      <div className="relative w-8 h-8 flex items-center justify-center flex-shrink-0 select-none">
+        <Trophy size={16} className="text-amber-600 drop-shadow-[0_0_6px_rgba(180,83,9,0.4)]" />
+        <span className="absolute bottom-0 right-0 bg-amber-700 text-white text-[8px] font-black font-['Russo_One'] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-black shadow">3</span>
+      </div>
+    );
+  }
+  return (
+    <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/[0.06] text-gray-500 flex items-center justify-center text-xs font-black font-['Russo_One'] flex-shrink-0 select-none">
+      {index + 1}
+    </div>
+  );
+}
+
+const listContainerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+} as const;
+
+const rowVariants = {
+  hidden: { opacity: 0, x: 20 },
+  show: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 260, damping: 25 } },
+} as const;
+
 interface Props {
   leaderboard: LeaderboardEntry[];
   events: EventItem[];
@@ -159,25 +213,25 @@ export default function CompetitiveHub({ leaderboard, events, stats, loading }: 
                   <p className="text-gray-600 text-[10px] mt-1 font-['Chakra_Petch'] uppercase tracking-wider">¡Sé el primero en jugar ranked!</p>
                 </div>
               ) : (
-                <div className="space-y-2.5">
+                <motion.div 
+                  variants={listContainerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-2.5"
+                >
                   {top5.map((entry, i) => {
                     const divStyle = getDivisionStyle(entry.elo);
+                    const glowClass = getDivisionGlow(entry.elo);
                     return (
-                      <div
+                      <motion.div
                         key={entry.username}
-                        className={`flex items-center gap-3.5 p-3 rounded-xl transition-all duration-300 hover:bg-white/[0.03] border border-transparent ${
-                          i === 0 ? 'bg-yellow-500/[0.03] border-yellow-500/10' : 'bg-white/[0.005]'
+                        variants={rowVariants}
+                        className={`flex items-center gap-3.5 p-3 rounded-xl transition-all duration-300 hover:bg-white/[0.03] border border-transparent ${glowClass} ${
+                          i === 0 ? 'bg-yellow-500/[0.02] border-yellow-500/10' : 'bg-white/[0.005]'
                         }`}
                       >
                         {/* Rank Medals */}
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black font-['Russo_One'] ${
-                          i === 0 ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-[0_0_10px_rgba(251,191,36,0.3)]' :
-                          i === 1 ? 'bg-gray-400 text-black' :
-                          i === 2 ? 'bg-amber-700 text-white' :
-                          'bg-white/[0.04] text-gray-500 border border-white/[0.02]'
-                        }`}>
-                          {i + 1}
-                        </div>
+                        <RankBadge index={i} />
 
                         {/* Custom Avatar Icon */}
                         <div
@@ -210,10 +264,10 @@ export default function CompetitiveHub({ leaderboard, events, stats, loading }: 
                           <div className="text-sm font-black font-['Russo_One'] text-yellow-400">{entry.elo}</div>
                           <div className="text-[8px] font-bold text-gray-500 uppercase tracking-widest font-['Chakra_Petch']">ELO</div>
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               )}
             </div>
 

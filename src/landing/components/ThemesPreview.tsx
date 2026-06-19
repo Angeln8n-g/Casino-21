@@ -117,6 +117,7 @@ const PREVIEW_THEMES: PreviewTheme[] = [
 export default function ThemesPreview() {
   const [activeTheme, setActiveTheme] = useState<PreviewTheme>(PREVIEW_THEMES[0]);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [dealCount, setDealCount] = useState(0);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -165,7 +166,10 @@ export default function ThemesPreview() {
                 return (
                   <button
                     key={theme.key}
-                    onClick={() => setActiveTheme(theme)}
+                    onClick={() => {
+                      setActiveTheme(theme);
+                      setDealCount(c => c + 1); // Auto-trigger deal on theme swap
+                    }}
                     className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 flex items-start gap-4 cursor-pointer ${
                       isActive
                         ? 'bg-white/[0.04] border-yellow-500/30 shadow-[0_4px_20px_rgba(251,191,36,0.05)]'
@@ -217,6 +221,20 @@ export default function ThemesPreview() {
                 </span>
               </div>
 
+              {/* Simulate Deal Button */}
+              <div className="absolute top-4 right-4 z-20">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDealCount(c => c + 1);
+                  }}
+                  className="bg-white/5 border border-white/10 hover:bg-white/10 text-[9px] text-gray-300 hover:text-white font-bold px-3 py-1.5 rounded-lg font-['Chakra_Petch'] uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center gap-1 shadow-md hover:scale-105 active:scale-95"
+                >
+                  <Sparkles size={10} className="text-yellow-400" />
+                  Repartir Carta
+                </button>
+              </div>
+
               {/* Decorative center ring */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full border border-white/[0.03] flex items-center justify-center pointer-events-none">
                 <div className="w-36 h-36 rounded-full border border-white/[0.015]" />
@@ -232,11 +250,11 @@ export default function ThemesPreview() {
                 <AnimatePresence mode="wait">
                   {/* Card 1: Front */}
                   <motion.div
-                    key={`card-front-${activeTheme.key}`}
-                    initial={{ rotateY: 90, opacity: 0 }}
-                    animate={{ rotateY: 0, opacity: 1 }}
+                    key={`card-front-${activeTheme.key}-${dealCount}`}
+                    initial={{ rotateY: 90, opacity: 0, scale: 0.5, y: -100 }}
+                    animate={{ rotateY: 0, opacity: 1, scale: 1, y: 0 }}
                     exit={{ rotateY: -90, opacity: 0 }}
-                    transition={{ duration: 0.4 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
                     style={{
                       transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
                       ...activeTheme.cardStyle,
@@ -260,20 +278,20 @@ export default function ThemesPreview() {
                 <AnimatePresence mode="wait">
                   {/* Card 2: Back */}
                   <motion.div
-                    key={`card-back-${activeTheme.key}`}
-                    initial={{ rotateY: -90, opacity: 0 }}
-                    animate={{ rotateY: 0, opacity: 1 }}
+                    key={`card-back-${activeTheme.key}-${dealCount}`}
+                    initial={{ rotateY: -90, opacity: 0, scale: 0.5, y: -100 }}
+                    animate={{ rotateY: 0, opacity: 1, scale: 1, y: 0 }}
                     exit={{ rotateY: 90, opacity: 0 }}
-                    transition={{ duration: 0.4, delay: 0.05 }}
+                    transition={{ duration: 0.5, ease: 'easeOut', delay: 0.08 }}
                     style={{
                       transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
                       ...activeTheme.cardBackStyle,
                     }}
                     className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl relative shadow-2xl flex flex-col justify-between p-3"
                   >
-                    <div className="border border-white/10 rounded-xl flex-1 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="border border-white/10 rounded-xl flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-black/20">
                       <div className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center">
-                        <Sparkles size={16} className="text-white/40" />
+                        <Sparkles size={16} className="text-white/40 animate-pulse" />
                       </div>
                     </div>
                   </motion.div>
