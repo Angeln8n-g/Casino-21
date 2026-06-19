@@ -30,8 +30,8 @@ export default function Navbar() {
             <div className="absolute inset-0 bg-yellow-500/30 blur-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
           <span className="text-xl font-black font-['Russo_One'] tracking-wider drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500">KASINO</span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-500">21</span>
+            <span className="text-yellow-400">KASINO</span>
+            <span className="text-cyan-400">21</span>
           </span>
         </a>
 

@@ -4,8 +4,6 @@ import brand21Icon from '../../Public/brand21Icon-164.webp';
 import splashBg from '../../Public/splash.webp';
 import heroMockup from '../../Public/landing_page_preview_1781755372029.png';
 
-const CARDS = ['♠', '♥', '♦', '♣', '♠️', '♣️', '♥️', '♦️'];
-
 export default function ScrollVideo() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
@@ -97,13 +95,13 @@ export default function ScrollVideo() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.1 }}
-          className="text-[clamp(1.5rem,4.5vw,3.6rem)] font-black leading-[1.1] mb-4 tracking-tight uppercase"
+          className="text-[clamp(1.5rem,4.2vw,3.2rem)] font-black leading-tight mb-4 tracking-wider uppercase font-['Russo_One'] flex flex-wrap items-center justify-center gap-x-2 text-center"
         >
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 font-['Russo_One'] drop-shadow-[0_0_20px_rgba(251,191,36,0.25)]">
+          <span className="text-yellow-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.25)]">
             KASINO21
           </span>
-          <span className="text-white font-['Russo_One'] mx-2.5">:</span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-white to-cyan-300 font-['Russo_One'] drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+          <span className="text-white font-light opacity-60">:</span>
+          <span className="text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.25)]">
             MASTER THE NEON DECK
           </span>
         </motion.h1>
@@ -137,30 +135,39 @@ export default function ScrollVideo() {
           </a>
         </motion.div>
 
-        {/* Central 3D Card Table (Responsive Cropped Mockup) */}
+        {/* Central 3D Card Table (Responsive Cropped Mockup focusing on the middle neon table) */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: 'easeOut', delay: 0.4 }}
-          className="w-full max-w-4xl aspect-[5/3] relative overflow-hidden rounded-3xl border border-cyan-500/10 shadow-[0_0_60px_rgba(6,182,212,0.1)] bg-[#020617]/80 group/table"
+          className="w-full max-w-5xl aspect-[9/4] relative overflow-hidden rounded-3xl border border-cyan-500/10 shadow-[0_0_60px_rgba(6,182,212,0.1)] bg-[#020617]/80 group/table"
         >
-          {/* Mockup image cropped to hide navbar and headings */}
+          {/* Mockup image cropped mathematically to show only Y = 35% to 80% (the neon card table & side HUD panels) */}
           <img 
             src={heroMockup} 
-            className="absolute top-0 left-0 w-full h-[166.67%] object-cover select-none pointer-events-none opacity-90 group-hover/table:opacity-100 transition-opacity duration-700" 
-            style={{ objectPosition: 'center bottom' }}
+            className="absolute left-0 w-full object-cover select-none pointer-events-none opacity-90 group-hover/table:opacity-100 transition-opacity duration-700" 
+            style={{ 
+              height: '225%',
+              top: '-78.75%'
+            }}
             alt="Kasino21 3D Table"
           />
 
           {/* Interactive blink overlay grid */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.012)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.012)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
-          {/* HOTSPOT OVERLAYS */}
+          {/* HOTSPOT OVERLAYS ALIGNED TO THE NEW CROP COORDINATES */}
           
           {/* Hotspot 1: Live Tournaments (Left) */}
           <a
             href="#competitivo"
-            className="absolute left-[9%] top-[2%] w-[19%] h-[28%] rounded-xl border border-transparent hover:border-cyan-500/35 hover:bg-cyan-500/[0.03] transition-all duration-300 group cursor-pointer"
+            className="absolute rounded-xl border border-transparent hover:border-cyan-500/35 hover:bg-cyan-500/[0.03] transition-all duration-300 group cursor-pointer"
+            style={{
+              left: '9%',
+              top: '13.5%',
+              width: '19%',
+              height: '38.3%'
+            }}
             title="Ver Torneos Activos"
           >
             <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 bg-cyan-500/[0.02] shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-all duration-300 pointer-events-none" />
@@ -172,7 +179,13 @@ export default function ScrollVideo() {
           {/* Hotspot 2: Global Leaderboard (Right) */}
           <a
             href="#competitivo"
-            className="absolute left-[71%] top-[2%] w-[21%] h-[31%] rounded-xl border border-transparent hover:border-yellow-500/35 hover:bg-yellow-500/[0.03] transition-all duration-300 group cursor-pointer"
+            className="absolute rounded-xl border border-transparent hover:border-yellow-500/35 hover:bg-yellow-500/[0.03] transition-all duration-300 group cursor-pointer"
+            style={{
+              left: '71%',
+              top: '13.5%',
+              width: '21%',
+              height: '42.8%'
+            }}
             title="Ver Clasificaciones"
           >
             <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 bg-yellow-500/[0.02] shadow-[0_0_20px_rgba(251,191,36,0.2)] transition-all duration-300 pointer-events-none" />
@@ -184,7 +197,13 @@ export default function ScrollVideo() {
           {/* Hotspot 3: Center Table Play Zone */}
           <a
             href="/login"
-            className="absolute left-[30%] top-[20%] w-[40%] h-[75%] rounded-[60px] border border-transparent hover:border-yellow-500/10 hover:bg-yellow-500/[0.01] transition-all duration-500 group cursor-pointer flex items-center justify-center"
+            className="absolute rounded-[60px] border border-transparent hover:border-yellow-500/10 hover:bg-yellow-500/[0.01] transition-all duration-500 group cursor-pointer flex items-center justify-center"
+            style={{
+              left: '30%',
+              top: '22.5%',
+              width: '40%',
+              height: '77.5%'
+            }}
             title="Jugar Ahora"
           >
             <div className="w-16 h-16 rounded-full border border-yellow-500/20 bg-yellow-500/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 scale-75 group-hover:scale-100 shadow-[0_0_25px_rgba(251,191,36,0.25)]">
