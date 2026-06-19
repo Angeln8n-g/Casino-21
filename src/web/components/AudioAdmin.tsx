@@ -61,7 +61,11 @@ export function AudioAdmin() {
 
       const { error: uploadError } = await supabase.storage
         .from('audio_tracks')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
 
       if (uploadError) {
         throw uploadError;
@@ -129,7 +133,11 @@ export function AudioAdmin() {
         audioRef.current.pause();
       }
       const newAudio = new Audio(track.src);
-      newAudio.play().catch(e => console.error("Error playing audio", e));
+      newAudio.play().catch(e => {
+        console.error("Error playing audio", e);
+        alert(`Error al reproducir el audio: ${e.message}\n\nPosible causa: El bucket de Supabase no es público o la URL es incorrecta. Verifica en tu panel de Supabase > Storage > audio_tracks que el bucket sea público.`);
+        setPlayingId(null);
+      });
       newAudio.onended = () => setPlayingId(null);
       audioRef.current = newAudio;
       setPlayingId(track.id);
