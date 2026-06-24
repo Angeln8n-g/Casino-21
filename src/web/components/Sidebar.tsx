@@ -12,14 +12,17 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 import type { DesktopTab } from './TopNavbar';
+import { motion } from 'framer-motion';
 
 interface SidebarProps {
   activeTab: DesktopTab;
   onTabChange: (tab: DesktopTab) => void;
   isAdmin?: boolean;
+  isCollapsed: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, isAdmin, isCollapsed }: SidebarProps) {
   const { signOut } = useAuth();
 
   const navItems = [
@@ -31,7 +34,13 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
   ] as const;
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-full bg-slate-900/80 backdrop-blur-2xl border-r border-white/5 relative z-40">
+    <motion.aside
+      initial={{ width: isCollapsed ? 0 : 256 }}
+      animate={{ width: isCollapsed ? 0 : 256 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="hidden lg:flex flex-col h-full bg-slate-900/80 backdrop-blur-2xl border-r border-white/5 relative z-40 shrink-0 overflow-hidden"
+    >
+      <div className="w-64 h-full flex flex-col shrink-0">
       {/* Brand */}
       <div className="flex items-center gap-3 px-6 py-8">
         <img src={brand21Icon} alt="Kasino21 logo" className="w-10 h-10 rounded-xl object-cover shadow-gold" />
@@ -104,6 +113,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin }: SidebarProps) {
           <a href="/cookies" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Cookies</a>
         </div>
       </div>
-    </aside>
+      </div>
+    </motion.aside>
   );
 }

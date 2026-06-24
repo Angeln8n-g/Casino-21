@@ -15,6 +15,8 @@ import { Sidebar } from './Sidebar';
 import type { DesktopTab } from './TopNavbar';
 import { EventsPage } from './EventsPage';
 import { AdminPanel } from './AdminPanel';
+import { motion } from 'framer-motion';
+import { Menu, X } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { NotificationToast } from './NotificationToast';
 import { GameInvitationModal } from './GameInvitationModal';
@@ -793,7 +795,24 @@ export function MainMenu() {
       <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10" />
 
       {/* ═════ DESKTOP SIDEBAR ═════ */}
-      <Sidebar activeTab={desktopTab} onTabChange={setDesktopTab} isAdmin={profile?.is_admin} />
+      <Sidebar 
+        activeTab={desktopTab} 
+        onTabChange={setDesktopTab} 
+        isAdmin={profile?.is_admin}
+        isCollapsed={leftCollapsed}
+        onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
+      />
+
+      {/* Hamburger button on desktop */}
+      <motion.button
+        animate={{ left: leftCollapsed ? 16 : 272 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        onClick={() => setLeftCollapsed(!leftCollapsed)}
+        className="hidden lg:flex fixed top-6 z-50 p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 text-slate-400 hover:text-white transition-colors shadow-2xl hover:scale-105"
+        aria-label={leftCollapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
+      >
+        {leftCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
+      </motion.button>
 
       {/* ═════ MAIN CONTENT AREA ═════ */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">

@@ -6,6 +6,8 @@ import { CardView } from './CardView';
 import { getTheme, getAllThemes } from '../themes/themeRegistry';
 import { createCard } from '../../domain/card';
 import { triggerHaptic } from '../utils/haptics';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 interface StoreItem {
   id: string;
@@ -404,23 +406,6 @@ export function Store() {
                 <span aria-hidden="true">🪙</span> {(profile?.coins || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
-
-            {/* Cart Button */}
-            {viewMode === 'store' && (
-              <button 
-                onClick={() => setIsCartOpen(true)}
-                disabled={cart.length === 0}
-                className={`border rounded-full px-5 py-2.5 flex items-center justify-center shadow-xl transition-all duration-300 gap-2 ${
-                  cart.length > 0 
-                    ? 'bg-[#FACC15]/10 border-[#FACC15]/50 text-[#FACC15] hover:bg-[#FACC15]/20 cursor-pointer' 
-                    : 'bg-[#1A1815] border-[#2A2722] text-[#A1A1AA] opacity-50 cursor-not-allowed'
-                }`}
-                aria-label="Abrir carrito"
-              >
-                <span aria-hidden="true">🛒</span>
-                <span className="text-sm font-bold">{cart.length}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -578,90 +563,160 @@ export function Store() {
         </div>
       </div>
 
-      {/* Shopping Cart Drawer / Modal */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsCartOpen(false)}></div>
-          
-          <div className="w-full max-w-md bg-[#09090B] border border-white/10 max-h-[85vh] flex flex-col relative z-10 animate-slide-left shadow-2xl rounded-l-2xl">
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#18181B] shrink-0">
-              <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
-                <span aria-hidden="true">🛒</span> Tu Carrito
-              </h2>
-              <button onClick={() => setIsCartOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#A1A1AA] hover:text-white transition-colors">
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-              {cart.length === 0 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-[#A1A1AA] opacity-70">
-                  <div className="text-6xl mb-4">🛒</div>
-                  <p>El carrito está vacío</p>
-                </div>
-              ) : (
-                cart.map(item => (
-                  <div key={`cart-${item.id}`} className="flex gap-4 p-4 rounded-2xl bg-[#18181B] border border-white/5 items-center">
-                    <div className="w-16 h-16 rounded-xl bg-[#27272A] flex items-center justify-center overflow-hidden shrink-0 p-1">
-                      {item.image_url ? (
-                        <img src={item.image_url} alt="" className="max-w-full max-h-full object-contain" />
-                      ) : <span className="text-xs">✨</span>}
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <h4 className="text-white font-bold text-sm truncate">{item.name}</h4>
-                      <p className="text-[#A1A1AA] text-xs">{getCategoryLabel(item.item_type)}</p>
-                      <p className="text-[#FACC15] font-bold text-sm mt-1">🪙 {item.price.toLocaleString()}</p>
-                    </div>
-                    <button 
-                      onClick={() => toggleCartItem(item)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="p-6 border-t border-white/5 bg-[#18181B] shrink-0">
-              <div className="flex justify-between items-end mb-6">
-                <span className="text-[#A1A1AA] font-bold">Total a pagar:</span>
-                <span className={`text-2xl font-display font-bold ${cartTotal > (profile?.coins || 0) ? 'text-red-400' : 'text-white'}`}>
-                  🪙 {cartTotal.toLocaleString()}
-                </span>
-              </div>
+      {/* Floating Cart Button (Mobile & Desktop) */}
+      {createPortal(
+        <AnimatePresence>
+          {viewMode === 'store' && cart.length > 0 && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsCartOpen(true)}
+              className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-40 bg-[#FACC15] text-[#11100E] p-4 rounded-full shadow-2xl flex items-center justify-center border border-[#FDE68A] hover:bg-[#FDE68A] cursor-pointer group"
+              aria-label="Abrir carrito flotante"
+            >
+              <span aria-hidden="true" className="text-2xl">🛒</span>
               
-              {cartTotal > (profile?.coins || 0) && (
-                <p className="text-red-400 text-xs mb-4 font-bold text-center">
-                  Monedas insuficientes. Te faltan {(cartTotal - (profile?.coins || 0)).toLocaleString()} 🪙
-                </p>
-              )}
+              {/* Pulsing glow ring around the button */}
+              <span className="absolute inset-0 rounded-full bg-[#FACC15] opacity-20 group-hover:animate-ping -z-10" />
 
-              <button
-                onClick={handleCheckout}
-                disabled={cart.length === 0 || cartTotal > (profile?.coins || 0) || processingId === 'checkout'}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-                  cart.length === 0 || cartTotal > (profile?.coins || 0)
-                    ? 'bg-[#27272A] text-[#71717A] cursor-not-allowed'
-                    : 'bg-[#F8FAFC] text-[#09090B] hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-                }`}
+              {/* Badge for item count */}
+              <motion.span
+                key={cart.length}
+                initial={{ scale: 0.5 }}
+                animate={{ scale: [1.3, 1] }}
+                className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border border-white"
               >
-                {processingId === 'checkout' ? (
-                  <>
-                    <svg className="animate-spin w-5 h-5 text-current" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Procesando...
-                  </>
-                ) : (
-                  'Confirmar Compra'
-                )}
-              </button>
+                {cart.length}
+              </motion.span>
+            </motion.button>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Shopping Cart Drawer / Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {isCartOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-end">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsCartOpen(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              
+              {/* Drawer Container */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="w-full max-w-md bg-[#09090B] border-l border-white/10 h-full max-h-screen flex flex-col relative z-10 shadow-2xl"
+              >
+                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#18181B] shrink-0">
+                  <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                    <span aria-hidden="true">🛒</span> Tu Carrito
+                  </h2>
+                  <button onClick={() => setIsCartOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#A1A1AA] hover:text-white transition-colors">
+                    ✕
+                  </button>
+                </div>
+
+                <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                  <AnimatePresence initial={false}>
+                    {cart.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.7 }}
+                        exit={{ opacity: 0 }}
+                        className="py-12 flex flex-col items-center justify-center text-[#A1A1AA]"
+                      >
+                        <div className="text-6xl mb-4">🛒</div>
+                        <p>El carrito está vacío</p>
+                      </motion.div>
+                    ) : (
+                      cart.map(item => (
+                        <motion.div
+                          layout
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, x: 50, scale: 0.9 }}
+                          transition={{ duration: 0.2 }}
+                          key={`cart-${item.id}`}
+                          className="flex gap-4 p-4 rounded-2xl bg-[#18181B] border border-white/5 items-center"
+                        >
+                          <div className="w-16 h-16 rounded-xl bg-[#27272A] flex items-center justify-center overflow-hidden shrink-0 p-1">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt="" className="max-w-full max-h-full object-contain" />
+                            ) : <span className="text-xs">✨</span>}
+                          </div>
+                          <div className="flex-grow min-w-0">
+                            <h4 className="text-white font-bold text-sm truncate">{item.name}</h4>
+                            <p className="text-[#A1A1AA] text-xs">{getCategoryLabel(item.item_type)}</p>
+                            <p className="text-[#FACC15] font-bold text-sm mt-1">🪙 {item.price.toLocaleString()}</p>
+                          </div>
+                          <button 
+                            onClick={() => toggleCartItem(item)}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                          >
+                            ✕
+                          </button>
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="p-6 border-t border-white/5 bg-[#18181B] shrink-0">
+                  <div className="flex justify-between items-end mb-6">
+                    <span className="text-[#A1A1AA] font-bold">Total a pagar:</span>
+                    <span className={`text-2xl font-display font-bold ${cartTotal > (profile?.coins || 0) ? 'text-red-400' : 'text-white'}`}>
+                      🪙 {cartTotal.toLocaleString()}
+                    </span>
+                  </div>
+                  
+                  {cartTotal > (profile?.coins || 0) && (
+                    <p className="text-red-400 text-xs mb-4 font-bold text-center">
+                      Monedas insuficientes. Te faltan {(cartTotal - (profile?.coins || 0)).toLocaleString()} 🪙
+                    </p>
+                  )}
+
+                  <button
+                    onClick={handleCheckout}
+                    disabled={cart.length === 0 || cartTotal > (profile?.coins || 0) || processingId === 'checkout'}
+                    className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
+                      cart.length === 0 || cartTotal > (profile?.coins || 0)
+                        ? 'bg-[#27272A] text-[#71717A] cursor-not-allowed'
+                        : 'bg-[#F8FAFC] text-[#09090B] hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                    }`}
+                  >
+                    {processingId === 'checkout' ? (
+                      <>
+                        <svg className="animate-spin w-5 h-5 text-current" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Procesando...
+                      </>
+                    ) : (
+                      'Confirmar Compra'
+                    )}
+                  </button>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        </div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   );
 }
+
+

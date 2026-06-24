@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { PWAManager } from './components/pwa/PWAManager';
 import './index.css';
+import { Howler } from 'howler';
+
+// ── Increase HTML5 Audio Pool size globally to prevent exhaustion ────────────────────
+Howler.html5PoolSize = 120;
 
 // ── Suppress React DevTools advertisement in production ───────────────────────
 // Must run before React initializes. In dev, this is skipped so that
