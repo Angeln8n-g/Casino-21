@@ -18,10 +18,10 @@ const LEGAL_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { href: 'https://twitter.com/kasino21', label: 'Twitter', icon: Twitter, color: 'hover:text-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.5)]' },
-  { href: 'https://discord.gg/kasino21', label: 'Discord', icon: MessageSquare, color: 'hover:text-indigo-400 hover:shadow-[0_0_10px_rgba(129,140,248,0.5)]' },
-  { href: 'https://youtube.com/kasino21', label: 'YouTube', icon: Youtube, color: 'hover:text-red-400 hover:shadow-[0_0_10px_rgba(248,113,113,0.5)]' },
-  { href: 'https://instagram.com/kasino21', label: 'Instagram', icon: Instagram, color: 'hover:text-pink-400 hover:shadow-[0_0_10px_rgba(244,114,182,0.5)]' },
+  { href: '', label: 'Twitter', icon: Twitter, color: 'hover:text-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.5)]' },
+  { href: '', label: 'Discord', icon: MessageSquare, color: 'hover:text-indigo-400 hover:shadow-[0_0_10px_rgba(129,140,248,0.5)]' },
+  { href: 'https://www.youtube.com/channel/UCZR4qWuPq97Wx1gUufy2B_g', label: 'YouTube', icon: Youtube, color: 'hover:text-red-400 hover:shadow-[0_0_10px_rgba(248,113,113,0.5)]' },
+  { href: 'https://www.instagram.com/kasino21.game/', label: 'Instagram', icon: Instagram, color: 'hover:text-pink-400 hover:shadow-[0_0_10px_rgba(244,114,182,0.5)]' },
 ];
 
 export default function Footer() {
