@@ -30,7 +30,7 @@ const STEPS = [
   {
     number: '04',
     title: 'Domina la mesa',
-    desc: 'Juega con inteligencia. Suma 21 sin pasarte, supera al crupier o a tus rivales y reclama el bote de monedas.',
+    desc: 'Juega con inteligencia. Arma forma y agrupa estrategícamente, supera la estrategía de tus rivales y reclama el bote de monedas.',
     icon: Award,
     glow: 'rgba(251,191,36,0.2)',
     color: 'text-yellow-400',
@@ -73,7 +73,12 @@ export default function HowToPlay() {
         {/* Timeline container */}
         <div className="relative">
           {/* Horizontal connection line on desktop */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 via-pink-500/20 to-yellow-500/20 -translate-y-[80px] hidden lg:block z-0" />
+          <div 
+            className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-[80px] hidden lg:block z-0"
+            style={{
+              background: 'linear-gradient(90deg, rgba(6, 182, 212, 0.2) 0%, rgba(168, 85, 247, 0.2) 33%, rgba(236, 72, 153, 0.2) 66%, rgba(234, 179, 8, 0.2) 100%)'
+            }}
+          />
           
           <motion.div
             variants={containerVariants}

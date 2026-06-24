@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 const NAV_LINKS = [
-  { href: '#hero', label: 'JUGAR YA' },
-  { href: '#temas', label: 'CARTAS' },
-  { href: '#competitivo', label: 'RANKINGS' },
-  { href: '#temas', label: 'TIENDA' },
-  { href: '#footer', label: 'SOPORTE' },
+  { href: '#como-jugar', label: 'CÓMO JUGAR' },
+  { href: '#torneos', label: 'TORNEOS' },
+  { href: '#rankings', label: 'RANKINGS' },
+  { href: '#blog', label: 'BLOG' },
+  { href: '#faq', label: 'FAQ' },
+  { href: '#contacto', label: 'CONTACTO' },
 ];
 
 export default function Navbar() {

@@ -2,16 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Navbar from './sections/Navbar';
 import ScrollVideo from './components/ScrollVideo';
-import CompetitiveHub from './sections/CompetitiveHub';
 import HowToPlay from './sections/HowToPlay';
-import Features from './sections/Features';
-import ThemesPreview from './components/ThemesPreview';
-import ContentCarousel from './sections/ContentCarousel';
-import SocialProof from './sections/SocialProof';
+import TournamentsSection from './sections/TournamentsSection';
+import LeaderboardSection from './sections/LeaderboardSection';
+import BlogSection from './sections/BlogSection';
+import FAQSection from './sections/FAQSection';
+import ContactSection from './sections/ContactSection';
 import Footer from './sections/Footer';
-import SocialBar from './components/SocialBar';
-import AdBanner from './components/AdBanner';
-import { useLandingAds } from './hooks/useLandingAds';
 import { useLandingData } from './hooks/useLandingData';
 
 const scrollRevealVariants = {
@@ -24,8 +21,7 @@ const scrollRevealVariants = {
 } as const;
 
 export default function Landing() {
-  useLandingAds(false);
-  const { leaderboard, events, stats, testimonials, loading } = useLandingData();
+  const { leaderboard, events, loading } = useLandingData();
 
   return (
     <div 
@@ -49,13 +45,12 @@ export default function Landing() {
       </div>
 
       <Navbar />
-      <SocialBar />
 
       <main className="pt-0 relative z-10">
-        {/* Section 1: Hero Video */}
+        {/* Section 1: Hero Video (Minimalist Hero) */}
         <ScrollVideo />
 
-        {/* Section 3: How To Play */}
+        {/* Section 2: Cómo Jugar */}
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -65,71 +60,60 @@ export default function Landing() {
           <HowToPlay />
         </motion.div>
 
-        {/* Section 4: Features */}
+        {/* Section 3: Torneos Activos */}
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}
           variants={scrollRevealVariants}
         >
-          <Features />
-        </motion.div>
-
-        {/* Section 5: Themes Customization */}
-        <motion.div
-          id="temas"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-150px' }}
-          variants={scrollRevealVariants}
-        >
-          <ThemesPreview />
-        </motion.div>
-
-        {/* Ad Banner (Promociones) */}
-        <div className="py-12 relative z-10">
-          <div className="max-w-6xl mx-auto px-6">
-            <AdBanner />
-          </div>
-        </div>
-
-        {/* Section 6: Rankings & Tournaments */}
-        <motion.div
-          id="competitivo"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-150px' }}
-          variants={scrollRevealVariants}
-        >
-          <CompetitiveHub 
-            leaderboard={leaderboard}
+          <TournamentsSection 
             events={events}
-            stats={stats}
             loading={loading}
           />
         </motion.div>
 
-        {/* Section 7: Content Carousel */}
+        {/* Section 4: Rankings */}
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}
           variants={scrollRevealVariants}
         >
-          <ContentCarousel />
+          <LeaderboardSection 
+            leaderboard={leaderboard}
+            loading={loading}
+          />
         </motion.div>
 
-        {/* Section 8: Social Proof (Testimonials) */}
+        {/* Section 5: Blog */}
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}
           variants={scrollRevealVariants}
         >
-          <SocialProof 
-            testimonials={testimonials}
-            loading={loading}
-          />
+          <BlogSection />
+        </motion.div>
+
+        {/* Section 6: FAQ */}
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-150px' }}
+          variants={scrollRevealVariants}
+        >
+          <FAQSection />
+        </motion.div>
+
+        {/* Section 7: Contacto */}
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-150px' }}
+          variants={scrollRevealVariants}
+        >
+          <ContactSection />
         </motion.div>
       </main>
 

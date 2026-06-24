@@ -82,15 +82,16 @@ define(['./workbox-877eb569'], (function (workbox) { 'use strict';
    */
   workbox.precacheAndRoute([{
     "url": "index.html",
-    "revision": "0.p0equ3ht96"
+    "revision": "0.gnv7c4s637"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
     allowlist: [/^\/$/]
   }));
   workbox.registerRoute(({
-    request
-  }) => request.destination === "image" || request.destination === "style" || request.destination === "script" || request.destination === "font", new workbox.CacheFirst({
+    request,
+    url
+  }) => url.origin === self.location.origin && (request.destination === "image" || request.destination === "style" || request.destination === "script" || request.destination === "font"), new workbox.CacheFirst({
     "cacheName": "static-assets-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 100,
@@ -105,13 +106,6 @@ define(['./workbox-877eb569'], (function (workbox) { 'use strict';
       maxAgeSeconds: 3600
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
-    })]
-  }), 'GET');
-  workbox.registerRoute(/^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i, new workbox.CacheFirst({
-    "cacheName": "google-fonts-cache",
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 30,
-      maxAgeSeconds: 2592000
     })]
   }), 'GET');
 

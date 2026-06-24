@@ -102,7 +102,7 @@ export default function ScrollVideo() {
           </span>
           <span className="text-white font-light opacity-60">:</span>
           <span className="text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.25)]">
-            MASTER THE NEON DECK
+            Juega con Estrategia.
           </span>
         </motion.h1>
 
@@ -113,7 +113,7 @@ export default function ScrollVideo() {
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
           className="text-xs sm:text-base text-cyan-200/60 mb-8 max-w-2xl font-['Chakra_Petch'] tracking-wide"
         >
-          A Cyberpunk Strategy Card Game. Dominate the Grid. High Stakes, Neon Nights.
+          Juega con Estrategia. Domina las mesas. Altas apuestas, noches de victoria.
         </motion.p>
 
         {/* CTA Button with Mockup Capsule Style */}
@@ -131,7 +131,7 @@ export default function ScrollVideo() {
             <span className="absolute inset-[3px] border border-yellow-300/35 rounded-xl pointer-events-none" />
             {/* Shiny sweep */}
             <span className="absolute inset-0 w-[50%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 translate-x-[-120%] group-hover:animate-[shimmer_1.5s_infinite_linear]" style={{ backgroundSize: '200% 100%' }} />
-            PLAY FREE NOW
+            Juega ahora
           </a>
         </motion.div>
 
