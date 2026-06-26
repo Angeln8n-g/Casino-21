@@ -91,8 +91,52 @@ export function Store() {
   const [prevCoins, setPrevCoins] = useState(profile?.coins || 0);
   const [coinAnim, setCoinAnim] = useState(false);
 
+  // Ad Views Limit state
+  const [adViewsCount, setAdViewsCount] = useState<number>(0);
+  const [showLimitReachedAnimation, setShowLimitReachedAnimation] = useState<boolean>(false);
+  const [isAdChecking, setIsAdChecking] = useState<boolean>(false);
+
+  const loadAdCountFromLocalStorage = () => {
+    if (!user) return;
+    try {
+      const cached = localStorage.getItem(`ad_views_daily_${user.id}`);
+      if (cached) {
+        const { date, count } = JSON.parse(cached);
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (date === todayStr) {
+          setAdViewsCount(count);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error reading localStorage for ads:', e);
+    }
+    setAdViewsCount(0);
+  };
+
+  const fetchAdCount = async () => {
+    if (!user) return;
+    setIsAdChecking(true);
+    try {
+      const { data, error } = await supabase.rpc('get_daily_rewarded_ad_count');
+      if (!error && typeof data === 'number') {
+        setAdViewsCount(data);
+        const todayStr = new Date().toISOString().split('T')[0];
+        localStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: data }));
+      } else {
+        loadAdCountFromLocalStorage();
+      }
+    } catch (e) {
+      console.error('Error fetching ad count:', e);
+      loadAdCountFromLocalStorage();
+    } finally {
+      setIsAdChecking(false);
+    }
+  };
+
   useEffect(() => {
     fetchStoreData();
+    fetchAdCount();
   }, [user]);
 
   useEffect(() => {
@@ -364,7 +408,13 @@ export function Store() {
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             {/* View Sponsored Message Button */}
             <button
+              disabled={adViewsCount >= 3 || isAdChecking}
               onClick={() => {
+                if (adViewsCount >= 3) {
+                  setShowLimitReachedAnimation(true);
+                  playSfx('victory');
+                  return;
+                }
                 import('./AdManager').then(({ showRewardedAd }) => {
                   showRewardedAd(async (amount) => {
                     if (!user) return;
@@ -376,11 +426,29 @@ export function Store() {
                       if (error) throw error;
                       
                       if (data?.success) {
+                        const nextCount = adViewsCount + 1;
+                        setAdViewsCount(nextCount);
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        localStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: nextCount }));
+                        
                         window.dispatchEvent(new CustomEvent('coins_updated'));
                         playSfx('victory');
+                        
+                        if (nextCount >= 3) {
+                          setShowLimitReachedAnimation(true);
+                        }
                       } else {
+                        if (data?.error === 'DAILY_LIMIT_REACHED') {
+                          setAdViewsCount(3);
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          localStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: 3 }));
+                          setShowLimitReachedAnimation(true);
+                          playSfx('victory');
+                        }
                         const errMsg = data?.error === 'ON_COOLDOWN'
                           ? 'Debes esperar un momento antes de ver otro anuncio y reclamar más monedas.'
+                          : data?.error === 'DAILY_LIMIT_REACHED'
+                          ? 'Ya has visto el límite máximo de 3 anuncios por hoy.'
                           : `Error al reclamar monedas: ${data?.error || 'Desconocido'}`;
                         alert(errMsg);
                         playSfx('error');
@@ -392,12 +460,18 @@ export function Store() {
                       playSfx('error');
                       triggerHaptic('error');
                     }
-                  }, 500);
+                  }, 50);
                 });
               }}
-              className="bg-[#3b82f6]/20 border border-[#3b82f6]/50 text-[#3b82f6] hover:bg-[#3b82f6]/30 rounded-full px-4 py-2 flex items-center justify-center shadow-xl transition-all duration-300 text-sm font-bold"
+              className={`rounded-full px-4 py-2 flex items-center justify-center shadow-xl transition-all duration-300 text-sm font-bold border ${
+                adViewsCount >= 3
+                  ? 'bg-zinc-800/40 border-zinc-700/50 text-[#A1A1AA] cursor-not-allowed'
+                  : 'bg-[#3b82f6]/20 border-[#3b82f6]/50 text-[#3b82f6] hover:bg-[#3b82f6]/30 cursor-pointer'
+              }`}
             >
-              Sponsored Message
+              {adViewsCount >= 3
+                ? `Anuncios Agotados (3/3 vistos, quedan 0)`
+                : `Ver Anuncio (${adViewsCount}/3 vistos, quedan ${3 - adViewsCount})`}
             </button>
 
             {/* Wallet */}
@@ -709,6 +783,76 @@ export function Store() {
                     )}
                   </button>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Limit Reached Animation Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {showLimitReachedAnimation && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLimitReachedAnimation(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+
+              {/* Card Container */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 50 }}
+                animate={{ 
+                  scale: 1, 
+                  opacity: 1, 
+                  y: 0,
+                  transition: { type: 'spring', damping: 15, stiffness: 200 }
+                }}
+                exit={{ scale: 0.8, opacity: 0, y: 50 }}
+                className="relative z-10 bg-[#1A1815] border border-yellow-500/30 rounded-3xl p-8 max-w-md w-full text-center shadow-[0_0_50px_rgba(250,204,21,0.2)] overflow-hidden"
+              >
+                {/* Background aura */}
+                <div className="absolute -inset-10 bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/10 rotate-12 blur-2xl pointer-events-none" />
+
+                {/* Animated clap/clapper icon with pulsing outer ring */}
+                <div className="relative mb-6 flex justify-center items-center h-28">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                    className="absolute w-24 h-24 rounded-full bg-yellow-500/10 border border-yellow-500/20"
+                  />
+                  <motion.div 
+                    animate={{ rotateY: [0, 360] }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    className="text-6xl z-10 filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] cursor-default select-none"
+                  >
+                    🎬
+                  </motion.div>
+                </div>
+
+                <h3 className="text-2xl font-display font-black text-white mb-3">
+                  ¡Anuncios Agotados!
+                </h3>
+                
+                <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                  Has completado el límite máximo de <span className="text-yellow-400 font-bold">3 anuncios diarios</span>.
+                  <br />
+                  ¡Muchas gracias por apoyar el juego! Vuelve mañana para seguir obteniendo monedas gratis.
+                </p>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowLimitReachedAnimation(false)}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-display font-black py-3 rounded-xl shadow-[0_4px_15px_rgba(234,179,8,0.3)] transition-all duration-200"
+                >
+                  Entendido
+                </motion.button>
               </motion.div>
             </div>
           )}
