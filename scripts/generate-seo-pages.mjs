@@ -320,3 +320,41 @@ for (const post of blogPosts) {
   writeFileSync(`${blogDir}/${post.slug}.html`, html, 'utf-8');
   console.log(`✓ Generated ${blogDir}/${post.slug}.html`);
 }
+
+// ─── Generate sitemap.xml ────────────────────────────────────────────────
+const DOMAIN = 'https://kasino21.com';
+let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+`;
+
+function addSitemapUrl(path, lastmod, changefreq, priority) {
+  sitemapXml += `  <url>
+    <loc>${DOMAIN}${path}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>\n`;
+}
+
+// Main pages
+const today = new Date().toISOString().split('T')[0];
+addSitemapUrl('/', today, 'daily', '1.0');
+addSitemapUrl('/como-jugar', today, 'monthly', '0.8');
+addSitemapUrl('/blog', today, 'weekly', '0.9');
+addSitemapUrl('/faq', today, 'monthly', '0.8');
+addSitemapUrl('/about', today, 'monthly', '0.6');
+addSitemapUrl('/contact', today, 'monthly', '0.6');
+addSitemapUrl('/privacy', today, 'monthly', '0.5');
+addSitemapUrl('/terms', today, 'monthly', '0.5');
+addSitemapUrl('/cookies', today, 'monthly', '0.4');
+addSitemapUrl('/login', today, 'monthly', '0.7');
+
+// Blog posts
+for (const post of blogPosts) {
+  addSitemapUrl(`/blog/${post.slug}`, post.date, 'monthly', '0.7');
+}
+
+sitemapXml += `</urlset>\n`;
+writeFileSync(`${distDir}/sitemap.xml`, sitemapXml, 'utf-8');
+console.log(`✓ Generated ${distDir}/sitemap.xml`);
