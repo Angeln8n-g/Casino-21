@@ -10,6 +10,19 @@ import { FriendProfileModal, FriendForModal } from './FriendProfileModal';
 import { triggerHaptic } from '../utils/haptics';
 import { socketService } from '../services/socket';
 
+function formatRelativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'ahora';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `hace ${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `hace ${days}d`;
+  return new Date(isoString).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
 interface Friend {
   id: string;
   username: string;
@@ -33,6 +46,7 @@ export function SocialPanel() {
   const [activeChatFriendId, setActiveChatFriendId] = useState<string | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
+  const [lastMessageMap, setLastMessageMap] = useState<Record<string, { content: string; created_at: string; sender_id: string }>>({});
   const friendIds = friends.map((f) => f.id);
   const { presenceMap, refreshPresence } = useProfilePresence(friendIds);
 
@@ -264,7 +278,7 @@ export function SocialPanel() {
     };
   }, [user, fetchFriends, fetchPendingIncoming]);
 
-  // ── Real-time: Chat Badges ─────────────────────────────────────
+  // ── Real-time: Chat Badges + Last Messages ────────────────────
   useEffect(() => {
     if (!user) return;
     
@@ -295,7 +309,7 @@ export function SocialPanel() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => fetchUnread()
+        () => { fetchUnread(); fetchLastMessages(); }
       )
       .on(
         'postgres_changes',
@@ -311,6 +325,34 @@ export function SocialPanel() {
 
     return () => { supabase.removeChannel(channel); };
   }, [user]);
+
+  // ── Fetch last messages for each friend ────────────────────────
+  const fetchLastMessages = useCallback(async () => {
+    if (!user || friends.length === 0) return;
+    const map: Record<string, { content: string; created_at: string; sender_id: string }> = {};
+    // Fetch the last message for each friend conversation
+    for (const friend of friends) {
+      const { data } = await supabase
+        .from('messages')
+        .select('content, created_at, sender_id, deleted_at')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${user.id})`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (data) {
+        map[friend.id] = {
+          content: (data as any).deleted_at ? 'Mensaje eliminado' : data.content,
+          created_at: data.created_at,
+          sender_id: data.sender_id,
+        };
+      }
+    }
+    setLastMessageMap(map);
+  }, [user, friends]);
+
+  useEffect(() => {
+    fetchLastMessages();
+  }, [fetchLastMessages]);
 
   // ── Handlers ─────────────────────────────────────────────────
   const handleRequestAccepted = (requestId: string) => {
@@ -696,6 +738,15 @@ export function SocialPanel() {
                     const bUnread = friendUnreadMap[b.id] || 0;
                     if (aUnread !== bUnread) return bUnread - aUnread; // unread first
                     
+                    // Sort by most recent message
+                    const aLastMsg = lastMessageMap[a.id];
+                    const bLastMsg = lastMessageMap[b.id];
+                    if (aLastMsg && bLastMsg) {
+                      return new Date(bLastMsg.created_at).getTime() - new Date(aLastMsg.created_at).getTime();
+                    }
+                    if (aLastMsg && !bLastMsg) return -1;
+                    if (!aLastMsg && bLastMsg) return 1;
+                    
                     const aOnline = isFriendOnline(a);
                     const bOnline = isFriendOnline(b);
                     if (aOnline !== bOnline) return aOnline ? -1 : 1; // online next
@@ -749,6 +800,11 @@ export function SocialPanel() {
                         }`}>
                           {friend.username}
                         </span>
+                        {lastMessageMap[friend.id] && (
+                          <span className="text-[7px] text-gray-600 max-w-[48px] truncate block leading-tight">
+                            {formatRelativeTime(lastMessageMap[friend.id].created_at)}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
