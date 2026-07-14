@@ -3,18 +3,6 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 
-const AVATAR_OPTIONS = [
-  { id: 'avatar-1', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Felix&backgroundColor=020617' },
-  { id: 'avatar-2', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Aneka&backgroundColor=020617' },
-  { id: 'avatar-3', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Leo&backgroundColor=020617' },
-  { id: 'avatar-4', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Mimi&backgroundColor=020617' },
-  { id: 'avatar-5', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Jasper&backgroundColor=020617' },
-  { id: 'avatar-6', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Loki&backgroundColor=020617' },
-  { id: 'avatar-7', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Chloe&backgroundColor=020617' },
-  { id: 'avatar-8', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Simba&backgroundColor=020617' },
-  { id: 'avatar-9', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Oliver&backgroundColor=020617' },
-  { id: 'avatar-10', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Luna&backgroundColor=020617' },
-];
 
 interface PurchasedAvatar {
   id: string;
@@ -74,8 +62,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
     fetchPurchased();
   }, [user]);
 
-  // Determine if the currently selected avatar is a "store" avatar (use equip RPC)
-  // or a free avatar (direct profile update)
+  // Equip selected store avatar via RPC
   const handleSave = async () => {
     if (!user || !selectedAvatar) return;
     
@@ -84,19 +71,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
       const purchasedMatch = purchasedAvatars.find(a => a.image_url === selectedAvatar);
       
       if (purchasedMatch) {
-        // This is a purchased avatar → equip it via RPC
         const { error } = await supabase.rpc('equip_store_item', { p_item_id: purchasedMatch.id });
-        if (error) throw error;
-      } else {
-        // This is a free DiceBear avatar → update profile directly
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            avatar_url: selectedAvatar,
-            equipped_avatar: null // Clear equipped store avatar so the free one shows
-          })
-          .eq('id', user.id);
-          
         if (error) throw error;
       }
       
@@ -183,38 +158,12 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
             </div>
           )}
 
-          {/* Free Avatars */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Gratis</h4>
-              <span className="text-[9px] text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{AVATAR_OPTIONS.length} disponibles</span>
+          {purchasedAvatars.length === 0 && !loadingPurchased && (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-sm font-bold text-gray-400">No tienes avatares comprados.</p>
+              <p className="text-xs text-gray-600 mt-1">Visita la tienda del casino para adquirir nuevos avatares premium.</p>
             </div>
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-              {AVATAR_OPTIONS.map((avatar) => (
-                <div 
-                  key={avatar.id}
-                  onClick={() => setSelectedAvatar(avatar.url)}
-                  className={`
-                    relative aspect-square rounded-2xl cursor-pointer overflow-hidden border-2 transition-all duration-300
-                    ${selectedAvatar === avatar.url 
-                      ? 'border-casino-gold scale-105 shadow-[0_0_20px_rgba(234,179,8,0.5)]' 
-                      : 'border-white/10 hover:border-white/30 hover:scale-105 bg-black/40'}
-                  `}
-                >
-                  <img 
-                    src={avatar.url} 
-                    alt="Avatar option" 
-                    className="w-full h-full object-cover p-2"
-                  />
-                  {selectedAvatar === avatar.url && (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-casino-gold rounded-full flex items-center justify-center text-black text-xs font-black">
-                      ✓
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
         
         {/* Footer */}

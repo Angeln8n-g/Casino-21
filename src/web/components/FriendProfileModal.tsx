@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
@@ -153,34 +154,35 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
   // ── Seconds remaining label ──────────────────────────────────
   const secondsLeft = Math.ceil((progress / 100) * (CHALLENGE_DURATION_MS / 1000));
 
-  return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+  const content = (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
 
       <div
-        className={`relative w-full max-w-sm rounded-2xl border border-white/[0.08] overflow-hidden animate-fade-in transition-all duration-300 ${
+        className={`relative w-full max-w-sm rounded-3xl border border-[#2A2722] overflow-hidden shadow-2xl transition-all duration-300 bg-[#1A1815] ${
           showChat ? 'h-[550px] max-h-[85vh] flex flex-col' : ''
         }`}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(135deg, rgba(30,41,59,0.97) 0%, rgba(2,6,23,0.99) 100%)',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8), 0 0 50px rgba(251,191,36,0.1)',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.85), 0 0 50px rgba(250,204,21,0.05)',
         }}
       >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-10"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        {/* Close button - only absolute when NOT in chat, otherwise chat header handles it */}
+        {!showChat && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
 
         {showChat ? (
           <div className="flex flex-col h-full overflow-hidden">
             {/* Chat Header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-black/40 border-b border-white/5 shrink-0 min-h-[56px] pr-12">
+            <div className="flex items-center gap-3 px-4 py-3 bg-[#0F0E0C] border-b border-[#2A2722] shrink-0 min-h-[56px] pr-12">
               <button
                 onClick={() => setShowChat(false)}
                 className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
@@ -192,7 +194,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               </button>
 
               <div className="relative">
-                <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-[#1A1815] flex items-center justify-center text-xs font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
                   {friend.equipped_avatar ? (
                     <img src={friend.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : friend.avatar_url ? (
@@ -214,50 +216,29 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                   {friend.isOnline ? (isInRoom ? 'En partida' : 'En línea') : 'Desconectado'}
                 </p>
               </div>
+
+              {/* Close Button in Chat view */}
+              <button
+                onClick={onClose}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
             {/* Chat Body */}
-            <div className="flex-1 overflow-hidden p-4 pt-2">
+            <div className="flex-1 overflow-hidden p-4 pt-2 bg-[#1A1815]">
               <ChatWindow receiverId={friend.id} />
             </div>
           </div>
         ) : (
           <>
-            {/* Large Full-Width Avatar Cover */}
-            <div className="w-full h-52 relative overflow-hidden bg-slate-900 border-b border-white/[0.05]">
-              {friend.equipped_avatar ? (
-                <img 
-                  src={friend.equipped_avatar} 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover" 
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    if (target.parentElement) target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-5xl font-black text-casino-gold">${friend.username.charAt(0).toUpperCase()}</div>`;
-                  }}
-                />
-              ) : friend.avatar_url ? (
-                <img 
-                  src={friend.avatar_url} 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover" 
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    if (target.parentElement) target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-5xl font-black text-casino-gold">${friend.username.charAt(0).toUpperCase()}</div>`;
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-casino-gold bg-casino-surface-light">
-                  {friend.username.charAt(0).toUpperCase()}
-                </div>
-              )}
-
-              {/* Cover Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-black/35 pointer-events-none" />
-
-              {/* Status Badge */}
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+            {/* Avatar Image Area (Styled like Store Card Preview) */}
+            <div className="relative w-full aspect-square overflow-hidden flex items-center justify-center bg-[#0F0E0C] shrink-0 border-b border-[#2A2722]">
+              {/* Status Badge Over Image */}
+              <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0F0E0C]/80 backdrop-blur-md border border-[#2A2722]">
                 <div className={`w-2 h-2 rounded-full ${
                   friend.isOnline
                     ? isInRoom ? 'bg-purple-500 animate-pulse' : 'bg-casino-emerald'
@@ -267,39 +248,73 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                   {friend.isOnline ? (isInRoom ? 'En partida' : 'En línea') : 'Desconectado'}
                 </span>
               </div>
+
+              {friend.equipped_avatar ? (
+                <img 
+                  src={friend.equipped_avatar} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover transition-transform duration-700 hover:scale-110" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    if (target.parentElement) target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-8xl font-black text-casino-gold bg-[#1A1815]">${friend.username.charAt(0).toUpperCase()}</div>`;
+                  }}
+                />
+              ) : friend.avatar_url ? (
+                <img 
+                  src={friend.avatar_url} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover transition-transform duration-700 hover:scale-110" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    if (target.parentElement) target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-8xl font-black text-casino-gold bg-[#1A1815]">${friend.username.charAt(0).toUpperCase()}</div>`;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-8xl font-black text-casino-gold bg-[#1A1815] transition-transform duration-700 hover:scale-110">
+                  {friend.username.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             {/* Player Info */}
-            <div className="px-6 pt-3 pb-5 space-y-4">
-              <div className="text-center">
-                <h3 className={`text-lg font-bold ${isHighElo ? 'text-casino-gold' : 'text-white'}`}>
+            <div className="p-6 space-y-6">
+              {/* Identity Header */}
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[#A78BFA] uppercase tracking-widest font-black mb-1">
+                  AMIGO
+                </span>
+                <h3 className={`text-2xl font-display font-black leading-none ${isHighElo ? 'text-casino-gold' : 'text-white'}`}>
                   {friend.username}
                 </h3>
-                <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full text-xs font-semibold ${div.cssClass}`}>
-                  {div.icon} {div.label}
+                <div className="flex mt-2">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-[9px] font-black uppercase tracking-wider bg-[#0F0E0C]/80 ${div.cssClass.replace('division-', 'border-').replace('text-', '')}`}>
+                    {div.icon} {div.label}
+                  </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-3">
                 <StatBox label="Nivel" value={`${friend.level}`} icon="⭐" />
                 <StatBox label="ELO" value={`${friend.elo}`} icon="🏆" />
                 <StatBox label="XP" value={friend.xp >= 1000 ? `${(friend.xp / 1000).toFixed(1)}k` : `${friend.xp}`} icon="✨" />
               </div>
 
-              <div className="glass-panel px-4 py-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400 text-xs">Récord (W/L)</span>
+              <div className="bg-[#0F0E0C] border border-[#2A2722] p-4 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 text-[10px] font-black uppercase tracking-wider">Récord (W/L)</span>
                   <span className="text-white text-sm font-bold">{friend.wins}W / {friend.losses}L</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div className="flex-1 h-2 rounded-full bg-black/60 overflow-hidden border border-[#2A2722]">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-casino-emerald to-emerald-400"
                       style={{ width: `${winRate}%` }}
                     />
                   </div>
-                  <span className={`text-xs font-bold ${winRate >= 50 ? 'text-casino-emerald' : 'text-red-400'}`}>
-                    {winRate}%
+                  <span className={`text-xs font-bold shrink-0 ${winRate >= 50 ? 'text-casino-emerald animate-pulse' : 'text-red-400'}`}>
+                    {winRate}% WR
                   </span>
                 </div>
               </div>
@@ -307,12 +322,12 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               {/* Action Zone */}
               {!friend.isOnline && (
                 <div className="space-y-3">
-                  <div className="py-3 rounded-xl text-center text-sm text-gray-500 bg-white/[0.02] border border-white/5">
+                  <div className="py-3 rounded-xl text-center text-xs text-gray-500 bg-[#0F0E0C] border border-[#2A2722] font-bold">
                     ⚫ Jugador desconectado
                   </div>
                   <button
                     onClick={handleChat}
-                    className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:bg-[#1A1815] transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -330,7 +345,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                   </div>
                   <button
                     onClick={handleChat}
-                    className="w-full py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:bg-[#1A1815] transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -346,7 +361,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                     <div className="flex gap-3">
                       <button
                         onClick={handleChat}
-                        className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white font-bold text-sm border border-white/10 hover:border-white/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:bg-[#1A1815] transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -355,7 +370,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </button>
                       <button
                         onClick={handleChallenge}
-                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/20 flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black hover:from-yellow-400 hover:to-casino-gold transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.3)] border border-transparent"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m18 16 4-4-4-4M6 8l-4 4 4 4m8.5-12-5 16" />
@@ -367,16 +382,16 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
                   {challengeState === 'waiting' && (
                     <div className="space-y-3">
-                      <div className="glass-panel p-4 space-y-3">
+                      <div className="bg-[#0F0E0C] border border-[#2A2722] p-4 rounded-2xl space-y-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-white text-sm font-bold">⏳ Esperando respuesta...</p>
-                          <span className={`text-sm font-mono font-bold tabular-nums ${
+                          <p className="text-white text-xs font-bold">⏳ Esperando respuesta...</p>
+                          <span className={`text-xs font-mono font-bold tabular-nums ${
                             secondsLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-casino-gold'
                           }`}>
                             {secondsLeft}s
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-2 rounded-full bg-black/60 overflow-hidden border border-[#2A2722]">
                           <div
                             className={`h-full rounded-full transition-all ${
                               secondsLeft <= 10
@@ -386,13 +401,13 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                             style={{ width: `${progress}%`, transition: 'width 0.25s linear' }}
                           />
                         </div>
-                        <p className="text-gray-500 text-xs text-center">
+                        <p className="text-gray-500 text-[10px] text-center">
                           Invitación enviada a <span className="text-gray-300">{friend.username}</span>
                         </p>
                       </div>
                       <button
                         onClick={handleCancelChallenge}
-                        className="w-full py-2 rounded-xl bg-white/5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 font-bold text-xs border border-white/10 hover:border-red-500/20 transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-red-950/10 border border-red-500/20 text-red-400 hover:text-white hover:bg-red-500/20 font-bold text-xs uppercase tracking-widest transition-all"
                       >
                         Cancelar desafío
                       </button>
@@ -413,7 +428,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </div>
                       <button
                         onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
-                        className="w-full py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white text-xs font-bold border border-white/10 transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
                       >
                         Intentar de nuevo
                       </button>
@@ -427,14 +442,18 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return content;
+  return createPortal(content, document.body);
 }
+
 
 function StatBox({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
-    <div className="glass-panel p-2.5 text-center">
-      <div className="text-sm mb-0.5">{icon}</div>
-      <div className="text-white font-bold text-sm">{value}</div>
-      <div className="text-gray-500 text-[9px] uppercase tracking-wider">{label}</div>
+    <div className="bg-[#0F0E0C] border border-[#2A2722] p-3 text-center rounded-2xl flex flex-col items-center">
+      <span className="text-sm mb-1">{icon}</span>
+      <span className="text-white font-bold text-sm leading-none tabular-nums">{value}</span>
+      <span className="text-[9px] text-gray-500 uppercase font-black tracking-wider mt-1.5">{label}</span>
     </div>
   );
 }

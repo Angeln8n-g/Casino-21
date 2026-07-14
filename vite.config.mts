@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
         devOptions: {
           enabled: true,
           type: 'module',
+          suppressWarnings: true,
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}'],
@@ -97,9 +98,9 @@ export default defineConfig(({ mode }) => {
           // Fonts
           "font-src 'self' https://fonts.gstatic.com",
           // Images: self + Supabase Storage + Unsplash + Google AdSense
-          `img-src 'self' data: blob: https://${SUPABASE_HOST} https://*.supabase.co https://images.unsplash.com https://api.dicebear.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://adservice.google.com https://www.google.com https://*.doubleclick.net`,
+          `img-src 'self' data: blob: https://${SUPABASE_HOST} https://*.supabase.co https://images.unsplash.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://adservice.google.com https://www.google.com https://*.doubleclick.net`,
           // API calls + WebSocket + AdSense Reporting + Supabase APIs
-          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://*.supabase.co wss://*.supabase.co https://ep1.adtrafficquality.google https://api.dicebear.com https://www.google-analytics.com https://analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://tpc.googlesyndication.com https://www.google.com`,
+          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://*.supabase.co wss://*.supabase.co https://ep1.adtrafficquality.google https://www.google-analytics.com https://analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://tpc.googlesyndication.com https://www.google.com`,
           // Media: allow playing local sounds and sound tracks hosted on Supabase Storage
           "media-src 'self' blob: https://*.supabase.co",
           // AdSense iframes + Google services
