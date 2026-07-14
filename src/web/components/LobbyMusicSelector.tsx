@@ -54,8 +54,9 @@ export function LobbyMusicSelector() {
             modern: []
           };
           data.forEach(track => {
-            if (track.style === 'classic' || track.style === 'modern') {
-              newPlaylists[track.style].push({
+            const style = track.style as MusicStyle;
+            if (style === 'classic' || style === 'modern') {
+              newPlaylists[style].push({
                 src: track.src,
                 label: track.name
               });
@@ -90,11 +91,12 @@ export function LobbyMusicSelector() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
-  const howlsRef = useRef<Map<string, Howl>>(new Map());
+  const activeHowlRef = useRef<Howl | null>(null);
   const activeHowlKeyRef = useRef<string | null>(null);
   const trackIndexRef = useRef(0);
   const isTransitioningRef = useRef(false);
   const mountedRef = useRef(true);
+  const isPlayingRef = useRef(false);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const getHowlKey = useCallback(
@@ -114,111 +116,142 @@ export function LobbyMusicSelector() {
     } catch { /* ignore */ }
   }, [style]);
 
-  // ── Initialize Howl instances ───────────────────────────────────────────────
-  useEffect(() => {
-    mountedRef.current = true;
-    const howls = new Map<string, Howl>();
-    const wasPlaying = isPlaying;
-    const oldKey = activeHowlKeyRef.current;
+  // ── Play/Transition track function ──────────────────────────────────────────
+  const playTrack = useCallback((newStyle: MusicStyle, newIdx: number, fadeTransition: boolean) => {
+    if (!mountedRef.current) return;
 
-    (Object.keys(playlists) as MusicStyle[]).forEach((s) => {
-      playlists[s].forEach((entry, idx) => {
-        const key = `${s}_${idx}`;
-        const howl = new Howl({
-          src: [entry.src],
-          loop: false, // We handle looping via onend
-          volume: 0,
-          preload: true,
-          html5: true, // Use HTML5 audio to handle large files efficiently (streaming, low memory)
-          onend: function () {
-            if (!mountedRef.current) return;
-            // Advance to the next track in the same style
-            const playlist = playlists[s];
-            const nextIdx = (idx + 1) % playlist.length;
-            const nextKey = `${s}_${nextIdx}`;
+    const playlist = playlists[newStyle];
+    const entry = playlist?.[newIdx];
+    if (!entry) {
+      if (activeHowlRef.current) {
+        activeHowlRef.current.stop();
+        activeHowlRef.current.unload();
+        activeHowlRef.current = null;
+      }
+      activeHowlKeyRef.current = null;
+      return;
+    }
 
-            // Only auto-advance if this howl is still the active one
-            if (activeHowlKeyRef.current === key) {
-              const nextHowl = howlsRef.current.get(nextKey);
-              if (nextHowl) {
-                trackIndexRef.current = nextIdx;
-                activeHowlKeyRef.current = nextKey;
-                nextHowl.volume(muted ? 0 : masterVolume * MUSIC_VOLUME_SCALE);
-                nextHowl.play();
-              }
-            }
-          },
-        });
-        howls.set(key, howl);
-      });
+    isTransitioningRef.current = true;
+
+    const oldHowl = activeHowlRef.current;
+    
+    // Create new Howl instance
+    const key = `${newStyle}_${newIdx}`;
+    activeHowlKeyRef.current = key;
+    trackIndexRef.current = newIdx;
+
+    const howl = new Howl({
+      src: [entry.src],
+      loop: false,
+      volume: 0,
+      preload: true,
+      html5: true,
+      onend: function () {
+        if (!mountedRef.current) return;
+        // Only auto-advance if this howl is still the active one
+        if (activeHowlRef.current === howl) {
+          const nextIdx = (newIdx + 1) % playlist.length;
+          playTrack(newStyle, nextIdx, false); // Auto-advance normally doesn't need crossfade
+        }
+      }
     });
 
-    howlsRef.current = howls;
-    
-    // Resume playback if it was playing and we just reinitialized
-    if (wasPlaying && oldKey) {
-      const parts = oldKey.split('_');
-      const oldStyle = parts[0] as MusicStyle;
-      const oldIdx = parseInt(parts[1], 10);
-      
-      const newKey = getHowlKey(oldStyle, 0); // restart from first track of current style
-      const newHowl = howls.get(newKey);
-      if (newHowl) {
-        trackIndexRef.current = 0;
-        activeHowlKeyRef.current = newKey;
-        newHowl.volume(getTargetVolume());
-        newHowl.play();
+    activeHowlRef.current = howl;
+
+    const targetVol = getTargetVolume();
+
+    if (oldHowl) {
+      if (fadeTransition) {
+        // Crossfade: Fade out the old one
+        oldHowl.fade(oldHowl.volume(), 0, FADE_OUT_MS);
+        
+        // Fade in the new one
+        howl.volume(0);
+        howl.play();
+        howl.fade(0, targetVol, FADE_IN_MS);
+
+        setTimeout(() => {
+          if (oldHowl) {
+            oldHowl.stop();
+            oldHowl.unload();
+          }
+          isTransitioningRef.current = false;
+        }, FADE_OUT_MS + 50);
+      } else {
+        // Instant switch: Stop and unload the old one immediately
+        oldHowl.stop();
+        oldHowl.unload();
+        
+        howl.volume(targetVol);
+        howl.play();
+        isTransitioningRef.current = false;
       }
+    } else {
+      // No old track: just play new
+      howl.volume(targetVol);
+      howl.play();
+      isTransitioningRef.current = false;
+    }
+  }, [playlists, getTargetVolume]);
+
+  // ── Sync volume with master ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (activeHowlRef.current) {
+      activeHowlRef.current.volume(getTargetVolume());
+    }
+  }, [masterVolume, muted, getTargetVolume]);
+
+  // ── Handle playlists updates or initial load ────────────────────────────────
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    // If playlists update while playing, restart playback from first track of current style
+    if (isPlayingRef.current) {
+      playTrack(style, 0, false);
     }
 
     return () => {
       mountedRef.current = false;
-      howls.forEach((howl) => {
-        howl.stop();
-        howl.unload();
-      });
-      howls.clear();
+      if (activeHowlRef.current) {
+        activeHowlRef.current.stop();
+        activeHowlRef.current.unload();
+        activeHowlRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlists]);
-
-  // ── Sync volume with master ─────────────────────────────────────────────────
-  useEffect(() => {
-    const activeKey = activeHowlKeyRef.current;
-    if (!activeKey) return;
-    const howl = howlsRef.current.get(activeKey);
-    if (howl) {
-      howl.volume(getTargetVolume());
-    }
-  }, [masterVolume, muted, getTargetVolume]);
 
   // ── Play / Pause ────────────────────────────────────────────────────────────
   const handlePlayPause = useCallback(() => {
     if (isPlaying) {
-      // Pause: fade out current
-      const activeKey = activeHowlKeyRef.current;
-      if (activeKey) {
-        const howl = howlsRef.current.get(activeKey);
-        if (howl) {
-          howl.fade(howl.volume(), 0, FADE_OUT_MS);
-          setTimeout(() => {
-            howl.pause();
-          }, FADE_OUT_MS);
-        }
-      }
+      // Pause
+      isPlayingRef.current = false;
       setIsPlaying(false);
-    } else {
-      // Play: start/resume current track
-      const key = getHowlKey(style, trackIndexRef.current);
-      const howl = howlsRef.current.get(key);
+      const howl = activeHowlRef.current;
       if (howl) {
-        activeHowlKeyRef.current = key;
-        howl.volume(getTargetVolume());
-        howl.play();
+        howl.fade(howl.volume(), 0, FADE_OUT_MS);
+        setTimeout(() => {
+          if (!mountedRef.current) return;
+          // Only pause if we didn't resume in the meantime
+          if (!isPlayingRef.current && activeHowlRef.current === howl) {
+            howl.pause();
+          }
+        }, FADE_OUT_MS);
       }
+    } else {
+      // Play
+      isPlayingRef.current = true;
       setIsPlaying(true);
+      const howl = activeHowlRef.current;
+      if (howl) {
+        howl.volume(0);
+        howl.play();
+        howl.fade(0, getTargetVolume(), FADE_IN_MS);
+      } else {
+        playTrack(style, trackIndexRef.current, false);
+      }
     }
-  }, [isPlaying, style, getHowlKey, getTargetVolume]);
+  }, [isPlaying, style, getTargetVolume, playTrack]);
 
   // ── Style Switch (with crossfade) ───────────────────────────────────────────
   const handleStyleChange = useCallback(
@@ -228,71 +261,33 @@ export function LobbyMusicSelector() {
 
       setStyle(newStyle);
 
-      if (!isPlaying) {
-        // Not playing — just switch context, no audio work needed
+      if (!isPlayingRef.current) {
+        // Not playing — just switch context, unload old howl if any, no audio work needed
+        if (activeHowlRef.current) {
+          activeHowlRef.current.stop();
+          activeHowlRef.current.unload();
+          activeHowlRef.current = null;
+        }
         trackIndexRef.current = 0;
+        activeHowlKeyRef.current = `${newStyle}_0`;
         isTransitioningRef.current = false;
         return;
       }
 
-      // Fade out current track
-      const oldKey = activeHowlKeyRef.current;
-      const oldHowl = oldKey ? howlsRef.current.get(oldKey) : null;
-
-      if (oldHowl) {
-        oldHowl.fade(oldHowl.volume(), 0, FADE_OUT_MS);
-        setTimeout(() => {
-          oldHowl.stop();
-        }, FADE_OUT_MS);
-      }
-
-      // After fade out, start new style from track 0
-      setTimeout(() => {
-        if (!mountedRef.current) return;
-        trackIndexRef.current = 0;
-        const newKey = getHowlKey(newStyle, 0);
-        const newHowl = howlsRef.current.get(newKey);
-        if (newHowl) {
-          activeHowlKeyRef.current = newKey;
-          newHowl.volume(getTargetVolume());
-          newHowl.play();
-        }
-        isTransitioningRef.current = false;
-      }, FADE_OUT_MS + 100);
+      // If playing, crossfade to track 0 of the new style
+      playTrack(newStyle, 0, true);
     },
-    [style, isPlaying, getHowlKey, getTargetVolume]
+    [style, playTrack]
   );
 
   // ── Skip to next track ──────────────────────────────────────────────────────
   const handleSkip = useCallback(() => {
-    if (!isPlaying || isTransitioningRef.current) return;
-    isTransitioningRef.current = true;
-
+    if (!isPlayingRef.current || isTransitioningRef.current) return;
+    
     const playlist = playlists[style];
-    const oldKey = activeHowlKeyRef.current;
-    const oldHowl = oldKey ? howlsRef.current.get(oldKey) : null;
-
-    if (oldHowl) {
-      oldHowl.fade(oldHowl.volume(), 0, FADE_OUT_MS / 2);
-      setTimeout(() => {
-        oldHowl.stop();
-      }, FADE_OUT_MS / 2);
-    }
-
-    setTimeout(() => {
-      if (!mountedRef.current) return;
-      const nextIdx = (trackIndexRef.current + 1) % playlist.length;
-      trackIndexRef.current = nextIdx;
-      const newKey = getHowlKey(style, nextIdx);
-      const newHowl = howlsRef.current.get(newKey);
-      if (newHowl) {
-        activeHowlKeyRef.current = newKey;
-        newHowl.volume(getTargetVolume());
-        newHowl.play();
-      }
-      isTransitioningRef.current = false;
-    }, FADE_OUT_MS / 2 + 50);
-  }, [isPlaying, style, getHowlKey, getTargetVolume]);
+    const nextIdx = (trackIndexRef.current + 1) % playlist.length;
+    playTrack(style, nextIdx, true);
+  }, [style, playlists, playTrack]);
 
   // ── Current track label ─────────────────────────────────────────────────────
   const currentTrackLabel =

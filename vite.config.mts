@@ -92,7 +92,7 @@ export default defineConfig(({ mode }) => {
         'Content-Security-Policy': [
           "default-src 'self'",
           // Scripts: AdSense + Google Analytics + dev HMR
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://adservice.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://www.gstatic.com https://www.googletagservices.com",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://adservice.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://www.gstatic.com https://www.googletagservices.com https://*.adtrafficquality.google",
           // Styles: allow inline (Tailwind/CSS-in-JS)
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           // Fonts
@@ -100,11 +100,11 @@ export default defineConfig(({ mode }) => {
           // Images: self + Supabase Storage + Unsplash + Google AdSense
           `img-src 'self' data: blob: https://${SUPABASE_HOST} https://*.supabase.co https://images.unsplash.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://adservice.google.com https://www.google.com https://*.doubleclick.net`,
           // API calls + WebSocket + AdSense Reporting + Supabase APIs
-          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://*.supabase.co wss://*.supabase.co https://ep1.adtrafficquality.google https://www.google-analytics.com https://analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://tpc.googlesyndication.com https://www.google.com`,
+          `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://*.supabase.co wss://*.supabase.co https://*.adtrafficquality.google https://www.google-analytics.com https://analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://tpc.googlesyndication.com https://www.google.com`,
           // Media: allow playing local sounds and sound tracks hosted on Supabase Storage
           "media-src 'self' blob: https://*.supabase.co",
           // AdSense iframes + Google services
-          "frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.doubleclick.net",
+          "frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.doubleclick.net https://*.adtrafficquality.google",
           // No plugins
           "object-src 'none'",
           // Force HTTPS in production
