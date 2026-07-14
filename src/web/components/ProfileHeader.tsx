@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, Bell, Shield, TrendingUp, Trophy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { AvatarGallery } from './AvatarGallery';
+import { UserProfileModal } from './UserProfileModal';
 
 // ─── Utility: Division from ELO ───
 export function getDivisionFromElo(elo: number): { name: string; label: string; icon: string; cssClass: string } {
@@ -53,7 +53,7 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const { profile, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showAvatarGallery, setShowAvatarGallery] = useState(false);
+  const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [localCoins, setLocalCoins] = useState(profile?.coins || 0);
   const [localElo, setLocalElo] = useState(profile?.elo || 1000);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -129,22 +129,20 @@ export function ProfileHeader({
     return (
       <div className="relative glass-panel p-2 rounded-xl border border-white/10">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setShowUserProfileModal(true)} title="Ver Perfil">
             <div 
-              onClick={() => setShowAvatarGallery(true)}
-              className="w-10 h-10 rounded-lg bg-casino-surface-light flex items-center justify-center text-lg font-black text-casino-gold border border-casino-gold/20 cursor-pointer hover:border-casino-gold/60 transition-colors overflow-hidden"
-              title="Cambiar Avatar"
+              className="w-10 h-10 rounded-lg bg-casino-surface-light flex items-center justify-center text-lg font-black text-casino-gold border border-casino-gold/20 hover:border-casino-gold/60 transition-colors overflow-hidden"
             >
               {profile?.equipped_avatar ? (
-                <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
               ) : profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
               ) : (
                 profile?.username?.charAt(0).toUpperCase() || 'P'
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-white font-bold text-sm leading-tight">{profile?.username || 'Jugador'}</span>
+              <span className="text-white font-bold text-sm leading-tight group-hover:text-casino-gold transition-colors">{profile?.username || 'Jugador'}</span>
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] font-bold ${div.cssClass}`}>{div.icon} {div.label}</span>
                 <span className="text-[10px] text-casino-gold font-bold">Lvl {level}</span>
@@ -202,14 +200,10 @@ export function ProfileHeader({
           </div>
         </div>
 
-        {/* Avatar Gallery Modal for compact view */}
-        {showAvatarGallery && (
-          <AvatarGallery 
-            onClose={() => setShowAvatarGallery(false)} 
-            onAvatarSelected={() => {
-              window.dispatchEvent(new Event('profile_updated'));
-            }}
-            currentAvatarUrl={profile?.avatar_url}
+        {/* User Profile Modal for compact view */}
+        {showUserProfileModal && (
+          <UserProfileModal 
+            onClose={() => setShowUserProfileModal(false)} 
           />
         )}
 
@@ -341,22 +335,24 @@ export function ProfileHeader({
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in relative z-20">
       
       {/* ─── BENTO CELL 1: Identity (Spans 2 on MD) ─── */}
-      <div className="md:col-span-2 glass-panel p-5 rounded-3xl border border-white/10 flex items-center gap-5 hover:border-casino-gold/30 transition-all bg-black/40 backdrop-blur-md shadow-lg">
+      <div 
+        onClick={() => setShowUserProfileModal(true)}
+        className="md:col-span-2 glass-panel p-5 rounded-3xl border border-white/10 flex items-center gap-5 hover:border-casino-gold transition-all bg-black/40 backdrop-blur-md shadow-lg cursor-pointer group"
+        title="Ver Perfil"
+      >
         <div 
-          onClick={() => setShowAvatarGallery(true)}
-          className="w-16 h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-3xl font-black text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.2)] cursor-pointer hover:border-casino-gold transition-colors overflow-hidden shrink-0 group-hover:scale-105"
-          title="Cambiar Avatar"
+          className="w-16 h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-3xl font-black text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.2)] overflow-hidden shrink-0 group-hover:scale-105 transition-transform"
         >
           {profile?.equipped_avatar ? (
-            <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+            <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
           ) : profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
           ) : (
             profile?.username?.charAt(0).toUpperCase() || 'P'
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl md:text-2xl font-display font-black text-white leading-tight truncate">
+          <h2 className="text-xl md:text-2xl font-display font-black text-white leading-tight truncate group-hover:text-casino-gold transition-colors">
             {profile?.username || 'Jugador'}
           </h2>
           {profile?.equipped_title && (
@@ -556,14 +552,10 @@ export function ProfileHeader({
         </div>
       </div>
 
-      {/* Avatar Gallery Modal */}
-      {showAvatarGallery && (
-        <AvatarGallery 
-          onClose={() => setShowAvatarGallery(false)} 
-          onAvatarSelected={() => {
-            window.dispatchEvent(new Event('profile_updated'));
-          }}
-          currentAvatarUrl={profile?.avatar_url}
+      {/* User Profile Modal */}
+      {showUserProfileModal && (
+        <UserProfileModal 
+          onClose={() => setShowUserProfileModal(false)} 
         />
       )}
     </div>

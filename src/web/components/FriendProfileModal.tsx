@@ -223,66 +223,49 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
           </div>
         ) : (
           <>
-            {/* Header Banner */}
-            <div className={`h-20 relative flex items-end px-5 pb-2 ${
-              friend.isOnline
-                ? isInRoom
-                  ? 'bg-gradient-to-r from-purple-600/20 via-purple-500/10 to-purple-600/20'
-                  : 'bg-gradient-to-r from-casino-emerald/20 via-casino-gold/10 to-casino-emerald/20'
-                : 'bg-gradient-to-r from-gray-700/20 via-gray-600/10 to-gray-700/20'
-            }`}>
-              <div
-                className="absolute inset-0 opacity-20"
-                style={{ backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px)" }}
-              />
-              <span className={`relative text-[10px] uppercase tracking-[0.15em] font-bold px-2 py-0.5 rounded-full ${
-                friend.isOnline
-                  ? isInRoom
-                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                    : 'bg-casino-emerald/20 text-casino-emerald border border-casino-emerald/30'
-                  : 'bg-gray-700/30 text-gray-500 border border-gray-600/30'
-              }`}>
-                {friend.isOnline ? (isInRoom ? '🎮 En partida' : '🟢 En línea') : '⚫ Desconectado'}
-              </span>
-            </div>
-
-            {/* Avatar */}
-            <div className="flex justify-center -mt-10 relative z-10">
-              <div className="relative">
-                <div className={`w-20 h-20 rounded-2xl bg-casino-surface-light flex items-center justify-center text-2xl font-black border-4 border-[#0B101A] shadow-xl overflow-hidden ${
-                  isHighElo ? 'text-casino-gold' : 'text-gray-300'
-                }`}>
-                  {friend.equipped_avatar ? (
-                    <img 
-                      src={friend.equipped_avatar} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
-                      }}
-                    />
-                  ) : friend.avatar_url ? (
-                    <img 
-                      src={friend.avatar_url} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        if (target.parentElement) target.parentElement.innerHTML = friend.username.charAt(0).toUpperCase();
-                      }}
-                    />
-                  ) : (
-                    friend.username.charAt(0).toUpperCase()
-                  )}
+            {/* Large Full-Width Avatar Cover */}
+            <div className="w-full h-52 relative overflow-hidden bg-slate-900 border-b border-white/[0.05]">
+              {friend.equipped_avatar ? (
+                <img 
+                  src={friend.equipped_avatar} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    if (target.parentElement) target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-5xl font-black text-casino-gold">${friend.username.charAt(0).toUpperCase()}</div>`;
+                  }}
+                />
+              ) : friend.avatar_url ? (
+                <img 
+                  src={friend.avatar_url} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    if (target.parentElement) target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-5xl font-black text-casino-gold">${friend.username.charAt(0).toUpperCase()}</div>`;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-casino-gold bg-casino-surface-light">
+                  {friend.username.charAt(0).toUpperCase()}
                 </div>
-                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0B101A] ${
+              )}
+
+              {/* Cover Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-black/35 pointer-events-none" />
+
+              {/* Status Badge */}
+              <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+                <div className={`w-2 h-2 rounded-full ${
                   friend.isOnline
-                    ? isInRoom ? 'bg-purple-500' : 'bg-casino-emerald'
-                    : 'bg-gray-600'
+                    ? isInRoom ? 'bg-purple-500 animate-pulse' : 'bg-casino-emerald'
+                    : 'bg-gray-500'
                 }`} />
+                <span className="text-[9px] font-black uppercase tracking-wider text-gray-300 select-none">
+                  {friend.isOnline ? (isInRoom ? 'En partida' : 'En línea') : 'Desconectado'}
+                </span>
               </div>
             </div>
 
