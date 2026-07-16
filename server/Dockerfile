@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instalar todas las dependencias (incluyendo devDependencies para poder compilar con tsc)
-RUN npm ci --no-audit --no-fund --maxsockets=1
+RUN npm install --no-audit --no-fund --maxsockets=1
+
 
 # Copiar el código fuente y la configuración de TypeScript
 COPY src ./src
