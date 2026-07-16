@@ -37,3 +37,8 @@ CREATE POLICY "ps_service_all" ON public.push_subscriptions FOR ALL
 -- Add challenge_message to game_invitations to support custom offline challenge messages
 ALTER TABLE public.game_invitations
   ADD COLUMN IF NOT EXISTS challenge_message TEXT DEFAULT NULL;
+
+-- Grant permissions for roles
+GRANT ALL ON TABLE public.push_subscriptions TO postgres, service_role;
+GRANT SELECT, INSERT, DELETE ON TABLE public.push_subscriptions TO authenticated;
+

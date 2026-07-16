@@ -46,7 +46,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
   const isInRoom = !!friend.roomId;
 
   // ── Challenge state ───────────────────────────────────────────
-  const [challengeState, setChallengeState] = useState<'idle' | 'waiting' | 'accepted' | 'expired'>('idle');
+  const [challengeState, setChallengeState] = useState<'idle' | 'waiting' | 'accepted' | 'expired' | 'rejected'>('idle');
   const [progress, setProgress] = useState(100); // 100% → 0% over 60s
   const [invitationId, setInvitationId] = useState<string | null>(null);
   const [challengeRoomId, setChallengeRoomId] = useState<string | null>(null);
@@ -134,10 +134,16 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               setTimeout(() => {
                 onClose();
               }, 1250);
-            } else if (payload.new.status === 'rejected' || payload.new.status === 'cancelled' || payload.new.status === 'expired') {
+            } else if (payload.new.status === 'rejected') {
+              if (timerRef.current) clearInterval(timerRef.current);
+              setChallengeState('rejected');
+              closeChallengeRoom(roomId, 'challenge_rejected');
+              setChallengeRoomId(null);
+              supabase.removeChannel(channel);
+            } else if (payload.new.status === 'cancelled' || payload.new.status === 'expired') {
               if (timerRef.current) clearInterval(timerRef.current);
               setChallengeState('expired');
-              closeChallengeRoom(roomId, payload.new.status === 'rejected' ? 'challenge_rejected' : 'challenge_expired');
+              closeChallengeRoom(roomId, 'challenge_expired');
               setChallengeRoomId(null);
               supabase.removeChannel(channel);
             }
@@ -449,6 +455,21 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </button>
                     </div>
                   )}
+
+                  {challengeState === 'rejected' && (
+                    <div className="space-y-2">
+                      <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
+                        <p className="text-red-400 font-bold text-sm">❌ Invitación rechazada</p>
+                        <p className="text-gray-500 text-xs mt-0.5">El jugador ha rechazado la partida</p>
+                      </div>
+                      <button
+                        onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                      >
+                        Intentar de nuevo
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -540,6 +561,21 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
                         <p className="text-red-400 font-bold text-sm">⏱ Sin respuesta</p>
                         <p className="text-gray-500 text-xs mt-0.5">El desafío ha expirado</p>
+                      </div>
+                      <button
+                        onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                      >
+                        Intentar de nuevo
+                      </button>
+                    </div>
+                  )}
+
+                  {challengeState === 'rejected' && (
+                    <div className="space-y-2">
+                      <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
+                        <p className="text-red-400 font-bold text-sm">❌ Desafío rechazado</p>
+                        <p className="text-gray-500 text-xs mt-0.5">El jugador ha rechazado la partida</p>
                       </div>
                       <button
                         onClick={() => { setChallengeState('idle'); setInvitationId(null); }}

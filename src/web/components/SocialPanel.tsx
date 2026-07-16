@@ -876,7 +876,7 @@ const CHALLENGE_DURATION_MS = 60_000;
 
 function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onClose: () => void }) {
   const { user, profile } = useAuth();
-  const [state, setState] = useState<'idle' | 'waiting' | 'accepted' | 'expired'>('idle');
+  const [state, setState] = useState<'idle' | 'waiting' | 'accepted' | 'expired' | 'rejected'>('idle');
   const [progress, setProgress] = useState(100);
   const [betAmount, setBetAmount] = useState(0);
   const [invitationId, setInvitationId] = useState<string | null>(null);
@@ -945,7 +945,13 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
             setChallengeRoomId(null);
             supabase.removeChannel(channel);
             setTimeout(onClose, 1250);
-          } else if (['rejected', 'cancelled', 'expired'].includes(payload.new.status)) {
+          } else if (payload.new.status === 'rejected') {
+            if (timerRef.current) clearInterval(timerRef.current);
+            setState('rejected');
+            closeChallengeRoom(roomId);
+            setChallengeRoomId(null);
+            supabase.removeChannel(channel);
+          } else if (['cancelled', 'expired'].includes(payload.new.status)) {
             if (timerRef.current) clearInterval(timerRef.current);
             setState('expired');
             closeChallengeRoom(roomId);
@@ -1042,6 +1048,14 @@ function QuickChallengeModal({ friend, onClose }: { friend: FriendForModal; onCl
             <div className="space-y-2">
               <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
                 <p className="text-red-400 font-bold text-sm">⏱ Sin respuesta</p>
+              </div>
+              <button onClick={() => { setState('idle'); setInvitationId(null); }} className="w-full py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white text-xs font-bold border border-white/10 transition-all">Intentar de nuevo</button>
+            </div>
+          )}
+          {state === 'rejected' && (
+            <div className="space-y-2">
+              <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
+                <p className="text-red-400 font-bold text-sm">❌ Invitación rechazada</p>
               </div>
               <button onClick={() => { setState('idle'); setInvitationId(null); }} className="w-full py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white text-xs font-bold border border-white/10 transition-all">Intentar de nuevo</button>
             </div>
