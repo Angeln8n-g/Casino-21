@@ -2,7 +2,6 @@ import React from 'react';
 import { Player } from '../../domain/player';
 import { DraggableCard } from './DraggableCard';
 import { Card } from '../../domain/card';
-import { CollectedCardsDeck } from './CollectedCardsDeck';
 import { CardTheme } from '../themes/themeRegistry';
 
 interface HandViewProps {
@@ -99,13 +98,6 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
             </div>
           )}
         </div>
-      </div>
-
-      <div className="flex md:hidden w-full border-t border-white/10 pt-3 justify-center">
-        <CollectedCardsDeck player={player} />
-      </div>
-      <div className="hidden md:flex flex-col items-center justify-center border-l border-white/10 pl-8">
-        <CollectedCardsDeck player={player} />
       </div>
     </div>
   );

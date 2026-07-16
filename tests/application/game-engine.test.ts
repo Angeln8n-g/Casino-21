@@ -1,6 +1,7 @@
 import { DefaultGameEngine } from '../../src/application/game-engine';
 import { GameState } from '../../src/domain/game-state';
 import { ErrorCode } from '../../src/domain/types';
+import { createCard } from '../../src/domain/card';
 
 describe('GameEngine - startNewGame', () => {
   let engine: DefaultGameEngine;
@@ -307,6 +308,54 @@ describe('GameEngine - rounds and victory', () => {
 
     expect(state.phase).toBe('completed');
     expect(state.winnerId).toBe(state.players[0].id);
+  });
+
+  it('should calculate round score and update player score on early win', () => {
+    const result = engine.startNewGame('1v1', ['P1', 'P2']);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    let state = result.value;
+
+    // P1 starts with 18 points, has collected cards that guarantee majority (27 cards)
+    state = {
+      ...state,
+      currentTurnPlayerIndex: 0, // Ensure it is P1's turn
+      players: [
+        {
+          ...state.players[0],
+          score: 18,
+          collectedCards: Array.from({ length: 27 }, (_, idx) => createCard('hearts', '2'))
+        },
+        {
+          ...state.players[1],
+          score: 10,
+          collectedCards: []
+        }
+      ]
+    };
+
+    // P1 plays a card, which triggers early win because of the 27 cards (majority: +3 points, 18 + 3 = 21)
+    const cardToPlay = state.players[0].hand[0];
+    const playResult = engine.playCard(state, {
+      type: 'colocar',
+      playerId: state.players[0].id,
+      cardId: cardToPlay.id
+    });
+
+    expect(playResult.success).toBe(true);
+    if (playResult.success) {
+      state = playResult.value;
+      expect(state.phase).toBe('completed');
+      expect(state.winnerId).toBe(state.players[0].id);
+      // P1 score should be updated to 21 (18 + 3)
+      expect(state.players[0].score).toBe(21);
+      // P2 score remains 10
+      expect(state.players[1].score).toBe(10);
+      // lastScoreBreakdown should be populated
+      expect(state.lastScoreBreakdown).toBeDefined();
+      expect(state.lastScoreBreakdown![0].points.cards).toBe(3);
+    }
   });
 
   it('should reshuffle and deal if no one has 21 points at the end of deck', () => {

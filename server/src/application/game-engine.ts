@@ -439,9 +439,13 @@ export class DefaultGameEngine implements GameEngine {
     // Check for early win based on guaranteed points (27+ cards, 7+ spades) mid-round
     const earlyWin = this.scoreCalculator.checkEarlyWin(newState);
     if (earlyWin.isWin && earlyWin.winnerId) {
+      // Calculate scores for the round up to this point so the final screen shows the correct final scores
+      const { newState: scoredState, breakdowns } = this.scoreCalculator.calculateRoundScore(newState);
+      newState = scoredState;
       newState.phase = 'completed';
       newState.winnerId = earlyWin.winnerId;
       newState.lastAction = `${earlyWin.reason}` as any;
+      (newState as any).lastScoreBreakdown = breakdowns;
       this.currentState = newState;
       return { success: true, value: newState };
     }
