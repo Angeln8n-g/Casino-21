@@ -81,8 +81,11 @@ define(['./workbox-877eb569'], (function (workbox) { 'use strict';
    * See https://goo.gl/S9QRab
    */
   workbox.precacheAndRoute([{
+    "url": "suppress-warnings.js",
+    "revision": "d41d8cd98f00b204e9800998ecf8427e"
+  }, {
     "url": "index.html",
-    "revision": "0.3oasgeb158"
+    "revision": "0.84pt4nlla3"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {

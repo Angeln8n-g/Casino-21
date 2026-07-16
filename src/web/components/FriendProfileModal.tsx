@@ -28,6 +28,15 @@ interface FriendProfileModalProps {
 
 const CHALLENGE_DURATION_MS = 60_000;
 
+const PRESET_MESSAGES = [
+  { emoji: '⚔️', text: '¡Hey, jugamos!' },
+  { emoji: '🔥', text: '¿Te soportas una partida?' },
+  { emoji: '🏆', text: '¿Tienes miedo o qué?' },
+  { emoji: '🎲', text: 'Una rápida, ¿qué dices?' },
+  { emoji: '💪', text: 'Vamos a ver quién es mejor' },
+  { emoji: '🤝', text: '¿Partida amigable?' }
+];
+
 export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfileModalProps) {
   const { user } = useAuth();
   const div = getDivisionFromElo(friend.elo);
@@ -41,6 +50,8 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
   const [progress, setProgress] = useState(100); // 100% → 0% over 60s
   const [invitationId, setInvitationId] = useState<string | null>(null);
   const [challengeRoomId, setChallengeRoomId] = useState<string | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState(PRESET_MESSAGES[0].text);
+  const [challengeDuration, setChallengeDuration] = useState(CHALLENGE_DURATION_MS);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -59,12 +70,16 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
     }
   };
 
-  const startCountdown = (invId: string, roomId: string) => {
+  const startCountdown = (invId: string, roomId: string, expiresAt?: string) => {
+    const expiresTime = expiresAt ? new Date(expiresAt).getTime() : Date.now() + CHALLENGE_DURATION_MS;
+    const duration = expiresTime - Date.now();
+    setChallengeDuration(duration);
+
     startTimeRef.current = Date.now();
     setProgress(100);
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
-      const remainingPct = Math.max(0, 100 - (elapsed / CHALLENGE_DURATION_MS) * 100);
+      const remainingPct = Math.max(0, 100 - (elapsed / duration) * 100);
       
       setProgress(remainingPct);
       
@@ -86,23 +101,24 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
       const socket = await socketService.connect();
       const playerName = user.user_metadata?.username || user.email?.split('@')[0] || 'Jugador';
       
-      const { invitationId, roomId } = await new Promise<{ invitationId: string; roomId: string }>((resolve, reject) => {
+      const { invitationId, roomId, expiresAt } = await new Promise<{ invitationId: string; roomId: string; expiresAt?: string }>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error("Timeout creating challenge")), 10000);
-        socket.once('challenge_sent', ({ roomId, invitationId }: { roomId: string; invitationId: string }) => {
+        socket.once('challenge_sent', ({ roomId, invitationId, expiresAt }: { roomId: string; invitationId: string; expiresAt?: string }) => {
           clearTimeout(timeout);
-          resolve({ invitationId, roomId });
+          resolve({ invitationId, roomId, expiresAt });
         });
         socket.emit('send_challenge', {
           receiverId: friend.id,
           playerName,
-          betAmount: 0
+          betAmount: 0,
+          challengeMessage: !friend.isOnline ? selectedMessage : undefined
         });
       });
 
       setInvitationId(invitationId);
       setChallengeRoomId(roomId);
 
-      startCountdown(invitationId, roomId);
+      startCountdown(invitationId, roomId, expiresAt);
 
       const channel = supabase
         .channel(`invitation_${invitationId}_${Math.random()}`)
@@ -152,7 +168,16 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
   };
 
   // ── Seconds remaining label ──────────────────────────────────
-  const secondsLeft = Math.ceil((progress / 100) * (CHALLENGE_DURATION_MS / 1000));
+  const secondsLeft = Math.ceil((progress / 100) * (challengeDuration / 1000));
+
+  const formatTimeLeft = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    if (mins > 0) {
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${secs}s`;
+  };
 
   const content = (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
@@ -321,19 +346,109 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
               {/* Action Zone */}
               {!friend.isOnline && (
-                <div className="space-y-3">
-                  <div className="py-3 rounded-xl text-center text-xs text-gray-500 bg-[#0F0E0C] border border-[#2A2722] font-bold">
-                    ⚫ Jugador desconectado
-                  </div>
-                  <button
-                    onClick={handleChat}
-                    className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:bg-[#1A1815] transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    Chat
-                  </button>
+                <div className="space-y-4">
+                  {challengeState === 'idle' && (
+                    <>
+                      {/* Selector de mensaje pre-configurado */}
+                      <div className="text-left space-y-1.5">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">
+                          Mensaje de Invitación (Push)
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={selectedMessage}
+                            onChange={(e) => setSelectedMessage(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#0F0E0C] border border-[#2A2722] text-white text-xs font-medium focus:outline-none focus:border-casino-gold/50 appearance-none cursor-pointer"
+                          >
+                            {PRESET_MESSAGES.map((msg) => (
+                              <option key={msg.text} value={msg.text} className="bg-[#0F0E0C]">
+                                {msg.emoji} {msg.text}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 text-[10px]">
+                            ▼
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleChat}
+                          className="flex-1 py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:bg-[#1A1815] transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          Chat
+                        </button>
+                        <button
+                          onClick={handleChallenge}
+                          className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black hover:from-yellow-400 hover:to-casino-gold transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.3)] border border-transparent"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m18 16 4-4-4-4M6 8l-4 4 4 4m8.5-12-5 16" />
+                          </svg>
+                          Invitar
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {challengeState === 'waiting' && (
+                    <div className="space-y-3">
+                      <div className="bg-[#0F0E0C] border border-[#2A2722] p-4 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-white text-xs font-bold">⏳ Esperando oponente...</p>
+                          <span className={`text-xs font-mono font-bold tabular-nums ${
+                            secondsLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-casino-gold'
+                          }`}>
+                            {formatTimeLeft(secondsLeft)}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-black/60 overflow-hidden border border-[#2A2722]">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              secondsLeft <= 10
+                                ? 'bg-gradient-to-r from-red-500 to-red-400'
+                                : 'bg-gradient-to-r from-casino-gold to-yellow-400'
+                            }`}
+                            style={{ width: `${progress}%`, transition: 'width 0.25s linear' }}
+                          />
+                        </div>
+                        <p className="text-gray-500 text-[10px] text-center">
+                          Invitación push enviada a <span className="text-gray-300">{friend.username}</span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleCancelChallenge}
+                        className="w-full py-2.5 rounded-2xl bg-red-950/10 border border-red-500/20 text-red-400 hover:text-white hover:bg-red-500/20 font-bold text-xs uppercase tracking-widest transition-all"
+                      >
+                        Cancelar invitación
+                      </button>
+                    </div>
+                  )}
+
+                  {challengeState === 'accepted' && (
+                    <div className="py-3 rounded-xl text-center bg-casino-emerald/10 border border-casino-emerald/30 animate-pulse">
+                      <p className="text-casino-emerald font-bold text-sm">🎮 ¡Invitación aceptada! Entrando...</p>
+                    </div>
+                  )}
+
+                  {challengeState === 'expired' && (
+                    <div className="space-y-2">
+                      <div className="py-3 rounded-xl text-center bg-red-500/10 border border-red-500/20">
+                        <p className="text-red-400 font-bold text-sm">⏱ Sin respuesta</p>
+                        <p className="text-gray-500 text-xs mt-0.5">La invitación ha expirado</p>
+                      </div>
+                      <button
+                        onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                      >
+                        Intentar de nuevo
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -388,7 +503,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                           <span className={`text-xs font-mono font-bold tabular-nums ${
                             secondsLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-casino-gold'
                           }`}>
-                            {secondsLeft}s
+                            {formatTimeLeft(secondsLeft)}
                           </span>
                         </div>
                         <div className="h-2 rounded-full bg-black/60 overflow-hidden border border-[#2A2722]">

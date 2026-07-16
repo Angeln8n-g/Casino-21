@@ -14,6 +14,7 @@ import type { BotDifficulty } from './bot/bot-player';
 import { Redis } from 'ioredis';
 import { RoomStore, RingBuffer, ChatMessage, Room } from './room-store';
 import { MatchmakingStore, MatchmakingPlayer } from './matchmaking-store';
+import { sendPushToUser, PushPayload } from './web-push';
 
 dotenv.config();
 
@@ -23,6 +24,9 @@ const ALLOW_INSECURE_JWT_FALLBACK = process.env.ALLOW_INSECURE_JWT_FALLBACK === 
 const APP_ENV = process.env.NODE_ENV || 'development';
 const startedAt = Date.now();
 
+// Mapeo en memoria de usuarios online: userId -> Set de socketIds
+const connectedUsers = new Map<string, Set<string>>();
+
 const app = express();
 app.set('trust proxy', 1);
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001")
@@ -30,6 +34,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http:
   .map(origin => origin.trim())
   .filter(Boolean);
 
+app.use(express.json()); // Habilitar parsing de JSON
 app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST"] }));
 app.get('/health', async (_req, res) => {
   try {
@@ -64,6 +69,224 @@ if (EXPOSE_RULES_VERSION) {
     res.json({ rulesVersion: RULES_VERSION });
   });
 }
+
+// Endpoint REST para responder desafíos (usado principalmente por el Service Worker y/o fallback cliente)
+app.post('/api/challenge/respond', async (req, res) => {
+  const { invitationId, action } = req.body;
+  if (!invitationId || !['accepted', 'rejected'].includes(action)) {
+    return res.status(400).json({ error: 'Parámetros inválidos' });
+  }
+
+  try {
+    // 1. Obtener la invitación para validar y conseguir sender_id, receiver_id, room_id y usernames
+    const { data: invitation, error: getError } = await supabase
+      .from('game_invitations')
+      .select(`
+        id, 
+        sender_id, 
+        receiver_id, 
+        room_id, 
+        status, 
+        sender:profiles!game_invitations_sender_id_fkey(username), 
+        receiver:profiles!game_invitations_receiver_id_fkey(username)
+      `)
+      .eq('id', invitationId)
+      .single();
+
+    if (getError || !invitation) {
+      console.error('Error al obtener invitación para responder via REST:', getError);
+      return res.status(404).json({ error: 'Invitación no encontrada' });
+    }
+
+    if (invitation.status !== 'pending') {
+      return res.status(400).json({ error: 'La invitación ya no está pendiente' });
+    }
+
+    // 2. Actualizar la invitación en la base de datos
+    const { error: updateError } = await supabase
+      .from('game_invitations')
+      .update({ status: action, responded_at: new Date().toISOString() })
+      .eq('id', invitationId);
+
+    if (updateError) {
+      console.error('Error al actualizar invitación via REST:', updateError);
+      return res.status(500).json({ error: 'Error al actualizar estado en la base de datos' });
+    }
+
+    const senderId = invitation.sender_id;
+    const receiverId = invitation.receiver_id;
+    const senderName = (invitation as any).sender?.username || 'Un jugador';
+    const receiverName = (invitation as any).receiver?.username || 'Tu amigo';
+    const roomId = invitation.room_id;
+
+    // 3. Acciones colaterales según la acción
+    if (action === 'rejected' && roomId) {
+      // Cerrar la sala del desafío
+      await closeRoom(roomId, 'challenge_rejected');
+      
+      // Notificar al emisor
+      const isSenderOnline = connectedUsers.has(senderId) && (connectedUsers.get(senderId)?.size || 0) > 0;
+      if (isSenderOnline) {
+        const senderSockets = connectedUsers.get(senderId);
+        if (senderSockets) {
+          for (const socketId of senderSockets) {
+            io.to(socketId).emit('challenge_rejected', { invitationId });
+          }
+        }
+      } else {
+        // Enviar push de respuesta (Rechazado)
+        await sendPushToUser(senderId, {
+          type: 'challenge_response',
+          title: '❌ Desafío Rechazado',
+          body: `${receiverName} ha rechazado tu invitación a jugar.`,
+          data: {
+            invitationId,
+            roomId,
+            senderId: receiverId
+          }
+        });
+      }
+    } else if (action === 'accepted' && roomId) {
+      // Notificar al emisor
+      const isSenderOnline = connectedUsers.has(senderId) && (connectedUsers.get(senderId)?.size || 0) > 0;
+      if (isSenderOnline) {
+        const senderSockets = connectedUsers.get(senderId);
+        if (senderSockets) {
+          for (const socketId of senderSockets) {
+            io.to(socketId).emit('challenge_accepted', { invitationId, roomId });
+          }
+        }
+      } else {
+        // Enviar push de respuesta (Aceptado)
+        await sendPushToUser(senderId, {
+          type: 'challenge_response',
+          title: '✅ Desafío Aceptado',
+          body: `${receiverName} ha aceptado tu invitación a jugar. ¡Prepárate!`,
+          data: {
+            invitationId,
+            roomId,
+            senderId: receiverId
+          }
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error procesando respuesta a invitación via REST:', err);
+    return res.status(500).json({ error: 'Error interno de servidor' });
+  }
+});
+
+// ── Endpoint REST: Notificar inicio de torneo a todos los inscritos ────────
+app.post('/api/tournament/notify-start', async (req, res) => {
+  const { eventId } = req.body;
+  if (!eventId) {
+    return res.status(400).json({ error: 'eventId es requerido' });
+  }
+
+  try {
+    // 1. Obtener título del evento
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('title')
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      console.error('Error al obtener evento para notificación de torneo:', eventError);
+      return res.status(404).json({ error: 'Evento no encontrado' });
+    }
+
+    // 2. Obtener todos los inscritos
+    const { data: entries, error: entriesError } = await supabase
+      .from('event_entries')
+      .select('player_id')
+      .eq('event_id', eventId);
+
+    if (entriesError || !entries || entries.length === 0) {
+      console.log(`[Torneo Push] No se encontraron inscritos para evento ${eventId}`);
+      return res.status(200).json({ success: true, notified: 0 });
+    }
+
+    const uniquePlayerIds = [...new Set(entries.map(e => e.player_id))];
+    console.log(`[Torneo Push] Enviando notificación de inicio a ${uniquePlayerIds.length} jugadores para "${event.title}"`);
+
+    // 3. Enviar push a cada inscrito en paralelo
+    const pushPromises = uniquePlayerIds.map(playerId =>
+      sendPushToUser(playerId, {
+        type: 'tournament_start',
+        title: '🏆 ¡Torneo Iniciado!',
+        body: `¡El torneo "${event.title}" ha comenzado! Entra para jugar tu partida.`,
+        data: {
+          eventId,
+          isTournament: true
+        }
+      })
+    );
+
+    await Promise.all(pushPromises);
+
+    // 4. También emitir via sockets a los que estén online
+    for (const playerId of uniquePlayerIds) {
+      const sockets = connectedUsers.get(playerId);
+      if (sockets && sockets.size > 0) {
+        for (const socketId of sockets) {
+          io.to(socketId).emit('tournament_started', { eventId, eventTitle: event.title });
+        }
+      }
+    }
+
+    return res.status(200).json({ success: true, notified: uniquePlayerIds.length });
+  } catch (err) {
+    console.error('Error al enviar notificaciones de inicio de torneo:', err);
+    return res.status(500).json({ error: 'Error interno de servidor' });
+  }
+});
+
+// ── Endpoint REST: Invitar a oponente de torneo a su partida ────────────────
+app.post('/api/tournament/invite-opponent', async (req, res) => {
+  const { opponentId, roomId, eventTitle, senderName } = req.body;
+  if (!opponentId || !roomId) {
+    return res.status(400).json({ error: 'opponentId y roomId son requeridos' });
+  }
+
+  try {
+    const isOpponentOnline = connectedUsers.has(opponentId) && (connectedUsers.get(opponentId)?.size || 0) > 0;
+
+    if (isOpponentOnline) {
+      // Emitir via socket en tiempo real
+      const opponentSockets = connectedUsers.get(opponentId)!;
+      for (const socketId of opponentSockets) {
+        io.to(socketId).emit('tournament_invite', {
+          roomId,
+          eventTitle: eventTitle || 'Torneo',
+          senderName: senderName || 'Tu rival'
+        });
+      }
+      console.log(`[Torneo Push] Invitación de partida enviada via socket a ${opponentId} (sala ${roomId})`);
+      return res.status(200).json({ success: true, method: 'socket' });
+    } else {
+      // Enviar push notification
+      await sendPushToUser(opponentId, {
+        type: 'tournament_match_invite',
+        title: '⚔️ ¡Partida de Torneo!',
+        body: `¡${senderName || 'Tu rival'} te está esperando para jugar en el torneo "${eventTitle || ''}"!`,
+        data: {
+          roomId,
+          eventId: undefined,
+          isTournament: true,
+          senderName: senderName || 'Tu rival'
+        }
+      });
+      console.log(`[Torneo Push] Invitación de partida enviada via push a ${opponentId} (sala ${roomId})`);
+      return res.status(200).json({ success: true, method: 'push' });
+    }
+  } catch (err) {
+    console.error('Error al enviar invitación de torneo al oponente:', err);
+    return res.status(500).json({ error: 'Error interno de servidor' });
+  }
+});
 
 const httpServer = createServer(app);
 
@@ -364,6 +587,13 @@ setInterval(async () => {
 io.on('connection', (socket) => {
   const userId = (socket as any).userId || (socket as any).user?.sub;
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
+
+  if (userId) {
+    const userSockets = connectedUsers.get(userId) || new Set<string>();
+    userSockets.add(socket.id);
+    connectedUsers.set(userId, userSockets);
+  }
+
   if (EXPOSE_RULES_VERSION) {
     socket.emit('rules_version', { rulesVersion: RULES_VERSION });
   }
@@ -437,8 +667,8 @@ io.on('connection', (socket) => {
     console.log(`Sala Bot [${difficulty}] ${roomId} creada por ${playerName}`);
   });
 
-  socket.on('send_challenge', async (data: { receiverId: string, playerName: string, betAmount?: number }) => {
-    const { receiverId, playerName, betAmount = 0 } = data;
+  socket.on('send_challenge', async (data: { receiverId: string, playerName: string, betAmount?: number, challengeMessage?: string }) => {
+    const { receiverId, playerName, betAmount = 0, challengeMessage } = data;
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
 
     const room: Room = {
@@ -457,7 +687,11 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socketToRoomMap.set(socket.id, roomId);
 
-    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    // Determinar presencia en línea y duración de expiración (1 min si está online, 10 min si está offline)
+    const isReceiverOnline = connectedUsers.has(receiverId) && (connectedUsers.get(receiverId)?.size || 0) > 0;
+    const durationMs = isReceiverOnline ? 60_000 : 10 * 60_000;
+    const expiresAt = new Date(Date.now() + durationMs).toISOString();
+
     const { data: invitation, error: invError } = await supabase
       .from('game_invitations')
       .insert({
@@ -466,7 +700,8 @@ io.on('connection', (socket) => {
         room_id: roomId,
         bet_amount: betAmount,
         status: 'pending',
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        challenge_message: challengeMessage || null
       })
       .select('id')
       .single();
@@ -479,10 +714,12 @@ io.on('connection', (socket) => {
     }
 
     const betText = betAmount > 0 ? ` por ${betAmount} 🪙` : '';
+    const notificationText = challengeMessage || `¡${playerName} te ha desafiado${betText}!`;
+    
     const { error: notifError } = await supabase.rpc('create_notification', {
       p_player_id: receiverId,
       p_type: 'game_invitation',
-      p_content: `¡${playerName} te ha desafiado${betText}!`,
+      p_content: notificationText,
       p_metadata: JSON.stringify({
         sender_id: userId,
         sender_name: playerName,
@@ -497,6 +734,25 @@ io.on('connection', (socket) => {
       console.error('Error creando notificación:', notifError);
     }
 
+    // Enviar Push Notification si el oponente está offline
+    if (!isReceiverOnline) {
+      const pushPayload: PushPayload = {
+        type: 'game_challenge',
+        title: '⚔️ ¡Desafío en KASINO21!',
+        body: challengeMessage || `¡${playerName} te ha desafiado a jugar${betText}!`,
+        data: {
+          invitationId: invitation.id,
+          roomId,
+          senderId: userId,
+          senderName: playerName,
+          expiresAt
+        }
+      };
+      sendPushToUser(receiverId, pushPayload).catch(err => {
+        console.error('Error al enviar push de desafío:', err);
+      });
+    }
+
     socket.emit('room_created', {
       roomId,
       playerId: userId,
@@ -507,9 +763,11 @@ io.on('connection', (socket) => {
     socket.emit('challenge_sent', {
       roomId,
       invitationId: invitation.id,
-      receiverId
+      receiverId,
+      expiresAt,
+      isOffline: !isReceiverOnline
     });
-    console.log(`Desafío ${roomId} enviado por ${playerName} a ${receiverId}`);
+    console.log(`Desafío ${roomId} enviado por ${playerName} a ${receiverId} (${isReceiverOnline ? 'Online' : 'Offline'})`);
   });
 
   socket.on('join_room', async ({ roomId, playerName, isTournament, isSpectator }: { roomId: string, playerName: string, isTournament?: boolean, isSpectator?: boolean }) => {
@@ -1044,6 +1302,17 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', async () => {
     console.log(`Usuario desconectado: ${socket.id}`);
+    
+    if (userId) {
+      const userSockets = connectedUsers.get(userId);
+      if (userSockets) {
+        userSockets.delete(socket.id);
+        if (userSockets.size === 0) {
+          connectedUsers.delete(userId);
+        }
+      }
+    }
+
     await matchmakingStore.removePlayer(userId);
     const roomId = socketToRoomMap.get(socket.id);
     socketToRoomMap.delete(socket.id);

@@ -25,6 +25,7 @@ export interface TournamentBracketProps {
   title?: string;
   maxParticipants?: number;
   onJoinMatch?: (match: TournamentMatch) => void;
+  onInviteOpponent?: (opponentId: string, match: TournamentMatch) => void;
   currentUserId?: string | null;
   isAdmin?: boolean;
   prizePool?: string;
@@ -38,7 +39,7 @@ const ROUND_LABELS: Record<number, string> = {
   4: 'Final',
 };
 
-function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; currentUserId?: string | null; isAdmin?: boolean }) {
+function MatchNode({ match, isLeft, isFinal, onJoinMatch, onInviteOpponent, currentUserId, isAdmin }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; onInviteOpponent?: (opponentId: string, match: TournamentMatch) => void; currentUserId?: string | null; isAdmin?: boolean }) {
   if (!match) {
     return (
       <div className="w-28 h-16 sm:w-36 sm:h-20 md:w-44 md:h-24 border border-[#2A2A4A] rounded bg-[#0F0F23]/80 flex flex-col justify-center opacity-40 relative z-10">
@@ -64,6 +65,11 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
   const isPlayerInMatch = currentUserId && (match.player1?.id === currentUserId || match.player2?.id === currentUserId);
   const canJoin = match.status !== 'completed' && isPlayerInMatch && match.player1 && match.player2;
   const isSpectatable = match.status !== 'completed' && match.player1 && match.player2 && match.game_room_id;
+
+  // Determine the opponent for the invite button
+  const opponentId = isPlayerInMatch && match.status !== 'completed'
+    ? (match.player1?.id === currentUserId ? match.player2?.id : match.player1?.id)
+    : null;
   const isClickable = canJoin || isSpectatable || (isAdmin && match.status !== 'completed');
 
   const connOffset = isLeft ? '-right-2 sm:-right-3 md:-right-4 lg:-right-6' : '-left-2 sm:-left-3 md:-left-4 lg:-left-6';
@@ -90,6 +96,16 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
           <span className="text-[8px] sm:text-[10px]">👁️</span> VER
         </div>
       ) : null}
+
+      {opponentId && onInviteOpponent && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onInviteOpponent(opponentId, match); }}
+          className="absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 bg-casino-gold/90 text-black text-[7px] sm:text-[8px] font-black uppercase px-1.5 sm:px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(234,179,8,0.6)] z-20 hover:bg-yellow-400 transition-colors tracking-widest border border-casino-gold/50 whitespace-nowrap flex items-center gap-0.5"
+          title="Avisar a tu rival"
+        >
+          <span className="text-[8px] sm:text-[10px]">🔔</span> <span className="hidden sm:inline">Avisar</span>
+        </button>
+      )}
 
       <div className="flex flex-col h-full text-[10px] sm:text-xs md:text-sm">
         <div className={`flex-1 flex items-center px-1.5 sm:px-2 md:px-3 border-b border-[#2A2A4A] truncate ${getPlayerClass(match.player1)} gap-1.5 sm:gap-2 md:gap-3 transition-colors`}>
@@ -125,7 +141,7 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, currentUserId, isAdmin
   );
 }
 
-export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, currentUserId, isAdmin, prizePool }: TournamentBracketProps) {
+export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, onInviteOpponent, currentUserId, isAdmin, prizePool }: TournamentBracketProps) {
   const getMatch = (r: number, p: number) => matches.find(m => m.round === r && m.position === p);
 
   const renderMatchNode = (match: TournamentMatch | undefined, isLeft: boolean, isFinal = false) => (
@@ -134,6 +150,7 @@ export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxP
       isLeft={isLeft}
       isFinal={isFinal}
       onJoinMatch={onJoinMatch}
+      onInviteOpponent={onInviteOpponent}
       currentUserId={currentUserId}
       isAdmin={isAdmin}
     />

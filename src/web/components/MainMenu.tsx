@@ -175,6 +175,46 @@ export function MainMenu() {
     }
   }, [profile]);
 
+  // ─── Auto-join via ?joinInviteRoomId= and ?openChatWith= query params ───
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinInviteRoomId = params.get('joinInviteRoomId');
+    const openChatWith = params.get('openChatWith');
+    
+    if (joinInviteRoomId || openChatWith) {
+      const url = new URL(window.location.href);
+      
+      if (joinInviteRoomId) {
+        url.searchParams.delete('joinInviteRoomId');
+        url.searchParams.delete('invitationId');
+        // Delete isTournament if present as well to clean the URL
+        url.searchParams.delete('isTournament');
+        setRoomIdInput(joinInviteRoomId.toUpperCase());
+        
+        if (profile?.username) {
+          socketService.connect().then(socket => {
+            const isTournament = joinInviteRoomId.toUpperCase().startsWith('T');
+            socket.emit('join_room', { 
+              roomId: joinInviteRoomId.toUpperCase(), 
+              playerName: profile.username,
+              isTournament
+            });
+          }).catch(err => setError(err.message || 'Error conectando al servidor...'));
+        }
+      }
+      
+      if (openChatWith) {
+        url.searchParams.delete('openChatWith');
+        sessionStorage.setItem('open_chat_friend_id', openChatWith);
+        // Cambiar pestañas a la sección social
+        setDesktopTab('social');
+        setMobileTab('social');
+      }
+      
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  }, [profile?.username]);
+
   // ─── Auto-join via ?join= query param ───
   useEffect(() => {
     if (joinParamHandled.current) return;

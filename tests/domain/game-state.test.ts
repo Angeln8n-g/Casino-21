@@ -20,7 +20,8 @@ describe('GameState', () => {
       deck,
       currentTurnPlayerIndex: 0,
       turnCount: 0,
-      roundCount: 1
+      roundCount: 1,
+      roundStartPlayerIndex: 0
     };
 
     expect(validateGameState(state)).toBe(true);
@@ -40,7 +41,8 @@ describe('GameState', () => {
       deck: createDeck(),
       currentTurnPlayerIndex: 0,
       turnCount: 0,
-      roundCount: 1
+      roundCount: 1,
+      roundStartPlayerIndex: 0
     };
 
     expect(() => validateGameState(state)).toThrow(ErrorCode.INVALID_STATE);
@@ -60,7 +62,8 @@ describe('GameState', () => {
       deck: remainingDeck,
       currentTurnPlayerIndex: 0,
       turnCount: 0,
-      roundCount: 1
+      roundCount: 1,
+      roundStartPlayerIndex: 0
     };
 
     expect(() => validateGameState(state)).toThrow(ErrorCode.INVALID_STATE);
@@ -100,7 +103,8 @@ describe('GameState', () => {
               deck: { cards: deckCards },
               currentTurnPlayerIndex: 0,
               turnCount: 0,
-              roundCount: 1
+              roundCount: 1,
+              roundStartPlayerIndex: 0
             };
 
             expect(validateGameState(state)).toBe(true);

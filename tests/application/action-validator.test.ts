@@ -95,7 +95,8 @@ describe('ActionValidator', () => {
       };
 
       const result = validator.validate(stateWithOpponentFormation, action);
-      expect(result.isValid).toBe(true);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe(ErrorCode.INVALID_ACTION);
     });
 
     it('should reject taking a formation and a loose card if the formation belongs to the player', () => {
@@ -166,7 +167,7 @@ describe('ActionValidator', () => {
       };
       const result = validator.validate(stateForFormar, action);
       expect(result.isValid).toBe(false);
-      expect(result.error).toBe(ErrorCode.INVALID_ACTION);
+      expect(result.error).toBe(ErrorCode.INVALID_FORMATION_SUM);
     });
 
     it('should reject if sum > 14', () => {

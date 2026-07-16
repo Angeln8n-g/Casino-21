@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { logger } from '../utils/logger';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
@@ -174,13 +175,17 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
 }
 
 export function EventsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { startUrlLoop, stopLoop } = useAudio();
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
   const [events, setEvents] = useState<EventData[]>([]);
   const [userEntries, setUserEntries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const { isSupported, isSubscribed, subscribeToPush } = usePushNotifications();
+  const [pushPromptModalOpen, setPushPromptModalOpen] = useState(false);
+  const [pendingEnrollment, setPendingEnrollment] = useState<EventData | null>(null);
 
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [selectedRules, setSelectedRules] = useState({ title: '', content: '' });
@@ -269,7 +274,6 @@ export function EventsPage() {
     setTournamentMatches(mappedMatches);
   };
 
-  // Modal de inscripción
   const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState<'success' | 'already_enrolled' | 'error'>('success');
   const [enrollmentEventTitle, setEnrollmentEventTitle] = useState('');
@@ -283,19 +287,45 @@ export function EventsPage() {
     }
   };
 
+  const handleInviteOpponent = async (opponentId: string, match: TournamentMatch) => {
+    if (!user) return;
+    try {
+      const apiUrl = import.meta.env.VITE_SOCKET_URL || (
+        import.meta.env.PROD && typeof window !== 'undefined'
+          ? window.location.origin
+          : 'http://localhost:4000'
+      );
+      const res = await fetch(`${apiUrl}/api/tournament/invite-opponent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          opponentId,
+          roomId: match.game_room_id,
+          eventTitle: events.find(e => e.id === selectedTournament)?.title || 'Torneo',
+          senderName: profile?.username
+        })
+      });
+      if (res.ok) {
+        alert('🔔 ¡Aviso enviado a tu rival exitosamente!');
+      } else {
+        alert('Error al enviar el aviso.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al enviar el aviso.');
+    }
+  };
+
   const handleJoinMatch = (match: TournamentMatch) => {
     if (!match.game_room_id) {
       alert('La sala de juego aún no ha sido generada.');
       return;
     }
     
-    // Close the bracket modal
     closeBracketModal();
 
-    // Determinar si el usuario es jugador o espectador en esta partida
     const isSpectator = !(user && (match.player1?.id === user.id || match.player2?.id === user.id));
 
-    // Tell MainMenu (or the app) to join this room as a tournament
     window.dispatchEvent(new CustomEvent('join_game_from_invite', { 
       detail: { roomId: match.game_room_id, isTournament: true, isSpectator } 
     }));
@@ -306,7 +336,7 @@ export function EventsPage() {
   };
 
   const handleViewBracket = async (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => {
-    setSelectedTournament(title);
+    setSelectedTournament(eventId);
     setSelectedTournamentMaxParticipants(maxParticipants || 16);
     setSelectedTournamentImage(imageUrl);
     const event = events.find(e => e.id === eventId);
@@ -321,7 +351,6 @@ export function EventsPage() {
     await fetchBracketData(eventId);
     setMatchesLoading(false);
 
-    // Subscribe to real-time changes on tournament_matches for this event
     const channel = supabase
       .channel(`bracket-${eventId}-${Date.now()}`)
       .on('postgres_changes', {
@@ -345,7 +374,7 @@ export function EventsPage() {
         const { data: eventsData, error: eventsError } = await supabase
           .from('events')
           .select('*')
-          .neq('status', 'draft') // Don't show drafts to users
+          .neq('status', 'draft')
           .order('start_date', { ascending: true });
           
         if (!isMounted) return;
@@ -355,7 +384,6 @@ export function EventsPage() {
         } else if (eventsData && eventsData.length > 0) {
           setEvents(eventsData as EventData[]);
         } else {
-          // Fase 1: mostrar una experiencia completa aunque la BD aun no este poblada.
           setEvents(MOCK_EVENTS);
         }
 
@@ -401,6 +429,42 @@ export function EventsPage() {
       return;
     }
 
+    const eventObj = events.find(e => e.id === eventId);
+    if (!eventObj) return;
+
+    if (userEntries.includes(eventObj.id)) {
+      setEnrollmentEventTitle(eventObj.title);
+      setEnrollmentStatus('already_enrolled');
+      setEnrollmentModalOpen(true);
+      return;
+    }
+
+    if (eventObj.type === 'torneo' && isSupported && !isSubscribed) {
+      setPendingEnrollment(eventObj);
+      setPushPromptModalOpen(true);
+      return;
+    }
+
+    await confirmEnrollment(eventObj);
+  };
+
+  const handlePushChoice = async (accept: boolean) => {
+    setPushPromptModalOpen(false);
+    if (accept) {
+      await subscribeToPush();
+    }
+    if (pendingEnrollment) {
+      await confirmEnrollment(pendingEnrollment);
+      setPendingEnrollment(null);
+    }
+  };
+
+  const confirmEnrollment = async (eventObj: EventData) => {
+    if (!user) {
+      logger.error('Cannot enroll in event: User is not authenticated');
+      return;
+    }
+    const { id: eventId, title } = eventObj;
     setEnrollmentEventTitle(title);
     
     if (userEntries.includes(eventId)) {
@@ -411,8 +475,7 @@ export function EventsPage() {
     
     setActionLoading(eventId);
     
-    // Call the secure RPC function to handle entry fee deduction and enrollment
-    const { error, data } = await supabase.rpc('join_event', {
+    const { error } = await supabase.rpc('join_event', {
       event_id_param: eventId,
       player_id_param: user.id
     });
@@ -420,26 +483,19 @@ export function EventsPage() {
     if (error) {
       logger.error('join_event RPC error:', error);
       setEnrollmentStatus('error');
-      // Hack to pass custom error message via status for simplicity in this MVP
       setEnrollmentEventTitle(title + ' - ' + (error.message.includes('Saldo insuficiente') ? 'Saldo Insuficiente' : 'Error de inscripción'));
       setEnrollmentModalOpen(true);
     } else {
       setUserEntries([...userEntries, eventId]);
-      // Update participant count optimistically
       setEvents(events.map(ev => ev.id === eventId ? { ...ev, participants_count: ev.participants_count + 1 } : ev));
       setEnrollmentStatus('success');
       setEnrollmentModalOpen(true);
-      
-      // Update profile coins optimistically via custom event or reload
-      // (The actual profile refresh is handled by useAuth fetching automatically on certain triggers, 
-      // but a quick reload or event helps)
     }
     setActionLoading(null);
   };
 
   const filteredEvents = events.filter(e => filter === 'all' || e.status === filter);
   
-  // Find featured events (live or upcoming)
   const featuredEvents = events.filter(e => e.status === 'live' || e.status === 'upcoming');
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -477,11 +533,8 @@ export function EventsPage() {
     );
   }
 
-
-
   return (
     <div className="w-full text-white animate-fade-in">
-      {/* Hero Banner (Featured Event Carousel) */}
       {featuredEvent && (
         <div className="relative w-full h-72 md:h-96 rounded-3xl overflow-hidden mb-8 border border-casino-gold/30 shadow-[0_0_30px_rgba(234,179,8,0.15)] group cursor-pointer">
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-10" />
@@ -548,7 +601,6 @@ export function EventsPage() {
             </div>
           </div>
           
-          {/* Carousel Controls */}
           {featuredEvents.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-30">
               {featuredEvents.map((_, idx) => (
@@ -570,7 +622,6 @@ export function EventsPage() {
         </div>
       )}
 
-      {/* Tabs & Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h3 className="text-2xl font-black uppercase tracking-wider">Cartelera de Eventos</h3>
         
@@ -596,7 +647,6 @@ export function EventsPage() {
         </div>
       </div>
 
-      {/* Events Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredEvents.map((event, i) => (
           <EventCard 
@@ -617,7 +667,6 @@ export function EventsPage() {
         </div>
       )}
 
-      {/* Rules Modal */}
       {rulesModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setRulesModalOpen(false)}>
           <div className="glass-panel-strong w-full max-w-lg rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
@@ -650,14 +699,12 @@ export function EventsPage() {
         </div>
       )}
 
-      {/* Bracket Modal */}
       {bracketModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
           closeBracketModal();
         }}>
           <div className="glass-panel-strong w-full max-w-7xl rounded-2xl sm:rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
 
-            {/* Background Image with Blur */}
             {selectedTournamentImage && (
               <div
                 className="absolute inset-0 bg-cover bg-center opacity-95 blur-md z-0"
@@ -668,7 +715,7 @@ export function EventsPage() {
             <div className="p-3 sm:p-4 md:p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0 relative z-10 gap-2">
               <div className="min-w-0 flex-1">
                 <h3 className="text-[10px] sm:text-xs font-bold text-casino-gold uppercase tracking-widest mb-0.5 sm:mb-1">Llaves del Torneo</h3>
-                <h2 className="text-base sm:text-xl md:text-2xl font-black text-white leading-tight truncate">{selectedTournament}</h2>
+                <h2 className="text-base sm:text-xl md:text-2xl font-black text-white leading-tight truncate">{events.find(e => e.id === selectedTournament)?.title || 'Torneo'}</h2>
               </div>
               <button
                 onClick={() => closeBracketModal()}
@@ -690,11 +737,13 @@ export function EventsPage() {
               ) : (
                 <TournamentBracket
                   matches={tournamentMatches}
-                  title={selectedTournament}
+                  title={events.find(e => e.id === selectedTournament)?.title || 'TORNEO'}
                   maxParticipants={selectedTournamentMaxParticipants}
-                  onJoinMatch={handleJoinMatch}
-                  currentUserId={user?.id}
                   prizePool={selectedTournamentPrize}
+                  onJoinMatch={handleJoinMatch}
+                  onInviteOpponent={handleInviteOpponent}
+                  currentUserId={user?.id}
+                  isAdmin={profile?.role === 'admin'}
                 />
               )}
             </div>
@@ -757,6 +806,44 @@ export function EventsPage() {
             >
               Aceptar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Push Prompt Modal */}
+      {pushPromptModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => handlePushChoice(false)}>
+          <div className="glass-panel-strong w-full max-w-sm rounded-3xl border border-casino-gold/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] overflow-hidden flex flex-col p-8 text-center" 
+               onClick={e => e.stopPropagation()}>
+            
+            <div className="mb-6 flex justify-center">
+              <div className="w-20 h-20 bg-casino-gold/20 rounded-full flex items-center justify-center border border-casino-gold/50 text-4xl shadow-[0_0_20px_rgba(234,179,8,0.4)]">
+                🔔
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-black text-white mb-2">
+              ¿Deseas activar las notificaciones?
+            </h2>
+            
+            <p className="text-gray-300 font-medium mb-8 text-sm">
+              Para avisarte en el momento exacto en que comience el torneo y cuando sea tu turno de jugar.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => handlePushChoice(true)}
+                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-casino-gold text-black hover:bg-yellow-400"
+              >
+                Sí, Avísame
+              </button>
+              <button 
+                onClick={() => handlePushChoice(false)}
+                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-white/5 text-white hover:bg-white/10"
+              >
+                No por ahora
+              </button>
+            </div>
           </div>
         </div>
       )}

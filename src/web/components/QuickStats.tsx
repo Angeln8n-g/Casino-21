@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 interface QuickStat {
   label: string;
@@ -20,6 +21,16 @@ export function QuickStats() {
   const { profile } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
+  
+  const { isSupported, isSubscribed, isLoading, subscribeToPush, unsubscribeFromPush } = usePushNotifications();
+
+  const handleTogglePush = async () => {
+    if (isSubscribed) {
+      await unsubscribeFromPush();
+    } else {
+      await subscribeToPush();
+    }
+  };
 
   const elo = profile?.elo || 1000;
   const wins = profile?.wins || 0;
@@ -245,6 +256,58 @@ export function QuickStats() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Ajustes de Notificaciones Push */}
+      <div 
+        className="relative overflow-hidden p-6 rounded-2xl border border-white/10 transition-all duration-300 flex flex-col md:flex-row items-center justify-between gap-4 animate-slide-up"
+        style={{ 
+          animationDelay: '480ms',
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.5) 100%)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 8px 32px 0 rgba(0,0,0,0.3)'
+        }}
+      >
+        <div className="flex items-start gap-4 text-left">
+          <div className="text-3xl p-3 rounded-xl bg-slate-900/60 border border-white/5 shrink-0 text-casino-gold drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]">
+            🔔
+          </div>
+          <div>
+            <h4 className="text-sm font-display font-black text-white uppercase tracking-[0.2em] mb-1">
+              Notificaciones Push
+            </h4>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-xl">
+              Recibe desafíos de tus amigos al instante en tu dispositivo, incluso cuando no estés jugando o tengas la pestaña cerrada.
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-4">
+          {isLoading ? (
+            <div className="h-9 w-24 bg-white/5 rounded-xl animate-pulse" />
+          ) : !isSupported ? (
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] text-red-400 uppercase tracking-widest font-black border border-red-500/20 px-3 py-1.5 rounded-lg bg-red-950/10">
+                Incompatible
+              </span>
+              <span className="text-[8px] text-gray-500 max-w-[180px] text-right leading-tight">
+                Requiere HTTPS (o localhost) y permisos de notificaciones del navegador.
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={handleTogglePush}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all border ${
+                isSubscribed 
+                  ? 'bg-red-950/20 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-white' 
+                  : 'bg-gradient-to-r from-casino-gold to-yellow-500 text-black hover:from-yellow-400 hover:to-casino-gold border-transparent shadow-[0_0_15px_rgba(234,179,8,0.3)]'
+              }`}
+            >
+              {isSubscribed ? 'Desactivar' : 'Activar'}
+            </button>
+          )}
         </div>
       </div>
     </div>

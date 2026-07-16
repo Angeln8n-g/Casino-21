@@ -93,6 +93,16 @@ export function SocialPanel() {
     };
   }, [user]);
 
+  // Abrir chat privado automáticamente si se viene de una notificación push
+  useEffect(() => {
+    const chatFriendId = sessionStorage.getItem('open_chat_friend_id');
+    if (chatFriendId) {
+      sessionStorage.removeItem('open_chat_friend_id');
+      setActiveChatFriendId(chatFriendId);
+      setActiveTab('chat');
+    }
+  }, [friends]);
+
   // ── Fetch accepted friends ──────────────────────────────────
   const fetchFriends = useCallback(async (getIsMounted?: () => boolean) => {
     if (!user) { setLoading(false); return; }

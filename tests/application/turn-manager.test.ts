@@ -28,7 +28,8 @@ describe('TurnManager', () => {
       deck: finalDeck,
       currentTurnPlayerIndex: 0,
       turnCount: 1,
-      roundCount: 1
+      roundCount: 1,
+      roundStartPlayerIndex: 0
     };
   });
 

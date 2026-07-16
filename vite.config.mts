@@ -13,47 +13,15 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src/web',
+        filename: 'sw.ts',
         registerType: 'prompt',
         injectRegister: 'auto',
         devOptions: {
           enabled: true,
           type: 'module',
           suppressWarnings: true,
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}'],
-          globIgnores: ['**/source-icon.png'],
-          maximumFileSizeToCacheInBytes: 50 * 1024 * 1024, // 50MB limit
-          runtimeCaching: [
-            {
-              // Cache static assets and images (same-origin only — third-party scripts like GTM must go directly to the network)
-              urlPattern: ({ request, url }) => url.origin === self.location.origin && (request.destination === 'image' || request.destination === 'style' || request.destination === 'script' || request.destination === 'font'),
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'static-assets-cache',
-                expiration: {
-                  maxEntries: 100,
-                  maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
-                },
-              },
-            },
-            {
-              // Supabase API requests (Network-First)
-              urlPattern: /^https:\/\/yarmgboyjjnodjszwiqi\.supabase\.co\/rest\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-cache',
-                networkTimeoutSeconds: 5,
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60, // 1 hour
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-          ],
         },
         manifest: {
           name: 'KASINO21 — Juego de Cartas Competitivo Online',

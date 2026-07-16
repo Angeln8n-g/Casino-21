@@ -274,7 +274,23 @@ export function AdminPanel() {
       // Optional: Update event status to live
       await supabase.from('events').update({ status: 'live' }).eq('id', event.id);
 
-      alert('Llaves generadas con éxito.');
+      // Trigger push notifications to all enrolled players
+      try {
+        const apiUrl = import.meta.env.VITE_SOCKET_URL || (
+          import.meta.env.PROD && typeof window !== 'undefined'
+            ? window.location.origin
+            : 'http://localhost:4000'
+        );
+        fetch(`${apiUrl}/api/tournament/notify-start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: event.id })
+        }).catch(err => console.error('Error triggering tournament push notifications:', err));
+      } catch (e) {
+        console.error('Failed to call notify-start endpoint', e);
+      }
+
+      alert('Llaves generadas con éxito y notificaciones enviadas a los inscritos.');
       fetchEvents();
       
     } catch (err: any) {
