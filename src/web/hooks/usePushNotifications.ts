@@ -42,7 +42,7 @@ export function usePushNotifications() {
               .from('push_subscriptions')
               .select('id')
               .eq('user_id', user.id)
-              .eq('subscription->endpoint', subscription.endpoint)
+              .eq('subscription->>endpoint', subscription.endpoint)
               .maybeSingle();
 
             if (error) {
@@ -137,7 +137,7 @@ export function usePushNotifications() {
           .from('push_subscriptions')
           .delete()
           .eq('user_id', user.id)
-          .eq('subscription->endpoint', subscription.endpoint);
+          .eq('subscription->>endpoint', subscription.endpoint);
 
         if (error) throw error;
       }

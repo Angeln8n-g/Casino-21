@@ -348,7 +348,7 @@ export function SocialPanel() {
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (data) {
         map[friend.id] = {
           content: (data as any).deleted_at ? 'Mensaje eliminado' : data.content,
