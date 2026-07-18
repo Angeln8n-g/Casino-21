@@ -6,6 +6,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { logger } from '../utils/logger';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
+import { TournamentView } from './tournament/TournamentView';
 
 interface EventData {
   id: string;
@@ -562,6 +563,24 @@ export function EventsPage() {
     );
   }
 
+  if (selectedTournament) {
+    const eventObj = events.find(e => e.id === selectedTournament);
+    return (
+      <TournamentView
+        eventId={selectedTournament}
+        event={eventObj}
+        matches={tournamentMatches}
+        loading={matchesLoading}
+        currentUserId={user?.id}
+        isAdmin={profile?.role === 'admin' || !!profile?.is_admin}
+        inviteCooldowns={inviteCooldowns}
+        onJoinMatch={handleJoinMatch}
+        onInviteOpponent={handleInviteOpponent}
+        onClose={closeBracketModal}
+      />
+    );
+  }
+
   return (
     <div className="w-full text-white animate-fade-in">
       {featuredEvent && (
@@ -728,67 +747,6 @@ export function EventsPage() {
         </div>
       )}
 
-      {bracketModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-2 md:p-4 bg-black/90 backdrop-blur-md animate-fade-in" onClick={() => {
-          closeBracketModal();
-        }}>
-          <div className="glass-panel-strong w-full max-w-7xl rounded-2xl sm:rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[95vh] relative bg-slate-950/80" onClick={e => e.stopPropagation()}>
-
-            {selectedTournamentImage && (
-              <div
-                className="absolute inset-0 bg-cover bg-center opacity-95 blur-md z-0"
-                style={{ backgroundImage: `url(${selectedTournamentImage})` }}
-              />
-            )}
-
-            <div className="p-3 sm:p-4 md:p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0 relative z-10 gap-2">
-              <div className="min-w-0 flex-1">
-                <h3 className="text-[10px] sm:text-xs font-bold text-casino-gold uppercase tracking-widest mb-0.5 sm:mb-1">Llaves del Torneo</h3>
-                <h2 className="text-base sm:text-xl md:text-2xl font-black text-white leading-tight truncate">{events.find(e => e.id === selectedTournament)?.title || 'Torneo'}</h2>
-              </div>
-              <button
-                onClick={() => closeBracketModal()}
-                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors shrink-0"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-auto relative z-10">
-              {matchesLoading ? (
-                <div className="flex items-center justify-center h-48 sm:h-64">
-                  <div className="text-casino-gold animate-pulse font-bold tracking-widest uppercase text-sm sm:text-base">Cargando llaves...</div>
-                </div>
-              ) : tournamentMatches.length === 0 ? (
-                <div className="flex items-center justify-center h-48 sm:h-64">
-                  <div className="text-gray-400 font-bold tracking-widest uppercase text-sm sm:text-base">Las llaves aún no se han generado</div>
-                </div>
-              ) : (
-                <TournamentBracket
-                  matches={tournamentMatches}
-                  title={events.find(e => e.id === selectedTournament)?.title || 'TORNEO'}
-                  maxParticipants={selectedTournamentMaxParticipants}
-                  prizePool={selectedTournamentPrize}
-                  onJoinMatch={handleJoinMatch}
-                  onInviteOpponent={handleInviteOpponent}
-                  currentUserId={user?.id}
-                  isAdmin={profile?.role === 'admin'}
-                  inviteCooldowns={inviteCooldowns}
-                />
-              )}
-            </div>
-
-            <div className="p-3 sm:p-4 md:p-6 border-t border-white/10 bg-slate-900/50 shrink-0 relative z-10">
-              <button
-                onClick={() => closeBracketModal()}
-                className="w-full sm:w-auto px-6 sm:px-8 bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 sm:py-3 rounded-xl transition-colors uppercase tracking-wider text-xs sm:text-sm"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enrollment Status Modal */}
       {enrollmentModalOpen && (

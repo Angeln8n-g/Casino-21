@@ -171,6 +171,17 @@ export function MainMenu() {
   }, [playerName]);
 
   useEffect(() => {
+    const handleOpenSocialTab = () => {
+      setDesktopTab('social');
+      setMobileTab('social');
+    };
+    window.addEventListener('open_social_tab', handleOpenSocialTab);
+    return () => {
+      window.removeEventListener('open_social_tab', handleOpenSocialTab);
+    };
+  }, []);
+
+  useEffect(() => {
     if (profile?.username) {
       setPlayerName(profile.username);
     }
