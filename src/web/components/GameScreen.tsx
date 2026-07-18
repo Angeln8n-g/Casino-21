@@ -594,7 +594,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   }
 
   if (gameState.phase === 'completed') {
-
     return (
       <MatchCompletedScreen
         gameState={gameState}
@@ -602,6 +601,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         celebrationSeed={celebrationSeed}
         localPlayerId={localPlayerId}
         statsData={statsData}
+        playerAvatarUrls={playerAvatarUrls}
       />
     );
   }

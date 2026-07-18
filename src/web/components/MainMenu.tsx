@@ -77,6 +77,7 @@ export function MainMenu() {
   const previousPlayersInRoomRef = useRef(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const [pendingTournamentMatch, setPendingTournamentMatch] = useState<{gameRoomId: string; eventId: string} | null>(null);
+  const [pendingTournamentInvite, setPendingTournamentInvite] = useState<{roomId: string; eventTitle: string; senderName: string} | null>(null);
   const joinParamHandled = useRef(false);
   const hasRequestedStateRef = useRef(false);
 
@@ -398,6 +399,12 @@ export function MainMenu() {
           setPendingTournamentMatch(data);
           setTimeout(() => setPendingTournamentMatch(null), 30000);
         });
+
+        socket.on('tournament_invite', (data: { roomId: string; eventTitle: string; senderName: string }) => {
+          setPendingTournamentInvite(data);
+          playSfx('chipsClink');
+          setTimeout(() => setPendingTournamentInvite(null), 30000);
+        });
         // ─── FIN FASE 8 ───
 
       } catch (err) {
@@ -419,6 +426,7 @@ export function MainMenu() {
         socket.off('match_found');
         socket.off('room_joined_as_spectator');
         socket.off('tournament_ready');
+        socket.off('tournament_invite');
         if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
       } catch (e) {
         // Socket might not be connected yet
@@ -999,6 +1007,21 @@ export function MainMenu() {
             >
               <span className="mr-1">🏆</span>
               ¡Avanzaste a la siguiente ronda! — Haz clic para unirte a tu partida
+            </div>
+          )}
+
+          {/* Tournament Invite Notification */}
+          {pendingTournamentInvite && (
+            <div className="bg-casino-emerald/10 text-casino-emerald p-3 rounded-xl text-center text-sm border border-casino-emerald/30 animate-slide-down font-medium cursor-pointer hover:bg-casino-emerald/20 transition-colors"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('join_game_from_invite', {
+                  detail: { roomId: pendingTournamentInvite.roomId, isTournament: true, isSpectator: false }
+                }));
+                setPendingTournamentInvite(null);
+              }}
+            >
+              <span className="mr-1">⚔️</span>
+              ¡Tu oponente {pendingTournamentInvite.senderName} te está esperando para tu partida de torneo! — Haz clic para jugar
             </div>
           )}
 

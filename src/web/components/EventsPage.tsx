@@ -199,6 +199,26 @@ export function EventsPage() {
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [bracketChannel, setBracketChannel] = useState<any>(null);
+  const [inviteCooldowns, setInviteCooldowns] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setInviteCooldowns(prev => {
+        const next: Record<string, number> = {};
+        let changed = false;
+        const nowMs = Date.now();
+        for (const [id, endTime] of Object.entries(prev)) {
+          if (endTime > nowMs) {
+            next[id] = endTime;
+          } else {
+            changed = true;
+          }
+        }
+        return changed || Object.keys(next).length !== Object.keys(prev).length ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   function mapMatchStatus(dbStatus: string): TournamentMatch['status'] {
     switch (dbStatus) {
@@ -289,6 +309,11 @@ export function EventsPage() {
 
   const handleInviteOpponent = async (opponentId: string, match: TournamentMatch) => {
     if (!user) return;
+    const currentCooldown = inviteCooldowns[match.id];
+    if (currentCooldown && currentCooldown > Date.now()) {
+      return;
+    }
+
     try {
       const apiUrl = import.meta.env.VITE_SOCKET_URL || (
         import.meta.env.PROD && typeof window !== 'undefined'
@@ -307,6 +332,10 @@ export function EventsPage() {
       });
       if (res.ok) {
         alert('🔔 ¡Aviso enviado a tu rival exitosamente!');
+        setInviteCooldowns(prev => ({
+          ...prev,
+          [match.id]: Date.now() + 60000
+        }));
       } else {
         alert('Error al enviar el aviso.');
       }
@@ -744,6 +773,7 @@ export function EventsPage() {
                   onInviteOpponent={handleInviteOpponent}
                   currentUserId={user?.id}
                   isAdmin={profile?.role === 'admin'}
+                  inviteCooldowns={inviteCooldowns}
                 />
               )}
             </div>

@@ -29,6 +29,7 @@ export interface TournamentBracketProps {
   currentUserId?: string | null;
   isAdmin?: boolean;
   prizePool?: string;
+  inviteCooldowns?: Record<string, number>;
 }
 
 const ROUND_LABELS: Record<number, string> = {
@@ -39,7 +40,7 @@ const ROUND_LABELS: Record<number, string> = {
   4: 'Final',
 };
 
-function MatchNode({ match, isLeft, isFinal, onJoinMatch, onInviteOpponent, currentUserId, isAdmin }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; onInviteOpponent?: (opponentId: string, match: TournamentMatch) => void; currentUserId?: string | null; isAdmin?: boolean }) {
+function MatchNode({ match, isLeft, isFinal, onJoinMatch, onInviteOpponent, currentUserId, isAdmin, inviteCooldowns }: { match?: TournamentMatch; isLeft: boolean; isFinal?: boolean; onJoinMatch?: (match: TournamentMatch) => void; onInviteOpponent?: (opponentId: string, match: TournamentMatch) => void; currentUserId?: string | null; isAdmin?: boolean; inviteCooldowns?: Record<string, number> }) {
   if (!match) {
     return (
       <div className="w-28 h-16 sm:w-36 sm:h-20 md:w-44 md:h-24 border border-[#2A2A4A] rounded bg-[#0F0F23]/80 flex flex-col justify-center opacity-40 relative z-10">
@@ -97,15 +98,27 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, onInviteOpponent, curr
         </div>
       ) : null}
 
-      {opponentId && onInviteOpponent && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onInviteOpponent(opponentId, match); }}
-          className="absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 bg-casino-gold/90 text-black text-[7px] sm:text-[8px] font-black uppercase px-1.5 sm:px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(234,179,8,0.6)] z-20 hover:bg-yellow-400 transition-colors tracking-widest border border-casino-gold/50 whitespace-nowrap flex items-center gap-0.5"
-          title="Avisar a tu rival"
-        >
-          <span className="text-[8px] sm:text-[10px]">🔔</span> <span className="hidden sm:inline">Avisar</span>
-        </button>
-      )}
+      {(() => {
+        const cooldownEnd = inviteCooldowns?.[match.id] || 0;
+        const isCooldownActive = cooldownEnd > Date.now();
+        const cooldownSeconds = Math.ceil((cooldownEnd - Date.now()) / 1000);
+
+        return opponentId && onInviteOpponent && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onInviteOpponent(opponentId, match); }}
+            disabled={isCooldownActive}
+            className={`absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 text-black text-[7px] sm:text-[8px] font-black uppercase px-1.5 sm:px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(234,179,8,0.6)] z-20 transition-colors tracking-widest border whitespace-nowrap flex items-center gap-0.5 ${
+              isCooldownActive 
+                ? 'bg-slate-700/90 text-gray-400 border-slate-600 cursor-not-allowed shadow-none' 
+                : 'bg-casino-gold/90 hover:bg-yellow-400 border-casino-gold/50'
+            }`}
+            title={isCooldownActive ? `Espera para volver a avisar` : "Avisar a tu rival"}
+          >
+            <span className="text-[8px] sm:text-[10px]">🔔</span> <span className="hidden sm:inline">{isCooldownActive ? `Espera (${cooldownSeconds}s)` : "Avisar"}</span>
+          </button>
+        );
+      })()}
+
 
       <div className="flex flex-col h-full text-[10px] sm:text-xs md:text-sm">
         <div className={`flex-1 flex items-center px-1.5 sm:px-2 md:px-3 border-b border-[#2A2A4A] truncate ${getPlayerClass(match.player1)} gap-1.5 sm:gap-2 md:gap-3 transition-colors`}>
@@ -141,7 +154,7 @@ function MatchNode({ match, isLeft, isFinal, onJoinMatch, onInviteOpponent, curr
   );
 }
 
-export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, onInviteOpponent, currentUserId, isAdmin, prizePool }: TournamentBracketProps) {
+export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxParticipants = 16, onJoinMatch, onInviteOpponent, currentUserId, isAdmin, prizePool, inviteCooldowns }: TournamentBracketProps) {
   const getMatch = (r: number, p: number) => matches.find(m => m.round === r && m.position === p);
 
   const renderMatchNode = (match: TournamentMatch | undefined, isLeft: boolean, isFinal = false) => (
@@ -153,6 +166,7 @@ export function TournamentBracket({ matches, title = "SOCCER CHAMPIONSHIP", maxP
       onInviteOpponent={onInviteOpponent}
       currentUserId={currentUserId}
       isAdmin={isAdmin}
+      inviteCooldowns={inviteCooldowns}
     />
   );
 

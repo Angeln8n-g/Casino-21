@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, SlidersHorizontal } from 'lucide-react';
 import { useAudio } from '../hooks/useAudio';
 
 interface AudioControlButtonProps {
@@ -35,14 +35,14 @@ export function AudioControlButton({
           type="button"
           onClick={toggleMuted}
           className={`flex items-center justify-center rounded-2xl border border-white/10 bg-black/40 text-gray-200 transition-all hover:border-casino-gold/40 hover:text-white hover:bg-black/60 ${
-            compact ? 'w-10 h-10' : 'px-3 py-2'
+            compact ? 'w-10 h-10' : 'w-10 h-10 md:w-auto md:px-3 md:py-2'
           }`}
           title={muted ? 'Activar audio' : 'Silenciar audio'}
           aria-label={muted ? 'Activar audio' : 'Silenciar audio'}
         >
           {muted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
           {!compact && (
-            <span className="ml-2 text-[10px] font-black uppercase tracking-[0.24em]">
+            <span className="hidden md:inline ml-2 text-[10px] font-black uppercase tracking-[0.24em]">
               {muted ? 'Off' : `Vol ${currentPercent}`}
             </span>
           )}
@@ -51,11 +51,22 @@ export function AudioControlButton({
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
-          className="hidden md:flex px-3 py-2 rounded-2xl border border-white/10 bg-black/40 text-[10px] font-black uppercase tracking-[0.24em] text-gray-400 hover:text-white hover:border-casino-gold/30 transition-all"
+          className={`flex items-center justify-center rounded-2xl border border-white/10 bg-black/40 text-gray-400 hover:text-white hover:border-casino-gold/30 transition-all ${
+            compact ? 'w-10 h-10' : 'w-10 h-10 md:w-auto md:px-3 md:py-2 text-[10px] font-black uppercase tracking-[0.24em]'
+          }`}
           title="Ajustar volumen"
           aria-label="Ajustar volumen"
         >
-          Mezcla
+          {compact ? (
+            <SlidersHorizontal size={16} />
+          ) : (
+            <>
+              <span className="hidden md:inline">Mezcla</span>
+              <span className="inline md:hidden">
+                <SlidersHorizontal size={16} />
+              </span>
+            </>
+          )}
         </button>
       </div>
 
