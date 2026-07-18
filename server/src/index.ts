@@ -590,9 +590,21 @@ io.on('connection', (socket) => {
 
   if (userId) {
     const userSockets = connectedUsers.get(userId) || new Set<string>();
+    const isNew = userSockets.size === 0;
     userSockets.add(socket.id);
     connectedUsers.set(userId, userSockets);
+    if (isNew) {
+      io.emit('online_count', { count: connectedUsers.size });
+    }
   }
+
+  // Enviar conteo inicial de activos al conectar
+  socket.emit('online_count', { count: connectedUsers.size });
+
+  // Permitir al cliente solicitar el conteo bajo demanda
+  socket.on('request_online_count', () => {
+    socket.emit('online_count', { count: connectedUsers.size });
+  });
 
   if (EXPOSE_RULES_VERSION) {
     socket.emit('rules_version', { rulesVersion: RULES_VERSION });
@@ -1309,6 +1321,7 @@ io.on('connection', (socket) => {
         userSockets.delete(socket.id);
         if (userSockets.size === 0) {
           connectedUsers.delete(userId);
+          io.emit('online_count', { count: connectedUsers.size });
         }
       }
     }

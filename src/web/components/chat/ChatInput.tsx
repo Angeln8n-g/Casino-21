@@ -24,6 +24,7 @@ export function ChatInput({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const isFirstMount = useRef(true);
 
   // Auto-resize textarea
   const resize = useCallback(() => {
@@ -36,8 +37,14 @@ export function ChatInput({
 
   useEffect(() => { resize(); }, [text, resize]);
 
+  // Track mount status to prevent autofocus on initial render
+  useEffect(() => {
+    isFirstMount.current = false;
+  }, []);
+
   // When editing starts, populate the textarea
   useEffect(() => {
+    if (isFirstMount.current) return;
     if (editingMessage) {
       setText(editingMessage.content);
       textareaRef.current?.focus();
@@ -46,6 +53,7 @@ export function ChatInput({
 
   // Focus textarea when replying
   useEffect(() => {
+    if (isFirstMount.current) return;
     if (replyingTo) {
       textareaRef.current?.focus();
     }
@@ -183,6 +191,7 @@ export function ChatInput({
           maxLength={maxLength}
           disabled={disabled}
           rows={1}
+          autoFocus={false}
           className="flex-1 bg-black/40 border border-white/5 focus:border-casino-gold/50 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 resize-none custom-scrollbar transition-colors focus:outline-none disabled:opacity-40"
           style={{ minHeight: '36px', maxHeight: '120px' }}
         />

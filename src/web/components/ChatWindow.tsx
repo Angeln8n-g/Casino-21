@@ -12,9 +12,10 @@ const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 interface ChatWindowProps {
   receiverId?: string; // If provided, we're in private chat
+  onAvatarClick?: (playerId: string) => void;
 }
 
-export function ChatWindow({ receiverId }: ChatWindowProps) {
+export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<EnhancedChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -282,7 +283,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         query = supabase
           .from('chat_messages')
           .select(`
-            id, sender_id, room_id, content, created_at, timestamp,
+            id, sender_id, room_id, content, created_at, timestamp, reply_to_id,
             profiles:sender_id (username, avatar_url, equipped_avatar, level, elo)
           `)
           .eq('room_id', GLOBAL_ROOM_ID);
@@ -296,7 +297,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         const fallback = await supabase
           .from('chat_messages')
           .select(`
-            id, sender_id, room_id, content, timestamp,
+            id, sender_id, room_id, content, timestamp, reply_to_id,
             profiles:sender_id (username, avatar_url, equipped_avatar, level, elo)
           `)
           .eq('room_id', GLOBAL_ROOM_ID)
@@ -315,8 +316,8 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         }));
 
         // Resolve reply_to references
+        await resolveReplyTos(enriched);
         if (receiverId) {
-          await resolveReplyTos(enriched);
           await fetchReactionsForMessages(enriched);
         }
 
@@ -338,9 +339,14 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
     const replyIds = msgs.filter((m) => m.reply_to_id).map((m) => m.reply_to_id!);
     if (replyIds.length === 0) return;
 
+    const table = receiverId ? 'messages' : 'chat_messages';
+    const selectQuery = receiverId 
+      ? 'id, content, deleted_at, profiles:sender_id (username)' 
+      : 'id, content, profiles:sender_id (username)';
+
     const { data } = await supabase
-      .from('messages')
-      .select('id, content, deleted_at, profiles:sender_id (username)')
+      .from(table)
+      .select(selectQuery)
       .in('id', replyIds);
 
     if (!data) return;
@@ -434,7 +440,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         query = supabase
           .from('chat_messages')
           .select(`
-            id, sender_id, room_id, content, created_at, timestamp,
+            id, sender_id, room_id, content, created_at, timestamp, reply_to_id,
             profiles:sender_id (username, avatar_url, equipped_avatar, level, elo)
           `)
           .eq('room_id', GLOBAL_ROOM_ID)
@@ -452,8 +458,8 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
           local_status: 'sent' as const,
         }));
 
+        await resolveReplyTos(older);
         if (receiverId) {
-          await resolveReplyTos(older);
           await fetchReactionsForMessages(older);
         }
 
@@ -580,11 +586,16 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
         await fetchNewMessageProfile(data);
       } else {
         await supabase.rpc('add_player_xp', { p_id: user.id, p_xp_amount: 2 });
-        const { data, error } = await supabase.from('chat_messages').insert({
+        const insertPayload: any = {
           sender_id: user.id,
           room_id: GLOBAL_ROOM_ID,
           content: text,
-        }).select('id, sender_id, room_id, content, created_at, timestamp').single();
+        };
+        if (replyingTo?.id) insertPayload.reply_to_id = replyingTo.id;
+
+        const { data, error } = await supabase.from('chat_messages').insert(insertPayload)
+          .select('id, sender_id, room_id, content, created_at, timestamp, reply_to_id')
+          .single();
         if (error) throw error;
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
         await fetchNewMessageProfile(data);
@@ -764,6 +775,7 @@ export function ChatWindow({ receiverId }: ChatWindowProps) {
                       onReact={handleReact}
                       onRetry={handleRetry}
                       onScrollToMessage={scrollToMessage}
+                      onAvatarClick={onAvatarClick}
                     />
                   </div>
                 </React.Fragment>

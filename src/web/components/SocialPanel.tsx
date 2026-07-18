@@ -3,10 +3,11 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
 import { useProfilePresence, ONLINE_WINDOW_MS } from '../hooks/useProfilePresence';
-import { FriendSearch } from './FriendSearch';
+import { FriendSearch, PlayerProfileModal, RelationshipStatus, SearchResult } from './FriendSearch';
 import { ChatWindow } from './ChatWindow';
 import { FriendRequestModal, FriendRequestProfile } from './FriendRequestModal';
 import { FriendProfileModal, FriendForModal } from './FriendProfileModal';
+import { UserProfileModal } from './UserProfileModal';
 import { triggerHaptic } from '../utils/haptics';
 import { socketService } from '../services/socket';
 
@@ -68,6 +69,17 @@ export function SocialPanel() {
   const [quickChallengeFriend, setQuickChallengeFriend] = useState<Friend | null>(null);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
 
+  // Active Count & Profile Clicks States
+  const [onlineCount, setOnlineCount] = useState<number | null>(null);
+  const [showOwnProfile, setShowOwnProfile] = useState(false);
+  const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<{
+    player: SearchResult;
+    relationship: RelationshipStatus;
+  } | null>(null);
+  const [loadingPlayerProfile, setLoadingPlayerProfile] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{ id: string; message: string; type: 'success' | 'error' } | null>(null);
+
   // Escape key closes modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -75,11 +87,13 @@ export function SocialPanel() {
         if (selectedRequest) setSelectedRequest(null);
         else if (selectedFriend) setSelectedFriend(null);
         else if (quickChallengeFriend) setQuickChallengeFriend(null);
+        else if (showOwnProfile) setShowOwnProfile(false);
+        else if (selectedPlayerDetail) setSelectedPlayerDetail(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedRequest, selectedFriend, quickChallengeFriend]);
+  }, [selectedRequest, selectedFriend, quickChallengeFriend, showOwnProfile, selectedPlayerDetail]);
 
   useEffect(() => {
     if (!user) return;
@@ -364,7 +378,238 @@ export function SocialPanel() {
     fetchLastMessages();
   }, [fetchLastMessages]);
 
+  // Conexión por socket para conteo de usuarios online
+  useEffect(() => {
+    let active = true;
+    let socketInstance: any = null;
+
+    const setupSocket = async () => {
+      try {
+        const socket = await socketService.connect();
+        if (!active) return;
+        socketInstance = socket;
+
+        socket.on('online_count', ({ count }: { count: number }) => {
+          if (active) setOnlineCount(count);
+        });
+
+        // Solicitar conteo inicial
+        socket.emit('request_online_count');
+      } catch (err) {
+        console.error('Error in SocialPanel socket listener:', err);
+      }
+    };
+
+    setupSocket();
+
+    return () => {
+      active = false;
+      if (socketInstance) {
+        socketInstance.off('online_count');
+      }
+    };
+  }, []);
+
   // ── Handlers ─────────────────────────────────────────────────
+  const handleAvatarClick = useCallback(async (playerId: string) => {
+    if (!user) return;
+    triggerHaptic('light');
+
+    // 1. Si es el propio usuario
+    if (playerId === user.id) {
+      setShowOwnProfile(true);
+      return;
+    }
+
+    // 2. Si ya es un amigo
+    const existingFriend = friends.find(f => f.id === playerId);
+    if (existingFriend) {
+      openFriendModal(existingFriend);
+      return;
+    }
+
+    // 3. De lo contrario, consultar Supabase
+    setLoadingPlayerProfile(true);
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, equipped_avatar, elo, level, wins, losses, xp, last_seen_at, current_room_id')
+        .eq('id', playerId)
+        .single();
+
+      if (profileError || !profileData) {
+        console.error('Error fetching player profile for chat click:', profileError);
+        return;
+      }
+
+      // Obtener relación
+      const { data: reqData, error: reqError } = await supabase
+        .from('friend_requests')
+        .select('id, sender_id, receiver_id, status')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${playerId}),and(sender_id.eq.${playerId},receiver_id.eq.${user.id})`)
+        .maybeSingle();
+
+      let relationship: RelationshipStatus = 'none';
+      if (reqData) {
+        if (reqData.status === 'accepted') {
+          relationship = 'accepted';
+        } else if (reqData.status === 'pending') {
+          relationship = reqData.sender_id === user.id ? 'pending_sent' : 'pending_received';
+        } else if (reqData.status === 'rejected') {
+          relationship = 'rejected';
+        }
+      }
+
+      if (relationship === 'accepted') {
+        // Sincronizar por si acaso
+        fetchFriends();
+        openFriendModal({
+          id: profileData.id,
+          username: profileData.username,
+          avatar_url: profileData.avatar_url,
+          equipped_avatar: profileData.equipped_avatar,
+          elo: profileData.elo,
+          level: profileData.level,
+          wins: profileData.wins,
+          losses: profileData.losses,
+          xp: profileData.xp,
+          last_seen_at: profileData.last_seen_at,
+          current_room_id: profileData.current_room_id,
+        });
+      } else {
+        setSelectedPlayerDetail({
+          player: {
+            id: profileData.id,
+            username: profileData.username,
+            avatar_url: profileData.avatar_url,
+            equipped_avatar: profileData.equipped_avatar,
+            elo: profileData.elo,
+            level: profileData.level,
+            wins: profileData.wins,
+            losses: profileData.losses,
+            xp: profileData.xp,
+          },
+          relationship,
+        });
+      }
+    } catch (err) {
+      console.error('Error handling avatar click:', err);
+    } finally {
+      setLoadingPlayerProfile(false);
+    }
+  }, [user, friends]);
+
+  const handleSendRequest = async (receiverId: string) => {
+    if (!user || sendingRequest) return;
+    setSendingRequest(true);
+    setActionFeedback(null);
+
+    try {
+      // 1. Verificación fresca
+      const { data: existing, error: fetchError } = await supabase
+        .from('friend_requests')
+        .select('id, sender_id, receiver_id, status')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.status === 'accepted') {
+          if (selectedPlayerDetail) {
+            setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'accepted' } : null);
+          }
+          setActionFeedback({ id: receiverId, message: '¡Ya son amigos!', type: 'error' });
+          setSendingRequest(false);
+          return;
+        }
+        
+        if (existing.status === 'pending') {
+          if (existing.sender_id === user.id) {
+            if (selectedPlayerDetail) {
+              setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
+            }
+            setActionFeedback({ id: receiverId, message: 'Solicitud ya enviada', type: 'error' });
+            setSendingRequest(false);
+            return;
+          } else {
+            // Aceptar automáticamente
+            const { error: rpcError } = await supabase.rpc('auto_accept_friend_request', {
+              p_user_id: user.id,
+              p_other_id: receiverId
+            });
+
+            if (rpcError) {
+              setActionFeedback({ id: receiverId, message: 'Error al aceptar solicitud', type: 'error' });
+            } else {
+              if (selectedPlayerDetail) {
+                setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'accepted' } : null);
+              }
+              setActionFeedback({ id: receiverId, message: '¡Ahora son amigos!', type: 'success' });
+              fetchFriends();
+              window.dispatchEvent(new CustomEvent('friendships_changed'));
+            }
+            setSendingRequest(false);
+            return;
+          }
+        }
+        
+        if (existing.status === 'rejected') {
+          const { error: resendError } = await supabase.rpc('resend_friend_request', {
+            p_sender_id: user.id,
+            p_receiver_id: receiverId
+          });
+
+          if (resendError) {
+            setActionFeedback({ id: receiverId, message: `Error: ${resendError.message}`, type: 'error' });
+            setSendingRequest(false);
+            return;
+          }
+
+          if (selectedPlayerDetail) {
+            setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
+          }
+          setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
+          window.dispatchEvent(new CustomEvent('friendships_changed'));
+          setSendingRequest(false);
+          return;
+        }
+      }
+
+      // 2. Insertar nueva solicitud
+      const { error: insertError } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: receiverId,
+          status: 'pending'
+        });
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          setActionFeedback({ id: receiverId, message: 'Solicitud ya existe', type: 'error' });
+          if (selectedPlayerDetail) {
+            setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
+          }
+        } else {
+          setActionFeedback({ id: receiverId, message: `Error: ${insertError.message}`, type: 'error' });
+        }
+        setSendingRequest(false);
+        return;
+      }
+
+      if (selectedPlayerDetail) {
+        setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
+      }
+      setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
+      window.dispatchEvent(new CustomEvent('friendships_changed'));
+
+    } catch (err) {
+      console.error('Send request error:', err);
+      setActionFeedback({ id: receiverId, message: 'Error inesperado', type: 'error' });
+    } finally {
+      setSendingRequest(false);
+      setTimeout(() => setActionFeedback(null), 3000);
+    }
+  };
   const handleRequestAccepted = (requestId: string) => {
     setPendingIncoming(prev => prev.filter(r => r.requestId !== requestId));
     fetchFriends();
@@ -444,7 +689,7 @@ export function SocialPanel() {
               activeTab === 'chat' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
-            Chat
+            Chat {onlineCount !== null ? `(${onlineCount})` : ''}
             {unreadMessagesCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-black text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse">
                 {unreadMessagesCount}
@@ -700,10 +945,10 @@ export function SocialPanel() {
           {activeTab === 'chat' && (
             <div className="animate-fade-in h-full flex flex-col pb-2">
               <div className="flex items-center justify-between shrink-0 mb-2">
-                <h3 className="section-header mb-0">
+                <h3 className="section-header mb-0 flex items-center gap-2">
                   {activeChatFriendId 
                     ? `💬 Chat con ${friends.find(f => f.id === activeChatFriendId)?.username || 'Amigo'}` 
-                    : '💬 Chat Global'}
+                    : `🌍 Chat Global ${onlineCount !== null ? `• ${onlineCount} activos` : ''}`}
                 </h3>
                 {activeChatFriendId && (
                   <button 
@@ -728,6 +973,11 @@ export function SocialPanel() {
                       : 'bg-white/5 text-gray-400 border border-white/10 hover:border-white/20 hover:text-white'
                   }`}>
                     <span>🌍</span>
+                    {onlineCount !== null && (
+                      <span className="absolute -bottom-1 -right-1 min-w-[14px] h-[14px] bg-casino-emerald rounded-full text-[8px] font-black text-black flex items-center justify-center px-0.5 shadow-[0_0_5px_rgba(16,185,129,0.5)] z-10">
+                        {onlineCount}
+                      </span>
+                    )}
                     {unreadMessagesCount > 0 && activeChatFriendId !== null && (
                       <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center px-0.5 animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.5)] z-10">
                         {unreadMessagesCount}
@@ -821,7 +1071,10 @@ export function SocialPanel() {
               </div>
 
               <div className="flex-1 overflow-hidden">
-                <ChatWindow receiverId={activeChatFriendId || undefined} />
+                <ChatWindow 
+                  receiverId={activeChatFriendId || undefined} 
+                  onAvatarClick={handleAvatarClick}
+                />
               </div>
             </div>
           )}
@@ -829,6 +1082,20 @@ export function SocialPanel() {
       </div>
 
       {/* ─── Modals ─────────────────────────────────────────────── */}
+      {showOwnProfile && (
+        <UserProfileModal onClose={() => setShowOwnProfile(false)} />
+      )}
+
+      {selectedPlayerDetail && (
+        <PlayerProfileModal
+          player={selectedPlayerDetail.player}
+          relationshipStatus={selectedPlayerDetail.relationship}
+          onSendRequest={() => handleSendRequest(selectedPlayerDetail.player.id)}
+          onClose={() => setSelectedPlayerDetail(null)}
+          sending={sendingRequest}
+          feedback={actionFeedback?.id === selectedPlayerDetail.player.id ? actionFeedback : null}
+        />
+      )}
       {selectedRequest && (
         <FriendRequestModal
           request={selectedRequest}

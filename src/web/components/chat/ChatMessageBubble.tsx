@@ -46,6 +46,7 @@ interface ChatMessageBubbleProps {
   onReact: (messageId: string, emoji: string) => void;
   onRetry: (message: EnhancedChatMessage) => void;
   onScrollToMessage?: (messageId: string) => void;
+  onAvatarClick?: (playerId: string) => void;
 }
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -58,7 +59,7 @@ function formatTime(isoString?: string): string {
 
 export function ChatMessageBubble({
   message, isMe, isPrivateChat, currentUserId,
-  onReply, onEdit, onDelete, onReact, onRetry, onScrollToMessage,
+  onReply, onEdit, onDelete, onReact, onRetry, onScrollToMessage, onAvatarClick,
 }: ChatMessageBubbleProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -116,8 +117,11 @@ export function ChatMessageBubble({
     <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-3 group/msg animate-slide-up`}>
       {/* Sender info (non-own messages) */}
       {!isMe && (
-        <div className="flex items-end gap-2 mb-1 px-1 flex-row">
-          <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
+        <div 
+          onClick={() => onAvatarClick?.(message.sender_id)}
+          className="flex items-center gap-2 mb-1 px-1.5 py-0.5 rounded-lg cursor-pointer active:scale-95 active:bg-white/10 md:hover:bg-white/5 transition-all select-none"
+        >
+          <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden shadow-sm">
             {profile.equipped_avatar ? (
               <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : profile.avatar_url ? (
@@ -126,7 +130,7 @@ export function ChatMessageBubble({
               profile.username.charAt(0).toUpperCase()
             )}
           </div>
-          <span className="text-[10px] font-bold tracking-wide text-casino-gold/70">
+          <span className="text-[10px] font-bold tracking-wide text-casino-gold/70 hover:text-casino-gold transition-colors">
             {profile.username}
           </span>
         </div>

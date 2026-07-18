@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
 
-interface SearchResult {
+export interface SearchResult {
   id: string;
   username: string;
   avatar_url?: string | null;
@@ -15,7 +15,7 @@ interface SearchResult {
   xp: number;
 }
 
-type RelationshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected';
+export type RelationshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected';
 
 interface RelationshipMap {
   [userId: string]: RelationshipStatus;
@@ -350,7 +350,7 @@ interface PlayerProfileModalProps {
   feedback: { message: string; type: 'success' | 'error' } | null;
 }
 
-function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose, sending, feedback }: PlayerProfileModalProps) {
+export function PlayerProfileModal({ player, relationshipStatus, onSendRequest, onClose, sending, feedback }: PlayerProfileModalProps) {
   const div = getDivisionFromElo(player.elo);
   const totalGames = player.wins + player.losses;
   const winRate = totalGames > 0 ? Math.round((player.wins / totalGames) * 100) : 0;
