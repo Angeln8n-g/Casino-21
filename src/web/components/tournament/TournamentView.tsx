@@ -8,7 +8,7 @@ import { TournamentProgress } from './TournamentProgress';
 import { TournamentVerticalBracket } from './TournamentVerticalBracket';
 import { RewardsCard } from './RewardsCard';
 import { TournamentStats } from './TournamentStats';
-import { TournamentMatch } from '../TournamentBracket';
+import { TournamentBracket, TournamentMatch } from '../TournamentBracket';
 
 interface EventData {
   id: string;
@@ -55,6 +55,7 @@ export function TournamentView({
   onClose,
 }: TournamentViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>('bracket');
+  const [bracketLayout, setBracketLayout] = useState<'tree' | 'list'>('tree');
   const [selectedPlayerProfile, setSelectedPlayerProfile] = useState<FriendForModal | null>(null);
   const [fetchingProfile, setFetchingProfile] = useState(false);
 
@@ -156,16 +157,62 @@ export function TournamentView({
       {/* Tab Content Panel */}
       <div className="mt-6 min-h-[250px]">
         {activeTab === 'bracket' && (
-          <TournamentVerticalBracket
-            matches={matches}
-            maxParticipants={event.max_participants}
-            currentUserId={currentUserId}
-            isAdmin={isAdmin}
-            onJoinMatch={onJoinMatch}
-            onInviteOpponent={onInviteOpponent}
-            inviteCooldowns={inviteCooldowns}
-            onViewPlayer={handleViewPlayer}
-          />
+          <div className="space-y-4 animate-fade-in">
+            {/* View Mode Toggle Selector */}
+            <div className="flex justify-between items-center bg-black/25 p-2 rounded-2xl border border-white/[0.04] backdrop-blur-md">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest pl-2">
+                Estructura de la Llave
+              </span>
+              <div className="flex bg-black/45 p-1 rounded-xl border border-white/5 shadow-inner">
+                <button
+                  onClick={() => setBracketLayout('tree')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
+                    bracketLayout === 'tree'
+                      ? 'bg-gradient-to-r from-casino-gold to-yellow-500 text-casino-bg shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  🌿 Árbol (Visual)
+                </button>
+                <button
+                  onClick={() => setBracketLayout('list')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
+                    bracketLayout === 'list'
+                      ? 'bg-gradient-to-r from-casino-gold to-yellow-500 text-casino-bg shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  📋 Lista (Rondas)
+                </button>
+              </div>
+            </div>
+
+            {bracketLayout === 'tree' ? (
+              <TournamentBracket
+                matches={matches}
+                title={event.title}
+                maxParticipants={event.max_participants}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onJoinMatch={onJoinMatch}
+                onInviteOpponent={onInviteOpponent}
+                inviteCooldowns={inviteCooldowns}
+                prizePool={event.prize_pool}
+                onViewPlayer={handleViewPlayer}
+              />
+            ) : (
+              <TournamentVerticalBracket
+                matches={matches}
+                maxParticipants={event.max_participants}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onJoinMatch={onJoinMatch}
+                onInviteOpponent={onInviteOpponent}
+                inviteCooldowns={inviteCooldowns}
+                onViewPlayer={handleViewPlayer}
+              />
+            )}
+          </div>
         )}
 
         {activeTab === 'rewards' && <RewardsCard prizePool={event.prize_pool} />}

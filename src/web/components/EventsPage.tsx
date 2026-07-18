@@ -77,7 +77,7 @@ const MOCK_EVENTS: EventData[] = [
   },
 ];
 
-function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, audio_url, rules, max_participants, entry_fee, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
+function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, audio_url, rules, max_participants, entry_fee, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading, participants_count }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
   const statusColors: Record<string, string> = {
     draft: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
     live: 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]',
@@ -92,13 +92,23 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
     completed: 'FINALIZADO'
   };
 
+  const getHoverShadow = () => {
+    if (status === 'live') {
+      return 'hover:border-red-500/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.3)]';
+    }
+    if (status === 'upcoming') {
+      return 'hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.3)]';
+    }
+    return 'hover:border-casino-gold/50 hover:shadow-[0_0_25px_rgba(234,179,8,0.2)]';
+  };
+
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="glass-panel group relative overflow-hidden rounded-2xl border border-white/10 hover:border-casino-gold/50 hover:shadow-[0_0_25px_rgba(234,179,8,0.2)] hover:-translate-y-2 transition-all duration-300 cursor-pointer h-64 flex flex-col">
+    <div className={`glass-panel group relative overflow-hidden rounded-2xl border border-white/10 hover:-translate-y-2 transition-all duration-300 cursor-pointer h-64 flex flex-col ${getHoverShadow()}`}>
       {/* Background Image Placeholder */}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent z-10" />
       <div 
@@ -108,17 +118,24 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
       
       {/* Content */}
       <div className="relative z-20 p-5 flex flex-col h-full justify-between">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start w-full">
           <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border ${statusColors[status] || statusColors.completed}`}>
             {statusLabels[status] || status}
           </span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-black/40 px-2 py-1 rounded-lg backdrop-blur-md">
-            {type}
-          </span>
+          <div className="flex gap-1.5 items-center">
+            {isEnrolled && (
+              <span className="text-[9px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-lg font-black tracking-widest animate-pulse select-none">
+                ✓ INSCRITO
+              </span>
+            )}
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/5">
+              {type === 'torneo' ? '⚔️ TORNEO' : type === 'liga' ? '🏆 LIGA' : '💎 ESPECIAL'}
+            </span>
+          </div>
         </div>
 
         <div>
-          <h3 className="text-xl md:text-2xl font-black text-white mb-1 group-hover:text-casino-gold transition-colors">{title}</h3>
+          <h3 className="text-xl md:text-2xl font-black text-white mb-1 group-hover:text-casino-gold transition-colors truncate">{title}</h3>
           <p className="text-sm text-gray-300 font-medium mb-3">
             {status === 'upcoming' ? `Inicia: ${formatDate(start_date)}` : 
              status === 'live' ? `Termina: ${formatDate(end_date)}` : 
@@ -126,9 +143,14 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
           </p>
           
           <div className="flex justify-between items-end">
-            <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-900/40 to-black/50 w-fit px-3 py-2 rounded-xl border border-yellow-500/20">
-              <span className="text-xs">🏆</span>
-              <span className="text-xs font-bold text-casino-gold">{prize_pool}</span>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-900/40 to-black/50 w-fit px-3 py-2 rounded-xl border border-yellow-500/20">
+                <span className="text-xs">🏆</span>
+                <span className="text-xs font-bold text-casino-gold">{prize_pool}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[9px] font-mono text-gray-400 bg-black/30 px-2.5 py-0.5 rounded-md border border-white/5 w-fit">
+                <span>👥 {participants_count}/{max_participants}</span>
+              </div>
             </div>
             <div className="flex gap-2">
               {(status === 'upcoming' || (status === 'live' && type !== 'torneo')) && (
@@ -143,7 +165,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
                     disabled={isLoading}
                     className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition-colors border ${isEnrolled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'text-black bg-casino-gold hover:bg-yellow-400 border-casino-gold'}`}
                   >
-                    {isLoading ? '...' : isEnrolled ? 'Inscrito' : 'Entrar Ahora'}
+                    {isLoading ? '...' : isEnrolled ? 'Inscrito' : 'Entrar'}
                   </button>
                 </div>
               )}
@@ -164,7 +186,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
                   }}
                   className="text-[10px] uppercase font-bold text-casino-gold hover:text-yellow-300 bg-casino-gold/10 hover:bg-casino-gold/20 px-3 py-1.5 rounded-lg transition-colors border border-casino-gold/30"
                 >
-                  Ver Llaves
+                  Llaves
                 </button>
               )}
             </div>
@@ -179,6 +201,8 @@ export function EventsPage() {
   const { user, profile } = useAuth();
   const { startUrlLoop, stopLoop } = useAudio();
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'torneo' | 'liga' | 'especial'>('all');
   const [events, setEvents] = useState<EventData[]>([]);
   const [userEntries, setUserEntries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,6 +325,7 @@ export function EventsPage() {
 
   const closeBracketModal = () => {
     setBracketModalOpen(false);
+    setSelectedTournament('');
     stopLoop('event-bracket-audio');
     if (bracketChannel) {
       supabase.removeChannel(bracketChannel);
@@ -524,7 +549,15 @@ export function EventsPage() {
     setActionLoading(null);
   };
 
-  const filteredEvents = events.filter(e => filter === 'all' || e.status === filter);
+  const filteredEvents = events.filter(e => {
+    const matchesStatus = filter === 'all' || e.status === filter;
+    const matchesType = typeFilter === 'all' || e.type === typeFilter;
+    const matchesSearch = searchQuery.trim() === '' || 
+      e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.rules && e.rules.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesStatus && matchesType && matchesSearch;
+  });
   
   const featuredEvents = events.filter(e => e.status === 'live' || e.status === 'upcoming');
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -670,28 +703,75 @@ export function EventsPage() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h3 className="text-2xl font-black uppercase tracking-wider">Cartelera de Eventos</h3>
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+          <h3 className="text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+            Cartelera de Eventos
+          </h3>
+          <span className="text-xs text-gray-400 font-bold bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+            {filteredEvents.length} {filteredEvents.length === 1 ? 'evento disponible' : 'eventos disponibles'}
+          </span>
+        </div>
         
-        <div className="flex gap-2 p-1 bg-black/40 rounded-xl border border-white/5">
-          <button 
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            Todos
-          </button>
-          <button 
-            onClick={() => setFilter('live')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filter === 'live' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            En Vivo
-          </button>
-          <button 
-            onClick={() => setFilter('upcoming')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filter === 'upcoming' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            Próximos
-          </button>
+        {/* Search and Filters Bar */}
+        <div className="flex flex-col md:flex-row gap-3 p-3 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/[0.04] shadow-inner w-full">
+          {/* Text Search Input */}
+          <div className="relative flex-1">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-xs text-gray-500">
+              🔍
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar por título, reglas o descripción..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-casino-gold/40 focus:ring-1 focus:ring-casino-gold/20 transition-all font-medium"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-500 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Type Selector Dropdown */}
+            <select
+              value={typeFilter}
+              onChange={(e: any) => setTypeFilter(e.target.value)}
+              className="bg-black/45 border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-gray-300 font-black uppercase tracking-wider focus:outline-none focus:border-casino-gold/40 cursor-pointer min-w-[130px] h-[36px]"
+            >
+              <option value="all">Todos los Tipos</option>
+              <option value="torneo">⚔️ Torneos</option>
+              <option value="liga">🏆 Ligas</option>
+              <option value="especial">💎 Especiales</option>
+            </select>
+
+            {/* Status Tabs Selector */}
+            <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5 h-[36px]">
+              <button 
+                onClick={() => setFilter('all')}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+              >
+                Todos
+              </button>
+              <button 
+                onClick={() => setFilter('live')}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'live' ? 'bg-red-500/25 text-red-400 border border-red-500/30' : 'text-gray-500 hover:text-gray-300'}`}
+              >
+                En Vivo
+              </button>
+              <button 
+                onClick={() => setFilter('upcoming')}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'upcoming' ? 'bg-cyan-500/25 text-cyan-400 border border-cyan-500/30' : 'text-gray-500 hover:text-gray-300'}`}
+              >
+                Próximos
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

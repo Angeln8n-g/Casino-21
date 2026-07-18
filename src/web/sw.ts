@@ -239,3 +239,16 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(clickPromise);
 });
+
+// ── Evento Message: Forzar actualización (SKIP_WAITING) ─────────────────────────
+// Permite que la PWA se actualice inmediatamente cuando el usuario hace clic en "Actualizar"
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// ── Evento Activate: Tomar control de clientes de forma inmediata ────────────────
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});

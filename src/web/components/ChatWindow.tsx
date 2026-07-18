@@ -209,10 +209,16 @@ export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
   useEffect(() => {
     const currentCount = messages.length;
     if (currentCount === prevMessageCountRef.current) return;
+    const isInitial = prevMessageCountRef.current === 0;
     prevMessageCountRef.current = currentCount;
 
     if (forceScrollRef.current || isNearBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({
+          top: containerRef.current.scrollHeight,
+          behavior: isInitial ? 'auto' : 'smooth',
+        });
+      }
       forceScrollRef.current = false;
     } else {
       setHasNewBelow(true);
@@ -518,7 +524,12 @@ export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
     isNearBottomRef.current = true;
     setIsNearBottom(true);
     setHasNewBelow(false);
@@ -526,8 +537,18 @@ export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
 
   const scrollToMessage = (messageId: string) => {
     const el = messageRefs.current.get(messageId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (el && containerRef.current) {
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const relativeTop = elRect.top - containerRect.top + container.scrollTop;
+      const targetTop = relativeTop - (container.clientHeight / 2) + (elRect.height / 2);
+
+      container.scrollTo({
+        top: targetTop,
+        behavior: 'smooth',
+      });
+
       el.classList.add('ring-1', 'ring-casino-gold/50', 'bg-casino-gold/5');
       setTimeout(() => {
         el.classList.remove('ring-1', 'ring-casino-gold/50', 'bg-casino-gold/5');
