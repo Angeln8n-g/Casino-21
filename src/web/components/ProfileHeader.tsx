@@ -211,11 +211,11 @@ export function ProfileHeader({
           <div 
             ref={dropdownRef}
             className="
-              absolute top-[calc(100%+10px)] left-0
+              absolute top-[calc(100%+10px)] right-0
               w-[90vw] md:w-[350px] max-h-[480px]
               bg-[#020617]/95 backdrop-blur-[12px]
               border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
-              overflow-hidden z-[1000] animate-scale-up origin-top-left
+              overflow-hidden z-[1000] animate-scale-up origin-top-right
             "
           >
             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
