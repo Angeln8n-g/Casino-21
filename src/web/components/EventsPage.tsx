@@ -346,9 +346,15 @@ export function EventsPage() {
           ? window.location.origin
           : 'http://localhost:4000'
       );
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`${apiUrl}/api/tournament/invite-opponent`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           opponentId,
           roomId: match.game_room_id,

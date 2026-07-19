@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 import { socketService } from '../services/socket';
 import { logger } from '../utils/logger';
+import { setSyncedToken } from '../utils/token-sync';
 
 export interface PresenceEntry {
   online_at: string;
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Obtener sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setSyncedToken(session?.access_token ?? null);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -50,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setSyncedToken(session?.access_token ?? null);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);

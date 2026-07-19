@@ -25,10 +25,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Crear grupo y usuario no privilegiado
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs
+
 # Copiar archivos de dependencias y producción
 COPY package.json package-lock.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+
+# Cambiar propiedad de la carpeta de trabajo
+RUN chown -R nodejs:nodejs /app
 
 # Definir variables de entorno por defecto
 ENV NODE_ENV=production
@@ -36,6 +42,9 @@ ENV PORT=4000
 
 # Exponer el puerto
 EXPOSE 4000
+
+# Cambiar a usuario no-root
+USER nodejs
 
 # Ejecutar el servidor
 CMD ["npm", "start"]

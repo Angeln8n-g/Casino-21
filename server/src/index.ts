@@ -10,6 +10,8 @@ import { Action } from './application/action-validator';
 import dotenv from 'dotenv';
 import { supabase } from './supabase';
 import { BOT_USER_ID, BOT_NAMES, BOT_THINK_DELAY_MS, getBotAction } from './bot/bot-player';
+import { requireAuth } from './middleware/auth';
+import crypto from 'crypto';
 import type { BotDifficulty } from './bot/bot-player';
 import { Redis } from 'ioredis';
 import { RoomStore, RingBuffer, ChatMessage, Room } from './room-store';
@@ -36,32 +38,11 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http:
 
 app.use(express.json()); // Habilitar parsing de JSON
 app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST"] }));
-app.get('/health', async (_req, res) => {
-  try {
-    const globalRooms = await roomStore.getGlobalRoomCount();
-    const queueLen = await matchmakingStore.getSize();
-    res.status(200).json({
-      status: 'ok',
-      environment: APP_ENV,
-      uptimeSeconds: Math.round(process.uptime()),
-      startedAt: new Date(startedAt).toISOString(),
-      rooms: roomStore.getLocalRoomCount(),
-      roomsGlobal: globalRooms,
-      matchmakingQueue: queueLen,
-      insecureJwtFallback: ALLOW_INSECURE_JWT_FALLBACK,
-      instanceId: roomStore.getInstanceId(),
-    });
-  } catch {
-    res.status(200).json({
-      status: 'ok',
-      environment: APP_ENV,
-      uptimeSeconds: Math.round(process.uptime()),
-      startedAt: new Date(startedAt).toISOString(),
-      rooms: roomStore.getLocalRoomCount(),
-      matchmakingQueue: 0,
-      insecureJwtFallback: ALLOW_INSECURE_JWT_FALLBACK,
-    });
-  }
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptimeSeconds: Math.round(process.uptime()),
+  });
 });
 
 if (EXPOSE_RULES_VERSION) {
@@ -71,11 +52,13 @@ if (EXPOSE_RULES_VERSION) {
 }
 
 // Endpoint REST para responder desafíos (usado principalmente por el Service Worker y/o fallback cliente)
-app.post('/api/challenge/respond', async (req, res) => {
+app.post('/api/challenge/respond', requireAuth, async (req, res) => {
   const { invitationId, action } = req.body;
   if (!invitationId || !['accepted', 'rejected'].includes(action)) {
     return res.status(400).json({ error: 'Parámetros inválidos' });
   }
+
+  const currentUser = (req as any).user;
 
   try {
     // 1. Obtener la invitación para validar y conseguir sender_id, receiver_id, room_id y usernames
@@ -96,6 +79,10 @@ app.post('/api/challenge/respond', async (req, res) => {
     if (getError || !invitation) {
       console.error('Error al obtener invitación para responder via REST:', getError);
       return res.status(404).json({ error: 'Invitación no encontrada' });
+    }
+
+    if (invitation.receiver_id !== currentUser.id) {
+      return res.status(403).json({ error: 'Forbidden: No eres el destinatario de este reto' });
     }
 
     if (invitation.status !== 'pending') {
@@ -179,13 +166,26 @@ app.post('/api/challenge/respond', async (req, res) => {
 });
 
 // ── Endpoint REST: Notificar inicio de torneo a todos los inscritos ────────
-app.post('/api/tournament/notify-start', async (req, res) => {
+app.post('/api/tournament/notify-start', requireAuth, async (req, res) => {
   const { eventId } = req.body;
   if (!eventId) {
     return res.status(400).json({ error: 'eventId es requerido' });
   }
 
+  const currentUser = (req as any).user;
+
   try {
+    // Verificar si el usuario es administrador en la base de datos
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (profileError || !profile || !profile.is_admin) {
+      return res.status(403).json({ error: 'Forbidden: Requiere rol de administrador' });
+    }
+
     // 1. Obtener título del evento
     const { data: event, error: eventError } = await supabase
       .from('events')
@@ -245,13 +245,24 @@ app.post('/api/tournament/notify-start', async (req, res) => {
 });
 
 // ── Endpoint REST: Invitar a oponente de torneo a su partida ────────────────
-app.post('/api/tournament/invite-opponent', async (req, res) => {
+app.post('/api/tournament/invite-opponent', requireAuth, async (req, res) => {
   const { opponentId, roomId, eventTitle, senderName } = req.body;
   if (!opponentId || !roomId) {
     return res.status(400).json({ error: 'opponentId y roomId son requeridos' });
   }
 
+  const currentUser = (req as any).user;
+
   try {
+    // Validar que el solicitante sea participante de la sala
+    const room = await roomStore.get(roomId);
+    if (room) {
+      const requesterIsParticipant = room.players.some((p) => p.userId === currentUser.id);
+      if (!requesterIsParticipant) {
+        return res.status(403).json({ error: 'Forbidden: No formas parte de esta sala' });
+      }
+    }
+
     const isOpponentOnline = connectedUsers.has(opponentId) && (connectedUsers.get(opponentId)?.size || 0) > 0;
 
     if (isOpponentOnline) {
@@ -524,7 +535,7 @@ setInterval(async () => {
           matched.add(p1.userId);
           matched.add(p2.userId);
 
-          const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const roomId = crypto.randomBytes(3).toString('hex').toUpperCase();
           const room: Room = {
             engine: new DefaultGameEngine(),
             state: null,
@@ -611,10 +622,27 @@ io.on('connection', (socket) => {
   }
 
   socket.on('create_room', async (data: { playerName: string, mode: '1v1' | '2v2', betAmount?: number }) => {
+    if (!data || typeof data !== 'object') {
+      socket.emit('error', 'Datos inválidos');
+      return;
+    }
     const { playerName, mode } = data;
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    if (typeof playerName !== 'string' || playerName.trim().length === 0 || playerName.length > 30) {
+      socket.emit('error', 'Nombre de jugador inválido');
+      return;
+    }
+    if (mode !== '1v1' && mode !== '2v2') {
+      socket.emit('error', 'Modo de juego inválido');
+      return;
+    }
+    const betAmount = Number(data.betAmount) || 0;
+    if (isNaN(betAmount) || !Number.isInteger(betAmount) || betAmount < 0 || betAmount > 1000000) {
+      socket.emit('error', 'Monto de apuesta inválido');
+      return;
+    }
+
+    const roomId = crypto.randomBytes(3).toString('hex').toUpperCase();
     const maxPlayers = mode === '1v1' ? 2 : 4;
-    const betAmount = data.betAmount || 0;
 
     const room: Room = {
       engine: new DefaultGameEngine(),
@@ -636,10 +664,23 @@ io.on('connection', (socket) => {
   });
 
   socket.on('create_bot_room', async (data: { playerName: string, difficulty?: BotDifficulty }) => {
+    if (!data || typeof data !== 'object') {
+      socket.emit('error', 'Datos inválidos');
+      return;
+    }
     const { playerName } = data;
+    if (typeof playerName !== 'string' || playerName.trim().length === 0 || playerName.length > 30) {
+      socket.emit('error', 'Nombre de jugador inválido');
+      return;
+    }
     const difficulty: BotDifficulty = data.difficulty || 'easy';
+    if (!['easy', 'medium', 'hard', 'expert'].includes(difficulty)) {
+      socket.emit('error', 'Dificultad de bot inválida');
+      return;
+    }
+
     const botName = BOT_NAMES[difficulty];
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const roomId = crypto.randomBytes(3).toString('hex').toUpperCase();
 
     const room: Room = {
       engine: new DefaultGameEngine(),
@@ -680,8 +721,27 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_challenge', async (data: { receiverId: string, playerName: string, betAmount?: number, challengeMessage?: string }) => {
-    const { receiverId, playerName, betAmount = 0, challengeMessage } = data;
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    if (!data || typeof data !== 'object') {
+      socket.emit('error', 'Datos inválidos');
+      return;
+    }
+    const { receiverId, playerName, challengeMessage } = data;
+    if (typeof receiverId !== 'string' || receiverId.length !== 36) {
+      socket.emit('error', 'Receptor inválido');
+      return;
+    }
+    if (typeof playerName !== 'string' || playerName.trim().length === 0 || playerName.length > 30) {
+      socket.emit('error', 'Nombre de jugador inválido');
+      return;
+    }
+    const betAmount = Number(data.betAmount) || 0;
+    if (isNaN(betAmount) || !Number.isInteger(betAmount) || betAmount < 0 || betAmount > 1000000) {
+      socket.emit('error', 'Monto de apuesta inválido');
+      return;
+    }
+
+    const roomId = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const cleanChallengeMessage = challengeMessage ? String(challengeMessage).substring(0, 100) : undefined;
 
     const room: Room = {
       engine: new DefaultGameEngine(),
@@ -713,7 +773,7 @@ io.on('connection', (socket) => {
         bet_amount: betAmount,
         status: 'pending',
         expires_at: expiresAt,
-        challenge_message: challengeMessage || null
+        challenge_message: cleanChallengeMessage || null
       })
       .select('id')
       .single();
@@ -726,7 +786,7 @@ io.on('connection', (socket) => {
     }
 
     const betText = betAmount > 0 ? ` por ${betAmount} 🪙` : '';
-    const notificationText = challengeMessage || `¡${playerName} te ha desafiado${betText}!`;
+    const notificationText = cleanChallengeMessage || `¡${playerName} te ha desafiado${betText}!`;
     
     const { error: notifError } = await supabase.rpc('create_notification', {
       p_player_id: receiverId,
@@ -751,7 +811,7 @@ io.on('connection', (socket) => {
       const pushPayload: PushPayload = {
         type: 'game_challenge',
         title: '⚔️ ¡Desafío en KASINO21!',
-        body: challengeMessage || `¡${playerName} te ha desafiado a jugar${betText}!`,
+        body: cleanChallengeMessage || `¡${playerName} te ha desafiado a jugar${betText}!`,
         data: {
           invitationId: invitation.id,
           roomId,
@@ -783,6 +843,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join_room', async ({ roomId, playerName, isTournament, isSpectator }: { roomId: string, playerName: string, isTournament?: boolean, isSpectator?: boolean }) => {
+    if (typeof roomId !== 'string' || roomId.trim().length === 0 || roomId.length > 20) {
+      socket.emit('error', 'ID de sala inválido');
+      return;
+    }
+    if (typeof playerName !== 'string' || playerName.trim().length === 0 || playerName.length > 30) {
+      socket.emit('error', 'Nombre de jugador inválido');
+      return;
+    }
+
     let room = await roomStore.get(roomId);
 
     if (!room) {
@@ -921,37 +990,19 @@ io.on('connection', (socket) => {
 
         for (const player of room.players) {
           try {
-            const { data: profile, error: profileError } = await supabase.from('profiles').select('coins').eq('id', player.userId).single();
+            const { data: success, error: chargeError } = await supabase.rpc('atomic_charge_coins', {
+              p_player_id: player.userId,
+              p_amount: room.betAmount,
+              p_reason: `Room Escrow: ${roomId}`,
+              p_ref_id: null
+            });
 
-            if (profileError || !profile) {
-              console.error(`[ESCROW] Error obteniendo perfil de ${player.userId}:`, profileError);
-              allPaid = false;
-              break;
-            }
-
-            if (profile.coins < room.betAmount) {
-              console.error(`[ESCROW] Saldo insuficiente para ${player.userId}. Tiene ${profile.coins}, necesita ${room.betAmount}`);
-              allPaid = false;
-              break;
-            }
-
-            const { error: updateError } = await supabase.from('profiles')
-              .update({ coins: profile.coins - room.betAmount })
-              .eq('id', player.userId);
-
-            if (updateError) {
-              console.error(`[ESCROW] Fallo cobro a ${player.userId}:`, updateError);
+            if (chargeError || !success) {
+              console.error(`[ESCROW] Fallo cobro a ${player.userId} (success=${success}):`, chargeError);
               allPaid = false;
               break;
             } else {
               successfulPayments.push(player.userId);
-              try {
-                await supabase.from('wallet_transactions').insert({
-                  player_id: player.userId,
-                  amount: -room.betAmount,
-                  reason: `Room Escrow: ${roomId}`
-                });
-              } catch(e) {}
             }
           } catch (e) {
             console.error(`[ESCROW] Exception cobro a ${player.userId}:`, e);
@@ -964,17 +1015,16 @@ io.on('connection', (socket) => {
           console.log(`[ESCROW] Fallo masivo en sala ${roomId}. Revirtiendo cobros a:`, successfulPayments);
           for (const uid of successfulPayments) {
             try {
-               const { data: p } = await supabase.from('profiles').select('coins').eq('id', uid).single();
-               if (p) {
-                 await supabase.from('profiles').update({ coins: p.coins + room.betAmount }).eq('id', uid);
-                 try {
-                   await supabase.from('wallet_transactions').insert({
-                     player_id: uid, amount: room.betAmount, reason: `Refund Escrow Failed: ${roomId}`
-                   });
-                 } catch(e) {}
-               }
+              const { data: success, error: refundError } = await supabase.rpc('atomic_refund_coins', {
+                p_player_id: uid,
+                p_amount: room.betAmount,
+                p_reason: `Refund Escrow Failed: ${roomId}`
+              });
+              if (refundError || !success) {
+                console.error(`[ESCROW] CRÍTICO: No se pudo reembolsar a ${uid} (success=${success}):`, refundError);
+              }
             } catch(e) {
-               console.error(`[ESCROW] CRÍTICO: No se pudo reembolsar a ${uid}`);
+              console.error(`[ESCROW] CRÍTICO: No se pudo reembolsar a ${uid}`);
             }
           }
 
@@ -1098,16 +1148,35 @@ io.on('connection', (socket) => {
     await closeRoom(roomId, reason || 'challenge_cancelled');
   });
 
-  socket.on('join_matchmaking', async ({ playerName, elo }: { playerName: string, elo: number }) => {
+  socket.on('join_matchmaking', async ({ playerName }: { playerName: string }) => {
+    if (typeof playerName !== 'string' || playerName.trim().length === 0 || playerName.length > 30) {
+      socket.emit('error', 'Nombre de jugador inválido');
+      return;
+    }
+
+    let userElo = 1000;
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('elo')
+        .eq('id', userId)
+        .single();
+      if (!error && profile) {
+        userElo = profile.elo || 1000;
+      }
+    } catch (err) {
+      console.error('Error al obtener ELO de BD para matchmaking:', err);
+    }
+
     const existing = await matchmakingStore.getPlayer(userId);
     await matchmakingStore.addPlayer({
       socketId: socket.id,
       userId: userId,
       name: playerName,
-      elo: elo || 1000,
+      elo: userElo,
       joinedAt: existing?.joinedAt ?? Date.now()
     });
-    console.log(`Jugador ${playerName} (${elo}) entró a la cola de Matchmaking`);
+    console.log(`Jugador ${playerName} (ELO real BD: ${userElo}) entró a la cola de Matchmaking`);
   });
 
   socket.on('leave_matchmaking', async () => {
@@ -1270,6 +1339,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_message', async ({ roomId, text }: { roomId: string, text: string }) => {
+    if (typeof roomId !== 'string' || roomId.trim().length === 0) return;
+    if (typeof text !== 'string') return;
+    const cleanText = text.trim().substring(0, 500);
+    if (cleanText.length === 0) return;
+
+    // Rate limiting para chat por socket: máximo 1 mensaje por segundo (1000ms)
+    const now = Date.now();
+    const chatRateLimitKey = `chat_rl_${socket.id}`;
+    const lastMsgTime = actionTimestamps.get(chatRateLimitKey);
+    if (lastMsgTime && (now - lastMsgTime) < 1000) {
+      socket.emit('error', 'Estás enviando mensajes demasiado rápido.');
+      return;
+    }
+    actionTimestamps.set(chatRateLimitKey, now);
+
     const room = await roomStore.get(roomId);
     if (!room) return;
 
@@ -1283,10 +1367,10 @@ io.on('connection', (socket) => {
     const senderId = player ? player.userId : spectator!.userId;
 
     const message: ChatMessage = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomBytes(5).toString('hex'),
       senderId,
       senderName,
-      text,
+      text: cleanText,
       timestamp: Date.now(),
       isSpectator
     };

@@ -197,15 +197,44 @@ self.addEventListener('notificationclick', (event) => {
     url = `/?openChatWith=${senderId}`;
   } else if (event.action === 'reject') {
     // Para rechazar, enviamos una petición HTTP silenciosa al backend (sin abrir la pestaña)
-    const rejectPromise = fetch(`${getBackendUrl()}/api/challenge/respond`, {
-      method: 'POST',
-      headers: {
+        const getSessionToken = () => {
+      return new Promise((resolve) => {
+        try {
+          const dbRequest = indexedDB.open('kasino21-session', 1);
+          dbRequest.onsuccess = () => {
+            const db = dbRequest.result;
+            if (!db.objectStoreNames.contains('session-tokens')) {
+              resolve(null);
+              return;
+            }
+            const transaction = db.transaction('session-tokens', 'readonly');
+            const store = transaction.objectStore('session-tokens');
+            const getReq = store.get('supabase-jwt');
+            getReq.onsuccess = () => resolve(getReq.result || null);
+            getReq.onerror = () => resolve(null);
+          };
+          dbRequest.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    };
+
+    const rejectPromise = getSessionToken().then(token => {
+      const headers = {
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        invitationId,
-        action: 'rejected'
-      })
+      };
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+      return fetch(`${getBackendUrl()}/api/challenge/respond`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          invitationId,
+          action: 'rejected'
+        })
+      });
     }).then(res => {
       if (!res.ok) {
         console.error('Error al rechazar desafío via REST desde SW:', res.statusText);

@@ -281,9 +281,15 @@ export function AdminPanel() {
             ? window.location.origin
             : 'http://localhost:4000'
         );
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         fetch(`${apiUrl}/api/tournament/notify-start`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ eventId: event.id })
         }).catch(err => console.error('Error triggering tournament push notifications:', err));
       } catch (e) {
