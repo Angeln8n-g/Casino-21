@@ -32,6 +32,8 @@ interface GameContextType {
   statsData: { eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null;
   scoringTimeoutReady: string[];
   claimRoundVictory: (roomId: string) => void;
+  rematchStatus: { acceptedPlayers: string[]; maxPlayers: number } | null;
+  requestRematch: (roomId: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -46,6 +48,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [matchAbandonedData, setMatchAbandonedData] = useState<{ winnerId: string, coinsEarned: number, eloEarned: number } | null>(null);
   const [statsData, setStatsData] = useState<{ eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null>(null);
   const [scoringTimeoutReady, setScoringTimeoutReady] = useState<string[]>([]);
+  const [rematchStatus, setRematchStatus] = useState<{ acceptedPlayers: string[]; maxPlayers: number } | null>(null);
   const disconnectTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Escuchar eventos del servidor
@@ -67,6 +70,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('match_abandoned');
       socket.off('stats_updated');
       socket.off('scoring_timeout');
+      socket.off('rematch_status');
+      socket.off('rematch_started');
 
       socket.on('action_error', (msg: string) => {
         setError(msg);
@@ -103,6 +108,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setGameState(state);
         if (state.phase !== 'completed') {
           setStatsData(null);
+          setRematchStatus(null);
         }
         // Limpiar el timeout de scoring cuando la fase avanza
         if (state.phase === 'playing' || state.phase === 'completed') {
@@ -134,6 +140,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
       // Temporizador de fase scoring: el servidor avisa si no todos presionaron continuar
       socket.on('scoring_timeout', ({ readyPlayers }: { readyPlayers: string[] }) => {
         setScoringTimeoutReady(readyPlayers);
+      });
+
+      socket.on('rematch_status', (status: { acceptedPlayers: string[]; maxPlayers: number }) => {
+        setRematchStatus(status);
+      });
+
+      socket.on('rematch_started', ({ roomId: newRoomId }: { roomId: string }) => {
+        localStorage.setItem('casino21_roomId', newRoomId);
+        setRematchStatus(null);
       });
     };
 
@@ -170,6 +185,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSocket.off('match_abandoned');
         currentSocket.off('stats_updated');
         currentSocket.off('scoring_timeout');
+        currentSocket.off('rematch_status');
+        currentSocket.off('rematch_started');
       }
       if (disconnectTimerRef.current) {
         clearTimeout(disconnectTimerRef.current);
@@ -218,6 +235,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.emit('claim_round_victory', { roomId });
   }, []);
 
+  const requestRematch = useCallback((roomId: string) => {
+    const socket = socketService.getSocket();
+    socket.emit('request_rematch', { roomId });
+  }, []);
+
   return (
     <GameContext.Provider 
       value={{ 
@@ -238,6 +260,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         statsData,
         scoringTimeoutReady,
         claimRoundVictory,
+        rematchStatus,
+        requestRematch,
       }}
     >
       {children}

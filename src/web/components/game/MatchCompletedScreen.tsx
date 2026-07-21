@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { GameState } from '../../../domain/game-state';
 import { CelebrationConfetti } from '../CelebrationConfetti';
-import { Share2, Home, RotateCcw, Clock, Flag, Info, CheckCircle2, Crown } from 'lucide-react';
+import { Share2, Home, RotateCcw, Clock, Flag, Info, CheckCircle2, Crown, X, Copy, Check, ExternalLink } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
-interface MatchCompletedScreenProps {
+export interface MatchCompletedScreenProps {
   gameState: GameState;
   showCelebration: boolean;
   celebrationSeed: number;
   localPlayerId?: string | null;
   statsData?: { eloChange: number; coinsEarned: number; xpGained: number; isWinner: boolean } | null;
   playerAvatarUrls?: Record<string, string | null>;
+  rematchStatus: { acceptedPlayers: string[]; maxPlayers: number } | null;
+  onRequestRematch: () => void;
 }
 
 const handleBackToMenu = () => {
@@ -34,8 +37,13 @@ export function MatchCompletedScreen({
   localPlayerId,
   statsData,
   playerAvatarUrls,
+  rematchStatus,
+  onRequestRematch,
 }: MatchCompletedScreenProps) {
   const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [textCopied, setTextCopied] = useState(false);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('profile_updated'));
@@ -58,16 +66,45 @@ export function MatchCompletedScreen({
 
   const isLocalWinner = localPlayerId ? isPlayerWinner(localPlayerId) : false;
 
-  const handleShare = async () => {
+  const handleShare = () => {
+    setIsShareModalOpen(true);
+  };
+
+  const handleCopyInviteLink = async () => {
     try {
-      const eloMagnitude = statsData ? Math.abs(statsData.eloChange) : 25;
-      const winText = isLocalWinner ? `gané +${eloMagnitude} ELO` : `jugué una gran partida`;
-      const textToShare = `¡Acabo de terminar una partida en Kasino21! ${winText}. ¡Únete a jugar en Kasino21!`;
-      await navigator.clipboard.writeText(textToShare);
-      setShowCopiedToast(true);
-      setTimeout(() => setShowCopiedToast(false), 3000);
+      const inviteUrl = `${window.location.origin}?join=${gameState.id || 'lobby'}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy text', err);
+      console.error('Failed to copy link', err);
+    }
+  };
+
+  const handleShareTextOrNative = async () => {
+    const eloMagnitude = statsData ? Math.abs(statsData.eloChange) : 25;
+    const winText = isLocalWinner ? `gané +${eloMagnitude} ELO` : `jugué una gran partida`;
+    const inviteUrl = `${window.location.origin}?join=${gameState.id || 'lobby'}`;
+    const textToShare = `¡Acabo de terminar una partida en Kasino21! ${winText}. ¡Únete a jugar en Kasino21! ${inviteUrl}`;
+
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: 'Kasino21 - Duelo de Cartas',
+          text: textToShare,
+          url: inviteUrl,
+        });
+      } catch (err) {
+        console.error('Failed to share natively', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(textToShare);
+        setTextCopied(true);
+        setTimeout(() => setTextCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy text', err);
+      }
     }
   };
 
@@ -389,13 +426,37 @@ export function MatchCompletedScreen({
 
         {/* BOTONERA (ACCIONES) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 w-full mt-8 sm:mt-10">
-           <button 
-             onClick={handleBackToMenu} 
-             className="flex-1 w-full flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-amber-950 px-4 sm:px-6 py-3 sm:py-5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-base uppercase tracking-widest transition transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(245,158,11,0.2)]"
-           >
-              <RotateCcw className="w-4 h-4 sm:w-6 sm:h-6" />
-              <span>Revancha</span>
-           </button>
+           {(() => {
+             const hasAcceptedRematch = rematchStatus?.acceptedPlayers.includes(localPlayerId || '') || false;
+             const rematchBtnText = (() => {
+               if (hasAcceptedRematch) {
+                 const current = rematchStatus?.acceptedPlayers.length || 1;
+                 const max = rematchStatus?.maxPlayers || (gameState.mode === '2v2' ? 4 : 2);
+                 return `Revancha (${current}/${max})`;
+               }
+               if (rematchStatus && rematchStatus.acceptedPlayers.length > 0) {
+                 const current = rematchStatus.acceptedPlayers.length;
+                 const max = rematchStatus.maxPlayers;
+                 return `Revancha (${current}/${max})`;
+               }
+               return 'Revancha';
+             })();
+
+             return (
+               <button 
+                 onClick={onRequestRematch} 
+                 disabled={hasAcceptedRematch}
+                 className={`flex-1 w-full flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-base uppercase tracking-widest transition transform hover:-translate-y-1 ${
+                   hasAcceptedRematch 
+                     ? 'bg-slate-800 text-gray-400 border border-white/5 shadow-none pointer-events-none'
+                     : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-amber-950 shadow-[0_10px_20px_rgba(245,158,11,0.2)]'
+                 }`}
+               >
+                  <RotateCcw className={`w-4 h-4 sm:w-6 sm:h-6 ${hasAcceptedRematch ? 'animate-spin' : ''}`} />
+                  <span>{rematchBtnText}</span>
+               </button>
+             );
+           })()}
            <button 
              onClick={handleBackToMenu} 
              className="flex-1 w-full flex items-center justify-center gap-2 sm:gap-3 bg-slate-800/80 hover:bg-slate-700 text-white px-4 sm:px-6 py-3 sm:py-5 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-base uppercase tracking-widest transition transform hover:-translate-y-1 shadow-lg border border-white/10"
@@ -417,6 +478,126 @@ export function MatchCompletedScreen({
               )}
            </button>
         </div>
+
+        {/* MODAL DE COMPARTIR CON ESTILO ORIGINAL */}
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in text-center">
+            <div className="bg-slate-950/95 border border-yellow-500/20 rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-8 max-w-sm sm:max-w-md w-full relative shadow-[0_0_50px_rgba(234,179,8,0.15)] flex flex-col items-center">
+              
+              <button
+                onClick={() => setIsShareModalOpen(false)}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-colors"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              <h3 className="text-lg sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-500 tracking-wider mb-4 sm:mb-6 uppercase">
+                Compartir Partida
+              </h3>
+
+              {/* Share Card Mockup */}
+              <div className="w-full bg-slate-900/80 border border-yellow-500/30 rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 mb-4 sm:mb-6 shadow-2xl relative overflow-hidden flex flex-col items-center">
+                <div className="absolute -top-12 -left-12 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="text-[8px] sm:text-[10px] text-yellow-500 tracking-[0.3em] font-black uppercase mb-1">
+                  KASINO 21
+                </div>
+
+                <div className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 drop-shadow-md mb-3 uppercase">
+                  {matchTitle}
+                </div>
+
+                {/* VS HUD */}
+                <div className="flex items-center justify-center gap-3 bg-slate-950/60 rounded-xl px-3 py-1.5 border border-white/5 mb-4 text-[10px] sm:text-xs text-gray-300 font-bold uppercase tracking-wider w-full text-center">
+                  <span className="truncate max-w-[100px]">{matchSides[0]?.name || 'Jugador 1'}</span>
+                  <span className="text-yellow-400">({matchSides[0]?.score || 0})</span>
+                  <span className="text-yellow-500/50">VS</span>
+                  <span className="truncate max-w-[100px]">{matchSides[1]?.name || 'Jugador 2'}</span>
+                  <span className="text-yellow-400">({matchSides[1]?.score || 0})</span>
+                </div>
+
+                {/* Reward Grid */}
+                <div className="grid grid-cols-3 gap-2 w-full mb-4 sm:mb-6">
+                  <div className="bg-slate-950/80 border border-white/5 rounded-xl p-1.5 sm:p-2.5 flex flex-col items-center justify-center">
+                    <span className="text-yellow-400 text-xs sm:text-sm font-black">+{statsData ? statsData.coinsEarned : 250}</span>
+                    <span className="text-[7px] sm:text-[8px] text-gray-500 uppercase tracking-widest font-black mt-0.5">Monedas</span>
+                  </div>
+                  <div className="bg-slate-950/80 border border-yellow-500/20 rounded-xl p-1.5 sm:p-2.5 flex flex-col items-center justify-center">
+                    <span className={`text-xs sm:text-sm font-black ${statsData?.eloChange && statsData.eloChange < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                      {statsData?.eloChange && statsData.eloChange < 0 ? '' : '+'}{statsData ? statsData.eloChange : 25}
+                    </span>
+                    <span className="text-[7px] sm:text-[8px] text-gray-500 uppercase tracking-widest font-black mt-0.5">ELO</span>
+                  </div>
+                  <div className="bg-slate-950/80 border border-white/5 rounded-xl p-1.5 sm:p-2.5 flex flex-col items-center justify-center">
+                    <span className="text-cyan-400 text-xs sm:text-sm font-black">+{statsData ? statsData.xpGained : 35}</span>
+                    <span className="text-[7px] sm:text-[8px] text-gray-500 uppercase tracking-widest font-black mt-0.5">XP</span>
+                  </div>
+                </div>
+
+                {/* QR Code SVG */}
+                <div className="p-2 bg-white rounded-xl shadow-lg mb-3">
+                  <QRCodeSVG
+                    value={`${window.location.origin}?join=${gameState.id || 'lobby'}`}
+                    size={100}
+                    level="M"
+                    bgColor="#ffffff"
+                    fgColor="#0f172a"
+                  />
+                </div>
+                <p className="text-[8px] sm:text-[9px] text-gray-400 uppercase tracking-wider font-bold">
+                  Escanea para jugar al instante
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2 w-full mt-2">
+                <button
+                  onClick={handleCopyInviteLink}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition border ${
+                    linkCopied
+                      ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                      : 'bg-slate-800/80 border-white/10 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Enlace</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleShareTextOrNative}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition border ${
+                    textCopied
+                      ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                      : 'bg-gradient-to-r from-yellow-500 to-amber-500 text-amber-950 border-yellow-400/20 hover:from-yellow-400 hover:to-amber-400'
+                  }`}
+                >
+                  {textCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>{typeof navigator.share === 'function' ? 'Compartir' : 'Copiar Texto'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

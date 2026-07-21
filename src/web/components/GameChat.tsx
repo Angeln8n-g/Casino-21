@@ -5,11 +5,13 @@ import { MessageSquare, X, Send } from 'lucide-react';
 interface GameChatProps {
   roomId: string;
   isSpectator: boolean;
+  isOpenForce?: boolean;
+  inline?: boolean;
 }
 
-export function GameChat({ roomId, isSpectator }: GameChatProps) {
+export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = false }: GameChatProps) {
   const { chatMessages, sendMessage, localPlayerId } = useGame();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isOpenForce || false);
   const [inputText, setInputText] = useState('');
   const [activeTab, setActiveTab] = useState<'global' | 'spectator'>('global');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -21,6 +23,12 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
   const isNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const prevMessagesLength = useRef(chatMessages.length);
+
+  useEffect(() => {
+    if (isOpenForce) {
+      setIsOpen(true);
+    }
+  }, [isOpenForce]);
 
   const handleScroll = () => {
     const el = containerRef.current;
@@ -81,6 +89,105 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
       return msg.isSpectator; // Solo mensajes de espectadores
     }
   });
+
+  if (inline) {
+    return (
+      <div className="w-full h-full bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-3 border-b border-white/10 bg-white/5">
+          <h3 className="font-display font-bold text-white flex items-center gap-2">
+            <MessageSquare size={16} className="text-casino-gold" />
+            Chat de Espectadores
+          </h3>
+        </div>
+
+        {/* Tabs (Solo visibles para espectadores) */}
+        {isSpectator && (
+          <div className="flex text-xs font-bold border-b border-white/10">
+            <button 
+              className={`flex-1 py-2 transition-colors ${activeTab === 'global' ? 'bg-casino-gold/20 text-casino-gold border-b-2 border-casino-gold' : 'text-gray-400 hover:bg-white/5'}`}
+              onClick={() => setActiveTab('global')}
+            >
+              JUGADORES
+            </button>
+            <button 
+              className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-400 hover:bg-white/5'}`}
+              onClick={() => setActiveTab('spectator')}
+            >
+              ESPECTADORES
+            </button>
+          </div>
+        )}
+
+        {/* Lista de Mensajes */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar flex flex-col animate-fadeIn" onScroll={handleScroll} ref={containerRef}>
+          {visibleMessages.length === 0 ? (
+            <div className="m-auto text-gray-500 text-xs text-center px-4">
+              {activeTab === 'global' 
+                ? 'No hay mensajes de los jugadores aún.' 
+                : 'Sé el primero en comentar como espectador.'}
+            </div>
+          ) : (
+            visibleMessages.map((msg) => {
+              const isSystem = msg.isSystem;
+              const isMe = msg.senderId === localPlayerId;
+              
+              if (isSystem) {
+                return (
+                  <div key={msg.id} className="text-center text-[10px] text-gray-500 my-1 font-mono uppercase">
+                    {msg.text}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[90%] ${isMe ? 'ml-auto' : 'mr-auto'}`}>
+                  <span className={`text-[9px] font-bold mb-0.5 ${msg.isSpectator ? 'text-blue-400' : 'text-casino-gold'}`}>
+                    {msg.senderName} {msg.isSpectator && '(Espectador)'}
+                  </span>
+                  <div className={`px-3 py-1.5 rounded-xl text-sm ${
+                    isMe 
+                      ? 'bg-casino-gold/20 border border-casino-gold/30 text-white rounded-tr-sm' 
+                      : 'bg-white/10 border border-white/5 text-gray-200 rounded-tl-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+        {hasNewBelow && !isNearBottom && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce"
+          >
+            ↓ Nuevos mensajes
+          </button>
+        )}
+
+        {/* Input Area */}
+        <form onSubmit={handleSend} className="p-2 border-t border-white/10 bg-black/40 flex gap-2">
+          <input 
+            type="text" 
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={isSpectator && activeTab === 'global' ? 'Solo lectura...' : 'Escribe un mensaje...'}
+            disabled={isSpectator && activeTab === 'global'}
+            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-casino-gold/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <button 
+            type="submit"
+            disabled={!inputText.trim() || (isSpectator && activeTab === 'global')}
+            className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          >
+            <Send size={14} />
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -143,9 +250,7 @@ export function GameChat({ roomId, isSpectator }: GameChatProps) {
                   : 'Sé el primero en comentar como espectador.'}
               </div>
             ) : (
-              visibleMessages.map((msg, i) => {
-                // Determinar si el mensaje es nuestro (si no somos espectadores, chequeamos ID. Si somos, no importa tanto a menos que tengamos user ID)
-                // Por ahora usamos senderName para simplificar o un color neutro
+              visibleMessages.map((msg) => {
                 const isSystem = msg.isSystem;
                 const isMe = msg.senderId === localPlayerId;
                 

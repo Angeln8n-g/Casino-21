@@ -375,6 +375,7 @@ const matchmakingStore = new MatchmakingStore();
 const socketToRoomMap = new Map<string, string>();
 const roomTimers = new Map<string, NodeJS.Timeout>();
 const scoringTimers = new Map<string, NodeJS.Timeout>();
+const rematchRequests = new Map<string, Set<string>>();
 const SCORING_TIMEOUT_MS = 60_000; // 1 minuto para que ambos presionen "continuar"
 
 const joinPub = new Redis(REDIS_URL);
@@ -1379,11 +1380,221 @@ io.on('connection', (socket) => {
     await persistRoom(roomId, room);
 
     if (isSpectator) {
-      room.spectators.forEach(s => {
-        io.to(s.socketId).emit('receive_message', message);
-      });
+      const quickEmojis = ['😀', '😮', '🔥', '👏', '💀', '🎉'];
+      const isReaction = quickEmojis.includes(cleanText) || cleanText.startsWith('http') || cleanText.includes('/storage/v1/object/public/');
+      if (isReaction) {
+        io.to(roomId).emit('receive_message', message);
+      } else {
+        room.spectators.forEach(s => {
+          io.to(s.socketId).emit('receive_message', message);
+        });
+      }
     } else {
       io.to(roomId).emit('receive_message', message);
+    }
+  });
+
+  socket.on('request_rematch', async ({ roomId }: { roomId: string }) => {
+    if (typeof roomId !== 'string' || roomId.trim().length === 0) return;
+
+    const room = await roomStore.get(roomId);
+    if (!room || !room.state || room.state.phase !== 'completed') {
+      socket.emit('error', 'La partida no ha terminado o la sala no existe.');
+      return;
+    }
+
+    const requester = room.players.find(p => p.socketId === socket.id || p.userId === userId);
+    if (!requester) {
+      socket.emit('error', 'No eres un jugador de esta sala.');
+      return;
+    }
+
+    // Si es una sala de bot
+    if (room.isBot) {
+      const difficulty = room.botDifficulty || 'easy';
+      const botName = BOT_NAMES[difficulty];
+      const newRoomId = crypto.randomBytes(3).toString('hex').toUpperCase();
+
+      const newRoom: Room = {
+        engine: new DefaultGameEngine(),
+        state: null,
+        players: [
+          { socketId: socket.id, playerId: userId, name: requester.name, userId },
+          { socketId: 'bot', playerId: BOT_USER_ID, name: botName, userId: BOT_USER_ID }
+        ],
+        spectators: [],
+        maxPlayers: 2,
+        chatHistory: new RingBuffer<ChatMessage>(100),
+        betAmount: 0,
+        prizePool: 0,
+        isBot: true,
+        botDifficulty: difficulty
+      };
+
+      await persistRoom(newRoomId, newRoom);
+
+      socket.join(newRoomId);
+      socketToRoomMap.set(socket.id, newRoomId);
+
+      socket.emit('rematch_started', { roomId: newRoomId });
+
+      const result = newRoom.engine.startNewGame('1v1', [requester.name, botName]);
+      if (result.success && result.value) {
+        newRoom.state = result.value;
+        (newRoom.state!.players[0] as any).id = userId;
+        (newRoom.state!.players[1] as any).id = BOT_USER_ID;
+
+        await persistRoom(newRoomId, newRoom);
+
+        startTurnTimer(newRoomId, newRoom);
+        broadcastGameState(newRoomId, newRoom);
+        scheduleBotTurnIfNeeded(newRoomId, newRoom);
+      }
+      return;
+    }
+
+    // Multiplayer room
+    let accepted = rematchRequests.get(roomId);
+    if (!accepted) {
+      accepted = new Set<string>();
+      rematchRequests.set(roomId, accepted);
+    }
+    accepted.add(userId);
+
+    // Emitir estado de revancha a toda la sala
+    io.to(roomId).emit('rematch_status', {
+      acceptedPlayers: Array.from(accepted),
+      maxPlayers: room.maxPlayers
+    });
+
+    if (accepted.size === room.maxPlayers) {
+      rematchRequests.delete(roomId);
+
+      const newRoomId = crypto.randomBytes(3).toString('hex').toUpperCase();
+      const gameMode = room.maxPlayers === 2 ? '1v1' : '2v2';
+
+      const newRoom: Room = {
+        engine: new DefaultGameEngine(),
+        state: null,
+        players: [],
+        spectators: [],
+        maxPlayers: room.maxPlayers,
+        chatHistory: new RingBuffer<ChatMessage>(100),
+        betAmount: room.betAmount,
+        prizePool: 0
+      };
+
+      const newPlayers: typeof room.players = [];
+
+      for (const p of room.players) {
+        const userSockets = connectedUsers.get(p.userId) || new Set<string>();
+        let activeSocketId = p.socketId;
+
+        if (!io.sockets.sockets.has(activeSocketId) && userSockets.size > 0) {
+          activeSocketId = Array.from(userSockets)[0];
+        }
+
+        newPlayers.push({
+          socketId: activeSocketId,
+          playerId: p.playerId,
+          name: p.name,
+          userId: p.userId,
+          team: p.team
+        });
+
+        for (const sid of userSockets) {
+          const s = io.sockets.sockets.get(sid);
+          if (s) {
+            s.leave(roomId);
+            s.join(newRoomId);
+            socketToRoomMap.set(sid, newRoomId);
+          }
+        }
+      }
+
+      newRoom.players = newPlayers;
+      await persistRoom(newRoomId, newRoom);
+
+      io.to(roomId).emit('rematch_started', { roomId: newRoomId });
+      io.to(newRoomId).emit('rematch_started', { roomId: newRoomId });
+
+      if (newRoom.betAmount && newRoom.betAmount > 0) {
+        let allPaid = true;
+        let successfulPayments: string[] = [];
+
+        for (const player of newRoom.players) {
+          try {
+            const { data: success, error: chargeError } = await supabase.rpc('atomic_charge_coins', {
+              p_player_id: player.userId,
+              p_amount: newRoom.betAmount,
+              p_reason: `Rematch Escrow: ${newRoomId}`,
+              p_ref_id: null
+            });
+
+            if (chargeError || !success) {
+              console.error(`[ESCROW-REMATCH] Fallo cobro a ${player.userId} (success=${success}):`, chargeError);
+              allPaid = false;
+              break;
+            } else {
+              successfulPayments.push(player.userId);
+            }
+          } catch (e) {
+            console.error(`[ESCROW-REMATCH] Exception cobro a ${player.userId}:`, e);
+            allPaid = false;
+            break;
+          }
+        }
+
+        if (!allPaid) {
+          console.log(`[ESCROW-REMATCH] Fallo masivo en sala ${newRoomId}. Revirtiendo cobros a:`, successfulPayments);
+          for (const uid of successfulPayments) {
+            try {
+              const { data: success, error: refundError } = await supabase.rpc('atomic_refund_coins', {
+                p_player_id: uid,
+                p_amount: newRoom.betAmount,
+                p_reason: `Refund Rematch Escrow Failed: ${newRoomId}`
+              });
+              if (refundError || !success) {
+                console.error(`[ESCROW-REMATCH] CRÍTICO: No se pudo reembolsar a ${uid} (success=${success}):`, refundError);
+              }
+            } catch(e) {
+              console.error(`[ESCROW-REMATCH] CRÍTICO: No se pudo reembolsar a ${uid}`);
+            }
+          }
+
+          io.to(newRoomId).emit('error', 'Error al procesar las apuestas. Alguien no tiene saldo. La sala se cerrará.');
+          await closeRoom(newRoomId, 'escrow_failed');
+          return;
+        }
+
+        newRoom.prizePool = newRoom.betAmount * newRoom.maxPlayers;
+        console.log(`[ESCROW-REMATCH] Sala ${newRoomId} recaudó ${newRoom.prizePool} monedas en total.`);
+      }
+
+      if (gameMode === '2v2') {
+        const team1 = newRoom.players.filter(p => p.team === 1);
+        const team2 = newRoom.players.filter(p => p.team === 2);
+        newRoom.players = [
+          team1[0],
+          team2[0],
+          team1[1],
+          team2[1]
+        ].filter(Boolean) as any;
+      }
+
+      const orderedPlayerNames = newRoom.players.map(p => p.name);
+      const result = newRoom.engine.startNewGame(gameMode, orderedPlayerNames);
+
+      if (result.success && result.value) {
+        newRoom.state = result.value;
+        newRoom.state.players.forEach((p, index) => {
+          (p as any).id = newRoom.players[index].userId;
+        });
+
+        await persistRoom(newRoomId, newRoom);
+        startTurnTimer(newRoomId, newRoom);
+        broadcastGameState(newRoomId, newRoom);
+      }
     }
   });
 

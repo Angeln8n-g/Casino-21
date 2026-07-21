@@ -27,6 +27,7 @@ import {
 import type { DragModalData } from './game';
 import { getTheme, BoardTheme } from '../themes/themeRegistry';
 import { triggerHaptic } from '../utils/haptics';
+import { GameChat } from './GameChat';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -48,7 +49,7 @@ const didLocalPlayerWin = (state: GameState, localPlayerId: string | null) => {
 };
 
 export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
-  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData, statsData, scoringTimeoutReady, claimRoundVictory } = useGame();
+  const { gameState, playCard, continueToNextRound, error, clearError, localPlayerId, timeRemaining, disconnectionMessage, sendMessage, chatMessages, abandonMatch, matchAbandonedData, statsData, scoringTimeoutReady, claimRoundVictory, rematchStatus, requestRematch } = useGame();
   const { profile, user } = useAuth();
   // Local player's card theme (personal)
   const localCardTheme = useGameTheme();
@@ -68,7 +69,12 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const [boardThemeUrl, setBoardThemeUrl] = useState<string | null>(null);
   const [hostBoardTheme, setHostBoardTheme] = useState<BoardTheme | null>(null);
   const [playerAvatarUrls, setPlayerAvatarUrls] = useState<Record<string, string | null>>({});
-  const [activeReactions, setActiveReactions] = useState<Record<string, { emoji: string; nonce: number }>>({});
+  const [activeReactions, setActiveReactions] = useState<Record<string, { 
+    emoji: string; 
+    nonce: number; 
+    senderName: string; 
+    isSpectator: boolean; 
+  }>>({});
   const previousGameStateRef = useRef<GameState | null>(null);
   const quickEmojis = useRef(['😀', '😮', '🔥', '👏', '💀', '🎉']).current;
   const roomId = localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || '';
@@ -135,7 +141,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   }, []);
 
   // Detect mobile for layout decisions
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobileActual = typeof window !== 'undefined' && window.innerWidth < 768;
   
   // Track total number of turns specifically to detect mid-round deals
   // The sum of all hands goes up when a new deal happens
@@ -380,11 +386,15 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
       const text = (msg.text || '').trim();
       const isUrl = text.startsWith('http') || text.includes('/storage/v1/object/public/');
       if (!quickEmojis.includes(text) && !isUrl) continue;
-      if (!gameState?.players?.some((p) => p.id === msg.senderId)) continue;
 
       setActiveReactions((prev) => ({
         ...prev,
-        [msg.senderId]: { emoji: text, nonce: Date.now() },
+        [msg.senderId]: { 
+          emoji: text, 
+          nonce: Date.now(), 
+          senderName: msg.senderName, 
+          isSpectator: !!msg.isSpectator 
+        },
       }));
       
       playSfx('emoteIn');
@@ -402,7 +412,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         });
       }, 3000);
     }
-  }, [chatMessages, gameState?.players, quickEmojis, playSfx]);
+  }, [chatMessages, quickEmojis, playSfx]);
 
   if (!gameState) return null;
 
@@ -568,43 +578,48 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   const getEntities = () => gameState.mode === '1v1' ? gameState.players : gameState.teams;
 
-  // match_abandoned tiene prioridad sobre cualquier fase — incluso scoring.
-  // Esto permite que "Reclamar Victoria" transite inmediatamente a la pantalla de abandono.
-  if (matchAbandonedData && !isSpectator) {
-    return (
-      <MatchAbandonedScreen
-        data={matchAbandonedData}
-        localPlayerId={localPlayerId}
-        celebrationSeed={celebrationSeed}
-      />
-    );
-  }
+  const isTournament = (roomId || '').toUpperCase().startsWith('T') || localStorage.getItem('casino21_isTournament') === 'true';
 
-  if (gameState.phase === 'scoring') {
-    const handleClaimVictory = () => claimRoundVictory(roomId);
-    return (
-      <RoundSummaryScreen
-        gameState={gameState}
-        localPlayerId={localPlayerId}
-        onContinue={continueToNextRound}
-        scoringTimeoutReady={scoringTimeoutReady}
-        onClaimVictory={handleClaimVictory}
-      />
-    );
-  }
+  const renderGameContent = (isMockMobile: boolean = false) => {
+    const isMobile = isMobileActual || isMockMobile;
 
-  if (gameState.phase === 'completed') {
-    return (
-      <MatchCompletedScreen
-        gameState={gameState}
-        showCelebration={showCelebration}
-        celebrationSeed={celebrationSeed}
-        localPlayerId={localPlayerId}
-        statsData={statsData}
-        playerAvatarUrls={playerAvatarUrls}
-      />
-    );
-  }
+    if (matchAbandonedData && !isSpectator) {
+      return (
+        <MatchAbandonedScreen
+          data={matchAbandonedData}
+          localPlayerId={localPlayerId}
+          celebrationSeed={celebrationSeed}
+        />
+      );
+    }
+
+    if (gameState.phase === 'scoring') {
+      const handleClaimVictory = () => claimRoundVictory(roomId);
+      return (
+        <RoundSummaryScreen
+          gameState={gameState}
+          localPlayerId={localPlayerId}
+          onContinue={continueToNextRound}
+          scoringTimeoutReady={scoringTimeoutReady}
+          onClaimVictory={handleClaimVictory}
+        />
+      );
+    }
+
+    if (gameState.phase === 'completed') {
+      return (
+        <MatchCompletedScreen
+          gameState={gameState}
+          showCelebration={showCelebration}
+          celebrationSeed={celebrationSeed}
+          localPlayerId={localPlayerId}
+          statsData={statsData}
+          playerAvatarUrls={playerAvatarUrls}
+          rematchStatus={rematchStatus}
+          onRequestRematch={() => requestRematch(roomId)}
+        />
+      );
+    }
 
 
 
@@ -975,9 +990,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         >
           {/* Reacciones Centrales (Emotes) */}
           <div className="absolute inset-0 pointer-events-none z-[100] flex flex-col justify-center overflow-hidden">
-            {Object.entries(activeReactions).map(([playerId, reaction], index) => {
-              const p = gameState.players.find((player) => player.id === playerId);
-              if (!p) return null;
+            {Object.entries(activeReactions).map(([senderId, reaction], index) => {
+              const p = gameState.players.find((player) => player.id === senderId);
+              const name = p ? p.name : reaction.senderName;
+              const avatarUrl = p ? getAvatarForPlayer(p.id) : null;
               
               const isEven = index % 2 === 0;
               const animationClass = isEven ? 'animate-emote-left' : 'animate-emote-right';
@@ -991,15 +1007,18 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   <div className={`flex items-center gap-3 bg-black/50 backdrop-blur-md pl-2 pr-4 py-2 rounded-full border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden shimmer-overlay ${animationClass}`}>
                     {/* Avatar */}
                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-sm font-black text-casino-gold shrink-0">
-                      {getAvatarForPlayer(p.id) ? (
-                        <img src={getAvatarForPlayer(p.id)!} alt={p.name} className="w-full h-full object-cover" />
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
                       ) : (
-                        (p.name?.charAt(0)?.toUpperCase() || '?')
+                        (name?.charAt(0)?.toUpperCase() || '?')
                       )}
                     </div>
                     {/* Name */}
-                    <span className="text-white font-bold text-xs md:text-sm max-w-[80px] md:max-w-[120px] truncate">
-                      {p.name}
+                    <span className="text-white font-bold text-xs md:text-sm max-w-[100px] md:max-w-[140px] truncate flex flex-col justify-center">
+                      <span>{name}</span>
+                      {reaction.isSpectator && (
+                        <span className="text-[9px] text-blue-300 font-normal leading-tight">Espectador</span>
+                      )}
                     </span>
                     
                     {/* Emote */}
@@ -1083,26 +1102,16 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))',
           } : {}}
         >
-          {isSpectator && (
-            <div className="absolute inset-0 bg-blue-900/40 z-20 flex items-center justify-center backdrop-blur-sm border-t border-blue-500/50">
-              <span className="text-blue-300 font-black tracking-widest text-sm md:text-xl drop-shadow-md">MODO ESPECTADOR</span>
-            </div>
-          )}
-          {!isCurrentTurn && !isSpectator && (
-            <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
-              <span className="text-gray-300 font-black tracking-widest text-sm md:text-lg animate-pulse">ESPERANDO TURNO...</span>
-            </div>
-          )}
-          {!isSpectator && (
-            <div className="relative z-30 w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
-              <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+          {isSpectator ? (
+            <div className="relative z-30 w-full flex flex-col gap-3 items-center justify-center px-3 py-2 rounded-xl border border-blue-500/20 bg-blue-950/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)]">
+              <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar w-full justify-center">
                 {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
                   const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
                   return (
                     <button
                       key={emoji}
                       onClick={() => handleQuickEmoji(emoji)}
-                      className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-lg shrink-0 flex items-center justify-center overflow-hidden"
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 hover:bg-white/15 hover:scale-105 border border-white/10 transition-all text-lg shrink-0 flex items-center justify-center overflow-hidden shadow-md font-sans"
                       title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
                     >
                       {isUrl ? (
@@ -1114,20 +1123,52 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   );
                 })}
               </div>
-              <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-300">
-                <span className="text-gray-500">🙂</span>
-                Emoticonos
+              <div className="text-xs font-bold text-blue-300 tracking-wider flex items-center gap-1.5 animate-pulse uppercase">
+                <span>👁️</span> MODO ESPECTADOR — ENVÍA UNA REACCIÓN
               </div>
             </div>
+          ) : (
+            <>
+              {!isCurrentTurn && (
+                <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
+                  <span className="text-gray-300 font-black tracking-widest text-sm md:text-lg animate-pulse">ESPERANDO TURNO...</span>
+                </div>
+              )}
+              <div className="relative z-30 w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
+                <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                  {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
+                    const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
+                    return (
+                      <button
+                        key={emoji}
+                        onClick={() => handleQuickEmoji(emoji)}
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-lg shrink-0 flex items-center justify-center overflow-hidden"
+                        title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
+                      >
+                        {isUrl ? (
+                          <img src={emoji} alt="emote" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                        ) : (
+                          <span>{emoji}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-300">
+                  <span className="text-gray-500">🙂</span>
+                  Emoticonos
+                </div>
+              </div>
+              <HandView 
+                player={currentPlayer}
+                isCurrentTurn={isCurrentTurn}
+                selectedCardId={selectedHandCardId}
+                onCardClick={handleCardClick}
+                isDealing={isDealing}
+                cardTheme={localCardTheme.cardTheme}
+              />
+            </>
           )}
-          <HandView 
-            player={currentPlayer}
-            isCurrentTurn={isCurrentTurn}
-            selectedCardId={selectedHandCardId}
-            onCardClick={handleCardClick}
-            isDealing={isDealing}
-            cardTheme={localCardTheme.cardTheme}
-          />
         </footer>
 
         {/* Abandon Confirm Modal */}
@@ -1164,8 +1205,40 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             onCancel={() => setDragModalData(null)}
           />
         )}
+        
+        {!isMockMobile && (
+          <GameChat roomId={roomId} isSpectator={isSpectator} />
+        )}
         </div>
       </div>
     </DndContext>
   );
+};
+
+  if (isSpectator && isTournament && !isMobileActual) {
+    return (
+      <div className="w-screen h-screen bg-[#0A0908] flex items-center justify-center p-4 md:p-8 gap-8 select-none overflow-hidden font-sans">
+        {/* Virtual Mobile Frame on Left */}
+        <div className="w-[430px] max-w-[45vw] h-[90vh] max-h-[880px] aspect-[9/19] bg-[#11100F] border-4 border-[#2D2A26] rounded-[48px] shadow-[0_25px_60px_rgba(0,0,0,0.8),0_0_0_12px_#1E1C1A] overflow-hidden relative flex flex-col scale-[0.98] transition-all hover:scale-100 duration-500">
+          {/* Simulated phone notch/speaker */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-[#1E1C1A] rounded-b-2xl z-[9999] flex items-center justify-center gap-1.5 shadow-inner">
+            <div className="w-12 h-1 bg-white/10 rounded-full"></div>
+            <div className="w-2.5 h-2.5 bg-[#0F0E0D] rounded-full border border-white/5"></div>
+          </div>
+          
+          {/* Game content inside the phone */}
+          <div className="w-full h-full relative pointer-events-auto overflow-hidden">
+            {renderGameContent(true)}
+          </div>
+        </div>
+
+        {/* Chat Panel on Right */}
+        <div className="flex-1 max-w-[400px] h-[90vh] max-h-[880px] flex flex-col pointer-events-auto">
+          <GameChat roomId={roomId} isSpectator={true} inline={true} isOpenForce={true} />
+        </div>
+      </div>
+    );
+  }
+
+  return renderGameContent(false);
 }

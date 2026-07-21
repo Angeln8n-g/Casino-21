@@ -157,6 +157,13 @@ export function MainMenu() {
       const customEvent = e as CustomEvent;
       const { roomId, isTournament, isSpectator } = customEvent.detail;
       setRoomIdInput(roomId);
+      
+      if (isTournament || (roomId && roomId.toUpperCase().startsWith('T'))) {
+        localStorage.setItem('casino21_isTournament', 'true');
+      } else {
+        localStorage.removeItem('casino21_isTournament');
+      }
+      
       if (playerName.trim() && roomId) {
         socketService.connect().then(socket => {
           socket.emit('join_room', { roomId: roomId.toUpperCase(), playerName, isTournament, isSpectator });
@@ -206,6 +213,11 @@ export function MainMenu() {
         if (profile?.username) {
           socketService.connect().then(socket => {
             const isTournament = joinInviteRoomId.toUpperCase().startsWith('T');
+            if (isTournament) {
+              localStorage.setItem('casino21_isTournament', 'true');
+            } else {
+              localStorage.removeItem('casino21_isTournament');
+            }
             socket.emit('join_room', { 
               roomId: joinInviteRoomId.toUpperCase(), 
               playerName: profile.username,
@@ -272,6 +284,7 @@ export function MainMenu() {
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
           localStorage.removeItem('casino21_spectatorRoomId');
+          localStorage.removeItem('casino21_isTournament');
           setPlayersInRoom([playerName]);
           setPlayersInRoomData([{ name: playerName, id: playerId, avatar: profile?.equipped_avatar || profile?.avatar_url }]);
           setCountdown(null);
@@ -288,6 +301,7 @@ export function MainMenu() {
           localStorage.setItem('casino21_roomId', roomId);
           localStorage.setItem('casino21_playerId', playerId);
           localStorage.removeItem('casino21_spectatorRoomId');
+          localStorage.removeItem('casino21_isTournament');
           setCountdown(null);
           setView('waiting');
           setError('');
@@ -303,6 +317,9 @@ export function MainMenu() {
           // Necesitaremos decirle al GameScreen que somos espectadores
           // Podemos usar un estado global o local. Por simplicidad, agregamos un item a localStorage temporalmente
           localStorage.setItem('casino21_spectatorRoomId', roomId);
+          if (roomId.toUpperCase().startsWith('T')) {
+            localStorage.setItem('casino21_isTournament', 'true');
+          }
           setCountdown(null);
           setView('waiting'); // Se cambiará automáticamente a GameScreen cuando llegue el estado
           setError('');

@@ -92,6 +92,12 @@ class SocketService {
           window.dispatchEvent(new CustomEvent('room_joined_event', { detail: { roomId } }));
         }
       });
+      this.socket.on('room_joined_as_spectator', ({ roomId }: { roomId?: string }) => {
+        if (roomId) {
+          this.currentRoomId = roomId;
+          window.dispatchEvent(new CustomEvent('room_joined_event', { detail: { roomId } }));
+        }
+      });
       this.socket.on('room_created', ({ roomId }: { roomId?: string }) => {
         if (roomId) {
           this.currentRoomId = roomId;
