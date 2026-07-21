@@ -10,7 +10,7 @@ interface ProfilePresence {
 }
 
 interface UseProfilePresenceResult {
-  presenceMap: Record<string, { isOnline: boolean; isInRoom: boolean }>;
+  presenceMap: Record<string, { isOnline: boolean; isInRoom: boolean; currentRoomId: string | null }>;
   refreshPresence: (ids: string[]) => Promise<void>;
 }
 
@@ -71,13 +71,14 @@ export function useProfilePresence(friendIds: string[]): UseProfilePresenceResul
     };
   }, [friendIds.join(',')]);
 
-  const presenceMap: Record<string, { isOnline: boolean; isInRoom: boolean }> = {};
+  const presenceMap: Record<string, { isOnline: boolean; isInRoom: boolean; currentRoomId: string | null }> = {};
   for (const p of profiles) {
     const ts = p.last_seen_at ? Date.parse(p.last_seen_at) : 0;
     const isOnline = Number.isFinite(ts) && Date.now() - ts <= ONLINE_WINDOW_MS;
     presenceMap[p.id] = {
       isOnline,
       isInRoom: isOnline && !!p.current_room_id,
+      currentRoomId: p.current_room_id || null,
     };
   }
 

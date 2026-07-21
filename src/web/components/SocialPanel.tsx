@@ -620,8 +620,9 @@ export function SocialPanel() {
   };
 
   const openFriendModal = (friend: Friend) => {
-    const isOnline = isFriendOnline(friend);
-    const roomId = friend.current_room_id ?? null;
+    const presence = presenceMap[friend.id];
+    const isOnline = presence ? presence.isOnline : isFriendOnline(friend);
+    const roomId = presence ? presence.currentRoomId : (friend.current_room_id ?? null);
     setSelectedFriend({
       id: friend.id,
       username: friend.username,
