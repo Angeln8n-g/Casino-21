@@ -241,12 +241,27 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                 }`} />
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-white truncate">{friend.username}</p>
                 <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
                   {friend.isOnline ? (isInRoom ? 'En partida' : 'En línea') : 'Desconectado'}
                 </p>
               </div>
+
+              {friend.isOnline && isInRoom && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    const event = new CustomEvent('join_game_from_invite', {
+                      detail: { roomId: friend.roomId, isTournament: false, isSpectator: true }
+                    });
+                    window.dispatchEvent(event);
+                  }}
+                  className="ml-auto mr-10 px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-wider transition-all border border-blue-500 flex items-center gap-1 shadow-[0_2px_8px_rgba(59,130,246,0.3)] shrink-0 animate-pulse"
+                >
+                  👁️ Espectar
+                </button>
+              )}
 
               {/* Close Button in Chat view */}
               <button

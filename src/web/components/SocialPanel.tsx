@@ -1106,17 +1106,27 @@ export function SocialPanel() {
         />
       )}
 
-      {selectedFriend && (
-        <FriendProfileModal
-          friend={selectedFriend}
-          onClose={() => setSelectedFriend(null)}
-          onOpenChat={() => {
-            setActiveChatFriendId(selectedFriend.id);
-            setActiveTab('chat');
-            setSelectedFriend(null);
-          }}
-        />
-      )}
+      {selectedFriend && (() => {
+        const presence = presenceMap[selectedFriend.id];
+        const isOnline = presence ? presence.isOnline : selectedFriend.isOnline;
+        const roomId = presence ? presence.currentRoomId : selectedFriend.roomId;
+        const dynamicFriend = {
+          ...selectedFriend,
+          isOnline,
+          roomId,
+        };
+        return (
+          <FriendProfileModal
+            friend={dynamicFriend}
+            onClose={() => setSelectedFriend(null)}
+            onOpenChat={() => {
+              setActiveChatFriendId(selectedFriend.id);
+              setActiveTab('chat');
+              setSelectedFriend(null);
+            }}
+          />
+        );
+      })()}
 
       {quickChallengeFriend && (
         <QuickChallengeModal
