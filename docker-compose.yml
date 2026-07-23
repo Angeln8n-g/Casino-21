@@ -48,7 +48,7 @@ services:
 networks:
   default:
   supabase-network:
-    name: supabase-selfhosted-a106px_default
+    name: supabase_default
     external: true
 
 
