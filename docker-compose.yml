@@ -19,8 +19,8 @@ services:
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - VAPID_SUBJECT=${VAPID_SUBJECT}
     restart: always
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
 
   frontend:
     build:
@@ -34,8 +34,8 @@ services:
         - VITE_VAPID_PUBLIC_KEY=${VITE_VAPID_PUBLIC_KEY}
     container_name: casino21_frontend
     restart: always
-    ports:
-      - "3000:80"
+    expose:
+      - "80"
     depends_on:
       - backend
 
