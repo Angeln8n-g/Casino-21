@@ -493,7 +493,7 @@ services:
       # Initialize the database settings with JWT_SECRET and JWT_EXP
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
       # PGDATA directory is persisted between restarts
-      - supabase-db-data-2:/var/lib/postgresql/data
+      - supabase-db-data:/var/lib/postgresql/data
       # Changes required for internal supabase data such as _analytics
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql
       # Changes required for Analytics support
@@ -589,6 +589,6 @@ services:
       ]
 
 volumes:
-  supabase-db-data-2:
+  supabase-db-data:
   db-config:
   deno-cache:
