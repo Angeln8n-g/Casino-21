@@ -48,7 +48,7 @@ services:
 networks:
   default:
   supabase-network:
-    name: supabase-selfhosted-a106px_default
+    name: supabase-kasino21-pvvhc6_default
     external: true
 
 
