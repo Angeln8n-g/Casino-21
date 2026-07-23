@@ -21,6 +21,9 @@ services:
     restart: always
     expose:
       - "4000"
+    networks:
+      - default
+      - supabase-network
 
   frontend:
     build:
@@ -38,6 +41,16 @@ services:
       - "80"
     depends_on:
       - backend
+    networks:
+      - default
+      - supabase-network
+
+networks:
+  default:
+  supabase-network:
+    name: supabase-selfhosted-a106px_default
+    external: true
+
 
 
 
