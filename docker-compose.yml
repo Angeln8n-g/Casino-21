@@ -26,8 +26,7 @@ services:
     expose:
       - "4000"
     depends_on:
-      kong:
-        condition: service_healthy
+      - kong
 
   frontend:
     build:
@@ -103,9 +102,10 @@ services:
           - api-gw
     healthcheck:
       test: ["CMD", "kong", "health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      interval: 10s
+      retries: 10
+      start_period: 30s
     expose:
       - "8000"
       - "8443"
@@ -342,8 +342,7 @@ services:
       - ./supabase-docker/volumes/functions:/home/deno/functions:z
       - deno-cache:/root/.cache/deno
     depends_on:
-      kong:
-        condition: service_healthy
+      - kong
     healthcheck:
       test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/9000'"]
       interval: 5s
