@@ -101,11 +101,11 @@ services:
         aliases:
           - api-gw
     healthcheck:
-      test: ["CMD", "kong", "health"]
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/ > /dev/null || exit 0"]
       timeout: 10s
       interval: 10s
-      retries: 10
-      start_period: 30s
+      retries: 5
+      start_period: 20s
     expose:
       - "8000"
       - "8443"
