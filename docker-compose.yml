@@ -106,9 +106,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    ports:
-      - ${KONG_HTTP_PORT:-8400}:8000/tcp
-      - ${KONG_HTTPS_PORT:-8443}:8443/tcp
+    expose:
+      - "8000"
+      - "8443"
     volumes:
       - ./supabase-docker/volumes/api/kong.yml:/home/kong/temp.yml:ro,z
       - ./supabase-docker/volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro,z
