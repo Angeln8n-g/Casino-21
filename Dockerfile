@@ -6,8 +6,9 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package.json package-lock.json ./
 
-# Instalar dependencias
-RUN npm install --no-audit --no-fund --maxsockets=1
+# Instalar dependencias (incluyendo devDependencies para compilar la app con Vite)
+ENV NODE_ENV=development
+RUN npm install --include=dev --no-audit --no-fund --maxsockets=1
 
 
 # Copiar el código fuente necesario para compilar
