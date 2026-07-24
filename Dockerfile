@@ -8,6 +8,7 @@ COPY package.json package-lock.json ./
 
 # Instalar dependencias (incluyendo devDependencies para compilar la app con Vite)
 ENV NODE_ENV=development
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm install --include=dev --no-audit --no-fund --maxsockets=1
 
 
