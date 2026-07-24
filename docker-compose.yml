@@ -41,6 +41,8 @@ services:
         - VITE_VAPID_PUBLIC_KEY=${VITE_VAPID_PUBLIC_KEY}
     container_name: casino21_frontend
     restart: always
+    ports:
+      - "3001:80"
     expose:
       - "80"
     depends_on:
