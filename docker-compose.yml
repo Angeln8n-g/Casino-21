@@ -39,7 +39,7 @@ services:
     container_name: casino21_frontend
     restart: always
     ports:
-      - "3000:80"
+      - "3001:80"
     expose:
       - "80"
     depends_on:
