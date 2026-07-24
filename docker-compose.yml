@@ -45,9 +45,6 @@ services:
       - "3001:80"
     expose:
       - "80"
-    networks:
-      - default
-      - dokploy-network
     depends_on:
       - backend
 
@@ -474,9 +471,6 @@ services:
 
 networks:
   default:
-  dokploy-network:
-    name: dokploy-network
-    external: true
 
 volumes:
   supabase-db-data:
