@@ -48,7 +48,7 @@ services:
 networks:
   default:
   supabase-network:
-    name: supabase_default
+    name: supabase-uhwfhn_default
     external: true
 
 
