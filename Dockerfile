@@ -7,7 +7,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instalar dependencias
-RUN npm install --no-audit --no-fund --maxsockets=1
+ENV NODE_ENV=development
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+RUN npm install --include=dev --no-audit --no-fund --maxsockets=1
 
 
 # Copiar el código fuente necesario para compilar
