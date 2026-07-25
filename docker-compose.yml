@@ -20,7 +20,7 @@ services:
       - "4000"
     networks:
       - default
-      - fx0i0zfg2d56g4di15lu499b
+      - tjbkleeekybuf0sop69hyy3c
     labels:
       - "traefik.enable=false"
 
@@ -42,14 +42,12 @@ services:
       - backend
     networks:
       - default
-      - fx0i0zfg2d56g4di15lu499b
+      - tjbkleeekybuf0sop69hyy3c
 
 networks:
   default:
-    name: coolify
-    external: true
-  fx0i0zfg2d56g4di15lu499b:
-    name: fx0i0zfg2d56g4di15lu499b
+  tjbkleeekybuf0sop69hyy3c:
+    name: tjbkleeekybuf0sop69hyy3c
     external: true
 
 
