@@ -68,7 +68,7 @@ const emptyForm: Omit<AdConfig, 'id' | 'created_at' | 'updated_at'> = {
 
 export function AdManagerAdmin() {
   // Tabs & Settings
-  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'networks'>('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'networks' | 'sponsors'>('dashboard');
 
   // Ad Networks configuration CRUD
   const [configs, setConfigs] = useState<AdConfig[]>([]);
@@ -87,6 +87,11 @@ export function AdManagerAdmin() {
   const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('7d');
   const [selectedType, setSelectedType] = useState<string>('all');
 
+  // Sponsor Analytics State
+  const [sponsorLogs, setSponsorLogs] = useState<any[]>([]);
+  const [selectedSponsor, setSelectedSponsor] = useState<string>('all');
+  const [loadingSponsorStats, setLoadingSponsorStats] = useState(false);
+
   useEffect(() => { 
     fetchConfigs(); 
   }, []);
@@ -94,8 +99,33 @@ export function AdManagerAdmin() {
   useEffect(() => {
     if (activeSubTab === 'dashboard') {
       fetchStats();
+    } else if (activeSubTab === 'sponsors') {
+      fetchSponsorStats();
     }
-  }, [activeSubTab, timeRange, selectedType]);
+  }, [activeSubTab, timeRange, selectedType, selectedSponsor]);
+
+  const fetchSponsorStats = async () => {
+    setLoadingSponsorStats(true);
+    try {
+      let query = supabase
+        .from('sponsor_analytics_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (selectedSponsor !== 'all') {
+        query = query.eq('sponsor_name', selectedSponsor);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        setSponsorLogs(data);
+      }
+    } catch (err) {
+      console.error('Error fetching sponsor stats:', err);
+    } finally {
+      setLoadingSponsorStats(false);
+    }
+  };
 
   const fetchConfigs = async () => {
     setLoading(true);
@@ -514,6 +544,17 @@ export function AdManagerAdmin() {
         >
           <Settings2 className="w-4 h-4" />
           Configuración de Redes
+        </button>
+        <button
+          onClick={() => setActiveSubTab('sponsors')}
+          className={`flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm transition-colors uppercase tracking-wider ${
+            activeSubTab === 'sponsors'
+              ? 'border-amber-400 text-amber-400'
+              : 'border-transparent text-gray-400 hover:text-white'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          Métricas de Patrocinadores (Sponsors)
         </button>
       </div>
 
@@ -1130,6 +1171,142 @@ export function AdManagerAdmin() {
                             className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition">Editar</button>
                           <button onClick={() => handleDelete(cfg.id)}
                             className="text-xs bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-1.5 rounded transition">Eliminar</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SPONSORS SUB-TAB --- */}
+      {activeSubTab === 'sponsors' && (
+        <div className="space-y-6">
+          {/* Header & Filtro de Patrocinador */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-slate-900 border border-amber-500/30 p-6 rounded-2xl">
+            <div>
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                <Award className="w-6 h-6 text-amber-400" />
+                Métricas de Torneos Semánticos Patrocinados
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Monitorea la atención y exposición publicitaria exclusiva entregada a las marcas aliadas.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedSponsor}
+                onChange={(e) => setSelectedSponsor(e.target.value)}
+                className="bg-slate-950 border border-slate-700 text-white text-xs font-bold rounded-xl px-4 py-2.5 outline-none"
+              >
+                <option value="all">Todos los Patrocinadores</option>
+                {Array.from(new Set(sponsorLogs.map(l => l.sponsor_name))).map(sName => (
+                  <option key={sName} value={sName}>{sName}</option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => {
+                  const reportData = {
+                    sponsor: selectedSponsor,
+                    generatedAt: new Date().toISOString(),
+                    totalImpressions: sponsorLogs.length,
+                    videoCompletions: sponsorLogs.filter(l => l.event_type === 'ad_watch_complete').length,
+                    uniqueUsersImpacted: new Set(sponsorLogs.map(l => l.user_id)).size,
+                    logs: sponsorLogs
+                  };
+                  const jsonStr = JSON.stringify(reportData, null, 2);
+                  const blob = new Blob([jsonStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `Reporte_Patrocinador_${selectedSponsor}_${new Date().toISOString().split('T')[0]}.json`;
+                  a.click();
+                }}
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              >
+                📥 Exportar Reporte Ejecutivo
+              </button>
+            </div>
+          </div>
+
+          {/* Tarjetas KPI de Sponsor */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Impresiones de Marca</span>
+              <p className="text-2xl font-black text-white mt-1">
+                {sponsorLogs.length.toLocaleString()}
+              </p>
+              <span className="text-[10px] text-amber-400 mt-2 block">Visualizaciones 100% exclusivas</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Videos de Farmeo Vistos</span>
+              <p className="text-2xl font-black text-emerald-400 mt-1">
+                {sponsorLogs.filter(l => l.event_type === 'ad_watch_complete').length.toLocaleString()}
+              </p>
+              <span className="text-[10px] text-emerald-400 mt-2 block">15s completos con atención total</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Exposición en Partidas</span>
+              <p className="text-2xl font-black text-cyan-400 mt-1">
+                {Math.round(sponsorLogs.reduce((acc, l) => acc + (l.duration_seconds || 0), 0) / 60)} min
+              </p>
+              <span className="text-[10px] text-cyan-400 mt-2 block">Tiempo acumulado en tapete de marca</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Jugadores Impactados</span>
+              <p className="text-2xl font-black text-amber-400 mt-1">
+                {new Set(sponsorLogs.map(l => l.user_id).filter(Boolean)).size.toLocaleString()}
+              </p>
+              <span className="text-[10px] text-slate-400 mt-2 block">Usuarios únicos alcanzados</span>
+            </div>
+          </div>
+
+          {/* Tabla de Logs de Patrocinador */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="p-4 border-b border-slate-800 font-bold text-sm text-slate-300">
+              Historial de Interacciones con la Marca
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-950 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4">Patrocinador</th>
+                    <th className="py-3 px-4">Tipo de Evento</th>
+                    <th className="py-3 px-4">Duración</th>
+                    <th className="py-3 px-4">Usuario ID</th>
+                    <th className="py-3 px-4">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {loadingSponsorStats ? (
+                    <tr><td colSpan={5} className="py-8 text-center text-slate-500">Cargando métricas de patrocinadores...</td></tr>
+                  ) : sponsorLogs.length === 0 ? (
+                    <tr><td colSpan={5} className="py-8 text-center text-slate-500">No hay registros de analítica para este patrocinador aún.</td></tr>
+                  ) : (
+                    sponsorLogs.slice(0, 50).map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-800/40 transition-all">
+                        <td className="py-3 px-4 font-bold text-amber-400">{log.sponsor_name}</td>
+                        <td className="py-3 px-4">
+                          <span className="bg-slate-800 text-slate-200 text-xs px-2.5 py-1 rounded-full font-mono">
+                            {log.event_type}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-xs font-mono text-slate-400">
+                          {log.duration_seconds ? `${log.duration_seconds}s` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-xs font-mono text-slate-400">
+                          {log.user_id ? log.user_id.substring(0, 8) + '...' : 'Anónimo'}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-400">
+                          {new Date(log.created_at).toLocaleString('es-ES')}
                         </td>
                       </tr>
                     ))

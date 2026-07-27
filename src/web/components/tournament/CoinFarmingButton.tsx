@@ -81,6 +81,14 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
         metadata: { rewardCoins: rewardCoinsPerAd }
       });
 
+      // Registrar también en el gestor general de ad_logs
+      await supabase.from('ad_logs').insert({
+        ad_type: 'rewarded',
+        event_type: 'complete',
+        user_id: user.id,
+        metadata: { sponsor_name: sponsorName, is_sponsored: true, rewardCoins: rewardCoinsPerAd }
+      });
+
       if (onCoinsUpdated) {
         onCoinsUpdated(newBalance);
       }

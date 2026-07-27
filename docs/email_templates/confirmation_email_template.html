@@ -30,7 +30,7 @@
               <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="background-color: #242010; border: 1px solid #D4AF37; padding: 8px 20px; border-radius: 30px;">
-                    <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: #F3E5AB;">♠ ¡Bienvenido al Casino! ♠</span>
+                    <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: #F3E5AB;">♠ ¡Bienvenido a Kasino 21! ♠</span>
                   </td>
                 </tr>
               </table>
@@ -63,14 +63,20 @@
                 </tr>
               </table>
 
-              <!-- Alternative Link Box -->
+              <!-- Alternative Link & OTP Code Box -->
               <div style="background-color: #141622; border: 1px solid #232738; border-radius: 12px; padding: 18px; text-align: left; margin-bottom: 25px;">
                 <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #8a90a6; text-transform: uppercase; letter-spacing: 1px;">
                   ¿El botón no abre? Copia este enlace en tu navegador:
                 </p>
-                <p style="margin: 0; font-size: 12px; word-break: break-all; color: #D4AF37; font-family: monospace;">
+                <p style="margin: 0 0 15px 0; font-size: 12px; word-break: break-all; color: #D4AF37; font-family: monospace;">
                   {{ .ConfirmationURL }}
                 </p>
+                <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #8a90a6; text-transform: uppercase; letter-spacing: 1px;">
+                  O ingresa este código de confirmación:
+                </p>
+                <div style="background-color: #090a0f; border: 1px solid #D4AF37; padding: 10px 15px; border-radius: 8px; font-family: monospace; font-size: 20px; font-weight: 900; color: #F3E5AB; letter-spacing: 6px; text-align: center;">
+                  {{ .Token }}
+                </div>
               </div>
 
               <!-- Perks Info Box -->

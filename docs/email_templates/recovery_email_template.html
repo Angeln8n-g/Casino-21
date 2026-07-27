@@ -63,14 +63,20 @@
                 </tr>
               </table>
 
-              <!-- Alternative Link Box -->
+              <!-- Alternative Link & OTP Code Box -->
               <div style="background-color: #141622; border: 1px solid #232738; border-radius: 12px; padding: 18px; text-align: left; margin-bottom: 25px;">
                 <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #8a90a6; text-transform: uppercase; letter-spacing: 1px;">
                   ¿El botón no funciona? Copia este enlace:
                 </p>
-                <p style="margin: 0; font-size: 12px; word-break: break-all; color: #D4AF37; font-family: monospace;">
+                <p style="margin: 0 0 15px 0; font-size: 12px; word-break: break-all; color: #D4AF37; font-family: monospace;">
                   {{ .ConfirmationURL }}
                 </p>
+                <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #8a90a6; text-transform: uppercase; letter-spacing: 1px;">
+                  O ingresa directamente este código de 6 dígitos:
+                </p>
+                <div style="background-color: #090a0f; border: 1px border border-gold; border: 1px solid #D4AF37; padding: 10px 15px; border-radius: 8px; font-family: monospace; font-size: 20px; font-weight: 900; color: #F3E5AB; letter-spacing: 6px; text-align: center;">
+                  {{ .Token }}
+                </div>
               </div>
 
               <!-- Security Info Note -->
