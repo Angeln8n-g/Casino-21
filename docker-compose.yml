@@ -1,4 +1,13 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: casino21_redis
+    restart: always
+    expose:
+      - "6379"
+    networks:
+      - default
+
   backend:
     build:
       context: ./server
@@ -7,23 +16,21 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4000
+      - REDIS_URL=redis://casino21_redis:6379
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - ALLOW_INSECURE_JWT_FALLBACK=${ALLOW_INSECURE_JWT_FALLBACK:-false}
       - EXPOSE_RULES_VERSION=${EXPOSE_RULES_VERSION:-false}
-      - REDIS_URL=${REDIS_URL}
-      - USE_REDIS_ADAPTER=${USE_REDIS_ADAPTER:-false}
     restart: always
-    expose:
-      - "4000"
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      - redis
     networks:
       - default
-      - tjbkleeekybuf0sop69hyy3c
-    labels:
-      - "traefik.enable=false"
-
+      - supabase_default
 
   frontend:
     build:
@@ -36,18 +43,19 @@ services:
         - VITE_SHOW_RULES_VERSION=${VITE_SHOW_RULES_VERSION:-false}
     container_name: casino21_frontend
     restart: always
-    expose:
-      - "80"
+    ports:
+      - "127.0.0.1:3000:80"
     depends_on:
       - backend
     networks:
       - default
-      - tjbkleeekybuf0sop69hyy3c
+      - supabase_default
 
 networks:
   default:
-  tjbkleeekybuf0sop69hyy3c:
-    name: tjbkleeekybuf0sop69hyy3c
+  supabase_default:
+    name: supabase_default
     external: true
+
 
 

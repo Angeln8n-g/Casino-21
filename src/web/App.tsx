@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { triggerHaptic } from './utils/haptics';
 import { loadThemes } from './themes/themeRegistry';
 import { socketService } from './services/socket';
+import { supabase } from './services/supabase';
 import { getCookieConsent } from './components/CookieConsent';
 // ── Lazy-loaded components (code splitting) ───────────────────────────────────
 // These components are NOT needed on initial page load. By lazy-loading them,
@@ -83,22 +84,34 @@ function AppContent() {
 
   useEffect(() => {
     // Detectar si venimos de un enlace de recuperación de contraseña de Supabase
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      setIsRecovery(true);
-    }
-    
-    // Escuchar cambios en el hash
-    const handleHashChange = () => {
-      if (window.location.hash.includes('type=recovery')) {
+    const checkRecovery = () => {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (
+        (hash && hash.includes('type=recovery')) ||
+        (search && search.includes('type=recovery'))
+      ) {
         setIsRecovery(true);
-      } else {
-        setIsRecovery(false);
       }
     };
-    
+
+    checkRecovery();
+
+    const handleHashChange = () => {
+      checkRecovery();
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecovery(true);
+      }
+    });
+
     window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      subscription.unsubscribe();
+    };
   }, []);
   
   if (isRecovery) {

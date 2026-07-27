@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifica tu Cuenta - Kasino 21</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #050507; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #ffffff;">
+
+  <!-- Outer Background Table -->
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #050507; padding: 40px 10px;">
+    <tr>
+      <td align="center">
+        
+        <!-- Main Email Container -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #0d0e14; border: 1px solid #262938; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);">
+          
+          <!-- Banner Header Image -->
+          <tr>
+            <td align="center" style="background-color: #0a0b10; padding: 0;">
+              <img src="https://kasino21.com/email_header.jpg" alt="Kasino 21" width="580" style="width: 100%; max-width: 580px; height: auto; display: block; border-bottom: 2px solid #D4AF37;">
+            </td>
+          </tr>
+
+          <!-- Header Title / Logo Badge -->
+          <tr>
+            <td align="center" style="padding: 30px 40px 10px 40px;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(184, 134, 11, 0.05) 100%); border: 1px solid rgba(212, 175, 55, 0.4); padding: 8px 20px; border-radius: 30px;">
+                    <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: #F3E5AB;">♠ ¡Bienvenido al Casino! ♠</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Content Body -->
+          <tr>
+            <td style="padding: 20px 40px 30px 40px; text-align: center;">
+              <h1 style="margin: 0 0 15px 0; font-size: 26px; font-weight: 900; color: #ffffff; letter-spacing: 0.5px; text-transform: uppercase;">
+                Confirma tu Cuenta
+              </h1>
+              
+              <p style="margin: 0 0 25px 0; font-size: 15px; line-height: 1.6; color: #a0a5ba;">
+                ¡Tu mesa te está esperando! Gracias por registrarte en <strong style="color: #D4AF37;">Kasino 21</strong> con el correo <strong style="color: #ffffff;">{{ .Email }}</strong>.
+              </p>
+
+              <p style="margin: 0 0 30px 0; font-size: 14px; line-height: 1.6; color: #a0a5ba;">
+                Para activar tu cuenta, reclamar tus monedas de bienvenida y comenzar a competir en las salas 1v1 y 2v2, confirma tu correo electrónico:
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 35px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 16px 36px; background: linear-gradient(180deg, #F3E5AB 0%, #D4AF37 50%, #AA7C11 100%); color: #000000; font-size: 15px; font-weight: 900; text-decoration: none; text-transform: uppercase; letter-spacing: 2px; border-radius: 12px; box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);">
+                      Confirmar mi Cuenta
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Alternative Link Box -->
+              <div style="background-color: #141622; border: 1px solid #232738; border-radius: 12px; padding: 18px; text-align: left; margin-bottom: 25px;">
+                <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #8a90a6; text-transform: uppercase; letter-spacing: 1px;">
+                  ¿El botón no abre? Copia este enlace en tu navegador:
+                </p>
+                <p style="margin: 0; font-size: 12px; word-break: break-all; color: #D4AF37; font-family: monospace;">
+                  {{ .ConfirmationURL }}
+                </p>
+              </div>
+
+              <!-- Perks Info Box -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: rgba(212, 175, 55, 0.06); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 12px; padding: 15px;">
+                <tr>
+                  <td width="30" valign="top" style="font-size: 18px;">🎁</td>
+                  <td style="font-size: 13px; line-height: 1.5; color: #F3E5AB; text-align: left;">
+                    Al confirmar tu cuenta desbloqueas acceso a misiones diarias, recompensas por victorias, subida de rango ELO y personalización de avatares VIP.
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer Divider -->
+          <tr>
+            <td style="padding: 0 40px;">
+              <div style="height: 1px; background: linear-gradient(90deg, transparent 0%, #262938 50%, transparent 100%);"></div>
+            </td>
+          </tr>
+
+          <!-- Footer content -->
+          <tr>
+            <td style="padding: 25px 40px; text-align: center; background-color: #08090d;">
+              <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 800; color: #5a6075; text-transform: uppercase; letter-spacing: 2px;">
+                KASINO 21 ENGINE • COMPETITIVE CARD GAMING
+              </p>
+              <p style="margin: 0 0 12px 0; font-size: 12px; color: #71778d;">
+                © 2026 KASINO21. Todos los derechos reservados.
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #4a4f61; line-height: 1.4;">
+                Si tú no creaste esta cuenta, puedes ignorar este mensaje.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
