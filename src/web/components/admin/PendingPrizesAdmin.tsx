@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Landmark, CheckCircle2, Filter } from 'lucide-react';
+import { Landmark, CheckCircle2, Clock, ShieldCheck, Search, Filter, AlertCircle, Calendar } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { PrizeClaim } from '../../../domain/sponsored-tournament';
 
@@ -72,12 +72,12 @@ export const PendingPrizesAdmin: React.FC = () => {
           lastFourDigits,
           userEmail: selectedClaim.profiles?.email,
           userName: selectedClaim.full_name || selectedClaim.profiles?.username,
-          amountUsd: selectedClaim.amount_usd ?? selectedClaim.amountUsd ?? 0,
+          amountUsd: selectedClaim.amount_usd,
           bankName: selectedClaim.bank_name
         })
       }).catch(() => {});
 
-      setFeedbackMsg(`Premio de $${selectedClaim.amount_usd ?? selectedClaim.amountUsd ?? 0} USD marcado como Pagado.`);
+      setFeedbackMsg(`Premio de $${selectedClaim.amount_usd} USD marcado como Pagado.`);
       setSelectedClaim(null);
       setLastFourDigits('');
       fetchClaims();
@@ -153,7 +153,7 @@ export const PendingPrizesAdmin: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3.5 px-4 font-black text-emerald-400 text-base">
-                    ${item.amount_usd ?? item.amountUsd ?? 0} USD
+                    ${item.amountUsd || item.amountusd} USD
                   </td>
                   <td className="py-3.5 px-4">
                     {item.bank_name ? (
@@ -211,7 +211,7 @@ export const PendingPrizesAdmin: React.FC = () => {
               Confirmar Desembolso Bancario
             </h3>
             <p className="text-xs text-slate-300">
-              Estás confirmando la transferencia de <strong className="text-emerald-400">${selectedClaim.amount_usd ?? selectedClaim.amountUsd ?? 0} USD</strong> a favor de <strong>{selectedClaim.full_name || selectedClaim.profiles?.username || 'Usuario'}</strong> en <strong>{selectedClaim.bank_name || 'su cuenta bancaria'}</strong>.
+              Estás confirmando la transferencia de <strong className="text-emerald-400">${selectedClaim.amount_usd} USD</strong> a favor de <strong>{selectedClaim.full_name}</strong> en <strong>{selectedClaim.bank_name}</strong>.
             </p>
 
             <div>

@@ -25,6 +25,18 @@ interface EventData {
   board_theme_url?: string;
   participants_count: number;
   max_participants: number;
+  is_sponsored?: boolean;
+  sponsor_name?: string;
+  sponsor_logo_url?: string;
+  sponsor_banner_url?: string;
+  cash_prize_pool?: number;
+  brand_theme?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    tableFeltUrl?: string;
+    cardBackUrl?: string;
+    logoUrl?: string;
+  };
 }
 
 export function AdminPanel() {
@@ -676,6 +688,10 @@ export function AdminPanel() {
                   <option value={8}>8 Jugadores</option>
                   <option value={16}>16 Jugadores</option>
                   <option value={32}>32 Jugadores</option>
+                  <option value={100}>100 Jugadores</option>
+                  <option value={250}>250 Jugadores</option>
+                  <option value={500}>500 Jugadores (Torneo Patrocinado)</option>
+                  <option value={1000}>1000 Jugadores</option>
                 </select>
               </div>
               <div>
@@ -712,6 +728,94 @@ export function AdminPanel() {
                     </label>
                   </div>
                 </div>
+
+              {/* Opción de Torneo Semántico Patrocinado */}
+              <div className="md:col-span-2 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-4 space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!currentEvent.is_sponsored}
+                    onChange={(e) => setCurrentEvent({ ...currentEvent, is_sponsored: e.target.checked })}
+                    className="w-5 h-5 accent-amber-500 rounded"
+                  />
+                  <div>
+                    <span className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      ★ Convertir en Torneo Semántico Patrocinado por Marca
+                    </span>
+                    <p className="text-xs text-slate-400">
+                      Activa la experiencia 100% exclusiva de marca, bolsa en cash real y aislamiento de anuncios.
+                    </p>
+                  </div>
+                </label>
+
+                {currentEvent.is_sponsored && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-amber-500/20">
+                    <div>
+                      <label className="block text-xs font-bold text-amber-400 uppercase mb-1">Nombre de la Marca (Sponsor)</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Banco Popular, JUMBO, Red Bull"
+                        className="w-full bg-black/60 border border-amber-500/40 rounded-lg px-3 py-2 text-white text-sm"
+                        value={currentEvent.sponsor_name || ''}
+                        onChange={(e) => setCurrentEvent({ ...currentEvent, sponsor_name: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-amber-400 uppercase mb-1">Bolsa de Premio Real ($ USD)</label>
+                      <input
+                        type="number"
+                        placeholder="Ej. 150"
+                        className="w-full bg-black/60 border border-amber-500/40 rounded-lg px-3 py-2 text-white text-sm"
+                        value={currentEvent.cash_prize_pool || 0}
+                        onChange={(e) => setCurrentEvent({ ...currentEvent, cash_prize_pool: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Logo del Sponsor</label>
+                      <input
+                        type="text"
+                        placeholder="https://.../logo.png"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                        value={currentEvent.sponsor_logo_url || ''}
+                        onChange={(e) => setCurrentEvent({ ...currentEvent, sponsor_logo_url: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Banner del Sponsor</label>
+                      <input
+                        type="text"
+                        placeholder="https://.../banner.png"
+                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                        value={currentEvent.sponsor_banner_url || ''}
+                        onChange={(e) => setCurrentEvent({ ...currentEvent, sponsor_banner_url: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Color Principal de Marca</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="color"
+                          className="w-10 h-9 bg-transparent border-0 rounded cursor-pointer"
+                          value={currentEvent.brand_theme?.primaryColor || '#f59e0b'}
+                          onChange={(e) => setCurrentEvent({
+                            ...currentEvent,
+                            brand_theme: { ...currentEvent.brand_theme, primaryColor: e.target.value }
+                          })}
+                        />
+                        <input
+                          type="text"
+                          className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono"
+                          value={currentEvent.brand_theme?.primaryColor || '#f59e0b'}
+                          onChange={(e) => setCurrentEvent({
+                            ...currentEvent,
+                            brand_theme: { ...currentEvent.brand_theme, primaryColor: e.target.value }
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
                 
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
@@ -749,7 +853,16 @@ export function AdminPanel() {
                 ) : (
                   events.map(ev => (
                     <tr key={ev.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="p-4 font-bold">{ev.title}</td>
+                      <td className="p-4 font-bold">
+                        <div className="flex items-center gap-2">
+                          {ev.title}
+                          {ev.is_sponsored && (
+                            <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                              ★ {ev.sponsor_name || 'Sponsor'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-4"><span className="bg-white/10 px-2 py-1 rounded text-xs">{ev.type}</span></td>
                       <td className="p-4">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
