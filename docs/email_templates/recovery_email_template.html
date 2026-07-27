@@ -15,10 +15,12 @@
         <!-- Main Email Container -->
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #0d0e14; border: 1px solid #262938; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);">
           
-          <!-- Banner Header Image -->
+          <!-- Banner Header Image with CSS Fallback -->
           <tr>
-            <td align="center" style="background-color: #0a0b10; padding: 0;">
-              <img src="https://kasino21.com/email_header.jpg" alt="Kasino 21" width="580" style="width: 100%; max-width: 580px; height: auto; display: block; border-bottom: 2px solid #D4AF37;">
+            <td align="center" style="background-color: #12141d; padding: 25px 20px; border-bottom: 2px solid #D4AF37;">
+              <a href="https://kasino21.com" target="_blank" style="text-decoration: none;">
+                <img src="https://kasino21.com/email_header.jpg" alt="♠ KASINO 21 ♠" width="580" style="width: 100%; max-width: 580px; height: auto; display: block; color: #D4AF37; font-size: 24px; font-weight: 900; letter-spacing: 4px; text-align: center; border: 0;">
+              </a>
             </td>
           </tr>
 
@@ -27,7 +29,7 @@
             <td align="center" style="padding: 30px 40px 10px 40px;">
               <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td align="center" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(184, 134, 11, 0.05) 100%); border: 1px solid rgba(212, 175, 55, 0.4); padding: 8px 20px; border-radius: 30px;">
+                  <td align="center" style="background-color: #242010; border: 1px solid #D4AF37; padding: 8px 20px; border-radius: 30px;">
                     <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; color: #F3E5AB;">♠ Kasino 21 Security ♠</span>
                   </td>
                 </tr>
@@ -50,11 +52,11 @@
                 Haz clic en el siguiente botón dorado para ingresar tu nueva clave y volver a las mesas de juego:
               </p>
 
-              <!-- CTA Button -->
+              <!-- CTA Button (With Email Client Fallback Color) -->
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 35px;">
                 <tr>
                   <td align="center">
-                    <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 16px 36px; background: linear-gradient(180deg, #F3E5AB 0%, #D4AF37 50%, #AA7C11 100%); color: #000000; font-size: 15px; font-weight: 900; text-decoration: none; text-transform: uppercase; letter-spacing: 2px; border-radius: 12px; box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 16px 36px; background-color: #D4AF37; background: linear-gradient(180deg, #F3E5AB 0%, #D4AF37 50%, #AA7C11 100%); color: #000000; font-size: 15px; font-weight: 900; text-decoration: none; text-transform: uppercase; letter-spacing: 2px; border-radius: 12px; box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);">
                       Restablecer Contraseña
                     </a>
                   </td>
@@ -72,7 +74,7 @@
               </div>
 
               <!-- Security Info Note -->
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 15px;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #2b1515; border: 1px solid #732626; border-radius: 12px; padding: 15px;">
                 <tr>
                   <td width="30" valign="top" style="font-size: 18px;">⚠️</td>
                   <td style="font-size: 13px; line-height: 1.5; color: #fca5a5; text-align: left;">
@@ -86,9 +88,7 @@
 
           <!-- Footer Divider -->
           <tr>
-            <td style="padding: 0 40px;">
-              <div style="height: 1px; background: linear-gradient(90deg, transparent 0%, #262938 50%, transparent 100%);"></div>
-            </td>
+            <td style="padding: 0 40px; border-bottom: 1px solid #262938;"></td>
           </tr>
 
           <!-- Footer content -->

@@ -7,6 +7,9 @@ import { logger } from '../utils/logger';
 
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 import { TournamentView } from './tournament/TournamentView';
+import { SponsoredTournamentModal } from './tournament/SponsoredTournamentModal';
+import { PrizeClaimModal } from './tournament/PrizeClaimModal';
+import { PrizeClaim } from '../domain/sponsored-tournament';
 
 interface EventData {
   id: string;
@@ -24,6 +27,19 @@ interface EventData {
   audio_url?: string;
   participants_count: number;
   max_participants: number;
+  is_sponsored?: boolean;
+  sponsor_name?: string;
+  sponsor_logo_url?: string;
+  sponsor_banner_url?: string;
+  cash_prize_pool?: number;
+  brand_theme?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    tableFeltUrl?: string;
+    cardBackUrl?: string;
+    logoUrl?: string;
+  };
+  prize_distribution?: { rank: number; amountUsd: number }[];
 }
 
 const MOCK_EVENTS: EventData[] = [
@@ -225,6 +241,13 @@ export function EventsPage() {
   const [now, setNow] = useState(() => Date.now());
   const [bracketChannel, setBracketChannel] = useState<any>(null);
   const [inviteCooldowns, setInviteCooldowns] = useState<Record<string, number>>({});
+
+  // Sponsored Tournament & Prize Claim state
+  const [sponsoredModalOpen, setSponsoredModalOpen] = useState(false);
+  const [selectedSponsoredEvent, setSelectedSponsoredEvent] = useState<EventData | null>(null);
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [activePrizeClaim, setActivePrizeClaim] = useState<PrizeClaim | null>(null);
+  const [activeClaimSponsorName, setActiveClaimSponsorName] = useState<string>('Sponsor');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -456,10 +479,44 @@ export function EventsPage() {
             
           if (!isMounted) return;
             
-          if (entriesError) throw entriesError;
-            
-          if (entriesData) {
+          if (entriesError) {
+            logger.error("Error al cargar inscripciones:", entriesError);
+          } else if (entriesData) {
             setUserEntries(entriesData.map(e => e.event_id));
+          }
+
+          // Consultar si el usuario tiene un premio pendiente de reclamar
+          const { data: claimsData } = await supabase
+            .from('tournament_prize_claims')
+            .select('*, events:event_id(sponsor_name)')
+            .eq('user_id', user.id)
+            .in('status', ['pending_claim', 'claim_submitted'])
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (isMounted && claimsData && claimsData.length > 0) {
+            const rawClaim = claimsData[0];
+            setActivePrizeClaim({
+              id: rawClaim.id,
+              eventId: rawClaim.event_id,
+              userId: rawClaim.user_id,
+              rankPosition: rawClaim.rank_position,
+              amountUsd: rawClaim.amount_usd,
+              fullName: rawClaim.full_name,
+              idCardNumber: rawClaim.id_card_number,
+              phoneNumber: rawClaim.phone_number,
+              bankName: rawClaim.bank_name,
+              accountNumber: rawClaim.account_number,
+              status: rawClaim.status,
+              smsVerified: rawClaim.sms_verified,
+              claimedAt: rawClaim.claimed_at,
+              paidAt: rawClaim.paid_at,
+              expiresAt: rawClaim.expires_at,
+              createdAt: rawClaim.created_at
+            });
+            if ((rawClaim.events as any)?.sponsor_name) {
+              setActiveClaimSponsorName((rawClaim.events as any).sponsor_name);
+            }
           }
         }
       } catch (error: any) {
@@ -492,6 +549,12 @@ export function EventsPage() {
 
     const eventObj = events.find(e => e.id === eventId);
     if (!eventObj) return;
+
+    if (eventObj.is_sponsored) {
+      setSelectedSponsoredEvent(eventObj);
+      setSponsoredModalOpen(true);
+      return;
+    }
 
     if (userEntries.includes(eventObj.id)) {
       setEnrollmentEventTitle(eventObj.title);
@@ -622,6 +685,27 @@ export function EventsPage() {
 
   return (
     <div className="w-full text-white animate-fade-in">
+      {/* Banner Alerta de Premio Ganado Reclamable */}
+      {activePrizeClaim && (
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 rounded-2xl p-4 mb-6 text-slate-950 flex items-center justify-between shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-slate-950/20 rounded-xl flex items-center justify-center font-black text-xl">
+              🏆
+            </div>
+            <div>
+              <h4 className="font-black text-base">¡Tienes un premio de ${activePrizeClaim.amountUsd || activePrizeClaim.amount_usd} USD por reclamar!</h4>
+              <p className="text-xs font-semibold text-slate-900">Torneo Oficial {activeClaimSponsorName} • Reclámalo antes de que expire en 7 días.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setClaimModalOpen(true)}
+            className="bg-slate-950 hover:bg-slate-900 text-amber-400 font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg"
+          >
+            Reclamar Mi Premio
+          </button>
+        </div>
+      )}
+
       {featuredEvent && (
         <div className="relative w-full h-72 md:h-96 rounded-3xl overflow-hidden mb-8 border border-casino-gold/30 shadow-[0_0_30px_rgba(234,179,8,0.15)] group cursor-pointer">
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-10" />
@@ -920,6 +1004,52 @@ export function EventsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Torneo Semántico Patrocinado */}
+      {selectedSponsoredEvent && (
+        <SponsoredTournamentModal
+          tournament={{
+            id: selectedSponsoredEvent.id,
+            title: selectedSponsoredEvent.title,
+            description: selectedSponsoredEvent.description,
+            status: selectedSponsoredEvent.status,
+            startDate: selectedSponsoredEvent.start_date,
+            endDate: selectedSponsoredEvent.end_date,
+            isSponsored: true,
+            sponsorName: selectedSponsoredEvent.sponsor_name || 'Sponsor',
+            sponsorLogoUrl: selectedSponsoredEvent.sponsor_logo_url,
+            sponsorBannerUrl: selectedSponsoredEvent.sponsor_banner_url,
+            brandTheme: selectedSponsoredEvent.brand_theme,
+            maxParticipants: selectedSponsoredEvent.max_participants || 500,
+            participantsCount: selectedSponsoredEvent.participants_count || 0,
+            entryFeeCoins: selectedSponsoredEvent.entry_fee || 5000,
+            cashPrizePool: selectedSponsoredEvent.cash_prize_pool || 150,
+            prizeDistribution: selectedSponsoredEvent.prize_distribution || [
+              { rank: 1, amountUsd: (selectedSponsoredEvent.cash_prize_pool || 150) * 0.6 },
+              { rank: 2, amountUsd: (selectedSponsoredEvent.cash_prize_pool || 150) * 0.3 },
+              { rank: 3, amountUsd: (selectedSponsoredEvent.cash_prize_pool || 150) * 0.1 }
+            ]
+          }}
+          isOpen={sponsoredModalOpen}
+          userCoins={profile?.coins || 0}
+          onClose={() => setSponsoredModalOpen(false)}
+          onRegistered={() => {
+            setSponsoredModalOpen(false);
+            setUserEntries([...userEntries, selectedSponsoredEvent.id]);
+          }}
+        />
+      )}
+
+      {/* Modal de Reclamo de Premio Bancario */}
+      {activePrizeClaim && (
+        <PrizeClaimModal
+          claim={activePrizeClaim}
+          sponsorName={activeClaimSponsorName}
+          isOpen={claimModalOpen}
+          onClose={() => setClaimModalOpen(false)}
+          onSubmitted={() => setClaimModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -279,12 +279,15 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           if (tMatch?.event_id) {
             const { data: eventData } = await supabase
               .from('events')
-              .select('board_theme_url')
+              .select('board_theme_url, is_sponsored, brand_theme')
               .eq('id', tMatch.event_id)
               .maybeSingle();
 
-            if (eventData?.board_theme_url) {
-              if (isMounted) { setBoardThemeUrl(eventData.board_theme_url); setHostBoardTheme(null); }
+            const sponsoredFelt = eventData?.is_sponsored ? (eventData?.brand_theme as any)?.tableFeltUrl : null;
+            const themeToApply = sponsoredFelt || eventData?.board_theme_url;
+
+            if (themeToApply) {
+              if (isMounted) { setBoardThemeUrl(themeToApply); setHostBoardTheme(null); }
               return;
             }
           }
