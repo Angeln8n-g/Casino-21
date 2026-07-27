@@ -153,7 +153,7 @@ export const PendingPrizesAdmin: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3.5 px-4 font-black text-emerald-400 text-base">
-                    ${item.amountUsd || item.amountusd} USD
+                    ${item.amount_usd ?? item.amountUsd ?? 0} USD
                   </td>
                   <td className="py-3.5 px-4">
                     {item.bank_name ? (
