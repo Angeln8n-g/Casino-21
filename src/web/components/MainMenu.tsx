@@ -25,6 +25,7 @@ import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
 import { LobbyMusicSelector } from './LobbyMusicSelector';
+import { ChampionshipLobbyWidget } from './championship/ChampionshipLobbyWidget';
 import mainMenuBg from '../../Public/background.webp';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
@@ -1101,6 +1102,8 @@ export function MainMenu() {
             </div>
           )}
           {/* ─── FIN MATCHMAKING OVERLAY ─── */}
+
+          <ChampionshipLobbyWidget />
 
           {/* ─── NEW GAME MODE CARDS (FASE 12) ─── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-up">

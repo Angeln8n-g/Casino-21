@@ -17,6 +17,8 @@ import { Redis } from 'ioredis';
 import { RoomStore, RingBuffer, ChatMessage, Room } from './room-store';
 import { MatchmakingStore, MatchmakingPlayer } from './matchmaking-store';
 import { sendPushToUser, PushPayload } from './web-push';
+import { initChampionshipTimers, handleChampionshipAdCompleted } from './championship-service';
+import { requireAdmin, createChampionship, updateChampionship, forceCutChampionship, startFinalChampionship, pauseFinalChampionship, resumeFinalChampionship, cancelChampionship, getLeaderboard, disqualifyUser, getKycQueue, approveKyc, rejectKyc, forceMatchWinner, walkoverMatch, getAnalytics, remindPrizes } from './championship-admin-service';
 
 dotenv.config();
 
@@ -1648,6 +1650,26 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // --- Championship Socket Handlers ---
+  socket.on('championship_ad_completed', async (data) => {
+    if (!userId || !data.eventId || !data.type) return;
+    await handleChampionshipAdCompleted(io, userId, data.eventId, data.type);
+  });
+
+  socket.on('join_championship_spectator', (data) => {
+    if (!data.eventId) return;
+    const specRoomId = `championship_${data.eventId}`;
+    socket.join(specRoomId);
+    console.log(`[Championship] Espectador ${socket.id} se unió a la sala ${specRoomId}`);
+  });
+
+  socket.on('leave_championship_spectator', (data) => {
+    if (!data.eventId) return;
+    const specRoomId = `championship_${data.eventId}`;
+    socket.leave(specRoomId);
+    console.log(`[Championship] Espectador ${socket.id} abandonó la sala ${specRoomId}`);
+  });
 });
 
 async function startTurnTimer(roomId: string, room: Room) {
@@ -1975,6 +1997,61 @@ async function checkScheduledEvents() {
 const EVENT_CHECK_INTERVAL = 60 * 1000;
 setInterval(checkScheduledEvents, EVENT_CHECK_INTERVAL);
 checkScheduledEvents();
+
+// --- Public Championship Endpoints ---
+app.get('/api/championship/active', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('is_championship', true)
+      .in('championship_phase', ['league', 'cut', 'final'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    res.json(data || null);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/championship/:id/leaderboard', getLeaderboard);
+
+app.get('/api/championship/:id/pool', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('current_prize_usd, global_ad_views, max_prize_usd, base_prize_usd, championship_phase')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// --- Admin Championship Endpoints ---
+app.post('/api/admin/championship', requireAuth, requireAdmin, createChampionship);
+app.put('/api/admin/championship/:id', requireAuth, requireAdmin, updateChampionship);
+app.post('/api/admin/championship/:id/force-cut', requireAuth, requireAdmin, forceCutChampionship);
+app.post('/api/admin/championship/:id/start-final', requireAuth, requireAdmin, startFinalChampionship(io));
+app.post('/api/admin/championship/:id/pause-final', requireAuth, requireAdmin, pauseFinalChampionship);
+app.post('/api/admin/championship/:id/resume-final', requireAuth, requireAdmin, resumeFinalChampionship);
+app.post('/api/admin/championship/:id/cancel', requireAuth, requireAdmin, cancelChampionship);
+app.get('/api/admin/championship/:id/leaderboard', requireAuth, requireAdmin, getLeaderboard);
+app.post('/api/admin/championship/:id/disqualify/:userId', requireAuth, requireAdmin, disqualifyUser);
+app.get('/api/admin/championship/:id/kyc-queue', requireAuth, requireAdmin, getKycQueue);
+app.post('/api/admin/championship/:id/kyc/:userId/approve', requireAuth, requireAdmin, approveKyc);
+app.post('/api/admin/championship/:id/kyc/:userId/reject', requireAuth, requireAdmin, rejectKyc);
+app.post('/api/admin/championship/:id/match/:matchId/force-winner', requireAuth, requireAdmin, forceMatchWinner);
+app.post('/api/admin/championship/:id/match/:matchId/walkover', requireAuth, requireAdmin, walkoverMatch);
+app.get('/api/admin/championship/:id/analytics', requireAuth, requireAdmin, getAnalytics);
+app.post('/api/admin/championship/:id/prizes/remind', requireAuth, requireAdmin, remindPrizes);
+
+initChampionshipTimers(io, roomStore);
 
 const CLUSTER_PORT = process.env.NODE_APP_INSTANCE
   ? parseInt(process.env.PORT || '4000', 10) + parseInt(process.env.NODE_APP_INSTANCE, 10)

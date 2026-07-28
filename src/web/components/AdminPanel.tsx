@@ -7,6 +7,7 @@ import { QuestManager } from './QuestManager';
 import { AdManagerAdmin } from './AdManagerAdmin';
 import { AudioAdmin } from './AudioAdmin';
 import { PendingPrizesAdmin } from './admin/PendingPrizesAdmin';
+import { ChampionshipAdmin } from './admin/ChampionshipAdmin';
 import { useAudio } from '../hooks/useAudio';
 
 interface EventData {
@@ -42,7 +43,7 @@ interface EventData {
 
 export function AdminPanel() {
   const { startUrlLoop, stopLoop } = useAudio();
-  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests' | 'ads' | 'audio' | 'prizes'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'store' | 'quests' | 'ads' | 'audio' | 'prizes' | 'championship'>('events');
   
   useEffect(() => {
     // Tab tracking — only for dev diagnostics
@@ -624,6 +625,14 @@ export function AdminPanel() {
             >
               Premios ($)
             </button>
+            <button 
+              onClick={() => setActiveTab('championship')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                activeTab === 'championship' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              Championship
+            </button>
           </div>
 
           {activeTab === 'events' && (
@@ -1045,6 +1054,8 @@ export function AdminPanel() {
           <AdManagerAdmin />
         ) : activeTab === 'audio' ? (
           <AudioAdmin />
+        ) : activeTab === 'championship' ? (
+          <ChampionshipAdmin />
         ) : (
           <PendingPrizesAdmin />
         )}
