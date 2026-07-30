@@ -36,33 +36,18 @@ export const ChampionshipLobbyWidget: React.FC = () => {
 
         // 2. Fetch current user's real rank in championship
         if (user?.id && eventData?.id && mounted) {
-          const { data: existingPart } = await supabase
-            .from('championship_participants')
-            .select('id')
-            .eq('event_id', eventData.id)
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (!existingPart) {
-            await supabase
-              .from('championship_participants')
-              .insert({ event_id: eventData.id, user_id: user.id })
-              .select('id')
-              .maybeSingle();
-          }
-
-          const { data: participants } = await supabase
+          const { data: participants, error: partError } = await supabase
             .from('championship_participants')
             .select('user_id')
             .eq('event_id', eventData.id)
             .order('points', { ascending: false });
 
-          if (participants && mounted) {
+          if (!partError && participants && mounted) {
             const idx = participants.findIndex((p: any) => p.user_id === user.id);
             if (idx !== -1) {
               setUserRank(idx + 1);
             } else {
-              setUserRank(participants.length + 1);
+              setUserRank(null);
             }
           }
         }

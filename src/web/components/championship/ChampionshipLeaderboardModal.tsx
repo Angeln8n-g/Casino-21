@@ -48,23 +48,6 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
         setDailyCap(eventData.daily_ad_cap);
       }
 
-      if (eventId && user?.id) {
-        const { data: existingPart } = await supabase
-          .from('championship_participants')
-          .select('id')
-          .eq('event_id', eventId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!existingPart) {
-          await supabase
-            .from('championship_participants')
-            .insert({ event_id: eventId, user_id: user.id })
-            .select('id')
-            .maybeSingle();
-        }
-      }
-
       if (eventId) {
         // 2. Query real participants sorted by points DESC
         const { data: partData } = await supabase
