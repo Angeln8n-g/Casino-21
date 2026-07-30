@@ -50,39 +50,49 @@ export default function WinnersWallModal({ isOpen, onClose, winners }: Props) {
 
             {/* Content List */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-              {winners.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-[#0b1326] border border-emerald-500/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl border ${item.avatarBg} flex items-center justify-center font-black text-xl font-['Russo_One'] flex-shrink-0`}>
-                      {item.avatarLetter}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-base font-['Chakra_Petch']">{item.name}</span>
-                        <span className="text-xs text-gray-400">({item.city})</span>
-                      </div>
-                      <div className="text-xs text-emerald-400 font-bold font-['Chakra_Petch'] flex items-center gap-1 mt-0.5">
-                        <CheckCircle2 size={13} /> Transacción confirmada via {item.paymentMethod}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/5">
-                    <div className="text-left sm:text-right">
-                      <div className="text-lg font-black font-['Russo_One'] text-emerald-400">${item.amountUsd} USD</div>
-                      <div className="text-[10px] font-mono text-gray-500">{item.txRef}</div>
-                    </div>
-
-                    <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 font-['Chakra_Petch']">
-                      Verificado ✅
-                    </span>
-                  </div>
+              {winners.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <ShieldCheck className="w-12 h-12 mx-auto text-emerald-500/40 mb-3" />
+                  <h4 className="text-white font-bold text-base mb-1">Aún no se registran transferencias entregadas</h4>
+                  <p className="text-gray-400 text-xs max-w-sm mx-auto font-['Chakra_Petch']">
+                    Las reclamaciones de premios confirmadas aparecerán en este muro de pagos verificados.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                winners.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-[#0b1326] border border-emerald-500/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl border ${item.avatarBg} flex items-center justify-center font-black text-xl font-['Russo_One'] flex-shrink-0`}>
+                        {item.avatarLetter}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-base font-['Chakra_Petch']">{item.name}</span>
+                          <span className="text-xs text-gray-400">({item.city})</span>
+                        </div>
+                        <div className="text-xs text-emerald-400 font-bold font-['Chakra_Petch'] flex items-center gap-1 mt-0.5">
+                          <CheckCircle2 size={13} /> Transacción confirmada via {item.paymentMethod}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                      <div className="text-left sm:text-right">
+                        <div className="text-lg font-black font-['Russo_One'] text-emerald-400">${item.amountUsd} USD</div>
+                        <div className="text-[10px] font-mono text-gray-500">{item.txRef}</div>
+                      </div>
+
+                      <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 font-['Chakra_Petch']">
+                        Verificado ✅
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
         </div>

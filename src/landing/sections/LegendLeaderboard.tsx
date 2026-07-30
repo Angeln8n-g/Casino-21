@@ -62,83 +62,91 @@ export default function LegendLeaderboard({ leaderboard, timeRemaining, onOpenTo
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 font-['Chakra_Petch']">
-                {leaderboard.slice(0, 10).map((player) => {
-                  const isTop3 = player.rank <= 3;
-                  let rankBadge = null;
-                  if (player.rank === 1) {
-                    rankBadge = (
-                      <div className="flex items-center gap-1">
-                        <Crown size={20} className="text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                        <Medal size={18} className="text-yellow-400" />
-                      </div>
-                    );
-                  } else if (player.rank === 2) {
-                    rankBadge = <Medal size={18} className="text-slate-300 drop-shadow-[0_0_6px_rgba(203,213,225,0.6)]" />;
-                  } else if (player.rank === 3) {
-                    rankBadge = <Medal size={18} className="text-amber-600 drop-shadow-[0_0_6px_rgba(217,119,6,0.6)]" />;
-                  } else {
-                    rankBadge = <span className="text-gray-400 font-black font-mono">#{player.rank}</span>;
-                  }
-
-                  return (
-                    <tr
-                      key={player.username}
-                      className={`transition-all duration-500 ${
-                        player.isJustUpdated
-                          ? 'bg-yellow-500/20 border-l-4 border-yellow-400 scale-[1.01]'
-                          : isTop3
-                          ? 'bg-yellow-500/[0.04] hover:bg-yellow-500/[0.08]'
-                          : 'hover:bg-white/[0.03]'
-                      }`}
-                    >
-                      {/* Puesto */}
-                      <td className="py-3.5 px-4 font-bold">
-                        <div className="flex items-center gap-1.5">
-                          {rankBadge}
+                {leaderboard.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-gray-400 font-['Chakra_Petch']">
+                      Aún no hay participantes registrados en la tabla de clasificación. ¡Inicia sesión y sé el primero en sumar puntos!
+                    </td>
+                  </tr>
+                ) : (
+                  leaderboard.slice(0, 10).map((player) => {
+                    const isTop3 = player.rank <= 3;
+                    let rankBadge = null;
+                    if (player.rank === 1) {
+                      rankBadge = (
+                        <div className="flex items-center gap-1">
+                          <Crown size={20} className="text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                          <Medal size={18} className="text-yellow-400" />
                         </div>
-                      </td>
+                      );
+                    } else if (player.rank === 2) {
+                      rankBadge = <Medal size={18} className="text-slate-300 drop-shadow-[0_0_6px_rgba(203,213,225,0.6)]" />;
+                    } else if (player.rank === 3) {
+                      rankBadge = <Medal size={18} className="text-amber-600 drop-shadow-[0_0_6px_rgba(217,119,6,0.6)]" />;
+                    } else {
+                      rankBadge = <span className="text-gray-400 font-black font-mono">#{player.rank}</span>;
+                    }
 
-                      {/* Jugador */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-black text-sm select-none shadow"
-                            style={{ backgroundColor: player.avatarColor }}
-                          >
-                            {player.avatarLetter}
+                    return (
+                      <tr
+                        key={player.username}
+                        className={`transition-all duration-500 ${
+                          player.isJustUpdated
+                            ? 'bg-yellow-500/20 border-l-4 border-yellow-400 scale-[1.01]'
+                            : isTop3
+                            ? 'bg-yellow-500/[0.04] hover:bg-yellow-500/[0.08]'
+                            : 'hover:bg-white/[0.03]'
+                        }`}
+                      >
+                        {/* Puesto */}
+                        <td className="py-3.5 px-4 font-bold">
+                          <div className="flex items-center gap-1.5">
+                            {rankBadge}
                           </div>
-                          <div>
-                            <span className={`font-bold text-sm sm:text-base ${isTop3 ? 'text-yellow-300 font-black' : 'text-white'}`}>
-                              {player.username}
-                            </span>
-                            {player.rank === 1 && (
-                              <span className="ml-2 text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-black uppercase">
-                                LÍDER ACUMULADO
+                        </td>
+
+                        {/* Jugador */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-black text-sm select-none shadow"
+                              style={{ backgroundColor: player.avatarColor }}
+                            >
+                              {player.avatarLetter}
+                            </div>
+                            <div>
+                              <span className={`font-bold text-sm sm:text-base ${isTop3 ? 'text-yellow-300 font-black' : 'text-white'}`}>
+                                {player.username}
                               </span>
-                            )}
+                              {player.rank === 1 && (
+                                <span className="ml-2 text-[9px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-black uppercase">
+                                  LÍDER ACUMULADO
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Puntos (con animación cada 10s) */}
-                      <td className="py-3.5 px-4 text-right">
-                        <span className={`font-mono font-black text-base sm:text-lg transition-colors ${player.isJustUpdated ? 'text-yellow-300 animate-pulse' : 'text-white'}`}>
-                          {player.points.toLocaleString()} pts
-                        </span>
-                        {player.isJustUpdated && (
-                          <span className="block text-[10px] text-yellow-400 font-bold animate-bounce">+15 pts</span>
-                        )}
-                      </td>
+                        {/* Puntos (con animación cada 10s) */}
+                        <td className="py-3.5 px-4 text-right">
+                          <span className={`font-mono font-black text-base sm:text-lg transition-colors ${player.isJustUpdated ? 'text-yellow-300 animate-pulse' : 'text-white'}`}>
+                            {player.points.toLocaleString()} pts
+                          </span>
+                          {player.isJustUpdated && (
+                            <span className="block text-[10px] text-yellow-400 font-bold animate-bounce">+15 pts</span>
+                          )}
+                        </td>
 
-                      {/* Premio Proyectado ("Se llevaría $X") */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="inline-flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-3 py-1 rounded-xl text-sm sm:text-base font-black font-['Russo_One'] shadow">
-                          <span>Se llevaría ${player.projectedPrize} USD</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        {/* Premio Proyectado ("Se llevaría $X") */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="inline-flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-3 py-1 rounded-xl text-sm sm:text-base font-black font-['Russo_One'] shadow">
+                            <span>Se llevaría ${player.projectedPrize} USD</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

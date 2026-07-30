@@ -14,6 +14,10 @@ interface TournamentVerticalBracketProps {
 }
 
 const ROUND_LABELS: Record<number, string> = {
+  '-4': '256avos',
+  '-3': '128avos',
+  '-2': '64avos',
+  '-1': '32avos',
   0: '16avos',
   1: 'Octavos',
   2: 'Cuartos',
@@ -31,11 +35,27 @@ export function TournamentVerticalBracket({
   inviteCooldowns,
   onViewPlayer,
 }: TournamentVerticalBracketProps) {
-  // Determine available rounds
+  // Determine available rounds dynamically
   const getRoundsList = () => {
-    if (maxParticipants === 8) return [2, 3, 4];
-    if (maxParticipants === 32) return [0, 1, 2, 3, 4];
-    return [1, 2, 3, 4]; // Default 16
+    let start = 1;
+    if (maxParticipants <= 8) start = 2;
+    else if (maxParticipants <= 16) start = 1;
+    else if (maxParticipants <= 32) start = 0;
+    else if (maxParticipants <= 64) start = -1;
+    else if (maxParticipants <= 128) start = -2;
+    else if (maxParticipants <= 256) start = -3;
+    else start = -4;
+
+    if (matches.length > 0) {
+      const minRound = Math.min(...matches.map(m => m.round));
+      if (minRound < start) start = minRound;
+    }
+
+    const rounds: number[] = [];
+    for (let r = start; r <= 4; r++) {
+      rounds.push(r);
+    }
+    return rounds;
   };
 
   const roundsList = getRoundsList();

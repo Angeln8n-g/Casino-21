@@ -9,7 +9,7 @@ import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 import { TournamentView } from './tournament/TournamentView';
 import { SponsoredTournamentModal } from './tournament/SponsoredTournamentModal';
 import { PrizeClaimModal } from './tournament/PrizeClaimModal';
-import { PrizeClaim } from '../domain/sponsored-tournament';
+import { PrizeClaim } from '../../domain/sponsored-tournament';
 
 interface EventData {
   id: string;
@@ -145,7 +145,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
               </span>
             )}
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/5">
-              {type === 'torneo' ? '⚔️ TORNEO' : type === 'liga' ? '🏆 LIGA' : '💎 ESPECIAL'}
+              {type === 'gran_pool' || title.includes('El Gran Pool') ? '👑 GRAN POOL (TOP 32)' : type === 'torneo' ? '⚔️ TORNEO' : type === 'liga' ? '🏆 LIGA' : '💎 ESPECIAL'}
             </span>
           </div>
         </div>
@@ -549,6 +549,30 @@ export function EventsPage() {
 
     const eventObj = events.find(e => e.id === eventId);
     if (!eventObj) return;
+
+    if (eventObj.type === 'gran_pool' || eventObj.title.includes('El Gran Pool')) {
+      const { data: part } = await supabase
+        .from('championship_participants')
+        .select('points')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!part) {
+        alert('⚠️ Este torneo es exclusivo para los 32 jugadores clasificados en la Liga Championship.');
+        return;
+      }
+
+      const { count } = await supabase
+        .from('championship_participants')
+        .select('id', { count: 'exact', head: true })
+        .gt('points', part.points || 0);
+
+      const rank = count !== null ? count + 1 : 999;
+      if (rank > 32) {
+        alert(`⚠️ Tu posición actual en la Liga Championship es #${rank}. Este torneo está reservado exclusivamente para el Top 32.`);
+        return;
+      }
+    }
 
     if (eventObj.is_sponsored) {
       setSelectedSponsoredEvent(eventObj);

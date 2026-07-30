@@ -116,6 +116,7 @@ function MatchNode({
 
   return (
     <div
+      id={isPlayerInMatch ? "my-match-node" : undefined}
       className={`w-28 h-16 sm:w-36 sm:h-20 md:w-44 md:h-24 border rounded-2xl flex flex-col justify-center relative z-10 backdrop-blur-sm transition-all duration-300 font-sans tracking-tight ${isClickable ? 'hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_5px_20px_rgba(124,58,237,0.25)] cursor-pointer' : ''} ${getBoxClass()}`}
       onClick={() => isClickable && onJoinMatch && onJoinMatch(match)}
     >
@@ -253,6 +254,22 @@ export function TournamentBracket({
   inviteCooldowns,
   onViewPlayer,
 }: TournamentBracketProps) {
+  const [zoom, setZoom] = React.useState(100);
+  const scrollViewportRef = React.useRef<HTMLDivElement>(null);
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 15, 150));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 15, 50));
+  const handleZoomReset = () => setZoom(100);
+
+  const scrollToMyMatch = () => {
+    const el = document.getElementById('my-match-node');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    } else {
+      alert('No estás participando en una partida activa en esta llave.');
+    }
+  };
+
   const getMatch = (r: number, p: number) => matches.find(m => m.round === r && m.position === p);
 
   const renderMatchNode = (match: TournamentMatch | undefined, isLeft: boolean, isFinal = false) => (
@@ -269,169 +286,184 @@ export function TournamentBracket({
     />
   );
 
-  const is8Player = maxParticipants === 8;
-  const is32Player = maxParticipants === 32;
+  // Dynamic round calculation
+  const getRoundList = () => {
+    let start = 1;
+    if (maxParticipants <= 8) start = 2;
+    else if (maxParticipants <= 16) start = 1;
+    else if (maxParticipants <= 32) start = 0;
+    else if (maxParticipants <= 64) start = -1;
+    else if (maxParticipants <= 128) start = -2;
+    else if (maxParticipants <= 256) start = -3;
+    else start = -4;
 
-  const RoundColumn = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="flex flex-col items-center gap-2">
-      <span className="text-[8px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{label}</span>
-      {children}
-    </div>
-  );
+    if (matches.length > 0) {
+      const minMatchRound = Math.min(...matches.map(m => m.round));
+      if (minMatchRound < start) start = minMatchRound;
+    }
+
+    const roundsList: number[] = [];
+    for (let r = start; r <= 3; r++) {
+      roundsList.push(r);
+    }
+    return roundsList;
+  };
+
+  const rounds = getRoundList();
+
+  const getRoundLabel = (r: number) => {
+    switch (r) {
+      case -4: return '256avos';
+      case -3: return '128avos';
+      case -2: return '64avos';
+      case -1: return '32avos';
+      case 0: return '16avos';
+      case 1: return 'Octavos';
+      case 2: return 'Cuartos';
+      case 3: return 'Semis';
+      case 4: return 'Final';
+      default: return `Ronda ${r}`;
+    }
+  };
 
   return (
-    <div className="w-full overflow-x-auto overflow-y-hidden pb-8 pt-4 custom-scrollbar flex md:justify-center justify-start items-start relative bg-transparent">
-      {/* Decorative Grid background */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(251,191,36,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(251,191,36,0.02)_1px,transparent_1px)] bg-[size:30px_30px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
-
-      <div className="min-w-[560px] sm:min-w-[700px] md:min-w-[800px] lg:min-w-[1000px] flex flex-col items-center select-none font-sans mx-auto px-4 relative z-10">
-
-        <div className="mb-4 sm:mb-6 text-center">
-          <h2 className="text-sm sm:text-lg md:text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-[#00FFCC] via-white to-[#7C3AED] drop-shadow-[0_0_10px_rgba(0,255,204,0.3)] uppercase">
-            {title}
-          </h2>
-          <div className="h-0.5 w-16 sm:w-24 bg-gradient-to-r from-transparent via-[#FF0055] to-transparent mx-auto mt-2 opacity-50" />
+    <div className="w-full text-white space-y-3 animate-fade-in font-sans">
+      {/* Controls Bar: Zoom & Navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-white/10 p-3 rounded-2xl backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:inline">Zoom:</span>
+          <button
+            onClick={handleZoomOut}
+            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sm font-bold transition-all"
+            title="Reducir zoom"
+          >
+            -
+          </button>
+          <span className="text-xs font-mono font-bold text-casino-gold w-12 text-center">{zoom}%</span>
+          <button
+            onClick={handleZoomIn}
+            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-sm font-bold transition-all"
+            title="Aumentar zoom"
+          >
+            +
+          </button>
+          <button
+            onClick={handleZoomReset}
+            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-gray-400 hover:text-white uppercase transition-all"
+            title="Restablecer zoom al 100%"
+          >
+            100%
+          </button>
         </div>
 
-        <div className="flex justify-center items-stretch gap-2 sm:gap-4 md:gap-6 lg:gap-10 relative w-full px-2 sm:px-4 mt-2 sm:mt-4">
+        {currentUserId && (
+          <button
+            onClick={scrollToMyMatch}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-yellow-500/20 hover:scale-105 transition-all flex items-center gap-1.5"
+          >
+            🎯 Ir a Mi Partida
+          </button>
+        )}
+      </div>
 
-          {/* LEFT SIDE */}
-          <div className="flex gap-2 sm:gap-4 md:gap-6 lg:gap-10">
-            {is32Player && (
-              <RoundColumn label={ROUND_LABELS[0]}>
-                <div className="flex flex-col justify-around gap-1 sm:gap-2 relative">
-                  {[...Array(8)].map((_, i) => (
-                    <React.Fragment key={`r0-${i + 1}`}>
-                      {renderMatchNode(getMatch(0, i + 1), true)}
-                    </React.Fragment>
-                  ))}
-                  {[...Array(4)].map((_, i) => (
-                    <div key={`vconn0-${i}`} className="absolute border-r border-white/10" style={{ top: `${(i * 25) + 6}%`, height: '13%', right: '-0.5rem' }} />
-                  ))}
-                  {[...Array(4)].map((_, i) => (
-                    <div key={`hconn0-${i}`} className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: `${(i * 25) + 12.5}%`, right: '-0.75rem' }} />
-                  ))}
-                </div>
-              </RoundColumn>
-            )}
+      {/* Main Bracket Scroll Viewport */}
+      <div
+        ref={scrollViewportRef}
+        className="w-full overflow-x-auto overflow-y-auto max-h-[75vh] p-4 sm:p-6 custom-scrollbar relative bg-slate-950/60 rounded-3xl border border-white/10 shadow-2xl"
+      >
+        {/* Grid Decorative Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(251,191,36,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(251,191,36,0.02)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none" />
 
-            {!is8Player && (
-              <RoundColumn label={ROUND_LABELS[1]}>
-                <div className="flex flex-col justify-around gap-2 sm:gap-4 md:gap-6 relative">
-                  {renderMatchNode(getMatch(1, 1), true)}
-                  {renderMatchNode(getMatch(1, 2), true)}
-                  {renderMatchNode(getMatch(1, 3), true)}
-                  {renderMatchNode(getMatch(1, 4), true)}
-                  <div className="absolute border-r border-white/10" style={{ top: '12%', height: '26%', right: '-0.5rem' }} />
-                  <div className="absolute border-r border-white/10" style={{ top: '62%', height: '26%', right: '-0.5rem' }} />
-                  <div className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: '25%', right: '-0.75rem' }} />
-                  <div className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: '75%', right: '-0.75rem' }} />
-                </div>
-              </RoundColumn>
-            )}
-
-            <RoundColumn label={ROUND_LABELS[2]}>
-              <div className={`flex flex-col justify-around ${is8Player ? 'gap-2 sm:gap-4 md:gap-6 py-0' : 'gap-8 sm:gap-12 md:gap-16 py-6 sm:py-12'} relative`}>
-                {renderMatchNode(getMatch(2, 1), true)}
-                {renderMatchNode(getMatch(2, 2), true)}
-                <div className="absolute border-r border-white/10" style={{ top: '25%', height: '50%', right: '-0.5rem' }} />
-                <div className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: '50%', right: '-0.75rem' }} />
-              </div>
-            </RoundColumn>
-
-            <RoundColumn label={ROUND_LABELS[3]}>
-              <div className="flex flex-col justify-center relative py-12 sm:py-20 md:py-24">
-                {renderMatchNode(getMatch(3, 1), true)}
-              </div>
-            </RoundColumn>
+        {/* Outer Content Container - w-max min-w-full m-auto ensures X=0 anchors correctly without negative clipping */}
+        <div
+          className="w-max min-w-full flex flex-col items-center justify-center m-auto relative z-10 transition-transform duration-200 origin-center"
+          style={{ transform: `scale(${zoom / 100})` }}
+        >
+          {/* Header Title */}
+          <div className="mb-6 text-center">
+            <h2 className="text-base sm:text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-[#00FFCC] via-white to-[#7C3AED] uppercase">
+              {title}
+            </h2>
+            <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-[#FF0055] to-transparent mx-auto mt-2 opacity-50" />
           </div>
 
-          {/* CENTER (FINAL) */}
-          <div className="flex flex-col justify-center items-center relative z-20 mx-1 sm:mx-2 md:mx-4 mt-4 sm:mt-8 md:mt-16">
-            <div className="mb-3 sm:mb-4 relative flex flex-col items-center">
-              <div className="absolute inset-0 bg-casino-gold/10 blur-xl rounded-full animate-pulse" />
-              <span className="text-3xl sm:text-5xl md:text-6xl drop-shadow-[0_0_15px_rgba(251,191,36,0.6)] relative z-10 mb-1">🏆</span>
-              {prizePool && (
-                <div className="bg-[#0F0F23]/80 border border-[#00FFCC]/30 px-2 sm:px-3 py-1 rounded-xl shadow-[0_0_15px_rgba(0,255,204,0.15)] backdrop-blur-sm z-10 animate-pulse mt-1">
-                  <span className="text-[#00FFCC] font-bold text-[8px] sm:text-[10px] tracking-widest uppercase">PREMIO: {prizePool}</span>
-                </div>
-              )}
-            </div>
+          {/* Bracket Tree Row */}
+          <div className="flex justify-center items-stretch gap-4 sm:gap-6 md:gap-8 lg:gap-10 relative w-full px-4">
+            
+            {/* LEFT BRANCHES (Round 0 / 1 / 2 / 3) */}
+            <div className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-10">
+              {rounds.map(r => {
+                const totalMatches = Math.pow(2, Math.max(0, 4 - r - 1));
+                const halfMatches = Math.max(1, totalMatches / 2);
 
-            <div className="flex flex-col gap-1.5 sm:gap-2 relative">
-              {[1, 2, 3].map(gameNum => {
-                const match = getMatch(4, gameNum);
                 return (
-                  <div key={gameNum} className="relative">
-                    <span className="absolute -left-5 sm:-left-7 md:-left-8 top-1/2 -translate-y-1/2 text-[7px] sm:text-[9px] text-gray-500 font-mono font-bold">
-                      G{gameNum}
+                  <div key={`left-r-${r}`} className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
+                      {getRoundLabel(r)}
                     </span>
-                    {renderMatchNode(match, false, true)}
+                    <div className="flex flex-col justify-around gap-3 sm:gap-4 relative h-full">
+                      {[...Array(halfMatches)].map((_, i) => (
+                        <React.Fragment key={`match-left-${r}-${i + 1}`}>
+                          {renderMatchNode(getMatch(r, i + 1), true)}
+                        </React.Fragment>
+                      ))}
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            <div className="absolute top-[calc(50%+1.5rem)] sm:top-[calc(50%+2rem)] md:top-[calc(50%+3rem)] -left-2 sm:-left-4 md:-left-6 lg:-left-10 w-2 sm:w-4 md:w-6 lg:w-10 border-t border-white/10" />
-            <div className="absolute top-[calc(50%+1.5rem)] sm:top-[calc(50%+2rem)] md:top-[calc(50%+3rem)] -right-2 sm:-right-4 md:-right-6 lg:-right-10 w-2 sm:w-4 md:w-6 lg:w-10 border-t border-white/10" />
-          </div>
-
-          {/* RIGHT SIDE */}
-          <div className="flex gap-2 sm:gap-4 md:gap-6 lg:gap-10 flex-row-reverse">
-            {is32Player && (
-              <RoundColumn label={ROUND_LABELS[0]}>
-                <div className="flex flex-col justify-around gap-1 sm:gap-2 relative">
-                  {[...Array(8)].map((_, i) => (
-                    <React.Fragment key={`r0r-${i + 9}`}>
-                      {renderMatchNode(getMatch(0, i + 9), false)}
-                    </React.Fragment>
-                  ))}
-                  {[...Array(4)].map((_, i) => (
-                    <div key={`vconn0r-${i}`} className="absolute border-l border-white/10" style={{ top: `${(i * 25) + 6}%`, height: '13%', left: '-0.5rem' }} />
-                  ))}
-                  {[...Array(4)].map((_, i) => (
-                    <div key={`hconn0r-${i}`} className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: `${(i * 25) + 12.5}%`, left: '-0.75rem' }} />
-                  ))}
-                </div>
-              </RoundColumn>
-            )}
-
-            {!is8Player && (
-              <RoundColumn label={ROUND_LABELS[1]}>
-                <div className="flex flex-col justify-around gap-2 sm:gap-4 md:gap-6 relative">
-                  {renderMatchNode(getMatch(1, 5), false)}
-                  {renderMatchNode(getMatch(1, 6), false)}
-                  {renderMatchNode(getMatch(1, 7), false)}
-                  {renderMatchNode(getMatch(1, 8), false)}
-                  <div className="absolute border-l border-white/10" style={{ top: '12%', height: '26%', left: '-0.5rem' }} />
-                  <div className="absolute border-l border-white/10" style={{ top: '62%', height: '26%', left: '-0.5rem' }} />
-                  <div className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: '25%', left: '-0.75rem' }} />
-                  <div className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: '75%', left: '-0.75rem' }} />
-                </div>
-              </RoundColumn>
-            )}
-
-            <RoundColumn label={ROUND_LABELS[2]}>
-              <div className={`flex flex-col justify-around ${is8Player ? 'gap-2 sm:gap-4 md:gap-6 py-0' : 'gap-8 sm:gap-12 md:gap-16 py-6 sm:py-12'} relative`}>
-                {renderMatchNode(getMatch(2, 3), false)}
-                {renderMatchNode(getMatch(2, 4), false)}
-                <div className="absolute border-l border-white/10" style={{ top: '25%', height: '50%', left: '-0.5rem' }} />
-                <div className="absolute border-t border-white/10 w-2 sm:w-3 md:w-4 lg:w-5" style={{ top: '50%', left: '-0.75rem' }} />
+            {/* CENTER FINAL (ROUND 4) */}
+            <div className="flex flex-col justify-center items-center relative z-20 mx-4">
+              <div className="mb-4 flex flex-col items-center">
+                <span className="text-4xl sm:text-5xl drop-shadow-[0_0_15px_rgba(251,191,36,0.6)] mb-1">🏆</span>
+                <span className="text-xs font-black uppercase text-amber-400 tracking-widest">GRAN FINAL</span>
+                {prizePool && (
+                  <div className="bg-[#0F0F23]/80 border border-[#00FFCC]/30 px-3 py-1 rounded-xl shadow-lg shadow-[#00FFCC]/10 mt-1">
+                    <span className="text-[#00FFCC] font-bold text-[10px] tracking-widest uppercase">
+                      PREMIO: {prizePool}
+                    </span>
+                  </div>
+                )}
               </div>
-            </RoundColumn>
 
-            <RoundColumn label={ROUND_LABELS[3]}>
-              <div className="flex flex-col justify-center relative py-12 sm:py-20 md:py-24">
-                {renderMatchNode(getMatch(3, 2), false)}
+              <div className="flex flex-col gap-2 relative">
+                {[1, 2, 3].map(gameNum => {
+                  const match = getMatch(4, gameNum);
+                  return (
+                    <div key={`final-g${gameNum}`} className="relative flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 font-mono font-bold">G{gameNum}</span>
+                      {renderMatchNode(match, false, true)}
+                    </div>
+                  );
+                })}
               </div>
-            </RoundColumn>
+            </div>
+
+            {/* RIGHT BRANCHES (Round 3 / 2 / 1 / 0) */}
+            <div className="flex gap-4 sm:gap-6 md:gap-8 lg:gap-10 flex-row-reverse">
+              {rounds.map(r => {
+                const totalMatches = Math.pow(2, Math.max(0, 4 - r - 1));
+                const halfMatches = Math.max(1, totalMatches / 2);
+
+                return (
+                  <div key={`right-r-${r}`} className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
+                      {getRoundLabel(r)}
+                    </span>
+                    <div className="flex flex-col justify-around gap-3 sm:gap-4 relative h-full">
+                      {[...Array(halfMatches)].map((_, i) => (
+                        <React.Fragment key={`match-right-${r}-${halfMatches + i + 1}`}>
+                          {renderMatchNode(getMatch(r, halfMatches + i + 1), false)}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
           </div>
-
-        </div>
-
-        {/* Scroll indicator for mobile */}
-        <div className="flex md:hidden items-center justify-center gap-2 mt-4 text-gray-600 text-[10px] font-bold uppercase tracking-wider">
-          <span>← desliza lateralmente para navegar el árbol →</span>
         </div>
       </div>
     </div>

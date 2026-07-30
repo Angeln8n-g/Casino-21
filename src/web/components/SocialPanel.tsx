@@ -10,6 +10,7 @@ import { FriendProfileModal, FriendForModal } from './FriendProfileModal';
 import { UserProfileModal } from './UserProfileModal';
 import { triggerHaptic } from '../utils/haptics';
 import { socketService } from '../services/socket';
+import { Gift, ChevronRight } from 'lucide-react';
 
 function formatRelativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
@@ -661,6 +662,31 @@ export function SocialPanel() {
   return (
     <>
       <div className="flex flex-col h-[calc(100vh-170px)] lg:h-[700px] xl:h-[780px] space-y-5 glass-panel p-3 pb-2 md:p-6 rounded-3xl border border-white/10 bg-black/40 backdrop-blur-md shadow-lg relative z-10">
+        {/* Invitar Amigo Quick Banner */}
+        <button
+          onClick={() => {
+            triggerHaptic('light');
+            window.dispatchEvent(new Event('open_referral_modal'));
+          }}
+          className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-amber-950/40 via-yellow-950/20 to-slate-900 border border-casino-gold/30 rounded-2xl hover:border-casino-gold/60 transition-all group cursor-pointer shrink-0 shadow-[0_0_15px_rgba(250,204,21,0.08)]"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-casino-gold/20 border border-casino-gold/40 flex items-center justify-center text-casino-gold group-hover:scale-110 transition-transform">
+              <Gift className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <div className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                Invitar Amigo
+                <span className="text-[9px] bg-casino-gold text-black px-1.5 py-0.5 rounded font-black">
+                  +200 PTS
+                </span>
+              </div>
+              <div className="text-[10px] text-gray-400">Gana puntos en el Championship</div>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-casino-gold group-hover:translate-x-1 transition-transform" />
+        </button>
+
         {/* ── TABS ──────────────────────────────────────────── */}
         <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 shrink-0 overflow-x-auto custom-scrollbar shadow-inner">
           <button

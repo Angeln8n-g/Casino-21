@@ -30,47 +30,57 @@ export default function RecentWinners({ winners, onOpenWinnersWall }: Props) {
         </div>
 
         {/* CARDS DE GANADORES */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
-          {winners.slice(0, 2).map((winner, idx) => (
-            <motion.div
-              key={winner.id}
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              onClick={onOpenWinnersWall}
-              className="bg-[#080e1e] border border-emerald-500/30 hover:border-emerald-500/60 rounded-3xl p-6 shadow-[0_0_30px_rgba(16,185,129,0.1)] transition-all duration-300 relative group overflow-hidden cursor-pointer"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+        {winners.length === 0 ? (
+          <div className="bg-[#080e1e] border border-emerald-500/20 rounded-3xl p-8 text-center text-gray-400 font-['Chakra_Petch'] mb-8">
+            <Trophy size={36} className="text-emerald-500/40 mx-auto mb-3" />
+            <h3 className="text-white font-bold text-base mb-1">Premios del Championship en Proceso</h3>
+            <p className="text-xs text-gray-400 max-w-md mx-auto">
+              Los primeros premios acumulados se distribuirán al finalizar el corte actual. ¡Mantente en el Top 32 para calificar y reclamar el tuyo!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+            {winners.slice(0, 2).map((winner, idx) => (
+              <motion.div
+                key={winner.id}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                onClick={onOpenWinnersWall}
+                className="bg-[#080e1e] border border-emerald-500/30 hover:border-emerald-500/60 rounded-3xl p-6 shadow-[0_0_30px_rgba(16,185,129,0.1)] transition-all duration-300 relative group overflow-hidden cursor-pointer"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
 
-              <div className="flex items-center gap-4">
-                {/* Foto avatar pixelada / retro */}
-                <div className={`w-14 h-14 rounded-2xl border ${winner.avatarBg} flex items-center justify-center font-black font-['Russo_One'] text-2xl flex-shrink-0 shadow-md`}>
-                  {winner.avatarLetter}
+                <div className="flex items-center gap-4">
+                  {/* Foto avatar pixelada / retro */}
+                  <div className={`w-14 h-14 rounded-2xl border ${winner.avatarBg} flex items-center justify-center font-black font-['Russo_One'] text-2xl flex-shrink-0 shadow-md`}>
+                    {winner.avatarLetter}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-bold text-white text-lg font-['Chakra_Petch'] truncate">{winner.name}</h3>
+                      <span className="text-xs text-gray-400">({winner.city})</span>
+                    </div>
+
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-2xl font-black font-['Russo_One'] text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]">
+                        Ganó ${winner.amountUsd} USD
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between text-xs text-gray-400 font-['Chakra_Petch'] pt-2 border-t border-white/5">
+                      <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                        Pagado por {winner.paymentMethod} hace {winner.hoursAgo} horas <CheckCircle2 size={13} className="text-emerald-400" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-bold text-white text-lg font-['Chakra_Petch'] truncate">{winner.name}</h3>
-                    <span className="text-xs text-gray-400">({winner.city})</span>
-                  </div>
-
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-2xl font-black font-['Russo_One'] text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]">
-                      Ganó ${winner.amountUsd} USD
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between text-xs text-gray-400 font-['Chakra_Petch'] pt-2 border-t border-white/5">
-                    <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-                      Pagado por {winner.paymentMethod} hace {winner.hoursAgo} horas <CheckCircle2 size={13} className="text-emerald-400" />
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* LINK AL MURO COMPLETO DE GANADORES */}
         <div className="text-center">

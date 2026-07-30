@@ -39,11 +39,66 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
   // Avatar Gallery Trigger
   const [showAvatarGallery, setShowAvatarGallery] = useState(false);
 
+  // Championship Stats
+  const [championshipData, setChampionshipData] = useState<{
+    points: number;
+    rank: number | null;
+    adsToday: number;
+    dailyCap: number;
+    isQualified: boolean;
+  } | null>(null);
+
   useEffect(() => {
     if (profile?.username) {
       setNewUsername(profile.username);
     }
   }, [profile?.username]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const userId = user.id;
+    async function fetchChampionshipStats() {
+      try {
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('id, daily_ad_cap')
+          .eq('is_championship', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (eventData) {
+          const { data: partData } = await supabase
+            .from('championship_participants')
+            .select('points, ads_today, is_qualified')
+            .eq('event_id', eventData.id)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (partData) {
+            const { count } = await supabase
+              .from('championship_participants')
+              .select('id', { count: 'exact', head: true })
+              .eq('event_id', eventData.id)
+              .gt('points', partData.points || 0);
+
+            const userRank = count !== null ? count + 1 : null;
+
+            setChampionshipData({
+              points: partData.points || 0,
+              rank: userRank,
+              adsToday: partData.ads_today || 0,
+              dailyCap: eventData.daily_ad_cap || 300,
+              isQualified: userRank ? userRank <= 32 : false,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching championship stats for profile:', err);
+      }
+    }
+    fetchChampionshipStats();
+  }, [user?.id]);
 
   const handleEditUsername = () => {
     triggerHaptic('light');
@@ -239,6 +294,46 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
                 style={{ width: `${Math.min(progress, 100)}%` }}
               >
                 <div className="absolute inset-0 bg-white/20 animate-shimmer" />
+              </div>
+            </div>
+          </div>
+
+          {/* Championship Stats Section */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-amber-950/40 via-yellow-950/20 to-black border border-casino-gold/40 p-4 rounded-2xl space-y-3 shadow-[0_0_20px_rgba(250,204,21,0.08)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-casino-gold animate-bounce" />
+                <span className="text-xs font-black text-casino-gold uppercase tracking-widest font-['Russo_One']">
+                  Kasino21 Championship
+                </span>
+              </div>
+              {championshipData?.isQualified && (
+                <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-casino-gold text-black rounded-md animate-pulse">
+                  👑 Top 32 Clasificado
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center pt-1">
+              <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
+                <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Puntos Pozo</span>
+                <span className="text-white font-black text-sm tabular-nums text-casino-gold">
+                  {championshipData ? `${championshipData.points} pts` : '0 pts'}
+                </span>
+              </div>
+
+              <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
+                <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Posición</span>
+                <span className="text-white font-black text-sm tabular-nums">
+                  {championshipData?.rank ? `#${championshipData.rank}` : 'Sin Rango'}
+                </span>
+              </div>
+
+              <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
+                <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Ads Hoy</span>
+                <span className="text-white font-black text-sm tabular-nums text-emerald-400">
+                  {championshipData ? `${championshipData.adsToday}/${championshipData.dailyCap}` : '0/300'}
+                </span>
               </div>
             </div>
           </div>

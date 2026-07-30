@@ -10,35 +10,10 @@ interface Props {
   prizePoolUsd: number;
 }
 
-export default function Top100Modal({ isOpen, onClose, leaderboard, prizePoolUsd }: Props) {
+export default function Top100Modal({ isOpen, onClose, leaderboard }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Expand top 10 to top 100 with generated mock extensions if length < 100
-  const full100List: ChampionshipLeaderboardItem[] = React.useMemo(() => {
-    const list = [...leaderboard];
-    const colors = ['#fbbf24', '#a78bfa', '#34d399', '#f472b6', '#60a5fa', '#fb923c', '#38bdf8', '#c084fc', '#facc15', '#4ade80'];
-
-    for (let i = list.length + 1; i <= 100; i++) {
-      let prize = 0;
-      if (i <= 4) prize = Math.round(prizePoolUsd * 0.10);
-      else if (i <= 8) prize = Math.round(prizePoolUsd * 0.05);
-      else if (i <= 16) prize = 15;
-      else if (i <= 32) prize = 5;
-
-      const mockName = `@Jugador${i}`;
-      list.push({
-        rank: i,
-        username: mockName,
-        points: Math.max(100, 10000 - i * 95),
-        projectedPrize: prize,
-        avatarColor: colors[i % colors.length],
-        avatarLetter: `J${i}`,
-      });
-    }
-    return list;
-  }, [leaderboard, prizePoolUsd]);
-
-  const filtered = full100List.filter((item) =>
+  const filtered = leaderboard.filter((item) =>
     item.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -67,8 +42,8 @@ export default function Top100Modal({ isOpen, onClose, leaderboard, prizePoolUsd
                   <Trophy size={20} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black font-['Russo_One'] text-white">TOP 100 CHAMPIONSHIP</h3>
-                  <p className="text-xs text-gray-400 font-['Chakra_Petch']">Los 32 primeros califican para disputar la gran final</p>
+                  <h3 className="text-xl font-black font-['Russo_One'] text-white">TOP CLASIFICATORIO CHAMPIONSHIP</h3>
+                  <p className="text-xs text-gray-400 font-['Chakra_Petch']">Los 32 primeros clasifican para disputar la gran final</p>
                 </div>
               </div>
 
@@ -86,7 +61,7 @@ export default function Top100Modal({ isOpen, onClose, leaderboard, prizePoolUsd
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Buscar usuario en el Top 100..."
+                  placeholder="Buscar usuario en el ranking..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-black/60 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500/50 font-['Chakra_Petch']"
@@ -96,50 +71,60 @@ export default function Top100Modal({ isOpen, onClose, leaderboard, prizePoolUsd
 
             {/* Table list */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
-              {filtered.map((player) => {
-                const isQualified = player.rank <= 32;
-                return (
-                  <div
-                    key={player.username}
-                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
-                      isQualified
-                        ? 'bg-yellow-500/[0.03] border-yellow-500/20 hover:border-yellow-500/40'
-                        : 'bg-white/[0.01] border-white/5 text-gray-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 text-center font-mono font-black text-sm text-yellow-400">
-                        #{player.rank}
-                      </div>
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-black text-xs select-none"
-                        style={{ backgroundColor: player.avatarColor }}
-                      >
-                        {player.avatarLetter}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-white font-['Chakra_Petch'] flex items-center gap-2">
-                          {player.username}
-                          {isQualified && (
-                            <span className="text-[9px] bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">
-                              Clasificado
-                            </span>
-                          )}
+              {filtered.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <Trophy className="w-12 h-12 mx-auto text-gray-600 mb-3" />
+                  <h4 className="text-white font-bold text-base mb-1">Aún no hay participantes en la tabla de clasificación</h4>
+                  <p className="text-gray-400 text-xs max-w-sm mx-auto font-['Chakra_Petch']">
+                    Sé el primero en unirte al juego y sumar puntos para calificar al Top 32.
+                  </p>
+                </div>
+              ) : (
+                filtered.map((player) => {
+                  const isQualified = player.rank <= 32;
+                  return (
+                    <div
+                      key={player.username}
+                      className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                        isQualified
+                          ? 'bg-yellow-500/[0.03] border-yellow-500/20 hover:border-yellow-500/40'
+                          : 'bg-white/[0.01] border-white/5 text-gray-400'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 text-center font-mono font-black text-sm text-yellow-400">
+                          #{player.rank}
+                        </div>
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-black text-xs select-none"
+                          style={{ backgroundColor: player.avatarColor }}
+                        >
+                          {player.avatarLetter}
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-white font-['Chakra_Petch'] flex items-center gap-2">
+                            {player.username}
+                            {isQualified && (
+                              <span className="text-[9px] bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">
+                                Clasificado
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="text-right">
-                      <div className="font-mono font-black text-sm text-white">{player.points.toLocaleString()} pts</div>
-                      {player.projectedPrize > 0 && (
-                        <div className="text-xs text-yellow-400 font-bold font-['Chakra_Petch']">
-                          ${player.projectedPrize} USD
-                        </div>
-                      )}
+                      <div className="text-right">
+                        <div className="font-mono font-black text-sm text-white">{player.points.toLocaleString()} pts</div>
+                        {player.projectedPrize > 0 && (
+                          <div className="text-xs text-yellow-400 font-bold font-['Chakra_Petch']">
+                            ${player.projectedPrize} USD
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </motion.div>
         </div>

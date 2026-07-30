@@ -128,6 +128,11 @@ export function TournamentView({
         >
           ← Volver a Eventos
         </button>
+        {(event.type === 'gran_pool' || event.title.includes('El Gran Pool')) && (
+          <span className="px-3 py-1 bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border border-casino-gold/50 rounded-xl text-casino-gold font-black text-xs uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_15px_rgba(250,204,21,0.15)] animate-pulse">
+            👑 Torneo Gran Pool (Top 32 Clasificados)
+          </span>
+        )}
         <span className="text-[10px] text-gray-500 font-mono">ID: {eventId.slice(0, 8)}</span>
       </div>
 

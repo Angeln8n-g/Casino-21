@@ -36,89 +36,12 @@ export interface LiveToast {
   timeAgo: string;
 }
 
-const DEFAULT_TOP_10: ChampionshipLeaderboardItem[] = [
-  { rank: 1, username: '@ElReyDelAd', points: 14230, projectedPrize: 400, avatarColor: '#fbbf24', avatarLetter: 'E' },
-  { rank: 2, username: '@LaDiosaClick', points: 13980, projectedPrize: 200, avatarColor: '#a78bfa', avatarLetter: 'L' },
-  { rank: 3, username: '@JuanBanReservas', points: 13500, projectedPrize: 100, avatarColor: '#34d399', avatarLetter: 'J' },
-  { rank: 4, username: '@MaraGana', points: 12900, projectedPrize: 100, avatarColor: '#f472b6', avatarLetter: 'M' },
-  { rank: 5, username: '@ClickMasterRD', points: 12100, projectedPrize: 50, avatarColor: '#60a5fa', avatarLetter: 'C' },
-  { rank: 6, username: '@Suerte21', points: 11800, projectedPrize: 50, avatarColor: '#fb923c', avatarLetter: 'S' },
-  { rank: 7, username: '@VeoYgano', points: 11200, projectedPrize: 50, avatarColor: '#38bdf8', avatarLetter: 'V' },
-  { rank: 8, username: '@AdKing', points: 10900, projectedPrize: 50, avatarColor: '#c084fc', avatarLetter: 'A' },
-  { rank: 9, username: '@PremioFacil', points: 10450, projectedPrize: 15, avatarColor: '#facc15', avatarLetter: 'P' },
-  { rank: 10, username: '@NuevoPower', points: 10120, projectedPrize: 15, avatarColor: '#4ade80', avatarLetter: 'N' },
-];
-
-const DEFAULT_WINNERS: WinnerProofItem[] = [
-  {
-    id: 'w1',
-    name: 'María G.',
-    city: 'Santo Domingo',
-    amountUsd: 200,
-    paymentMethod: 'Banreservas',
-    methodLogoText: 'Banreservas',
-    hoursAgo: 2,
-    txRef: 'REF-BR-98412',
-    verified: true,
-    avatarLetter: 'M',
-    avatarBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-  },
-  {
-    id: 'w2',
-    name: 'Carlos L.',
-    city: 'Santiago',
-    amountUsd: 50,
-    paymentMethod: 'PayPal',
-    methodLogoText: 'PayPal',
-    hoursAgo: 5,
-    txRef: 'PAYPAL-88129X',
-    verified: true,
-    avatarLetter: 'C',
-    avatarBg: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
-  },
-  {
-    id: 'w3',
-    name: 'Roberto K.',
-    city: 'La Vega',
-    amountUsd: 100,
-    paymentMethod: 'Banreservas',
-    methodLogoText: 'Banreservas',
-    hoursAgo: 8,
-    txRef: 'REF-BR-77103',
-    verified: true,
-    avatarLetter: 'R',
-    avatarBg: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-  },
-  {
-    id: 'w4',
-    name: 'Ana Sofia P.',
-    city: 'San Cristóbal',
-    amountUsd: 50,
-    paymentMethod: 'Binance Pay',
-    methodLogoText: 'Binance',
-    hoursAgo: 12,
-    txRef: 'BINANCE-TX-4019',
-    verified: true,
-    avatarLetter: 'A',
-    avatarBg: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
-  },
-];
-
-const RANDOM_TOAST_USERS = [
-  { user: '@LucasRD', city: 'Santo Domingo', amount: 5, method: 'PayPal' },
-  { user: '@ElenaG', city: 'Santiago', amount: 15, method: 'Banreservas' },
-  { user: '@PedroClick', city: 'San Pedro', amount: 50, method: 'PayPal' },
-  { user: '@Karla_21', city: 'La Romana', amount: 5, method: 'Binance' },
-  { user: '@DomiMaster', city: 'Puerto Plata', amount: 100, method: 'Banreservas' },
-  { user: '@GamerRD', city: 'Moca', amount: 15, method: 'PayPal' },
-];
-
 export function useChampionshipLanding() {
-  const [prizePoolUsd, setPrizePoolUsd] = useState(1247.35);
-  const [globalViews, setGlobalViews] = useState(124735);
-  const [activeLiveUsers, setActiveLiveUsers] = useState(142);
-  const [leaderboard, setLeaderboard] = useState<ChampionshipLeaderboardItem[]>(DEFAULT_TOP_10);
-  const [winners, setWinners] = useState<WinnerProofItem[]>(DEFAULT_WINNERS);
+  const [prizePoolUsd, setPrizePoolUsd] = useState(100);
+  const [globalViews, setGlobalViews] = useState(0);
+  const [activeLiveUsers, setActiveLiveUsers] = useState(1);
+  const [leaderboard, setLeaderboard] = useState<ChampionshipLeaderboardItem[]>([]);
+  const [winners, setWinners] = useState<WinnerProofItem[]>([]);
   const [activeToast, setActiveToast] = useState<LiveToast | null>(null);
 
   // Modales
@@ -127,7 +50,7 @@ export function useChampionshipLanding() {
   const [isSponsorModalOpen, setIsSponsorModalOpen] = useState(false);
 
   // Countdown timer to end of month
-  const [timeRemaining, setTimeRemaining] = useState({ days: 2, hours: 14, minutes: 32, seconds: 45 });
+  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   // Calculate projected prizes based on total pool
   const calculatePrizes = useCallback((totalPool: number, items: ChampionshipLeaderboardItem[]) => {
@@ -143,11 +66,12 @@ export function useChampionshipLanding() {
     });
   }, []);
 
-  // Fetch real database info if available
+  // Fetch real database info
   useEffect(() => {
     let mounted = true;
     async function loadDbData() {
       try {
+        // 1. Championship Event
         const { data: eventData } = await supabase
           .from('events')
           .select('current_prize_usd, global_ad_views, end_date')
@@ -157,7 +81,7 @@ export function useChampionshipLanding() {
           .maybeSingle();
 
         if (eventData && mounted) {
-          if (eventData.current_prize_usd && eventData.current_prize_usd > 100) {
+          if (eventData.current_prize_usd) {
             setPrizePoolUsd(Number(eventData.current_prize_usd));
           }
           if (eventData.global_ad_views) {
@@ -165,83 +89,75 @@ export function useChampionshipLanding() {
           }
         }
 
-        // Fetch top participants
+        // 2. Real Participants sorted by points DESC
         const { data: participants } = await supabase
           .from('championship_participants')
           .select('user_id, points, ads_watched, profiles(username)')
           .order('points', { ascending: false })
-          .limit(10);
+          .limit(100);
 
         if (participants && participants.length > 0 && mounted) {
           const colors = ['#fbbf24', '#a78bfa', '#34d399', '#f472b6', '#60a5fa', '#fb923c', '#38bdf8', '#c084fc', '#facc15', '#4ade80'];
           const mapped: ChampionshipLeaderboardItem[] = participants.map((p: any, idx: number) => {
-            const uname = p.profiles?.username ? `@${p.profiles.username}` : DEFAULT_TOP_10[idx]?.username || `@User${idx+1}`;
+            const uname = p.profiles?.username ? `@${p.profiles.username}` : `@Usuario_${idx + 1}`;
             return {
               rank: idx + 1,
               username: uname,
-              points: p.points || 10000 - idx * 500,
+              points: p.points || 0,
               projectedPrize: 0,
               avatarColor: colors[idx % colors.length],
-              avatarLetter: uname.replace('@', '').charAt(0).toUpperCase(),
+              avatarLetter: uname.replace('@', '').charAt(0).toUpperCase() || 'U',
               adsWatched: p.ads_watched || 0,
             };
           });
-          setLeaderboard(calculatePrizes(prizePoolUsd, mapped));
+          setLeaderboard(calculatePrizes(eventData?.current_prize_usd || 100, mapped));
+        } else if (mounted) {
+          setLeaderboard([]);
         }
 
-        // Fetch paid claims from database to populate real winners wall
+        // 3. Paid Claims from DB for real Winners Wall
         const { data: paidClaims } = await supabase
           .from('tournament_prize_claims')
           .select('id, amount_usd, bank_name, account_number, paid_at, profiles(username)')
           .eq('status', 'paid')
           .order('paid_at', { ascending: false })
-          .limit(10);
+          .limit(20);
 
         if (paidClaims && paidClaims.length > 0 && mounted) {
-          const cities = ['Santo Domingo', 'Santiago', 'La Vega', 'San Cristóbal', 'Puerto Plata', 'Moca'];
           const colors = ['bg-emerald-500/20 text-emerald-400 border-emerald-500/40', 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40', 'bg-amber-500/20 text-amber-400 border-amber-500/40'];
           const mappedWinners: WinnerProofItem[] = paidClaims.map((item: any, idx: number) => {
-            const uname = item.profiles?.username || `Usuario${idx+1}`;
-            const hoursAgo = item.paid_at ? Math.max(1, Math.floor((Date.now() - new Date(item.paid_at).getTime()) / 3600000)) : 2 + idx * 3;
+            const uname = item.profiles?.username ? `@${item.profiles.username}` : `Usuario_${idx + 1}`;
+            const hoursAgo = item.paid_at ? Math.max(1, Math.floor((Date.now() - new Date(item.paid_at).getTime()) / 3600000)) : 1;
             return {
               id: item.id,
               name: uname,
-              city: cities[idx % cities.length],
-              amountUsd: item.amount_usd || 50,
-              paymentMethod: item.bank_name || 'Banreservas',
-              methodLogoText: item.bank_name || 'Banreservas',
+              city: 'Verificado',
+              amountUsd: item.amount_usd || 0,
+              paymentMethod: item.bank_name || 'Transferencia',
+              methodLogoText: item.bank_name || 'Transferencia',
               hoursAgo,
               txRef: item.account_number || `REF-TX-${1000 + idx}`,
               verified: true,
-              avatarLetter: uname.charAt(0).toUpperCase(),
+              avatarLetter: uname.replace('@', '').charAt(0).toUpperCase() || 'U',
               avatarBg: colors[idx % colors.length],
             };
           });
           setWinners(mappedWinners);
+        } else if (mounted) {
+          setWinners([]);
         }
       } catch (e) {
-        // Fallback silently
+        if (mounted) {
+          setLeaderboard([]);
+          setWinners([]);
+        }
       }
     }
     loadDbData();
     return () => { mounted = false; };
-  }, [calculatePrizes, prizePoolUsd]);
-
-  // Live jackpot increments (+ $0.01 every 4s)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPrizePoolUsd((prev) => {
-        const next = Math.round((prev + 0.01) * 100) / 100;
-        setLeaderboard((prevBoard) => calculatePrizes(next, prevBoard));
-        return next;
-      });
-      setGlobalViews((prev) => prev + 1);
-    }, 4000);
-
-    return () => clearInterval(interval);
   }, [calculatePrizes]);
 
-  // Countdown timer interval
+  // Countdown timer interval to end of month
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
@@ -262,18 +178,17 @@ export function useChampionshipLanding() {
     return () => clearInterval(timer);
   }, []);
 
-  // Top 10 Points live animation jump every 10 seconds
+  // Real participant update highlight
   useEffect(() => {
+    if (leaderboard.length === 0) return;
     const pointsInterval = setInterval(() => {
       setLeaderboard((prev) => {
+        if (prev.length === 0) return prev;
         const randomIndex = Math.floor(Math.random() * Math.min(prev.length, 10));
-        const pointsBonus = Math.floor(Math.random() * 25) + 10;
-        
         return prev.map((item, idx) => {
           if (idx === randomIndex) {
             return {
               ...item,
-              points: item.points + pointsBonus,
               isJustUpdated: true,
             };
           }
@@ -281,26 +196,27 @@ export function useChampionshipLanding() {
         });
       });
 
-      // Clear point highlight after 1.5s
       setTimeout(() => {
         setLeaderboard((prev) => prev.map((item) => ({ ...item, isJustUpdated: false })));
       }, 1500);
-    }, 10000);
+    }, 12000);
 
     return () => clearInterval(pointsInterval);
-  }, []);
+  }, [leaderboard.length]);
 
-  // Live Toast Notifications every 30 seconds
+  // Live Toast Notifications from REAL winners list only (no fake names)
   useEffect(() => {
+    if (winners.length === 0) return;
+
     const triggerToast = () => {
-      const sample = RANDOM_TOAST_USERS[Math.floor(Math.random() * RANDOM_TOAST_USERS.length)];
+      const sample = winners[Math.floor(Math.random() * winners.length)];
       const newToast: LiveToast = {
         id: String(Date.now()),
-        user: sample.user,
+        user: sample.name,
         city: sample.city,
-        amount: sample.amount,
-        method: sample.method,
-        timeAgo: 'hace un momento',
+        amount: sample.amountUsd,
+        method: sample.paymentMethod,
+        timeAgo: 'recientemente',
       };
       setActiveToast(newToast);
 
@@ -310,21 +226,13 @@ export function useChampionshipLanding() {
     };
 
     const toastTimer = setTimeout(triggerToast, 5000);
-    const interval = setInterval(triggerToast, 30000);
+    const interval = setInterval(triggerToast, 35000);
 
     return () => {
       clearTimeout(toastTimer);
       clearInterval(interval);
     };
-  }, []);
-
-  // Random fluctuation for active live users
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveLiveUsers((prev) => Math.max(120, prev + Math.floor(Math.random() * 7) - 3));
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [winners]);
 
   // Calculator helper function
   const calculateProjection = useCallback((adsPerDay: number) => {

@@ -106,6 +106,55 @@ export const ChampionshipAdmin: React.FC = () => {
     }
   };
 
+  const handleGenerateGranPoolTournament = async () => {
+    if (!activeEvent?.id) {
+      setStatusMsg('⚠️ No hay un campeonato activo para vincular el torneo');
+      return;
+    }
+    if (!window.confirm('¿Confirmas generar/publicar el Torneo "El Gran Pool" para los 32 clasificados?')) return;
+    setLoading(true);
+    try {
+      const prizeFormatted = `$${currentPrize} USD`;
+      const { data: existing } = await supabase
+        .from('events')
+        .select('id')
+        .eq('title', 'El Gran Pool - Top 32 Clasificados')
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('events').update({
+          prize_pool: prizeFormatted,
+          status: 'live',
+          max_participants: 32,
+          updated_at: new Date().toISOString(),
+        }).eq('id', existing.id);
+        setStatusMsg(`Torneo "El Gran Pool" actualizado con el pozo actual (${prizeFormatted}) ✅`);
+      } else {
+        await supabase.from('events').insert({
+          title: 'El Gran Pool - Top 32 Clasificados',
+          description: 'Torneo exclusivo reservado únicamente para los 32 jugadores clasificados en el ranking de la Liga Championship. ¡El premio total acumulado se disputará en brackets eliminatorios!',
+          rules: 'Exclusivo para Top 32 Clasificados. Eliminación directa. Se juega a 1 partida por ronda.',
+          type: 'gran_pool',
+          status: 'live',
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          entry_fee: 0,
+          prize_pool: prizeFormatted,
+          min_elo: 0,
+          participants_count: 0,
+          max_participants: 32,
+          is_championship: true,
+        });
+        setStatusMsg(`Torneo "El Gran Pool" (Top 32) publicado exitosamente con pozo de ${prizeFormatted} ✅`);
+      }
+    } catch (err) {
+      console.error('Error al generar Torneo Gran Pool:', err);
+      setStatusMsg('Error al generar Torneo Gran Pool');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDisqualify = async (userId: string, username: string) => {
     if (!activeEvent?.id) return;
     const reason = window.prompt(`Ingresa el motivo de descalificación para ${username}:`, 'Actividad sospechosa de bots');
@@ -258,7 +307,7 @@ export const ChampionshipAdmin: React.FC = () => {
           <div className="space-y-6">
             <h3 className="text-xl font-black text-white uppercase tracking-widest">Control de Fases del Campeonato</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <button
                 onClick={handleFreezeLeague}
                 className="p-6 bg-blue-500/10 border border-blue-500/40 text-blue-400 rounded-2xl font-bold uppercase tracking-wider text-center hover:bg-blue-500/20 transition-all cursor-pointer"
@@ -266,6 +315,15 @@ export const ChampionshipAdmin: React.FC = () => {
                 <PlayCircle className="w-8 h-8 mx-auto mb-2" />
                 <div className="text-sm font-black">Forzar Corte (Top 32)</div>
                 <div className="text-[10px] text-gray-400 mt-1">Marca clasificados y habilita KYC</div>
+              </button>
+
+              <button
+                onClick={handleGenerateGranPoolTournament}
+                className="p-6 bg-amber-500/10 border border-casino-gold/50 text-casino-gold rounded-2xl font-bold uppercase tracking-wider text-center hover:bg-amber-500/20 transition-all cursor-pointer shadow-[0_0_15px_rgba(250,204,21,0.1)]"
+              >
+                <Flame className="w-8 h-8 mx-auto mb-2 text-casino-gold" />
+                <div className="text-sm font-black">👑 Torneo "El Gran Pool"</div>
+                <div className="text-[10px] text-yellow-200/80 mt-1">Publica el torneo exclusivo de $ USD para los 32 clasificados</div>
               </button>
 
               <button

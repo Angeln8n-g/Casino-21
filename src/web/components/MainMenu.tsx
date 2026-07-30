@@ -26,6 +26,7 @@ import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
 import { LobbyMusicSelector } from './LobbyMusicSelector';
 import { ChampionshipLobbyWidget } from './championship/ChampionshipLobbyWidget';
+import { ReferralModal } from './championship/ReferralModal';
 import mainMenuBg from '../../Public/background.webp';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
@@ -79,10 +80,17 @@ export function MainMenu() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [pendingTournamentMatch, setPendingTournamentMatch] = useState<{gameRoomId: string; eventId: string} | null>(null);
   const [pendingTournamentInvite, setPendingTournamentInvite] = useState<{roomId: string; eventTitle: string; senderName: string} | null>(null);
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const joinParamHandled = useRef(false);
   const hasRequestedStateRef = useRef(false);
 
   const showLobbyDesktop = desktopTab === 'all' || desktopTab === 'lobby';
+
+  useEffect(() => {
+    const handleOpenReferral = () => setIsReferralModalOpen(true);
+    window.addEventListener('open_referral_modal', handleOpenReferral);
+    return () => window.removeEventListener('open_referral_modal', handleOpenReferral);
+  }, []);
 
   useEffect(() => {
     updateSEO({
@@ -1417,6 +1425,11 @@ export function MainMenu() {
         </div>
       )}
       </div>
+
+      <ReferralModal
+        isOpen={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+      />
     </div>
   );
 }
