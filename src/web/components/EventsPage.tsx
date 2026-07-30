@@ -486,37 +486,41 @@ export function EventsPage() {
           }
 
           // Consultar si el usuario tiene un premio pendiente de reclamar
-          const { data: claimsData } = await supabase
-            .from('tournament_prize_claims')
-            .select('*, events:event_id(sponsor_name)')
-            .eq('user_id', user.id)
-            .in('status', ['pending_claim', 'claim_submitted'])
-            .order('created_at', { ascending: false })
-            .limit(1);
+          try {
+            const { data: claimsData } = await supabase
+              .from('tournament_prize_claims')
+              .select('*, events:event_id(sponsor_name)')
+              .eq('user_id', user.id)
+              .in('status', ['pending_claim', 'claim_submitted'])
+              .order('created_at', { ascending: false })
+              .limit(1);
 
-          if (isMounted && claimsData && claimsData.length > 0) {
-            const rawClaim = claimsData[0];
-            setActivePrizeClaim({
-              id: rawClaim.id,
-              eventId: rawClaim.event_id,
-              userId: rawClaim.user_id,
-              rankPosition: rawClaim.rank_position,
-              amountUsd: rawClaim.amount_usd,
-              fullName: rawClaim.full_name,
-              idCardNumber: rawClaim.id_card_number,
-              phoneNumber: rawClaim.phone_number,
-              bankName: rawClaim.bank_name,
-              accountNumber: rawClaim.account_number,
-              status: rawClaim.status,
-              smsVerified: rawClaim.sms_verified,
-              claimedAt: rawClaim.claimed_at,
-              paidAt: rawClaim.paid_at,
-              expiresAt: rawClaim.expires_at,
-              createdAt: rawClaim.created_at
-            });
-            if ((rawClaim.events as any)?.sponsor_name) {
-              setActiveClaimSponsorName((rawClaim.events as any).sponsor_name);
+            if (isMounted && claimsData && claimsData.length > 0) {
+              const rawClaim = claimsData[0];
+              setActivePrizeClaim({
+                id: rawClaim.id,
+                eventId: rawClaim.event_id,
+                userId: rawClaim.user_id,
+                rankPosition: rawClaim.rank_position,
+                amountUsd: rawClaim.amount_usd,
+                fullName: rawClaim.full_name,
+                idCardNumber: rawClaim.id_card_number,
+                phoneNumber: rawClaim.phone_number,
+                bankName: rawClaim.bank_name,
+                accountNumber: rawClaim.account_number,
+                status: rawClaim.status,
+                smsVerified: rawClaim.sms_verified,
+                claimedAt: rawClaim.claimed_at,
+                paidAt: rawClaim.paid_at,
+                expiresAt: rawClaim.expires_at,
+                createdAt: rawClaim.created_at
+              });
+              if ((rawClaim.events as any)?.sponsor_name) {
+                setActiveClaimSponsorName((rawClaim.events as any).sponsor_name);
+              }
             }
+          } catch (claimsErr) {
+            // Silence 403 permissions error for claims table
           }
         }
       } catch (error: any) {

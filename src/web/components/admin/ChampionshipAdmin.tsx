@@ -86,8 +86,10 @@ export const ChampionshipAdmin: React.FC = () => {
   const handleSaveConfig = async () => {
     setLoading(true);
     try {
+      const prizeFormatted = `$${currentPrize} USD`;
       if (activeEvent?.id) {
         const { error } = await supabase.from('events').update({
+          prize_pool: prizeFormatted,
           base_prize_usd: basePrize,
           current_prize_usd: currentPrize,
           max_prize_usd: maxPrize,
@@ -101,8 +103,13 @@ export const ChampionshipAdmin: React.FC = () => {
         const { data: newEv, error: insertErr } = await supabase.from('events').insert({
           title: 'KASINO21 CHAMPIONSHIP',
           description: 'Liga de 7 días con pozo acumulable en dólares.',
+          rules: 'Acumula puntos viendo anuncios y compite por el pozo en efectivo.',
           type: 'liga',
           status: 'live',
+          entry_fee: 0,
+          prize_pool: prizeFormatted,
+          min_elo: 0,
+          participants_count: 0,
           is_championship: true,
           championship_phase: 'league',
           base_prize_usd: basePrize,
@@ -172,7 +179,7 @@ export const ChampionshipAdmin: React.FC = () => {
           title: 'El Gran Pool - Top 32 Clasificados',
           description: 'Torneo exclusivo reservado únicamente para los 32 jugadores clasificados en el ranking de la Liga Championship. ¡El premio total acumulado se disputará en brackets eliminatorios!',
           rules: 'Exclusivo para Top 32 Clasificados. Eliminación directa. Se juega a 1 partida por ronda.',
-          type: 'gran_pool',
+          type: 'torneo',
           status: 'live',
           start_date: new Date().toISOString(),
           end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),

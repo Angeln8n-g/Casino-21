@@ -43,7 +43,7 @@ export function TopNavbar({
   return (
     <header className="lg:hidden shrink-0 border-b border-white/[0.04] sticky top-0 z-30">
       <div className="bg-slate-900/80 backdrop-blur-2xl px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-2">
           
           <div className="flex items-center gap-2">
             <img src={brand21Icon} alt="Kasino21 logo" className="w-10 h-10 sm:w-8 sm:h-8 rounded-lg object-cover" />

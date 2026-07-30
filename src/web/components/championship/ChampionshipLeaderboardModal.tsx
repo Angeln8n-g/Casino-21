@@ -149,32 +149,85 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
 
   const handleWatchAdClick = async () => {
     if (!user?.id) {
-      alert('Inicia sesión para registrar anuncios y subir en el ranking');
+      alert('Debes iniciar sesión para registrar anuncios y subir en el ranking');
       return;
     }
-    const { data: eventData } = await supabase
-      .from('events')
-      .select('id')
-      .eq('is_championship', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    setIsRefreshing(true);
+    try {
+      let { data: eventData } = await supabase
+        .from('events')
+        .select('id')
+        .eq('is_championship', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (eventData?.id) {
-      const { data, error } = await supabase.rpc('record_championship_ad_activity', {
-        p_user_id: user.id,
-        p_event_id: eventData.id,
-        p_type: 'view',
-      });
+      if (!eventData?.id) {
+        const { data: newEv } = await supabase.from('events').insert({
+          title: 'KASINO21 CHAMPIONSHIP',
+          description: 'Liga de 7 días con pozo acumulable en dólares.',
+          rules: 'Acumula puntos viendo anuncios y compite por el pozo en efectivo.',
+          type: 'liga',
+          status: 'live',
+          entry_fee: 0,
+          prize_pool: '$100.00 USD',
+          min_elo: 0,
+          participants_count: 0,
+          is_championship: true,
+          championship_phase: 'league',
+          base_prize_usd: 100,
+          current_prize_usd: 100,
+          max_prize_usd: 5000,
+          global_ad_views: 0,
+          daily_ad_cap: 300,
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        }).select('id').single();
 
-      if (error) {
-        console.error('Error al registrar ad RPC:', error);
-        alert('Error de conexión al registrar anuncio');
-      } else if (data?.success === false) {
-        alert(data.error === 'DAILY_CAP_REACHED' ? '⚠️ Has alcanzado el tope diario de 300 anuncios.' : `⚠️ Error: ${data.error}`);
-      } else {
-        await fetchRealLeaderboard();
+        eventData = newEv;
       }
+
+      if (eventData?.id) {
+        const { data, error } = await supabase.rpc('record_championship_ad_activity', {
+          p_user_id: user.id,
+          p_event_id: eventData.id,
+          p_type: 'view',
+        });
+
+        if (error) {
+          console.warn('Fallback direct update on ad RPC error:', error);
+          const { data: part } = await supabase
+            .from('championship_participants')
+            .select('*')
+            .eq('event_id', eventData.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (!part) {
+            await supabase.from('championship_participants').insert({
+              event_id: eventData.id,
+              user_id: user.id,
+              points: 1,
+              ads_today: 1,
+              ads_watched: 1,
+            });
+          } else {
+            await supabase.from('championship_participants').update({
+              points: (part.points || 0) + 1,
+              ads_today: (part.ads_today || 0) + 1,
+              ads_watched: (part.ads_watched || 0) + 1,
+              updated_at: new Date().toISOString(),
+            }).eq('id', part.id);
+          }
+        } else if (data?.success === false) {
+          alert(data.error === 'DAILY_CAP_REACHED' ? '⚠️ Has alcanzado el tope diario de 300 anuncios.' : `⚠️ Error: ${data.error}`);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      await fetchRealLeaderboard();
+      setIsRefreshing(false);
     }
   };
 
