@@ -22,9 +22,7 @@ import {
   MatchCompletedScreen,
   MatchAbandonedScreen,
   AbandonConfirmModal,
-  DragActionModal,
 } from './game';
-import type { DragModalData } from './game';
 import { getTheme, BoardTheme } from '../themes/themeRegistry';
 import { triggerHaptic } from '../utils/haptics';
 import { GameChat } from './GameChat';
@@ -86,7 +84,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
-  const [dragModalData, setDragModalData] = useState<DragModalData | null>(null);
 
   // Local turn timer (counts down from 30s, resets on turn change)
   const [localTimeRemaining, setLocalTimeRemaining] = useState(TURN_TIME_LIMIT_MS);
@@ -517,8 +514,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
       return;
     }
     
-    // Validar que sea el turno del jugador antes de permitir soltar la carta
-    // (Ya validado arriba, pero por seguridad)
     if (gameState.players[gameState.currentTurnPlayerIndex]?.id !== localPlayerId) {
       playSfx('error', { volumeMultiplier: 0.45 });
       return;
@@ -530,47 +525,19 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const targetType = over.data.current?.type;
     const targetId = over.id.toString().replace('board-card-', '').replace('formation-', '');
 
-    const validator = new DefaultActionValidator();
-    const possibleActions: ActionPayload[] = [];
-    const playerId = localPlayerId;
+    // Feedback táctil y sonido al soltar carta
+    triggerHaptic('card_tap');
+    playSfx('cardPlay', { volumeMultiplier: 0.5, playbackRate: 1.1 });
 
-    const testAction = (actionPayload: ActionPayload) => {
-      const fullAction = { ...actionPayload, playerId, cardId: handCard.id } as Action;
-      const result = validator.validate(gameState, fullAction);
-      if (result.isValid) {
-        possibleActions.push(actionPayload);
-      }
-    };
-
-    // Auto-include currently selected cards/formations on the board
-    const boardCardIds = Array.from(selectedBoardCardIds);
-    const formationIds = Array.from(selectedFormationIds);
+    // Seleccionar automáticamente la carta de la mano para activar el ActionPanel inferior
+    setSelectedHandCardId(handCard.id);
 
     if (targetType === 'boardCard') {
-      const finalBoardCardIds = Array.from(new Set([...boardCardIds, targetId]));
-      testAction({ type: 'llevar', boardCardIds: finalBoardCardIds, formationIds });
-      testAction({ type: 'formar', boardCardIds: finalBoardCardIds });
-      testAction({ type: 'formarPar', boardCardIds: finalBoardCardIds });
-      // Also test if it's just a cantar action over a card (unlikely, but we have action panel for cantar)
+      setSelectedBoardCardIds(prev => new Set([...prev, targetId]));
     } else if (targetType === 'formation') {
-      const finalFormationIds = Array.from(new Set([...formationIds, targetId]));
-      testAction({ type: 'llevar', boardCardIds, formationIds: finalFormationIds });
-      testAction({ type: 'formarPar', formationId: targetId });
-      testAction({ type: 'aumentarFormacion', formationId: targetId });
+      setSelectedFormationIds(new Set([targetId]));
     } else if (targetType === 'board') {
-      testAction({ type: 'colocar' });
-      testAction({ type: 'cantar' }); // Allow cantar by dropping on the board
-    }
-
-    if (possibleActions.length > 0) {
-      setDragModalData({
-        handCard,
-        targetId,
-        targetType,
-        validActions: possibleActions
-      });
-    } else {
-      playSfx('error', { volumeMultiplier: 0.5 });
+      // Si se suelta en espacio libre del tablero, mantener seleccionada para acción Colocar
     }
   };
 
@@ -1191,21 +1158,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </DragOverlay>
         )}
 
-        {/* Drag Action Modal */}
-        {dragModalData && (
-          <DragActionModal
-            data={dragModalData}
-            playerId={currentPlayer.id}
-            onSelect={(action) => {
-              playCard(action);
-              setDragModalData(null);
-              setSelectedBoardCardIds(new Set());
-              setSelectedFormationIds(new Set());
-            }}
-            onCancel={() => setDragModalData(null)}
-          />
-        )}
-        
         {!isMockMobile && (
           <GameChat roomId={roomId} isSpectator={isSpectator} />
         )}
