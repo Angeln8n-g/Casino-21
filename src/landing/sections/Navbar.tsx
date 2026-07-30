@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 const NAV_LINKS = [
-  { href: '#como-jugar', label: 'CÓMO JUGAR' },
-  { href: '#torneos', label: 'TORNEOS' },
-  { href: '#rankings', label: 'RANKINGS' },
-  { href: '#blog', label: 'BLOG' },
-  { href: '#faq', label: 'FAQ' },
-  { href: '#contacto', label: 'CONTACTO' },
+  { href: '#como-funciona', label: 'CÓMO JUGAR' },
+  { href: '#leaderboard-section', label: 'RANKINGS' },
+  { href: '#ganadores-section', label: 'GANADORES' },
+  { href: '#marcas-section', label: 'PATROCINIOS' },
+  { href: '/blog', label: 'BLOG' },
+  { href: '/faq', label: 'FAQ' },
 ];
 
 export default function Navbar() {
@@ -20,7 +20,7 @@ export default function Navbar() {
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="fixed top-4 left-4 right-4 z-50 max-w-6xl mx-auto bg-black/45 backdrop-blur-2xl border border-yellow-500/10 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+      className="fixed top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-50 max-w-6xl mx-auto bg-[#030712]/92 backdrop-blur-xl border border-yellow-500/25 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.95)]"
     >
       <div className="px-5 py-3.5 flex items-center justify-between">
         {/* Logo */}

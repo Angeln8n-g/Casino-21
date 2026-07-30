@@ -9,6 +9,17 @@ interface GameChatProps {
   inline?: boolean;
 }
 
+const isMediaUrl = (text: string): boolean => {
+  if (!text) return false;
+  const str = text.trim();
+  return (
+    str.startsWith('http://') ||
+    str.startsWith('https://') ||
+    str.includes('/storage/v1/object/public/') ||
+    /\.(gif|webp|png|jpg|jpeg)$/i.test(str)
+  );
+};
+
 export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = false }: GameChatProps) {
   const { chatMessages, sendMessage, localPlayerId } = useGame();
   const [isOpen, setIsOpen] = useState(isOpenForce || false);
@@ -46,7 +57,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
     setHasNewBelow(false);
   };
 
-  // Auto-scroll al final cuando llegan mensajes nuevos (solo si el usuario está cerca del fondo)
+  // Auto-scroll al final cuando llegan mensajes nuevos
   useEffect(() => {
     if (!isOpen) return;
     const currentCount = chatMessages.length;
@@ -56,7 +67,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
     if (isNearBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     } else {
-      setHasNewBelow(true);
+      setHasNewBelow(false);
     }
   }, [chatMessages, isOpen, activeTab]);
 
@@ -84,11 +95,35 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
   // Filtrar mensajes según la pestaña
   const visibleMessages = chatMessages.filter(msg => {
     if (activeTab === 'global') {
-      return !msg.isSpectator; // Solo mensajes de jugadores
+      return !msg.isSpectator;
     } else {
-      return msg.isSpectator; // Solo mensajes de espectadores
+      return msg.isSpectator;
     }
   });
+
+  const renderMessageContent = (text: string, isMe: boolean) => {
+    if (isMediaUrl(text)) {
+      return (
+        <div className="p-1 rounded-xl bg-black/40 border border-white/10 overflow-hidden my-0.5 shadow-md">
+          <img 
+            src={text} 
+            alt="Animación de chat" 
+            className="max-w-[110px] max-h-[110px] sm:max-w-[130px] sm:max-h-[130px] object-contain rounded-lg drop-shadow-md"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className={`px-3 py-1.5 rounded-xl text-sm ${
+        isMe 
+          ? 'bg-casino-gold/20 border border-casino-gold/30 text-white rounded-tr-sm' 
+          : 'bg-white/10 border border-white/5 text-gray-200 rounded-tl-sm'
+      }`}>
+        {text}
+      </div>
+    );
+  };
 
   if (inline) {
     return (
@@ -145,13 +180,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
                   <span className={`text-[9px] font-bold mb-0.5 ${msg.isSpectator ? 'text-blue-400' : 'text-casino-gold'}`}>
                     {msg.senderName} {msg.isSpectator && '(Espectador)'}
                   </span>
-                  <div className={`px-3 py-1.5 rounded-xl text-sm ${
-                    isMe 
-                      ? 'bg-casino-gold/20 border border-casino-gold/30 text-white rounded-tr-sm' 
-                      : 'bg-white/10 border border-white/5 text-gray-200 rounded-tl-sm'
-                  }`}>
-                    {msg.text}
-                  </div>
+                  {renderMessageContent(msg.text, isMe)}
                 </div>
               );
             })
@@ -195,7 +224,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="absolute bottom-6 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-black/60 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/10 hover:scale-110 transition-all z-50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+          className="absolute bottom-6 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-black/60 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/10 hover:scale-110 transition-all z-50 shadow-[0_0_15px_rgba(0,0,0,0.5)] cursor-pointer"
         >
           <MessageSquare size={24} />
           {unreadCount > 0 && (
@@ -217,7 +246,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
             </h3>
             <button 
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-white transition-colors p-1"
+              className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -267,13 +296,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
                     <span className={`text-[9px] font-bold mb-0.5 ${msg.isSpectator ? 'text-blue-400' : 'text-casino-gold'}`}>
                       {msg.senderName} {msg.isSpectator && '(Espectador)'}
                     </span>
-                    <div className={`px-3 py-1.5 rounded-xl text-sm ${
-                      isMe 
-                        ? 'bg-casino-gold/20 border border-casino-gold/30 text-white rounded-tr-sm' 
-                        : 'bg-white/10 border border-white/5 text-gray-200 rounded-tl-sm'
-                    }`}>
-                      {msg.text}
-                    </div>
+                    {renderMessageContent(msg.text, isMe)}
                   </div>
                 );
               })
@@ -283,7 +306,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
           {hasNewBelow && !isNearBottom && (
             <button
               onClick={scrollToBottom}
-              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce"
+              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce cursor-pointer"
             >
               ↓ Nuevos mensajes
             </button>
@@ -302,7 +325,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
             <button 
               type="submit"
               disabled={!inputText.trim() || (isSpectator && activeTab === 'global')}
-              className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
             >
               <Send size={14} />
             </button>

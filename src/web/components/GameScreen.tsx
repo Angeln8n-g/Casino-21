@@ -387,8 +387,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
     for (const msg of newMessages) {
       const text = (msg.text || '').trim();
-      const isUrl = text.startsWith('http') || text.includes('/storage/v1/object/public/');
-      if (!quickEmojis.includes(text) && !isUrl) continue;
+      if (!text) continue;
 
       setActiveReactions((prev) => ({
         ...prev,
@@ -399,23 +398,19 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           isSpectator: !!msg.isSpectator 
         },
       }));
-      
-      playSfx('emoteIn');
 
-      const prevTimer = reactionTimersRef.current[msg.senderId];
-      if (prevTimer) clearTimeout(prevTimer);
-
+      if (reactionTimersRef.current[msg.senderId]) {
+        clearTimeout(reactionTimersRef.current[msg.senderId]);
+      }
       reactionTimersRef.current[msg.senderId] = setTimeout(() => {
-        playSfx('emoteOut');
         setActiveReactions((prev) => {
-          if (!prev[msg.senderId]) return prev;
           const next = { ...prev };
           delete next[msg.senderId];
           return next;
         });
-      }, 3000);
+      }, 4000);
     }
-  }, [chatMessages, quickEmojis, playSfx]);
+  }, [chatMessages]);
 
   if (!gameState) return null;
 
@@ -1024,16 +1019,18 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                       )}
                     </span>
                     
-                    {/* Emote */}
-                    <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center -ml-1">
-                      {reaction.emoji.startsWith('http') || reaction.emoji.includes('/storage/v1/object/public/') ? (
-                        <img 
-                          src={reaction.emoji} 
-                          alt="emote" 
-                          className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)] animate-pulse" 
-                        />
+                    {/* Emote / Text / Animation */}
+                    <div className="flex items-center justify-center">
+                      {typeof reaction.emoji === 'string' && (reaction.emoji.startsWith('http') || reaction.emoji.includes('/storage/v1/object/public/') || /\.(gif|webp|png|jpg|jpeg)$/i.test(reaction.emoji)) ? (
+                        <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center -ml-1">
+                          <img 
+                            src={reaction.emoji} 
+                            alt="emote" 
+                            className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.6)] animate-pulse" 
+                          />
+                        </div>
                       ) : (
-                        <span className="text-4xl md:text-5xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-pulse">
+                        <span className="bg-black/70 text-white font-bold text-xs md:text-sm px-3.5 py-1.5 rounded-2xl border border-white/20 shadow-lg max-w-[160px] md:max-w-[220px] truncate leading-normal ml-1">
                           {reaction.emoji}
                         </span>
                       )}

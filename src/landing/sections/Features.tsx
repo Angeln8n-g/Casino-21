@@ -101,7 +101,10 @@ export default function Features() {
                 className="bg-white/[0.015] border border-white/[0.06] rounded-2xl p-6 transition-all duration-300 group cursor-default"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${f.color} text-black font-black shadow-[0_0_15px_${f.glow}]`}>
+                  <div 
+                    className={`p-3 rounded-xl bg-gradient-to-br ${f.color} text-black font-black`}
+                    style={{ boxShadow: `0 0 15px ${f.glow}` }}
+                  >
                     <Icon size={20} strokeWidth={2.5} />
                   </div>
                   <span className="text-[10px] font-black font-['Russo_One'] text-white/[0.04] group-hover:text-white/[0.08] transition-colors select-none">

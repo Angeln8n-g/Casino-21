@@ -67,7 +67,7 @@ export function AuthScreen() {
         if (username.trim().length < 3) throw new Error('El nombre debe tener al menos 3 caracteres');
         if (!acceptedTerms) throw new Error('Debes aceptar los Términos de Servicio para registrarte');
         
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -78,6 +78,32 @@ export function AuthScreen() {
           }
         });
         if (error) throw error;
+
+        // Registrar referido si existe el parametro ?ref= en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const refUser = urlParams.get('ref');
+        if (refUser && signUpData?.user?.id) {
+          try {
+            const { data: activeEv } = await supabase
+              .from('events')
+              .select('id')
+              .eq('is_championship', true)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (activeEv) {
+              await supabase.rpc('register_championship_referral', {
+                p_event_id: activeEv.id,
+                p_referrer_username: refUser,
+                p_referred_id: signUpData.user.id,
+              });
+            }
+          } catch (refErr) {
+            // Silently ignore if referrer not found
+          }
+        }
+
         setSuccessMsg('¡Registro exitoso! Revisa tu correo para verificar tu cuenta (si aplica).');
       }
     } catch (err: any) {
