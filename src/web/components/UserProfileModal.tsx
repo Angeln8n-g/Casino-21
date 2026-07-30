@@ -350,6 +350,34 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
                 </span>
               </div>
             </div>
+
+            <button
+              onClick={async () => {
+                if (!user?.id) return;
+                const { data: eventData } = await supabase
+                  .from('events')
+                  .select('id')
+                  .eq('is_championship', true)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (eventData?.id) {
+                  const { data } = await supabase.rpc('record_championship_ad_activity', {
+                    p_user_id: user.id,
+                    p_event_id: eventData.id,
+                    p_type: 'view',
+                  });
+
+                  if (data?.success === false) {
+                    alert(data.error === 'DAILY_CAP_REACHED' ? '⚠️ Has alcanzado el tope diario de 300 anuncios.' : `⚠️ Error: ${data.error}`);
+                  }
+                }
+              }}
+              className="w-full py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/40 hover:to-yellow-500/40 border border-casino-gold/40 rounded-xl text-casino-gold font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+            >
+              <span>🎬 Sumar Anuncio (+1 Pt & Pozo)</span>
+            </button>
           </div>
 
           {/* Quick Stats Grid */}

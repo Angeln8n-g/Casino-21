@@ -160,7 +160,7 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
 
             {/* Unique Link Box & Actions */}
             <div className="bg-black/60 border border-purple-500/30 rounded-2xl p-4 mb-6">
-              <label className="block text-xs font-bold text-purple-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <label className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Sparkles size={14} className="text-purple-400" /> Tu Link de Invitación Único:
               </label>
 

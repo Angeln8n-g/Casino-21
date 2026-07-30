@@ -48,6 +48,23 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
         setDailyCap(eventData.daily_ad_cap);
       }
 
+      if (eventId && user?.id) {
+        const { data: existingPart } = await supabase
+          .from('championship_participants')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!existingPart) {
+          await supabase
+            .from('championship_participants')
+            .insert({ event_id: eventId, user_id: user.id })
+            .select('id')
+            .maybeSingle();
+        }
+      }
+
       if (eventId) {
         // 2. Query real participants sorted by points DESC
         const { data: partData } = await supabase
@@ -128,6 +145,37 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWatchAdClick = async () => {
+    if (!user?.id) {
+      alert('Inicia sesión para registrar anuncios y subir en el ranking');
+      return;
+    }
+    const { data: eventData } = await supabase
+      .from('events')
+      .select('id')
+      .eq('is_championship', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (eventData?.id) {
+      const { data, error } = await supabase.rpc('record_championship_ad_activity', {
+        p_user_id: user.id,
+        p_event_id: eventData.id,
+        p_type: 'view',
+      });
+
+      if (error) {
+        console.error('Error al registrar ad RPC:', error);
+        alert('Error de conexión al registrar anuncio');
+      } else if (data?.success === false) {
+        alert(data.error === 'DAILY_CAP_REACHED' ? '⚠️ Has alcanzado el tope diario de 300 anuncios.' : `⚠️ Error: ${data.error}`);
+      } else {
+        await fetchRealLeaderboard();
+      }
+    }
   };
 
   const filteredParticipants = participants.filter((p) =>
@@ -213,6 +261,13 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
                 </button>
               </div>
             </div>
+            <button
+              onClick={handleWatchAdClick}
+              className="px-3 py-2 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-black font-black text-xs uppercase tracking-wider rounded-xl hover:brightness-110 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(250,204,21,0.2)] cursor-pointer shrink-0"
+              title="Registrar anuncio para sumar vistas y puntos al Championship"
+            >
+              <span>🎬 Ver Ad (+1 Pt)</span>
+            </button>
             <button 
               onClick={fetchRealLeaderboard}
               disabled={isRefreshing}

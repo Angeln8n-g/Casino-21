@@ -52,21 +52,7 @@ export function TopNavbar({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => {
-                triggerHaptic('light');
-                window.dispatchEvent(new Event('open_referral_modal'));
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-500/20 hover:from-amber-500/30 hover:to-amber-500/30 border border-casino-gold/40 rounded-xl text-casino-gold font-bold text-xs uppercase tracking-wider transition-all duration-300 shadow-[0_0_10px_rgba(250,204,21,0.15)] group cursor-pointer"
-              title="Invitar Amigo y ganar +200 puntos"
-            >
-              <Gift className="w-3.5 h-3.5 text-casino-gold group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Invitar</span>
-              <span className="text-[9px] bg-casino-gold text-black font-black px-1.5 py-0.5 rounded-md shadow-sm">
-                +200 pts
-              </span>
-            </button>
+          
             <AudioControlButton />
             <ProfileHeader
               compact
@@ -79,9 +65,7 @@ export function TopNavbar({
               onDeleteNotification={onDeleteNotification}
             />
           </div>
-
         </div>
-      </div>
     </header>
   );
 }
