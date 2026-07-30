@@ -104,6 +104,20 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
 
   useEffect(() => {
     fetchRealLeaderboard();
+
+    const channel = supabase
+      .channel(`championship_leaderboard_${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        fetchRealLeaderboard();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'championship_participants' }, () => {
+        fetchRealLeaderboard();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const userRefCode = user?.user_metadata?.username || user?.email?.split('@')[0] || 'usuario';

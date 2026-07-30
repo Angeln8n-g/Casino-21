@@ -67,25 +67,63 @@ export const ChampionshipAdmin: React.FC = () => {
 
   useEffect(() => {
     loadChampionshipData();
+
+    const channel = supabase
+      .channel(`championship_admin_${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        loadChampionshipData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'championship_participants' }, () => {
+        loadChampionshipData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSaveConfig = async () => {
-    if (!activeEvent?.id) return;
     setLoading(true);
     try {
-      await supabase.from('events').update({
-        base_prize_usd: basePrize,
-        current_prize_usd: currentPrize,
-        max_prize_usd: maxPrize,
-        global_ad_views: globalViews,
-        daily_ad_cap: dailyCap,
-        updated_at: new Date().toISOString(),
-      }).eq('id', activeEvent.id);
+      if (activeEvent?.id) {
+        const { error } = await supabase.from('events').update({
+          base_prize_usd: basePrize,
+          current_prize_usd: currentPrize,
+          max_prize_usd: maxPrize,
+          global_ad_views: globalViews,
+          daily_ad_cap: dailyCap,
+          updated_at: new Date().toISOString(),
+        }).eq('id', activeEvent.id);
+
+        if (error) throw error;
+      } else {
+        const { data: newEv, error: insertErr } = await supabase.from('events').insert({
+          title: 'KASINO21 CHAMPIONSHIP',
+          description: 'Liga de 7 días con pozo acumulable en dólares.',
+          type: 'liga',
+          status: 'live',
+          is_championship: true,
+          championship_phase: 'league',
+          base_prize_usd: basePrize,
+          current_prize_usd: currentPrize,
+          max_prize_usd: maxPrize,
+          global_ad_views: globalViews,
+          daily_ad_cap: dailyCap,
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        }).select().single();
+
+        if (insertErr) throw insertErr;
+        if (newEv) setActiveEvent(newEv);
+      }
 
       setStatusMsg('Configuración guardada exitosamente ✅');
       setTimeout(() => setStatusMsg(null), 3000);
-    } catch (err) {
-      setStatusMsg('Error al guardar configuración');
+      await loadChampionshipData();
+    } catch (err: any) {
+      console.error('Error al guardar configuración:', err);
+      setStatusMsg(`Error al guardar: ${err.message || 'Error de conexión'}`);
     } finally {
       setLoading(false);
     }

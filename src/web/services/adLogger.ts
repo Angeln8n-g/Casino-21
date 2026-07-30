@@ -47,6 +47,26 @@ export async function logAdEventToDb(
     if (error) {
       console.warn('Could not persist ad log to database:', error.message);
     }
+
+    // 4. If logged-in user and valid view/click, record championship ad activity
+    if (userId && (eventType === 'impression' || eventType === 'complete' || eventType === 'click')) {
+      const { data: championshipEvent } = await supabase
+        .from('events')
+        .select('id')
+        .eq('is_championship', true)
+        .eq('championship_phase', 'league')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (championshipEvent?.id) {
+        await supabase.rpc('record_championship_ad_activity', {
+          p_user_id: userId,
+          p_event_id: championshipEvent.id,
+          p_type: eventType === 'click' ? 'click' : 'view',
+        });
+      }
+    }
   } catch (err) {
     console.error('Error logging ad event to database:', err);
   }

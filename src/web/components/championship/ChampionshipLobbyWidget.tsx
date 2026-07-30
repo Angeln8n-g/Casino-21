@@ -57,7 +57,21 @@ export const ChampionshipLobbyWidget: React.FC = () => {
     }
 
     loadWidgetData();
-    return () => { mounted = false; };
+
+    const channel = supabase
+      .channel(`championship_widget_${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        if (mounted) loadWidgetData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'championship_participants' }, () => {
+        if (mounted) loadWidgetData();
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const viewsProgress = globalViews % targetViews;

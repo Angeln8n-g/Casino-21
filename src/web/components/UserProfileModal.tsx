@@ -98,6 +98,20 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
       }
     }
     fetchChampionshipStats();
+
+    const channel = supabase
+      .channel(`profile_championship_${Date.now()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        fetchChampionshipStats();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'championship_participants' }, () => {
+        fetchChampionshipStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const handleEditUsername = () => {
