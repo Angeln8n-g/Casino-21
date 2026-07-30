@@ -481,7 +481,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     setSelectedHandCardId(null);
     setSelectedBoardCardIds(new Set());
     setSelectedFormationIds(new Set());
-    setDragModalData(null);
     clearError();
   };
 
