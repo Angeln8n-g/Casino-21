@@ -1,104 +1,209 @@
-import React, { useState } from 'react';
-import { X, Search, Copy, CheckCircle2, Trophy, Users, Star, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Search, Copy, CheckCircle2, Trophy, Users, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../services/supabase';
+import { useAuth } from '../../hooks/useAuth';
+
+export interface ParticipantItem {
+  rank: number;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  points: number;
+  ads_today: number;
+  ads_watched: number;
+  referrals_count: number;
+  is_current_user: boolean;
+}
 
 export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [copied, setCopied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const mockData = Array.from({ length: 50 }).map((_, i) => ({
-    rank: i + 1,
-    username: `Player_${i + 1}`,
-    points: 15000 - i * 100,
-    adsToday: Math.floor(Math.random() * 300),
-    clicks: Math.floor(Math.random() * 50),
-    referrals: Math.floor(Math.random() * 10),
-    isCurrentUser: i === 46 // #47
-  }));
+  // Real DB state
+  const [participants, setParticipants] = useState<ParticipantItem[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [userAdsToday, setUserAdsToday] = useState<number>(0);
+  const [dailyCap, setDailyCap] = useState<number>(300);
+
+  const fetchRealLeaderboard = async () => {
+    setIsRefreshing(true);
+    setLoading(true);
+    try {
+      // 1. Get active championship event
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('id, daily_ad_cap')
+        .eq('is_championship', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const eventId = eventData?.id;
+      if (eventData?.daily_ad_cap) {
+        setDailyCap(eventData.daily_ad_cap);
+      }
+
+      if (eventId) {
+        // 2. Query real participants sorted by points DESC
+        const { data: partData } = await supabase
+          .from('championship_participants')
+          .select('*, profiles(username, avatar_url)')
+          .eq('event_id', eventId)
+          .order('points', { ascending: false });
+
+        if (partData && partData.length > 0) {
+          setTotalCount(partData.length);
+          let foundUserRank: number | null = null;
+          let foundUserAdsToday = 0;
+
+          const mapped: ParticipantItem[] = partData.map((item: any, idx: number) => {
+            const isMe = user?.id === item.user_id;
+            if (isMe) {
+              foundUserRank = idx + 1;
+              foundUserAdsToday = item.ads_today || 0;
+            }
+            return {
+              rank: idx + 1,
+              user_id: item.user_id,
+              username: item.profiles?.username ? `@${item.profiles.username}` : `Usuario_${idx + 1}`,
+              avatar_url: item.profiles?.avatar_url || null,
+              points: item.points || 0,
+              ads_today: item.ads_today || 0,
+              ads_watched: item.ads_watched || 0,
+              referrals_count: item.referrals_count || 0,
+              is_current_user: isMe,
+            };
+          });
+
+          setParticipants(mapped);
+          setUserRank(foundUserRank);
+          setUserAdsToday(foundUserAdsToday);
+        } else {
+          setParticipants([]);
+          setTotalCount(0);
+          setUserRank(null);
+          setUserAdsToday(0);
+        }
+      } else {
+        setParticipants([]);
+        setTotalCount(0);
+        setUserRank(null);
+      }
+    } catch (err) {
+      console.error('Error al cargar ranking de Supabase:', err);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealLeaderboard();
+  }, [user?.id]);
+
+  const userRefCode = user?.user_metadata?.username || user?.email?.split('@')[0] || 'usuario';
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://kasino21.com';
+  const referralLink = `${originUrl}/login?ref=${userRefCode}`;
 
   const handleCopyRef = () => {
-    navigator.clipboard.writeText('https://kasino21.com/ref/user123');
+    navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
-  };
+  const filteredParticipants = participants.filter((p) =>
+    p.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1000] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 pt-16 sm:pt-20 pb-6 font-['Chakra_Petch']">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full max-w-5xl bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+        className="w-full max-w-5xl bg-[#090e1f] border-2 border-yellow-500/30 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[85vh] relative"
       >
         {/* Header */}
-        <div className="relative p-6 bg-gradient-to-br from-slate-800 to-slate-950 border-b border-white/10">
-          <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/50 hover:text-white transition-colors">
+        <div className="relative p-5 sm:p-6 bg-gradient-to-r from-slate-950 via-[#0d142b] to-slate-950 border-b border-white/10 flex-shrink-0">
+          <button 
+            onClick={onClose} 
+            className="absolute top-4 right-4 z-20 p-2.5 bg-black/60 hover:bg-black/80 rounded-full text-white/70 hover:text-yellow-400 border border-white/20 transition-all cursor-pointer shadow-lg"
+            title="Cerrar Ranking"
+          >
             <X className="w-5 h-5" />
           </button>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pr-12">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-casino-gold to-yellow-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(251,191,36,0.3)]">
-                <Trophy className="w-8 h-8 text-slate-950" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-casino-gold via-amber-400 to-yellow-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(251,191,36,0.3)] flex-shrink-0">
+                <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-slate-950" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-widest">Leaderboard</h2>
-                <p className="text-sm text-casino-gold uppercase tracking-wider font-bold">Top 1000 Clasificatorio</p>
+                <h2 className="text-xl sm:text-2xl font-black text-white font-['Russo_One'] uppercase tracking-widest">RANKING DE JUGADORES</h2>
+                <p className="text-xs sm:text-sm text-casino-gold uppercase tracking-wider font-bold">Top Clasificatorio Championship</p>
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <div className="bg-black/40 border border-white/10 rounded-xl p-3 flex flex-col items-center justify-center min-w-[100px]">
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Participantes</span>
-                <span className="text-lg font-black text-white">4,281</span>
+            <div className="flex gap-3">
+              <div className="bg-black/50 border border-white/10 rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-[90px] sm:min-w-[100px]">
+                <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Participantes</span>
+                <span className="text-base sm:text-lg font-black text-white font-mono">{totalCount.toLocaleString()}</span>
               </div>
-              <div className="bg-black/40 border border-white/10 rounded-xl p-3 flex flex-col items-center justify-center min-w-[100px]">
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Tu Rank</span>
-                <span className="text-lg font-black text-casino-gold">#47</span>
+              <div className="bg-black/50 border border-yellow-500/30 rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-[90px] sm:min-w-[100px]">
+                <span className="text-[9px] text-yellow-400/90 uppercase tracking-widest font-bold">Tu Rank</span>
+                <span className="text-base sm:text-lg font-black text-casino-gold font-mono">
+                  {userRank ? `#${userRank}` : 'Sin Clasificar'}
+                </span>
               </div>
-              <div className="bg-black/40 border border-white/10 rounded-xl p-3 flex flex-col items-center justify-center min-w-[100px]">
-                <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Ads Hoy</span>
-                <span className="text-lg font-black text-white">142<span className="text-xs text-gray-500">/300</span></span>
+              <div className="bg-black/50 border border-white/10 rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-[90px] sm:min-w-[100px]">
+                <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Ads Hoy</span>
+                <span className="text-base sm:text-lg font-black text-white font-mono">
+                  {userAdsToday}<span className="text-xs text-gray-500">/{dailyCap}</span>
+                </span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Toolbar & Referral */}
-        <div className="p-4 bg-slate-800/50 border-b border-white/5 flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="p-3.5 sm:p-4 bg-slate-950/80 border-b border-white/5 flex flex-col sm:flex-row gap-3 justify-between items-center flex-shrink-0">
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Buscar jugador..."
+              placeholder="Buscar por usuario..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:border-casino-gold outline-none transition-colors"
+              className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:border-casino-gold outline-none transition-colors"
             />
           </div>
 
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-            <div className="flex-1 sm:flex-none flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl p-1.5 pl-3">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider hidden sm:inline">Invita: +200 pts</span>
-              <div className="flex gap-1">
-                <code className="text-xs text-casino-gold font-mono bg-black/40 px-2 py-1 rounded-lg">.../ref/user123</code>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex-1 sm:flex-none flex items-center gap-2 bg-purple-950/30 border border-purple-500/30 rounded-xl p-1.5 pl-3">
+              <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider hidden sm:inline">Invita: +200 pts</span>
+              <div className="flex gap-1 items-center">
+                <code className="text-[11px] text-purple-200 font-mono bg-black/60 px-2 py-1 rounded-lg truncate max-w-[140px]">
+                  {referralLink}
+                </code>
                 <button 
                   onClick={handleCopyRef}
-                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                  className="p-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-white transition-colors cursor-pointer"
+                  title="Copiar mi enlace"
                 >
                   {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             </div>
             <button 
-              onClick={handleRefresh}
-              className={`p-2 bg-black/40 border border-white/10 rounded-xl hover:bg-white/10 transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
+              onClick={fetchRealLeaderboard}
+              disabled={isRefreshing}
+              className={`p-2.5 bg-black/50 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer ${isRefreshing ? 'animate-spin' : ''}`}
+              title="Actualizar ranking"
             >
               <RefreshCw className="w-4 h-4 text-white" />
             </button>
@@ -106,58 +211,86 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-auto bg-slate-900 p-0">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="sticky top-0 bg-slate-950/90 backdrop-blur-md z-10">
-              <tr>
-                <th className="px-6 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Rank</th>
-                <th className="px-6 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest">Jugador</th>
-                <th className="px-6 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest text-right">Puntos</th>
-                <th className="px-6 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest text-right">Ads Hoy</th>
-                <th className="px-6 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest text-right">Clicks</th>
-                <th className="px-6 py-4 font-black text-[10px] text-gray-400 uppercase tracking-widest text-right">Referidos</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {mockData.map((row) => (
-                <React.Fragment key={row.rank}>
-                  {row.rank === 33 && (
-                    <tr>
-                      <td colSpan={6} className="p-0 relative">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-full h-px bg-red-500/50"></div>
-                          <span className="absolute px-3 py-1 bg-red-950 text-red-400 text-[10px] font-black uppercase tracking-widest border border-red-500/50 rounded-full">
-                            Línea de Corte (Top 32)
+        <div className="flex-1 overflow-y-auto bg-[#060a17] p-0 custom-scrollbar">
+          {loading ? (
+            <div className="text-center py-16 text-gray-400 text-xs font-bold uppercase tracking-wider">
+              Cargando ranking en vivo desde la base de datos...
+            </div>
+          ) : filteredParticipants.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <Trophy className="w-12 h-12 mx-auto text-gray-600 mb-3" />
+              <h3 className="text-white font-bold text-base mb-1">Aún no hay participantes en el ranking</h3>
+              <p className="text-gray-400 text-xs max-w-sm mx-auto">
+                Sé el primero en participar viendo anuncios o invitando amigos para aparecer en el Top 32.
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs whitespace-nowrap font-['Chakra_Petch']">
+              <thead className="sticky top-0 bg-[#090e1f]/95 backdrop-blur-md z-10 text-gray-400 uppercase tracking-widest border-b border-white/10">
+                <tr>
+                  <th className="px-5 py-3.5 font-black">Rank</th>
+                  <th className="px-5 py-3.5 font-black">Jugador</th>
+                  <th className="px-5 py-3.5 font-black text-right">Puntos</th>
+                  <th className="px-5 py-3.5 font-black text-right">Ads Hoy</th>
+                  <th className="px-5 py-3.5 font-black text-right">Ads Totales</th>
+                  <th className="px-5 py-3.5 font-black text-right">Referidos</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredParticipants.map((row) => (
+                  <React.Fragment key={row.user_id}>
+                    {row.rank === 33 && (
+                      <tr>
+                        <td colSpan={6} className="p-0 relative">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-full h-px bg-red-500/50"></div>
+                            <span className="absolute px-3 py-1 bg-red-950 text-red-400 text-[10px] font-black uppercase tracking-widest border border-red-500/50 rounded-full">
+                              Línea de Corte (Top 32 Clasificados)
+                            </span>
+                          </div>
+                          <div className="h-9"></div>
+                        </td>
+                      </tr>
+                    )}
+                    <tr className={`hover:bg-white/5 transition-colors ${row.is_current_user ? 'bg-casino-gold/15 relative font-bold' : ''}`}>
+                      <td className="px-5 py-3">
+                        {row.is_current_user && <div className="absolute left-0 top-0 bottom-0 w-1 bg-casino-gold shadow-[0_0_10px_rgba(251,191,36,1)]"></div>}
+                        <span className={`font-black font-mono ${row.rank <= 3 ? 'text-casino-gold text-base' : row.rank <= 32 ? 'text-emerald-400' : 'text-gray-500'}`}>
+                          #{row.rank}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 overflow-hidden font-bold text-xs text-yellow-400 flex-shrink-0">
+                            {row.avatar_url ? (
+                              <img src={row.avatar_url} alt={row.username} className="w-full h-full object-cover" />
+                            ) : (
+                              row.username.replace('@', '').charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <span className={`font-bold ${row.is_current_user ? 'text-casino-gold' : 'text-white'}`}>
+                            {row.username} {row.is_current_user && '(TÚ)'}
                           </span>
                         </div>
-                        <div className="h-10"></div>
+                      </td>
+                      <td className="px-5 py-3 text-right font-black font-mono text-yellow-400 text-sm">
+                        {row.points.toLocaleString()}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-gray-300">
+                        {row.ads_today}/{dailyCap}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-gray-400">
+                        {row.ads_watched}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-purple-300 font-bold">
+                        {row.referrals_count}
                       </td>
                     </tr>
-                  )}
-                  <tr className={`hover:bg-white/5 transition-colors ${row.isCurrentUser ? 'bg-casino-gold/10 relative' : ''}`}>
-                    <td className="px-6 py-3">
-                      {row.isCurrentUser && <div className="absolute left-0 top-0 bottom-0 w-1 bg-casino-gold shadow-[0_0_10px_rgba(251,191,36,1)]"></div>}
-                      <span className={`font-black ${row.rank <= 3 ? 'text-casino-gold text-lg' : row.rank <= 32 ? 'text-emerald-400' : 'text-gray-500'}`}>
-                        #{row.rank}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 overflow-hidden">
-                          <Users className="w-4 h-4 text-gray-400" />
-                        </div>
-                        <span className={`font-bold ${row.isCurrentUser ? 'text-casino-gold' : 'text-white'}`}>{row.username}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 text-right font-black text-white">{row.points.toLocaleString()}</td>
-                    <td className="px-6 py-3 text-right font-mono text-gray-400">{row.adsToday}/300</td>
-                    <td className="px-6 py-3 text-right font-mono text-gray-400">{row.clicks}</td>
-                    <td className="px-6 py-3 text-right font-mono text-gray-400">{row.referrals}</td>
-                  </tr>
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </motion.div>
     </div>
