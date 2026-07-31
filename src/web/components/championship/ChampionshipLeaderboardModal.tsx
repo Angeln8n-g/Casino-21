@@ -34,14 +34,39 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
     setIsRefreshing(true);
     setLoading(true);
     try {
-      // 1. Get active championship event
-      const { data: eventData } = await supabase
+      // 1. Get active championship event, create if missing
+      let { data: eventData } = await supabase
         .from('events')
         .select('id, daily_ad_cap')
         .eq('is_championship', true)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      if (!eventData?.id) {
+        const { data: newEv } = await supabase.from('events').insert({
+          title: 'KASINO21 CHAMPIONSHIP',
+          description: 'Liga de 7 días con pozo acumulable en dólares.',
+          rules: 'Acumula puntos viendo anuncios y compite por el pozo en efectivo.',
+          type: 'liga',
+          status: 'live',
+          entry_fee: 0,
+          prize_pool: '$100.00 USD',
+          min_elo: 0,
+          participants_count: 0,
+          is_championship: true,
+          championship_phase: 'league',
+          base_prize_usd: 100,
+          current_prize_usd: 100,
+          max_prize_usd: 5000,
+          global_ad_views: 0,
+          daily_ad_cap: 300,
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        }).select('id, daily_ad_cap').single();
+
+        eventData = newEv;
+      }
 
       const eventId = eventData?.id;
       if (eventData?.daily_ad_cap) {
@@ -266,6 +291,29 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Banner Informativo de Inscripción Automática */}
+        <div className="bg-gradient-to-r from-amber-950/40 via-yellow-950/20 to-slate-950/40 border-b border-yellow-500/20 px-4 py-2.5 flex items-center justify-between gap-3 text-xs flex-shrink-0">
+          <div className="flex items-center gap-2 text-yellow-300 font-bold">
+            <span className="text-base">ℹ️</span>
+            <span>
+              <strong>Inscripción Automática Activa:</strong> Ve anuncios en el juego para acumular puntos. El <strong>Top 32</strong> clasifica directamente a la Gran Final por el pozo en $USD.
+            </span>
+          </div>
+          {userRank && userRank <= 32 ? (
+            <span className="hidden sm:inline-flex px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-black text-[10px] uppercase tracking-wider whitespace-nowrap">
+              🟢 ¡Estás dentro del Top 32!
+            </span>
+          ) : userRank ? (
+            <span className="hidden sm:inline-flex px-2.5 py-0.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-full font-black text-[10px] uppercase tracking-wider whitespace-nowrap">
+              🟡 #{userRank} · Sigue viendo ads para subir
+            </span>
+          ) : (
+            <span className="hidden sm:inline-flex px-2.5 py-0.5 bg-gray-500/20 text-gray-300 border border-gray-500/40 rounded-full font-black text-[10px] uppercase tracking-wider whitespace-nowrap">
+              ⚪ ¡Ve tu 1er ad para clasificar!
+            </span>
+          )}
         </div>
 
         {/* Toolbar & Referral */}

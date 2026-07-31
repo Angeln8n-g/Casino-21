@@ -13,14 +13,15 @@ export const ChampionshipLobbyWidget: React.FC = () => {
   const [targetPrize, setTargetPrize] = useState(1250);
   const [globalViews, setGlobalViews] = useState(124735);
   const [userRank, setUserRank] = useState<number | null>(null);
+  const [userPoints, setUserPoints] = useState<number | null>(null);
   const [phase, setPhase] = useState<'league' | 'cut' | 'final' | 'completed'>('league');
   
   useEffect(() => {
     let mounted = true;
     async function loadWidgetData() {
       try {
-        // 1. Fetch real active championship event
-        const { data: eventData } = await supabase
+        // 1. Fetch real active championship event, create if missing
+        let { data: eventData } = await supabase
           .from('events')
           .select('*')
           .eq('is_championship', true)
@@ -28,17 +29,42 @@ export const ChampionshipLobbyWidget: React.FC = () => {
           .limit(1)
           .maybeSingle();
 
+        if (!eventData) {
+          const { data: newEv } = await supabase.from('events').insert({
+            title: 'KASINO21 CHAMPIONSHIP',
+            description: 'Liga de 7 días con pozo acumulable en dólares.',
+            rules: 'Acumula puntos viendo anuncios y compite por el pozo en efectivo.',
+            type: 'liga',
+            status: 'live',
+            entry_fee: 0,
+            prize_pool: '$100.00 USD',
+            min_elo: 0,
+            participants_count: 0,
+            is_championship: true,
+            championship_phase: 'league',
+            base_prize_usd: 100,
+            current_prize_usd: 100,
+            max_prize_usd: 5000,
+            global_ad_views: 0,
+            daily_ad_cap: 300,
+            start_date: new Date().toISOString(),
+            end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          }).select('*').single();
+
+          eventData = newEv;
+        }
+
         if (eventData && mounted) {
           if (eventData.current_prize_usd) setCurrentPrize(Number(eventData.current_prize_usd));
           if (eventData.global_ad_views) setGlobalViews(Number(eventData.global_ad_views));
           if (eventData.championship_phase) setPhase(eventData.championship_phase);
         }
 
-        // 2. Fetch current user's real rank in championship
+        // 2. Fetch current user's real rank & points in championship
         if (user?.id && eventData?.id && mounted) {
           const { data: participants, error: partError } = await supabase
             .from('championship_participants')
-            .select('user_id')
+            .select('user_id, points')
             .eq('event_id', eventData.id)
             .order('points', { ascending: false });
 
@@ -46,8 +72,10 @@ export const ChampionshipLobbyWidget: React.FC = () => {
             const idx = participants.findIndex((p: any) => p.user_id === user.id);
             if (idx !== -1) {
               setUserRank(idx + 1);
+              setUserPoints(participants[idx].points || 0);
             } else {
               setUserRank(null);
+              setUserPoints(null);
             }
           }
         }
@@ -95,7 +123,7 @@ export const ChampionshipLobbyWidget: React.FC = () => {
               <Trophy className="w-8 h-8 md:w-10 md:h-10 text-slate-950" />
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-widest font-['Russo_One']">KASINO21 CHAMPIONSHIP</h2>
                 <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded-full">
                   {phase === 'league' ? 'Liga Activa' : phase === 'cut' ? 'Corte' : phase === 'final' ? 'Final en Vivo' : 'Completado'}
@@ -104,11 +132,22 @@ export const ChampionshipLobbyWidget: React.FC = () => {
               <p className="text-xs md:text-sm text-casino-gold/90 font-bold tracking-widest uppercase">
                 Pozo Acumulado en Tiempo Real
               </p>
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-lg border border-white/10">
-                <Star className="w-3 h-3 text-casino-gold" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Tu Posición: <span className="text-casino-gold">{userRank ? `#${userRank}` : 'Sin clasificar'}</span>
-                </span>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+                  <Star className="w-3 h-3 text-casino-gold" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Tu Posición: <span className="text-casino-gold">{userRank ? `#${userRank}` : 'Sin clasificar'}</span>
+                  </span>
+                </div>
+                {userPoints !== null ? (
+                  <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 rounded-lg">
+                    ✓ Inscrito ({userPoints} pts)
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-amber-950/60 text-amber-300 border border-amber-500/40 rounded-lg animate-pulse">
+                    ⚡ Ve Ads para Inscribirte
+                  </span>
+                )}
               </div>
             </div>
           </div>

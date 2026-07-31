@@ -331,7 +331,7 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
             <div className="grid grid-cols-3 gap-2 text-center pt-1">
               <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
                 <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Puntos Pozo</span>
-                <span className="text-white font-black text-sm tabular-nums text-casino-gold">
+                <span className="font-black text-sm tabular-nums text-casino-gold">
                   {championshipData ? `${championshipData.points} pts` : '0 pts'}
                 </span>
               </div>
@@ -345,7 +345,7 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
 
               <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
                 <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Ads Hoy</span>
-                <span className="text-white font-black text-sm tabular-nums text-emerald-400">
+                <span className="font-black text-sm tabular-nums text-emerald-400">
                   {championshipData ? `${championshipData.adsToday}/${championshipData.dailyCap}` : '0/300'}
                 </span>
               </div>
