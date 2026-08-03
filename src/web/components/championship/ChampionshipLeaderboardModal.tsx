@@ -93,47 +93,99 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
         setDailyCap(eventData.daily_ad_cap);
       }
 
-      if (eventId) {
-        // 2. Query real participants sorted by points DESC
-        const { data: partData } = await supabase
+      // 2. Fetch current logged-in user's own participant record first for exact Ads Hoy count
+      if (user?.id) {
+        const { data: myPart } = await supabase
           .from('championship_participants')
-          .select('*, profiles(username, avatar_url)')
+          .select('ads_today, points')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (myPart) {
+          setUserAdsToday(myPart.ads_today || 0);
+        }
+      }
+
+      // 3. Query real participants sorted by points DESC
+      let rawPartData: any[] | null = null;
+      
+      if (eventId) {
+        const { data: partData, error: partError } = await supabase
+          .from('championship_participants')
+          .select('*, profiles:user_id(username, avatar_url)')
           .eq('event_id', eventId)
           .order('points', { ascending: false });
 
-        if (partData && partData.length > 0) {
-          setTotalCount(partData.length);
-          let foundUserRank: number | null = null;
-          let foundUserAdsToday = 0;
-
-          const mapped: ParticipantItem[] = partData.map((item: any, idx: number) => {
-            const isMe = user?.id === item.user_id;
-            if (isMe) {
-              foundUserRank = idx + 1;
-              foundUserAdsToday = item.ads_today || 0;
-            }
-            return {
-              rank: idx + 1,
-              user_id: item.user_id,
-              username: item.profiles?.username ? `@${item.profiles.username}` : `Usuario_${idx + 1}`,
-              avatar_url: item.profiles?.avatar_url || null,
-              points: item.points || 0,
-              ads_today: item.ads_today || 0,
-              ads_watched: item.ads_watched || 0,
-              referrals_count: item.referrals_count || 0,
-              is_current_user: isMe,
-            };
-          });
-
-          setParticipants(mapped);
-          setUserRank(foundUserRank);
-          setUserAdsToday(foundUserAdsToday);
-        } else {
-          setParticipants([]);
-          setTotalCount(0);
-          setUserRank(null);
-          setUserAdsToday(0);
+        if (!partError && partData && partData.length > 0) {
+          rawPartData = partData;
         }
+      }
+
+      // Fallback 1: Query without event_id filter if empty
+      if (!rawPartData || rawPartData.length === 0) {
+        const { data: fallbackData } = await supabase
+          .from('championship_participants')
+          .select('*, profiles:user_id(username, avatar_url)')
+          .order('points', { ascending: false })
+          .limit(100);
+
+        if (fallbackData && fallbackData.length > 0) {
+          rawPartData = fallbackData;
+        }
+      }
+
+      // Fallback 2: If join failed, query without profiles join and map profiles manually
+      if (!rawPartData || rawPartData.length === 0) {
+        const { data: simpleData } = await supabase
+          .from('championship_participants')
+          .select('*')
+          .order('points', { ascending: false })
+          .limit(100);
+
+        if (simpleData && simpleData.length > 0) {
+          const userIds = simpleData.map(p => p.user_id);
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', userIds);
+
+          const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
+          rawPartData = simpleData.map(p => ({
+            ...p,
+            profiles: profileMap.get(p.user_id) || null
+          }));
+        }
+      }
+
+      if (rawPartData && rawPartData.length > 0) {
+        setTotalCount(rawPartData.length);
+        let foundUserRank: number | null = null;
+        let foundUserAdsToday = userAdsToday;
+
+        const mapped: ParticipantItem[] = rawPartData.map((item: any, idx: number) => {
+          const isMe = user?.id === item.user_id;
+          if (isMe) {
+            foundUserRank = idx + 1;
+            foundUserAdsToday = item.ads_today || 0;
+          }
+          return {
+            rank: idx + 1,
+            user_id: item.user_id,
+            username: item.profiles?.username ? `@${item.profiles.username}` : `Usuario_${idx + 1}`,
+            avatar_url: item.profiles?.avatar_url || null,
+            points: item.points || 0,
+            ads_today: item.ads_today || 0,
+            ads_watched: item.ads_watched || 0,
+            referrals_count: item.referrals_count || 0,
+            is_current_user: isMe,
+          };
+        });
+
+        setParticipants(mapped);
+        setUserRank(foundUserRank);
+        setUserAdsToday(foundUserAdsToday);
       } else {
         setParticipants([]);
         setTotalCount(0);

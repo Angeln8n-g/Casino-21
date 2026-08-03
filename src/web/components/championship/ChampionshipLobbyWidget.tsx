@@ -83,18 +83,38 @@ export const ChampionshipLobbyWidget: React.FC = () => {
         }
 
         // 2. Fetch current user's real rank & points in championship
-        if (user?.id && eventData?.id && mounted) {
-          const { data: participants, error: partError } = await supabase
-            .from('championship_participants')
-            .select('user_id, points')
-            .eq('event_id', eventData.id)
-            .order('points', { ascending: false });
+        if (user?.id && mounted) {
+          let rawParticipants: any[] | null = null;
 
-          if (!partError && participants && mounted) {
-            const idx = participants.findIndex((p: any) => p.user_id === user.id);
+          if (eventData?.id) {
+            const { data: parts } = await supabase
+              .from('championship_participants')
+              .select('user_id, points')
+              .eq('event_id', eventData.id)
+              .order('points', { ascending: false });
+
+            if (parts && parts.length > 0) {
+              rawParticipants = parts;
+            }
+          }
+
+          if (!rawParticipants || rawParticipants.length === 0) {
+            const { data: fallbackParts } = await supabase
+              .from('championship_participants')
+              .select('user_id, points')
+              .order('points', { ascending: false })
+              .limit(100);
+
+            if (fallbackParts && fallbackParts.length > 0) {
+              rawParticipants = fallbackParts;
+            }
+          }
+
+          if (rawParticipants && mounted) {
+            const idx = rawParticipants.findIndex((p: any) => p.user_id === user.id);
             if (idx !== -1) {
               setUserRank(idx + 1);
-              setUserPoints(participants[idx].points || 0);
+              setUserPoints(rawParticipants[idx].points || 0);
             } else {
               setUserRank(null);
               setUserPoints(null);
