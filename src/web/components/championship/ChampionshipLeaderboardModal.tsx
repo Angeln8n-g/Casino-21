@@ -18,6 +18,7 @@ export interface ParticipantItem {
 
 export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'history'>('leaderboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [copied, setCopied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -29,6 +30,25 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
   const [userRank, setUserRank] = useState<number | null>(null);
   const [userAdsToday, setUserAdsToday] = useState<number>(0);
   const [dailyCap, setDailyCap] = useState<number>(300);
+  const [adHistory, setAdHistory] = useState<any[]>([]);
+
+  const fetchAdHistory = async () => {
+    if (!user?.id) return;
+    try {
+      const { data: logs } = await supabase
+        .from('ad_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (logs) {
+        setAdHistory(logs);
+      }
+    } catch (err) {
+      console.warn('Could not fetch ad history:', err);
+    }
+  };
 
   const fetchRealLeaderboard = async () => {
     setIsRefreshing(true);
@@ -316,6 +336,33 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
           )}
         </div>
 
+        {/* Tab Switcher */}
+        <div className="bg-slate-950 px-4 py-2 border-b border-white/10 flex gap-2 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab('leaderboard')}
+            className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+              activeTab === 'leaderboard'
+                ? 'bg-casino-gold text-slate-950 shadow-[0_0_10px_rgba(251,191,36,0.4)]'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            🏆 Ranking Global
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('history');
+              fetchAdHistory();
+            }}
+            className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+              activeTab === 'history'
+                ? 'bg-casino-gold text-slate-950 shadow-[0_0_10px_rgba(251,191,36,0.4)]'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            📜 Mi Historial de Puntos
+          </button>
+        </div>
+
         {/* Toolbar & Referral */}
         <div className="p-3.5 sm:p-4 bg-slate-950/80 border-b border-white/5 flex flex-col sm:flex-row gap-3 justify-between items-center flex-shrink-0">
           <div className="relative w-full sm:w-72">
@@ -363,9 +410,45 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
           </div>
         </div>
 
-        {/* Table */}
+        {/* Content Area (Ranking or History) */}
         <div className="flex-1 overflow-y-auto bg-[#060a17] p-0 custom-scrollbar">
-          {loading ? (
+          {activeTab === 'history' ? (
+            <div className="p-4 space-y-3 font-['Chakra_Petch']">
+              <h4 className="text-sm font-bold text-casino-gold uppercase tracking-wider mb-2">
+                📜 Mi Registro de Actividad y Puntos
+              </h4>
+              {adHistory.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 text-xs">
+                  Aún no tienes registros recientes de anuncios vistos.
+                </div>
+              ) : (
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase">
+                    <tr>
+                      <th className="p-3">Fecha / Hora</th>
+                      <th className="p-3">Tipo de Anuncio</th>
+                      <th className="p-3 text-right">Puntos Otorgados</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {adHistory.map(log => (
+                      <tr key={log.id} className="hover:bg-white/[0.02]">
+                        <td className="p-3 font-mono text-gray-300">
+                          {new Date(log.created_at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </td>
+                        <td className="p-3 text-white font-bold capitalize">
+                          {log.ad_type} · {log.event_type}
+                        </td>
+                        <td className="p-3 text-right font-mono font-black text-casino-gold">
+                          +{log.event_type === 'click' ? 3 : 1} pts
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ) : loading ? (
             <div className="text-center py-16 text-gray-400 text-xs font-bold uppercase tracking-wider">
               Cargando ranking en vivo desde la base de datos...
             </div>

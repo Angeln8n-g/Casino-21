@@ -90,7 +90,21 @@ export async function logAdEventToDb(
           p_type: eventType === 'click' ? 'click' : 'view',
         });
 
-        if (rpcErr || rpcRes?.success === false) {
+        if (!rpcErr && rpcRes?.success) {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('championship_point_earned', {
+              detail: {
+                pointsAdded: rpcRes.points_added || (eventType === 'click' ? 3 : 1),
+                newTotalPoints: rpcRes.new_total_points || 0,
+                streakMultiplier: rpcRes.streak_multiplier || 1,
+                winStreak: rpcRes.win_streak || 0,
+                eventType,
+                adsToday: rpcRes.ads_today || 1,
+                dailyCap: rpcRes.daily_cap || 300
+              }
+            }));
+          }
+        } else {
           const pointsToAdd = eventType === 'click' ? 3 : 1;
           const { data: part } = await supabase
             .from('championship_participants')
@@ -116,6 +130,18 @@ export async function logAdEventToDb(
               ad_clicks: eventType === 'click' ? (part.ad_clicks || 0) + 1 : (part.ad_clicks || 0),
               updated_at: new Date().toISOString(),
             }).eq('id', part.id);
+          }
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('championship_point_earned', {
+              detail: {
+                pointsAdded: pointsToAdd,
+                newTotalPoints: (part?.points || 0) + pointsToAdd,
+                eventType,
+                adsToday: (part?.ads_today || 0) + 1,
+                dailyCap: 300
+              }
+            }));
           }
         }
       }

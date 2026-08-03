@@ -15,7 +15,28 @@ export const ChampionshipLobbyWidget: React.FC = () => {
   const [userRank, setUserRank] = useState<number | null>(null);
   const [userPoints, setUserPoints] = useState<number | null>(null);
   const [phase, setPhase] = useState<'league' | 'cut' | 'final' | 'completed'>('league');
-  
+  const [endDate, setEndDate] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+
+  useEffect(() => {
+    if (!endDate) return;
+    const calcTimeLeft = () => {
+      const diff = new Date(endDate).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft(null);
+      } else {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / (1000 * 60)) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    };
+    calcTimeLeft();
+    const timer = setInterval(calcTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [endDate]);
+
   useEffect(() => {
     let mounted = true;
     async function loadWidgetData() {
@@ -58,6 +79,7 @@ export const ChampionshipLobbyWidget: React.FC = () => {
           if (eventData.current_prize_usd) setCurrentPrize(Number(eventData.current_prize_usd));
           if (eventData.global_ad_views) setGlobalViews(Number(eventData.global_ad_views));
           if (eventData.championship_phase) setPhase(eventData.championship_phase);
+          if (eventData.end_date) setEndDate(eventData.end_date);
         }
 
         // 2. Fetch current user's real rank & points in championship
@@ -180,6 +202,15 @@ export const ChampionshipLobbyWidget: React.FC = () => {
             <p className="text-[10px] md:text-xs font-bold text-center text-gray-300 uppercase tracking-wider">
               Faltan <span className="text-casino-gold font-mono">{(targetViews - viewsProgress).toLocaleString()} vistas</span> para aumentar el pozo
             </p>
+
+            {timeLeft && phase === 'league' && (
+              <div className="flex items-center justify-center gap-1.5 bg-black/60 border border-yellow-500/30 py-1 px-3 rounded-xl text-[10px] font-bold text-yellow-300 font-mono tracking-wider">
+                <span>⏳ Cierre Top 32 en:</span>
+                <span className="text-white font-black">
+                  {timeLeft.days}d {String(timeLeft.hours).padStart(2, '0')}h:{String(timeLeft.minutes).padStart(2, '0')}m:{String(timeLeft.seconds).padStart(2, '0')}s
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Right section: CTA */}

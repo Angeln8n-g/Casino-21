@@ -25,6 +25,7 @@ const Blog = lazy(() => import('./components/Blog').then(m => ({ default: m.Blog
 const BlogPost = lazy(() => import('./components/BlogPost').then(m => ({ default: m.BlogPost })));
 const Landing = lazy(() => import('../landing/Landing').then(m => ({ default: m.default })));
 import { CookieConsent } from './components/CookieConsent';
+import { ChampionshipToast } from './components/championship/ChampionshipToast';
 
 // Minimal loading fallback matching the app's existing design
 function LoadingFallback() {
@@ -287,6 +288,7 @@ export default function App() {
             </Suspense>
           </div>
           <CookieConsent />
+          <ChampionshipToast />
         </GameProvider>
       </AudioProvider>
     </AuthProvider>

@@ -5,9 +5,21 @@ import { RoomStore } from './room-store';
 export async function handleTournamentFinal(matchData: any, winnerId: string) {
   const { data: eventData } = await supabase
     .from('events')
-    .select('prize_pool')
+    .select('id, title, prize_pool, is_championship')
     .eq('id', matchData.event_id)
     .single();
+
+  if (eventData?.is_championship || eventData?.title?.includes('El Gran Pool') || eventData?.title?.includes('Championship')) {
+    console.log(`[Championship] Gran Final de Championship completada. Invocando distribución de premios en $USD...`);
+    const { data: distRes, error: distErr } = await supabase.rpc('calculate_championship_prize_distribution', {
+      p_event_id: matchData.event_id
+    });
+    if (distErr) {
+      console.error('[Championship] Error calculando distribución de premios:', distErr);
+    } else {
+      console.log(`[Championship] Distribución completada. Reclamos creados: ${distRes?.claims_created || 0}`);
+    }
+  }
 
   let finalPrize = 0;
   if (eventData?.prize_pool) {

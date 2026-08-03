@@ -8,11 +8,13 @@ const CHAMPIONSHIP_CHECK_INTERVAL_MS = 60_000; // 1 minuto
 export function initChampionshipTimers(io: Server, roomStore: RoomStore) {
   console.log('[Championship] Timers de monitoreo de fases iniciados.');
 
+  let previousTop32UserIds: string[] = [];
+
   setInterval(async () => {
     try {
       const { data: activeEvents } = await supabase
         .from('events')
-        .select('id, end_date, championship_phase, is_championship, final_datetime, status')
+        .select('id, title, end_date, championship_phase, is_championship, final_datetime, status, current_prize_usd')
         .eq('is_championship', true)
         .in('championship_phase', ['league', 'cut']);
 
@@ -21,8 +23,32 @@ export function initChampionshipTimers(io: Server, roomStore: RoomStore) {
       const now = new Date();
 
       for (const event of activeEvents) {
-        // Auto-freeze: si la liga acabó y sigue en fase 'league'
+        // Monitoreo continuo durante la liga para alertar si alguien cae del Top 32
         if (event.championship_phase === 'league' && event.status === 'live') {
+          const { data: currentTop32 } = await supabase
+            .from('championship_participants')
+            .select('user_id, rank_position')
+            .eq('event_id', event.id)
+            .order('points', { ascending: false })
+            .limit(32);
+
+          if (currentTop32 && currentTop32.length > 0) {
+            const currentIds = currentTop32.map(p => p.user_id);
+            if (previousTop32UserIds.length > 0) {
+              const droppedIds = previousTop32UserIds.filter(id => !currentIds.includes(id));
+              for (const droppedUserId of droppedIds) {
+                sendPushToUser(droppedUserId, {
+                  type: 'tournament_start',
+                  title: '⚠️ ¡Alerta Kasino21 Championship!',
+                  body: '¡Has caído fuera del Top 32! Ve más anuncios ahora para recuperar tu lugar en la Gran Final.',
+                  data: { eventId: event.id, isTournament: true }
+                }).catch(err => console.error(`[Championship] Error enviando push a ${droppedUserId}:`, err));
+              }
+            }
+            previousTop32UserIds = currentIds;
+          }
+
+          // Auto-freeze: si la liga acabó y sigue en fase 'league'
           const endDate = new Date(event.end_date);
           if (endDate <= now) {
             console.log(`[Championship] Liga del evento ${event.id} expirada. Ejecutando freeze automático...`);
@@ -33,7 +59,44 @@ export function initChampionshipTimers(io: Server, roomStore: RoomStore) {
               console.error(`[Championship] Error en freeze automático:`, error);
             } else {
               console.log(`[Championship] Freeze exitoso. Top ${data?.qualified_count} clasificados. Pozo: $${data?.current_prize_usd}`);
-              // Notificar a todos los conectados que la fase cambió
+              
+              // 1. Publicar automáticamente el torneo "El Gran Pool - Top 32 Clasificados"
+              const prizeFormatted = `$${event.current_prize_usd || 100} USD`;
+              const { data: existingPool } = await supabase
+                .from('events')
+                .select('id')
+                .eq('title', 'El Gran Pool - Top 32 Clasificados')
+                .maybeSingle();
+
+              if (existingPool) {
+                await supabase.from('events').update({
+                  prize_pool: prizeFormatted,
+                  status: 'live',
+                  max_participants: 32,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', existingPool.id);
+              } else {
+                await supabase.from('events').insert({
+                  title: 'El Gran Pool - Top 32 Clasificados',
+                  description: 'Torneo exclusivo reservado únicamente para los 32 jugadores clasificados en el ranking de la Liga Championship. ¡El premio total acumulado se disputará en brackets eliminatorios!',
+                  rules: 'Exclusivo para Top 32 Clasificados. Eliminación directa. Se juega a 1 partida por ronda.',
+                  type: 'torneo',
+                  status: 'live',
+                  start_date: new Date().toISOString(),
+                  end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                  entry_fee: 0,
+                  prize_pool: prizeFormatted,
+                  min_elo: 0,
+                  participants_count: 0,
+                  max_participants: 32,
+                  is_championship: true,
+                });
+              }
+
+              // 2. Generar el bracket de 32 automáticamente
+              await generateChampionshipBracket(event.id);
+
+              // 3. Notificar a todos los conectados que la fase cambió
               io.emit('championship_phase_changed', {
                 eventId: event.id,
                 phase: 'cut',
