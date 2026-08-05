@@ -32,10 +32,10 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
     const suitColor = isRed ? t.redSuitColor : t.blackSuitColor;
 
     const suitSymbols = {
-      spades: '♠',
-      hearts: '♥',
-      diamonds: '♦',
-      clubs: '♣',
+      spades: '♠️',
+      hearts: '♥️',
+      diamonds: '♦️',
+      clubs: '♣️',
     };
 
     const displayRank = card.rank;

@@ -62,26 +62,27 @@ function AppContent() {
   const [eventToast, setEventToast] = useState<{ message: string; type: 'start' | 'end' } | null>(null);
 
   useEffect(() => {
+    if (!user) return;
     let mounted = true;
     socketService.connect().then(socket => {
       if (!mounted) return;
       socket.on('event_started', (data: { eventId: string; title: string }) => {
         if (mounted) {
-          setEventToast({ message: `\ud83c\udfb2 "${data.title}" ha comenzado automáticamente`, type: 'start' });
+          setEventToast({ message: `🎲 "${data.title}" ha comenzado automáticamente`, type: 'start' });
           playSfx('alert');
           setTimeout(() => { if (mounted) setEventToast(null); }, 10000);
         }
       });
       socket.on('event_completed', (data: { eventId: string; title: string }) => {
         if (mounted) {
-          setEventToast({ message: `\u2705 "${data.title}" ha finalizado`, type: 'end' });
+          setEventToast({ message: `✅ "${data.title}" ha finalizado`, type: 'end' });
           playSfx('alert');
           setTimeout(() => { if (mounted) setEventToast(null); }, 10000);
         }
       });
     }).catch(() => {});
     return () => { mounted = false; };
-  }, [playSfx]);
+  }, [user, playSfx]);
 
   useEffect(() => {
     // Detectar si venimos de un enlace de recuperación de contraseña de Supabase
@@ -232,7 +233,8 @@ export default function App() {
   if (pathname === '/terms')   return <Suspense fallback={<LoadingFallback />}><TermsOfService /></Suspense>;
   if (pathname === '/cookies') return <Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense>;
   if (pathname === '/about') return <Suspense fallback={<LoadingFallback />}><About /></Suspense>;
-  if (pathname === '/contact') return <Suspense fallback={<LoadingFallback />}><Contact /></Suspense>;
+  if (pathname === '/contact' || pathname === '/contacto') return <Suspense fallback={<LoadingFallback />}><Contact /></Suspense>;
+
 
   // ─── Public pages with ad support ─────────────────────────────────────────
   if (pathname === '/como-jugar') return <PublicAdPage><ComoJugar /></PublicAdPage>;

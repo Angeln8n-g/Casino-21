@@ -1,16 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Clock, Sparkles, ChevronRight, Calculator, Crown, Medal, Award } from 'lucide-react';
 import type { ChampionshipLeaderboardItem } from '../hooks/useChampionshipLanding';
 
 interface Props {
   leaderboard: ChampionshipLeaderboardItem[];
-  timeRemaining: { days: number; hours: number; minutes: number; seconds: number };
+  timeRemaining?: { days: number; hours: number; minutes: number; seconds: number };
   onOpenTop100: () => void;
   calculateProjection: (adsPerDay: number) => { totalAds: number; estimatedPoints: number; estimatedRank: number; estimatedPayout: number };
 }
 
-export default function LegendLeaderboard({ leaderboard, timeRemaining, onOpenTop100, calculateProjection }: Props) {
+const CountdownTimer = memo(function CountdownTimer() {
+  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const diff = endOfMonth.getTime() - now.getTime();
+
+      if (diff > 0) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / 1000 / 60) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        setTimeRemaining({ days, hours, minutes, seconds });
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1 bg-black/60 border border-yellow-500/40 px-3 py-1 rounded-xl text-yellow-400 font-mono font-black text-base shadow-inner">
+      <span>{timeRemaining.days}d</span>
+      <span>{String(timeRemaining.hours).padStart(2, '0')}h</span>
+      <span>{String(timeRemaining.minutes).padStart(2, '0')}m</span>
+      <span className="text-yellow-300">{String(timeRemaining.seconds).padStart(2, '0')}s</span>
+    </div>
+  );
+});
+
+function LegendLeaderboard({ leaderboard, onOpenTop100, calculateProjection }: Props) {
   const [calcAdsPerDay, setCalcAdsPerDay] = useState(30);
   const projection = calculateProjection(calcAdsPerDay);
 
@@ -32,17 +65,12 @@ export default function LegendLeaderboard({ leaderboard, timeRemaining, onOpenTo
             <Trophy size={32} className="text-yellow-400 inline-block drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
           </h2>
 
-          {/* SUBTÍTULO CON CONTADOR REGRESIVO */}
+          {/* SUBTÍTULO CON CONTADOR REGRESIVO ISLADO */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm sm:text-lg font-bold font-['Chakra_Petch'] text-gray-300">
             <span className="flex items-center gap-1.5 text-yellow-400">
               <Clock size={18} className="animate-pulse" /> Corte de clasificación en:
             </span>
-            <div className="flex items-center gap-1 bg-black/60 border border-yellow-500/40 px-3 py-1 rounded-xl text-yellow-400 font-mono font-black text-base shadow-inner">
-              <span>{timeRemaining.days}d</span>
-              <span>{String(timeRemaining.hours).padStart(2, '0')}h</span>
-              <span>{String(timeRemaining.minutes).padStart(2, '0')}m</span>
-              <span className="text-yellow-300">{String(timeRemaining.seconds).padStart(2, '0')}s</span>
-            </div>
+            <CountdownTimer />
           </div>
         </div>
 
@@ -247,3 +275,5 @@ export default function LegendLeaderboard({ leaderboard, timeRemaining, onOpenTo
     </section>
   );
 }
+
+export default memo(LegendLeaderboard);

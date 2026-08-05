@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, ArrowDown, Flame, Sparkles, Radio } from 'lucide-react';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
@@ -9,8 +9,9 @@ interface Props {
   activeLiveUsers: number;
 }
 
-export default function HeroChampionship({ prizePoolUsd, globalViews, activeLiveUsers }: Props) {
+function HeroChampionship({ prizePoolUsd, globalViews, activeLiveUsers }: Props) {
   const [isMobile, setIsMobile] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -19,6 +20,28 @@ export default function HeroChampionship({ prizePoolUsd, globalViews, activeLive
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
+
+  // IntersectionObserver to pause background video when out of viewport
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [isMobile]);
 
   // Compute goal values for progress bar
   const nextTargetPrize = 1250;
@@ -35,10 +58,12 @@ export default function HeroChampionship({ prizePoolUsd, globalViews, activeLive
     <section className="relative min-h-[90vh] flex flex-col items-center justify-start text-center px-4 sm:px-6 pt-28 sm:pt-36 md:pt-40 pb-16 overflow-hidden">
       {/* Video Background with Subtle Overlay */}
       <video
+        ref={videoRef}
         autoPlay
         muted
         loop
         playsInline
+        preload="metadata"
         className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
         aria-hidden="true"
         key={isMobile ? 'mobile' : 'desktop'}
@@ -51,7 +76,7 @@ export default function HeroChampionship({ prizePoolUsd, globalViews, activeLive
 
       {/* Dark Ambient Radial Gradients */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/70 via-[#090d1a]/85 to-[#020617] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-yellow-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* CRT Scanlines Overlay */}
       <div className="crt-overlay pointer-events-none" aria-hidden="true" />
@@ -180,3 +205,6 @@ export default function HeroChampionship({ prizePoolUsd, globalViews, activeLive
     </section>
   );
 }
+
+export default memo(HeroChampionship);
+

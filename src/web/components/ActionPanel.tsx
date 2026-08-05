@@ -145,7 +145,7 @@ export function ActionPanel({
             {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
               <>
                 <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
-                  Agrupar
+                  Pares
                 </button>
                 <button onClick={handleAumentarFormacion} className="btn flex-1 md:flex-none min-w-[100px] min-h-[44px] bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-3 md:px-6 py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-base transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
                   Aumentar

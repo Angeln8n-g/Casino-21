@@ -128,6 +128,18 @@ class SocketService {
     return this.socket;
   }
 
+  notifyFriendConnected(targetUserId: string) {
+    if (this.socket?.connected) {
+      this.socket.emit('notify_friend_connected', { targetUserId });
+    }
+  }
+
+  notifyFriendWaiting(targetUserId: string) {
+    if (this.socket?.connected) {
+      this.socket.emit('notify_friend_waiting', { targetUserId });
+    }
+  }
+
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();

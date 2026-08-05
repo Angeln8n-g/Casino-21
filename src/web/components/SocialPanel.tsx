@@ -934,6 +934,33 @@ export function SocialPanel() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                           </svg>
                         </button>
+                        {/* Quick Notify Buttons */}
+                        {isOnline && isInRoom && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerHaptic('card_tap');
+                              socketService.notifyFriendWaiting(friend.id);
+                            }}
+                            className="shrink-0 p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 border border-purple-500/30 transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 shadow-sm text-xs font-bold"
+                            title="Decirle que lo espero"
+                          >
+                            ⏳
+                          </button>
+                        )}
+                        {isOnline && !isInRoom && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerHaptic('card_tap');
+                              socketService.notifyFriendConnected(friend.id);
+                            }}
+                            className="shrink-0 p-2 rounded-lg bg-casino-emerald/10 text-casino-emerald hover:text-emerald-300 hover:bg-casino-emerald/20 border border-casino-emerald/30 transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 shadow-sm text-xs font-bold"
+                            title="Notificar que entré"
+                          >
+                            👋
+                          </button>
+                        )}
                         {isFriendOnline(friend) && !isInRoom && (
                           <button
                             onClick={() => {

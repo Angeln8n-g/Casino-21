@@ -598,7 +598,54 @@ setInterval(async () => {
 }, 3000);
 // ─── FIN Matchmaking Queue ───
 
-io.on('connection', (socket) => {
+function getUserRoomId(userId: string): string | null {
+  const userSockets = connectedUsers.get(userId);
+  if (userSockets) {
+    for (const sId of userSockets) {
+      const rId = socketToRoomMap.get(sId);
+      if (rId) return rId;
+    }
+  }
+  return null;
+}
+
+async function getAcceptedFriends(userId: string): Promise<string[]> {
+  try {
+    const { data: friendships, error } = await supabase
+      .from('friend_requests')
+      .select('sender_id, receiver_id')
+      .eq('status', 'accepted')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+
+    if (error || !friendships) return [];
+
+    const friendIds = friendships.map(f => f.sender_id === userId ? f.receiver_id : f.sender_id);
+    return [...new Set(friendIds)];
+  } catch (err) {
+    console.error('Error fetching accepted friends:', err);
+    return [];
+  }
+}
+
+async function getProfilesByIds(userIds: string[]): Promise<Record<string, { username: string }>> {
+  if (userIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds);
+    if (error || !data) return {};
+    const res: Record<string, { username: string }> = {};
+    for (const p of data) {
+      res[p.id] = { username: p.username || 'Amigo' };
+    }
+    return res;
+  } catch {
+    return {};
+  }
+}
+
+io.on('connection', async (socket) => {
   const userId = (socket as any).userId || (socket as any).user?.sub;
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
 
@@ -610,6 +657,32 @@ io.on('connection', (socket) => {
     if (isNew) {
       io.emit('online_count', { count: connectedUsers.size });
     }
+
+    // Al conectar, obtener información de amigos online y su estado (lobby vs partida)
+    try {
+      const friendIds = await getAcceptedFriends(userId);
+      const onlineFriendIds = friendIds.filter(fId => {
+        const s = connectedUsers.get(fId);
+        return s && s.size > 0;
+      });
+
+      if (onlineFriendIds.length > 0) {
+        const profilesMap = await getProfilesByIds(onlineFriendIds);
+        const onlineFriends = onlineFriendIds.map(fId => {
+          const roomId = getUserRoomId(fId);
+          return {
+            id: fId,
+            username: profilesMap[fId]?.username || 'Amigo',
+            status: roomId ? ('in_match' as const) : ('online' as const),
+            roomId: roomId || undefined,
+          };
+        });
+
+        socket.emit('online_friends_summary', { friends: onlineFriends });
+      }
+    } catch (err) {
+      console.error('Error procesando resumen de amigos online:', err);
+    }
   }
 
   // Enviar conteo inicial de activos al conectar
@@ -618,6 +691,58 @@ io.on('connection', (socket) => {
   // Permitir al cliente solicitar el conteo bajo demanda
   socket.on('request_online_count', () => {
     socket.emit('online_count', { count: connectedUsers.size });
+  });
+
+  // Escuchar cuando un jugador presiona [👋 Notificar que entré]
+  socket.on('notify_friend_connected', async (data: { targetUserId: string }) => {
+    const senderId = (socket as any).userId || (socket as any).user?.sub;
+    if (!senderId || !data?.targetUserId) return;
+
+    const targetSockets = connectedUsers.get(data.targetUserId);
+    if (!targetSockets || targetSockets.size === 0) return;
+
+    const profiles = await getProfilesByIds([senderId, data.targetUserId]);
+    const senderName = profiles[senderId]?.username || 'Tu amigo';
+    const targetName = profiles[data.targetUserId]?.username || 'Amigo';
+
+    for (const sId of targetSockets) {
+      io.to(sId).emit('friend_just_connected', {
+        senderId,
+        senderName,
+      });
+    }
+
+    socket.emit('friend_connected_sent', {
+      success: true,
+      targetId: data.targetUserId,
+      targetName,
+    });
+  });
+
+  // Escuchar cuando un jugador presiona [⏳ Decirle que lo espero]
+  socket.on('notify_friend_waiting', async (data: { targetUserId: string }) => {
+    const senderId = (socket as any).userId || (socket as any).user?.sub;
+    if (!senderId || !data?.targetUserId) return;
+
+    const targetSockets = connectedUsers.get(data.targetUserId);
+    if (!targetSockets || targetSockets.size === 0) return;
+
+    const profiles = await getProfilesByIds([senderId, data.targetUserId]);
+    const senderName = profiles[senderId]?.username || 'Tu amigo';
+    const targetName = profiles[data.targetUserId]?.username || 'Amigo';
+
+    for (const sId of targetSockets) {
+      io.to(sId).emit('friend_waiting_for_you', {
+        senderId,
+        senderName,
+      });
+    }
+
+    socket.emit('friend_waiting_sent', {
+      success: true,
+      targetId: data.targetUserId,
+      targetName,
+    });
   });
 
   if (EXPOSE_RULES_VERSION) {

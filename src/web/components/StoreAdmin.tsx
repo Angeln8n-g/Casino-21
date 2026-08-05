@@ -47,6 +47,7 @@ interface ThemeForm {
   };
   boardTheme: {
     background: string;
+    backgroundImage?: string;
     borderColor: string;
     glowColor: string;
     innerRingColor: string;

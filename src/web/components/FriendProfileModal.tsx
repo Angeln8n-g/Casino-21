@@ -492,8 +492,17 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                 <div className="space-y-3">
                   <div className="py-3 rounded-xl text-center bg-purple-500/10 border border-purple-500/20 space-y-1">
                     <p className="text-purple-400 font-bold text-sm">🎮 En partida activa</p>
-                    <p className="text-gray-500 text-xs">Puedes espectar su partida o hablar por chat</p>
+                    <p className="text-gray-500 text-xs">Puedes espectar su partida o avisarle que lo esperas</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      socketService.notifyFriendWaiting(friend.id);
+                      onClose();
+                    }}
+                    className="w-full py-2.5 rounded-2xl bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-purple-500/40 transition-all shadow-sm"
+                  >
+                    ⏳ Notificar que lo espero
+                  </button>
                   <div className="flex gap-3">
                     <button
                       onClick={() => {
@@ -522,6 +531,15 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
               {friend.isOnline && !isInRoom && (
                 <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      socketService.notifyFriendConnected(friend.id);
+                      onClose();
+                    }}
+                    className="w-full py-2.5 rounded-2xl bg-casino-emerald/10 hover:bg-casino-emerald/20 text-casino-emerald font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 border border-casino-emerald/30 transition-all shadow-sm"
+                  >
+                    👋 Notificar que me conecté
+                  </button>
                   {challengeState === 'idle' && (
                     <div className="flex gap-3">
                       <button

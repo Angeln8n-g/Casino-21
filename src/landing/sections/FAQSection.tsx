@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, ChevronDown } from 'lucide-react';
 import { faqData } from '../../web/data/faq-data';
@@ -40,7 +40,7 @@ function FAQAccordion({ question, answer, isOpen, onToggle }: {
   );
 }
 
-export default function FAQSection() {
+function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   // Mostrar una selección de las FAQ más importantes (ej. las primeras 6)
@@ -50,7 +50,7 @@ export default function FAQSection() {
     <section id="faq" className="py-20 px-6 relative overflow-hidden bg-transparent">
       {/* Background ambient light */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-cyan-500/[0.01] rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-cyan-500/[0.01] rounded-full blur-2xl" />
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
@@ -93,3 +93,6 @@ export default function FAQSection() {
     </section>
   );
 }
+
+export default memo(FAQSection);
+

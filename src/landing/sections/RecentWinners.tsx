@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ShieldCheck, ArrowRight, Trophy } from 'lucide-react';
 import type { WinnerProofItem } from '../hooks/useChampionshipLanding';
@@ -8,7 +8,7 @@ interface Props {
   onOpenWinnersWall: () => void;
 }
 
-export default function RecentWinners({ winners, onOpenWinnersWall }: Props) {
+function RecentWinners({ winners, onOpenWinnersWall }: Props) {
   return (
     <section id="ganadores-section" className="py-16 px-4 sm:px-6 relative overflow-hidden bg-[#030712]">
       <div className="max-w-4xl mx-auto relative z-10">
@@ -97,3 +97,6 @@ export default function RecentWinners({ winners, onOpenWinnersWall }: Props) {
     </section>
   );
 }
+
+export default memo(RecentWinners);
+

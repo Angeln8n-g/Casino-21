@@ -332,12 +332,113 @@ export function useNotifications() {
         }
       });
 
+    // Subscribe to Socket.io events for friend presence & waiting notifications
+    let socketInstance: any = null;
+    socketService.connect().then((socket) => {
+      if (!isMounted) return;
+      socketInstance = socket;
+
+      const handleOnlineFriendsSummary = ({ friends }: { friends: Array<{ id: string; username: string; status: 'online' | 'in_match'; roomId?: string }> }) => {
+        if (!friends || friends.length === 0) return;
+
+        const matchFriend = friends.find((f) => f.status === 'in_match');
+        if (matchFriend) {
+          showToast({
+            id: `friend-in-match-${matchFriend.id}`,
+            title: '🎮 Amigo en Partida',
+            message: `Tu amigo ${matchFriend.username} está jugando una partida.`,
+            actions: [
+              {
+                label: '⏳ Decirle que lo espero',
+                onClick: () => {
+                  socketService.notifyFriendWaiting(matchFriend.id);
+                  setToast(null);
+                },
+                primary: true,
+              },
+            ],
+          });
+          return;
+        }
+
+        const onlineFriend = friends.find((f) => f.status === 'online');
+        if (onlineFriend) {
+          showToast({
+            id: `friend-online-${onlineFriend.id}`,
+            title: '⚡ Amigo en Línea',
+            message: `Tu amigo ${onlineFriend.username} está activo en el juego.`,
+            actions: [
+              {
+                label: '👋 Notificar que entré',
+                onClick: () => {
+                  socketService.notifyFriendConnected(onlineFriend.id);
+                  setToast(null);
+                },
+                primary: true,
+              },
+            ],
+          });
+        }
+      };
+
+      const handleFriendJustConnected = ({ senderName }: { senderName: string }) => {
+        showToast({
+          id: `friend-connected-${Date.now()}`,
+          title: '👋 ¡Amigo Conectado!',
+          message: `¡${senderName} se acaba de conectar al juego!`,
+        });
+      };
+
+      const handleFriendWaitingForYou = ({ senderName }: { senderName: string }) => {
+        showToast({
+          id: `friend-waiting-${Date.now()}`,
+          title: '⏳ ¡Te están esperando!',
+          message: `¡${senderName} se ha conectado y te está esperando para jugar!`,
+        });
+      };
+
+      const handleFriendConnectedSent = ({ targetName }: { targetName: string }) => {
+        showToast({
+          id: `friend-sent-${Date.now()}`,
+          title: 'Notificación Enviada',
+          message: `Le avisamos a ${targetName} que estás en el juego.`,
+        });
+      };
+
+      const handleFriendWaitingSent = ({ targetName }: { targetName: string }) => {
+        showToast({
+          id: `friend-waiting-sent-${Date.now()}`,
+          title: 'Aviso Enviado',
+          message: `Le avisamos a ${targetName} que lo estás esperando para jugar.`,
+        });
+      };
+
+      socket.on('online_friends_summary', handleOnlineFriendsSummary);
+      socket.on('friend_just_connected', handleFriendJustConnected);
+      socket.on('friend_waiting_for_you', handleFriendWaitingForYou);
+      socket.on('friend_connected_sent', handleFriendConnectedSent);
+      socket.on('friend_waiting_sent', handleFriendWaitingSent);
+
+      socketInstance._friendCleanup = () => {
+        socket.off('online_friends_summary', handleOnlineFriendsSummary);
+        socket.off('friend_just_connected', handleFriendJustConnected);
+        socket.off('friend_waiting_for_you', handleFriendWaitingForYou);
+        socket.off('friend_connected_sent', handleFriendConnectedSent);
+        socket.off('friend_waiting_sent', handleFriendWaitingSent);
+      };
+    }).catch((err) => {
+      console.warn('Socket connect error in useNotifications:', err);
+    });
+
     return () => {
       isMounted = false;
       window.clearInterval(pollingId);
       supabase.removeChannel(friendSubscription);
       supabase.removeChannel(appNotifSubscription);
       supabase.removeChannel(gameSubscription);
+      if (socketInstance?._friendCleanup) {
+        socketInstance._friendCleanup();
+      }
     };
   }, [user]);
 

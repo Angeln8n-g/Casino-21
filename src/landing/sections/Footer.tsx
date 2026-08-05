@@ -3,12 +3,13 @@ import brand21Icon from '../../Public/brand21Icon-164.webp';
 import { Twitter, MessageSquare, Youtube, Instagram } from 'lucide-react';
 
 const CONTENT_LINKS = [
-  { href: '#como-jugar', label: 'Cómo Jugar' },
-  { href: '#torneos', label: 'Torneos' },
-  { href: '#rankings', label: 'Rankings' },
-  { href: '#blog', label: 'Blog' },
-  { href: '#faq', label: 'FAQ' },
-  { href: '#contacto', label: 'Contacto' },
+  { href: '/#como-funciona', label: 'Cómo Jugar' },
+  { href: '/#leaderboard-section', label: 'Rankings' },
+  { href: '/#ganadores-section', label: 'Ganadores' },
+  { href: '/#marcas-section', label: 'Patrocinios' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/contact', label: 'Contacto' },
 ];
 
 const LEGAL_LINKS = [
@@ -16,6 +17,7 @@ const LEGAL_LINKS = [
   { href: '/privacy', label: 'Política de Privacidad' },
   { href: '/cookies', label: 'Política de Cookies' },
 ];
+
 
 const SOCIAL_LINKS = [
   { href: '', label: 'Twitter', icon: Twitter, color: 'hover:text-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.5)]' },

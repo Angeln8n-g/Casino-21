@@ -160,7 +160,7 @@ export function ProfileHistory() {
                   <Calendar size={12} />
                   {formattedDate}
                 </div>
-                <div className="mt-2 text-[9px] font-black uppercase tracking-widest bg-black/50 border border-white/10 text-gray-300 inline-block px-2 py-1 rounded-md hidden md:block">
+                <div className="mt-2 text-[9px] font-black uppercase tracking-widest bg-black/50 border border-white/10 text-gray-300 hidden md:inline-block px-2 py-1 rounded-md">
                   {match.game_mode === 'tournament' ? '🏆 Torneo' : match.game_mode.toUpperCase()}
                 </div>
               </div>

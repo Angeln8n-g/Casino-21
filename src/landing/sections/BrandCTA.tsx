@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Eye, Target, Zap, Send } from 'lucide-react';
 
@@ -6,11 +6,11 @@ interface Props {
   onOpenSponsorModal: () => void;
 }
 
-export default function BrandCTA({ onOpenSponsorModal }: Props) {
+function BrandCTA({ onOpenSponsorModal }: Props) {
   return (
     <section id="marcas-section" className="py-20 px-4 sm:px-6 relative overflow-hidden bg-[#030612]">
       {/* Subtle Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-4xl mx-auto relative z-10 text-center">
         <motion.div
@@ -71,3 +71,6 @@ export default function BrandCTA({ onOpenSponsorModal }: Props) {
     </section>
   );
 }
+
+export default memo(BrandCTA);
+

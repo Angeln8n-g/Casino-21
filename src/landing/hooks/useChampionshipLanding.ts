@@ -49,8 +49,10 @@ export function useChampionshipLanding() {
   const [isWinnersWallOpen, setIsWinnersWallOpen] = useState(false);
   const [isSponsorModalOpen, setIsSponsorModalOpen] = useState(false);
 
-  // Countdown timer to end of month
-  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  // Countdown timer removed from global hook to prevent 1-second global re-renders.
+  // It is now isolated inside CountdownTimer in LegendLeaderboard.
+  const timeRemaining = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+
 
   // Calculate projected prizes based on total pool
   const calculatePrizes = useCallback((totalPool: number, items: ChampionshipLeaderboardItem[]) => {
@@ -72,13 +74,34 @@ export function useChampionshipLanding() {
     async function loadDbData() {
       try {
         // 1. Championship Event
-        const { data: eventData } = await supabase
+        const { data: eventData, error: eventErr } = await supabase
           .from('events')
           .select('current_prize_usd, global_ad_views, end_date')
           .eq('is_championship', true)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+
+        // 2. Real Participants sorted by points DESC
+        const { data: participants, error: participantsErr } = await supabase
+          .from('championship_participants')
+          .select('user_id, points, ads_watched, profiles(username)')
+          .order('points', { ascending: false })
+          .limit(100);
+
+        // 3. Paid Claims from DB for real Winners Wall
+        const { data: paidClaims, error: claimsErr } = await supabase
+          .from('tournament_prize_claims')
+          .select('id, amount_usd, bank_name, account_number, paid_at, profiles(username)')
+          .eq('status', 'paid')
+          .order('paid_at', { ascending: false })
+          .limit(20);
+
+        // If any request returns 401 Unauthorized (due to a stale/expired token stored in localStorage),
+        // clear the stale session so public anon requests succeed without errors.
+        if (eventErr?.status === 401 || participantsErr?.status === 401 || claimsErr?.status === 401) {
+          await supabase.auth.signOut().catch(() => {});
+        }
 
         if (eventData && mounted) {
           if (eventData.current_prize_usd) {
@@ -88,13 +111,6 @@ export function useChampionshipLanding() {
             setGlobalViews(Number(eventData.global_ad_views));
           }
         }
-
-        // 2. Real Participants sorted by points DESC
-        const { data: participants } = await supabase
-          .from('championship_participants')
-          .select('user_id, points, ads_watched, profiles(username)')
-          .order('points', { ascending: false })
-          .limit(100);
 
         if (participants && participants.length > 0 && mounted) {
           const colors = ['#fbbf24', '#a78bfa', '#34d399', '#f472b6', '#60a5fa', '#fb923c', '#38bdf8', '#c084fc', '#facc15', '#4ade80'];
@@ -114,14 +130,6 @@ export function useChampionshipLanding() {
         } else if (mounted) {
           setLeaderboard([]);
         }
-
-        // 3. Paid Claims from DB for real Winners Wall
-        const { data: paidClaims } = await supabase
-          .from('tournament_prize_claims')
-          .select('id, amount_usd, bank_name, account_number, paid_at, profiles(username)')
-          .eq('status', 'paid')
-          .order('paid_at', { ascending: false })
-          .limit(20);
 
         if (paidClaims && paidClaims.length > 0 && mounted) {
           const colors = ['bg-emerald-500/20 text-emerald-400 border-emerald-500/40', 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40', 'bg-amber-500/20 text-amber-400 border-amber-500/40'];
@@ -146,6 +154,7 @@ export function useChampionshipLanding() {
         } else if (mounted) {
           setWinners([]);
         }
+
       } catch (e) {
         if (mounted) {
           setLeaderboard([]);
@@ -157,26 +166,6 @@ export function useChampionshipLanding() {
     return () => { mounted = false; };
   }, [calculatePrizes]);
 
-  // Countdown timer interval to end of month
-  useEffect(() => {
-    const updateCountdown = () => {
-      const now = new Date();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      const diff = endOfMonth.getTime() - now.getTime();
-
-      if (diff > 0) {
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((diff / 1000 / 60) % 60);
-        const seconds = Math.floor((diff / 1000) % 60);
-        setTimeRemaining({ days, hours, minutes, seconds });
-      }
-    };
-
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Real participant update highlight
   useEffect(() => {

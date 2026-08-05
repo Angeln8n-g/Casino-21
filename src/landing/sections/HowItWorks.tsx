@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Trophy, Crown, Users, Sparkles, ArrowRight } from 'lucide-react';
 import { ReferralModal } from '../../web/components/championship/ReferralModal';
 
-export default function HowItWorks() {
+function HowItWorks() {
   const [isReferralOpen, setIsReferralOpen] = useState(false);
 
   const steps = [
@@ -116,8 +116,13 @@ export default function HowItWorks() {
 
       </div>
 
-      {/* Modal de Referidos */}
-      <ReferralModal isOpen={isReferralOpen} onClose={() => setIsReferralOpen(false)} />
+      {/* Modal de Referidos (Condicional) */}
+      {isReferralOpen && (
+        <ReferralModal isOpen={isReferralOpen} onClose={() => setIsReferralOpen(false)} />
+      )}
     </section>
   );
 }
+
+export default memo(HowItWorks);
+

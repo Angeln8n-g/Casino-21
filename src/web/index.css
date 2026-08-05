@@ -400,13 +400,15 @@
    CYBERPUNK / RETRO-FUTURISM EFFECTS
    ══════════════════════════════════════════════ */
 
-/* CRT Scanlines Overlay */
+/* CRT Scanlines Overlay - GPU promoted */
 .crt-overlay::after {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
+  contain: strict;
+  transform: translateZ(0);
   background: repeating-linear-gradient(
     0deg,
     transparent,
@@ -415,6 +417,7 @@
     rgba(0, 0, 0, 0.03) 4px
   );
 }
+
 
 /* Neon Gold Glow */
 .neon-gold {
