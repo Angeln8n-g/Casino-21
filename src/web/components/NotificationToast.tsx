@@ -57,20 +57,25 @@ export function NotificationToast({
   return (
     <>
       {/* ── Generic / Friend-request Toast ──────────────────── */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9998] w-11/12 max-w-sm animate-slide-down">
+      <div className="fixed top-4 inset-x-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-[9998] w-auto max-w-sm mx-auto animate-slide-down">
         <div className="glass-panel-strong p-4 border-casino-gold/50 shadow-[0_0_20px_rgba(251,191,36,0.15)] relative overflow-hidden">
           {/* Glow */}
-          <div className="absolute -top-10 -right-10 w-20 h-20 bg-casino-gold/20 blur-2xl rounded-full" />
+          <div className="absolute -top-10 -right-10 w-20 h-20 bg-casino-gold/20 blur-2xl rounded-full pointer-events-none" />
 
           {/* Header */}
           <div className="flex justify-between items-start mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🔔</span>
-              <h4 className="font-display font-bold text-white text-sm">{toast.title}</h4>
+            <div className="flex items-center gap-2 pr-2 min-w-0">
+              <span className="text-xl shrink-0">🔔</span>
+              <h4 className="font-display font-bold text-white text-sm truncate">{toast.title}</h4>
             </div>
             <button
-              onClick={onDismiss}
-              className="text-gray-500 hover:text-white transition-colors text-lg leading-none"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss();
+              }}
+              className="relative z-10 p-1.5 -mr-1.5 -mt-1.5 text-gray-400 hover:text-white transition-colors text-lg leading-none rounded-lg hover:bg-white/10 shrink-0 cursor-pointer"
+              aria-label="Cerrar"
             >
               ✕
             </button>

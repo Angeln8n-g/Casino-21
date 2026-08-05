@@ -442,18 +442,25 @@ export function useNotifications() {
     };
   }, [user]);
 
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const showToast = (notification: ToastNotification) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
     setToast(notification);
     
-    // Auto-dismiss logic
-    let timeoutMs = 30000; // Default 30s
+    // Auto-dismiss logic: 3 seconds default
+    let timeoutMs = 3000;
     if (notification.expiresAt) {
       const remaining = new Date(notification.expiresAt).getTime() - Date.now();
-      timeoutMs = Math.max(5000, remaining); // At least 5 seconds
+      timeoutMs = Math.max(3000, remaining);
     }
     
-    setTimeout(() => {
-      setToast((current) => current?.id === notification.id ? null : current);
+    toastTimerRef.current = setTimeout(() => {
+      setToast((current) => (current?.id === notification.id ? null : current));
+      toastTimerRef.current = null;
     }, timeoutMs);
   };
 
@@ -472,7 +479,7 @@ export function useNotifications() {
     } catch (error) {
       console.error(error);
     }
-    setToast(null);
+    dismissToast();
   };
 
   const handleGameInvite = async (id: string, roomId: string | null, status: 'accepted' | 'rejected') => {
@@ -480,7 +487,7 @@ export function useNotifications() {
     if (status === 'accepted') {
       const { data } = await supabase.from('game_invitations').select('status').eq('id', id).single();
       if (data && (data.status === 'cancelled' || data.status === 'expired')) {
-        setToast({
+        showToast({
           id: 'expired-invite',
           title: 'Invitación no válida',
           message: 'La invitación ha expirado o fue cancelada.',
@@ -501,7 +508,7 @@ export function useNotifications() {
       }
     }
 
-    setToast(null);
+    dismissToast();
     setActiveGameInvitation(null);
     if (status === 'accepted' && roomId) {
       const event = new CustomEvent('join_game_from_invite', { detail: { roomId } });
@@ -509,7 +516,13 @@ export function useNotifications() {
     }
   };
 
-  const dismissToast = () => setToast(null);
+  const dismissToast = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  };
 
   const totalPending = pendingFriendRequests + pendingGameInvites;
 

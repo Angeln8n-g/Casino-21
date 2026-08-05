@@ -67,7 +67,7 @@ export function GameInviteToast({ data, onAccept, onReject }: GameInviteToastPro
   return (
     /* ── Outer slide-in container ─────────────────────────── */
     <div
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[340px] animate-slide-down"
+      className="fixed top-4 inset-x-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-[9999] w-auto max-w-sm mx-auto animate-slide-down"
       role="alertdialog"
       aria-label="Invitación a partida"
     >
