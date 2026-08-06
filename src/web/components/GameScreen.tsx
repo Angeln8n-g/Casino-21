@@ -628,10 +628,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const avatarUrl = getAvatarForPlayer(p.id);
 
     return (
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-2xl border ${isTurn ? teamTurnBgClass : teamBgClass}`}>
+      <div className={`flex items-center gap-2 md:gap-3 px-2.5 py-1.5 md:px-3 md:py-2 rounded-xl md:rounded-2xl border ${isTurn ? teamTurnBgClass : teamBgClass}`}>
         <div className="relative shrink-0">
-          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-[3px]" style={ringStyle}>
-            <div className="w-full h-full rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-lg md:text-xl font-black text-casino-gold">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full p-[2px] md:p-[3px]" style={ringStyle}>
+            <div className="w-full h-full rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-base md:text-lg font-black text-casino-gold">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={p.name} className="w-full h-full object-cover" />
               ) : (
@@ -736,7 +736,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
         {/* Main game layout — uses flex column with sticky footer on mobile */}
         <div
-          className="flex flex-col h-full max-w-6xl mx-auto p-2 md:p-4 gap-2 md:gap-4 relative z-10 pointer-events-auto"
+          className="flex flex-col h-full max-w-7xl mx-auto p-2 lg:p-3 gap-1.5 lg:gap-2.5 relative z-10 pointer-events-auto overflow-hidden"
           style={{
             /* Account for safe area on top (notch) */
             paddingTop: isMobile ? 'env(safe-area-inset-top, 0.5rem)' : undefined,
@@ -755,7 +755,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           )}
 
           {/* Top Header */}
-        <header className="flex flex-col gap-3 md:gap-4 bg-black/30 backdrop-blur-md p-3 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl relative">
+        <header className="flex flex-col gap-2 md:gap-3 bg-black/30 backdrop-blur-md p-2.5 md:p-3.5 rounded-xl md:rounded-2xl border border-white/10 shadow-2xl relative shrink-0">
           
           {/* Disconnection Warning */}
           {disconnectionMessage && (
@@ -809,7 +809,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   <div className="flex-1 min-w-0 flex justify-end">{renderTurnPlayer(gameState.players[1], 1)}</div>
                 </div>
               ) : (
-                <div className="w-full relative flex items-center justify-center min-h-[140px] md:min-h-[180px]">
+                <div className="w-full relative flex items-center justify-center min-h-[90px] md:min-h-[105px]">
                   {/* Equipo 1 vs Equipo 2 Layout en Cruz */}
                   {(() => {
                     // Identificar compañeros y oponentes
@@ -1057,11 +1057,11 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           className={`
             bg-black/60 backdrop-blur-xl rounded-2xl md:rounded-3xl border
             ${isCurrentTurn ? 'border-yellow-500/50 shadow-[0_0_30px_rgba(250,204,21,0.15),inset_0_0_15px_rgba(0,0,0,0.5)]' : 'border-white/10 shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]'}
-            flex flex-col items-center gap-2 md:gap-6 relative overflow-hidden
-            transition-all duration-300 w-full
+            flex flex-col items-center gap-1.5 md:gap-3 relative overflow-hidden
+            transition-all duration-300 w-full shrink-0
             ${isMobile
               ? 'mt-auto p-2 sticky bottom-0 z-30'
-              : 'mt-auto p-6'
+              : 'mt-auto p-2.5 md:p-3 lg:p-4'
             }
           `}
           style={isMobile ? {
@@ -1069,19 +1069,19 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           } : {}}
         >
           {isSpectator ? (
-            <div className="relative z-30 w-full flex flex-col gap-3 items-center justify-center px-3 py-2 rounded-xl border border-blue-500/20 bg-blue-950/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)]">
-              <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar w-full justify-center">
+            <div className="relative z-30 w-full flex flex-col gap-2 items-center justify-center px-2 py-1.5 rounded-xl border border-blue-500/20 bg-blue-950/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)]">
+              <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar w-full justify-center">
                 {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
                   const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
                   return (
                     <button
                       key={emoji}
                       onClick={() => handleQuickEmoji(emoji)}
-                      className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 hover:bg-white/15 hover:scale-105 border border-white/10 transition-all text-lg shrink-0 flex items-center justify-center overflow-hidden shadow-md font-sans"
+                      className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 hover:bg-white/15 hover:scale-105 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden shadow-md font-sans"
                       title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
                     >
                       {isUrl ? (
-                        <img src={emoji} alt="emote" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                        <img src={emoji} alt="emote" className="w-6 h-6 md:w-7 md:h-7 object-contain drop-shadow-md" />
                       ) : (
                         <span>{emoji}</span>
                       )}
@@ -1089,7 +1089,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   );
                 })}
               </div>
-              <div className="text-xs font-bold text-blue-300 tracking-wider flex items-center gap-1.5 animate-pulse uppercase">
+              <div className="text-[10px] font-bold text-blue-300 tracking-wider flex items-center gap-1.5 animate-pulse uppercase">
                 <span>👁️</span> MODO ESPECTADOR — ENVÍA UNA REACCIÓN
               </div>
             </div>
@@ -1097,22 +1097,22 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             <>
               {!isCurrentTurn && (
                 <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
-                  <span className="text-gray-300 font-black tracking-widest text-sm md:text-lg animate-pulse">ESPERANDO TURNO...</span>
+                  <span className="text-gray-300 font-black tracking-widest text-xs md:text-base animate-pulse">ESPERANDO TURNO...</span>
                 </div>
               )}
-              <div className="relative z-30 w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-white/10 bg-black/25">
-                <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+              <div className="relative z-30 w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border border-white/10 bg-black/25">
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
                   {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
                     const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
                     return (
                       <button
                         key={emoji}
                         onClick={() => handleQuickEmoji(emoji)}
-                        className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-lg shrink-0 flex items-center justify-center overflow-hidden"
+                        className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden"
                         title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
                       >
                         {isUrl ? (
-                          <img src={emoji} alt="emote" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+                          <img src={emoji} alt="emote" className="w-6 h-6 md:w-7 md:h-7 object-contain drop-shadow-md" />
                         ) : (
                           <span>{emoji}</span>
                         )}
@@ -1120,7 +1120,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                     );
                   })}
                 </div>
-                <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-300">
+                <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-gray-300">
                   <span className="text-gray-500">🙂</span>
                   Emoticonos
                 </div>

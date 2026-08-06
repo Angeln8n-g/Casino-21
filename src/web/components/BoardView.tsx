@@ -77,7 +77,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
   return (
     <div
-      className={`w-full max-w-5xl rounded-2xl md:rounded-[4rem] p-3 md:p-6 ring-4 ring-black/80 transition-all relative overflow-hidden ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-[300px] lg:min-h-[400px]'} flex-1 flex flex-col`}
+      className={`w-full max-w-5xl rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] p-2 md:p-3 lg:p-4 ring-4 ring-black/80 transition-all relative overflow-hidden ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-0 flex-1'} flex flex-col`}
       style={{
         ...boardBackgroundStyle,
         transform: isMobile ? `scale(${boardScale})` : undefined,
@@ -108,10 +108,10 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
         }}
         className={`
           relative flex flex-col items-center justify-center
-          gap-3 md:gap-6 p-3 md:p-10 w-full h-full
-          rounded-xl md:rounded-[3.2rem]
+          gap-2 md:gap-3 p-2 md:p-4 lg:p-6 w-full h-full
+          rounded-xl md:rounded-[2.2rem]
           shadow-[inset_0_10px_30px_rgba(0,0,0,0.5)]
-          border-[2px] md:border-[4px]
+          border-[2px] md:border-[3px]
           ring-1 md:ring-2 ring-black/50
           transition-all flex-1 overflow-hidden
           ${!boardTheme && !boardThemeUrl ? 'bg-black/40 backdrop-blur-md' : 'bg-transparent'} 
@@ -164,9 +164,9 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Cartas Sueltas — zona central */}
         {board.cards.length > 0 && (
-          <div className="mb-3 md:mb-6 w-full text-center p-2 md:p-4 betting-box bg-black/10">
-            <h3 className="text-[10px] md:text-sm font-bold mb-1.5 md:mb-4 text-yellow-300 drop-shadow-md tracking-wider uppercase">Cartas Sueltas</h3>
-            <div className="flex flex-wrap gap-1.5 md:gap-4 justify-center min-h-[60px] md:min-h-[160px]">
+          <div className="mb-2 md:mb-3 w-full text-center p-2 md:p-2.5 betting-box bg-black/10">
+            <h3 className="text-[10px] md:text-xs font-bold mb-1 md:mb-2 text-yellow-300 drop-shadow-md tracking-wider uppercase">Cartas Sueltas</h3>
+            <div className="flex flex-wrap gap-1.5 md:gap-3 justify-center min-h-[50px] md:min-h-[75px]">
               {board.cards.map(card => (
                 <DroppableBoardCard
                   key={card.id}

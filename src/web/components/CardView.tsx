@@ -50,7 +50,7 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
           }
         }}
         className={`
-          relative w-[clamp(2.6rem,14vw,5.2rem)] h-[clamp(3.9rem,21vw,7.8rem)] md:w-24 md:h-36 rounded-xl flex flex-col justify-between p-1.5 md:p-3
+          relative w-[clamp(2.6rem,14vw,5.2rem)] h-[clamp(3.9rem,21vw,7.8rem)] md:w-[clamp(4.2rem,5.5vw,5.5rem)] md:h-[clamp(6.3rem,8.2vw,8.2rem)] rounded-xl flex flex-col justify-between p-1.5 md:p-2.5
           select-none transition-all duration-300 transform-gpu touch-manipulation
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 md:hover:-translate-y-3 hover:shadow-2xl'}
           ${selected ? 'scale-[1.03] md:scale-[1.07] -translate-y-1 md:-translate-y-4 premium-card-selected' : 'premium-card-edge'}
@@ -98,11 +98,11 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
           </div>
         )}
 
-        <div className="text-sm md:text-xl font-bold leading-none tracking-tight relative z-10 drop-shadow-sm">{displayRank}</div>
-        <div className="text-3xl md:text-6xl text-center flex-grow flex items-center justify-center filter drop-shadow-md relative z-10">
+        <div className="text-sm md:text-base font-bold leading-none tracking-tight relative z-10 drop-shadow-sm">{displayRank}</div>
+        <div className="text-2xl md:text-4xl text-center flex-grow flex items-center justify-center filter drop-shadow-md relative z-10">
           {suitSymbols[card.suit]}
         </div>
-        <div className="text-sm md:text-xl font-bold leading-none rotate-180 tracking-tight relative z-10 drop-shadow-sm">{displayRank}</div>
+        <div className="text-sm md:text-base font-bold leading-none rotate-180 tracking-tight relative z-10 drop-shadow-sm">{displayRank}</div>
       </div>
     );
   }

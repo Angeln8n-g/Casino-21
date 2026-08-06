@@ -25,8 +25,8 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
   return (
     <div
       className={`
-        p-3 md:p-6 rounded-2xl md:rounded-3xl transition-all backdrop-blur-md border
-        flex flex-col md:flex-row gap-3 md:gap-8 items-center w-full max-w-full
+        p-2 md:p-3 lg:p-4 rounded-2xl md:rounded-3xl transition-all backdrop-blur-md border
+        flex flex-col md:flex-row gap-2 md:gap-4 items-center w-full max-w-full
         ${isCurrentTurn
           ? 'bg-cyan-900/25 border-cyan-300/50 shadow-[0_0_20px_rgba(34,211,238,0.25)]'
           : 'bg-black/25 border-white/10'
@@ -40,8 +40,8 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
       }}
     >
       <div className="flex-grow w-full min-w-0">
-        <div className="flex justify-between items-center mb-2 md:mb-4">
-          <h3 className="text-sm md:text-2xl font-bold flex items-center gap-2 md:gap-3 drop-shadow-md truncate">
+        <div className="flex justify-between items-center mb-1.5 md:mb-2">
+          <h3 className="text-sm md:text-lg lg:text-xl font-bold flex items-center gap-2 md:gap-3 drop-shadow-md truncate">
             {player.name}
             {isCurrentTurn && (
               <span className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[9px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 rounded-full animate-pulse shadow-lg shrink-0">
@@ -49,7 +49,7 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
               </span>
             )}
           </h3>
-          <div className="text-[10px] md:text-sm text-gray-100 bg-black/35 px-2 md:px-4 py-1 md:py-2 rounded-full border border-white/15 shrink-0">
+          <div className="text-[10px] md:text-xs text-gray-100 bg-black/35 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-white/15 shrink-0">
             Virados: <span className="font-bold text-yellow-400">{player.virados}</span>
           </div>
         </div>
@@ -63,8 +63,8 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
             snap-x snap-mandatory md:snap-none
           "
           style={{
-            /* Mobile: fixed height with min touch target; Desktop: taller */
-            height: isMobile ? 'clamp(5.5rem, 26vw, 9rem)' : '10rem',
+            /* Mobile: fixed height with min touch target; Desktop: adapt to viewport height */
+            height: isMobile ? 'clamp(5.5rem, 26vw, 9rem)' : 'clamp(6.5rem, 13vh, 8.8rem)',
             /* Hide scrollbar on mobile for cleaner look */
             scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
