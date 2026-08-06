@@ -593,15 +593,15 @@ export function Store() {
                         item.item_type === 'emotic' ? (
                           <div className="flex flex-col gap-2">
                             <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider text-center font-bold">Equipar en Slot:</span>
-                            <div className="grid grid-cols-4 gap-2">
-                              {[1, 2, 3, 4].map(slot => {
+                            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 md:gap-2">
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map(slot => {
                                 const isEquippedInSlot = profile?.equipped_emotics?.[slot - 1] === item.image_url;
                                 return (
                                   <button
                                     key={slot}
                                     onClick={(e) => { e.stopPropagation(); handleEquip(item, slot); }}
                                     disabled={processingId === item.id || isEquippedInSlot}
-                                    className={`py-2 rounded-xl font-bold text-xs transition-colors border ${
+                                    className={`py-1.5 rounded-lg font-bold text-xs transition-colors border ${
                                       isEquippedInSlot
                                         ? 'bg-[#FACC15]/20 text-[#FACC15] border-[#FACC15]/50'
                                         : 'bg-[#2A2722] border-[#3A362F] text-white hover:bg-[#3A362F]'

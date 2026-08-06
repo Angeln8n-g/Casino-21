@@ -95,8 +95,17 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     return () => clearInterval(interval);
   }, [emoteCooldownTime]);
 
-  // Custom Emotes from player profile
-  const playerEmotes = profile?.equipped_emotics || quickEmojis;
+  // Custom Emotes from player profile (padded to 8 slots)
+  const playerEmotes = useMemo(() => {
+    const equipped = profile?.equipped_emotics || [];
+    const result = [...equipped];
+    for (let i = 0; i < 8; i++) {
+      if (!result[i]) {
+        result[i] = quickEmojis[i] || '😀';
+      }
+    }
+    return result.slice(0, 8);
+  }, [profile?.equipped_emotics, quickEmojis]);
 
   // DnD State
   const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
@@ -617,7 +626,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     if (!roomId) return;
     const now = Date.now();
     if (now - lastEmoteTimeRef.current < 5000) {
-      triggerHaptic('impact_light');
+      triggerHaptic('light');
       playSfx('error', { volumeMultiplier: 0.3 });
       return;
     }
