@@ -32,15 +32,6 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  // Dynamic board scale: scale down proportionally on narrow screens
-  const boardScale = useMemo(() => {
-    if (typeof window === 'undefined') return 1;
-    const w = window.innerWidth;
-    if (w >= 768) return 1;
-    // Scale from 0.88 at 320px to 1 at 768px
-    return Math.max(0.88, Math.min(1, 0.88 + (w - 320) * (0.12 / (768 - 320))));
-  }, []);
-
   // URL theme takes priority (tournaments/quests), then store theme, then default
   const boardBorderColor = boardTheme?.borderColor ?? '#2A1810';
   const boardGlowColor = boardTheme?.glowColor ?? 'rgba(34,211,238,0.4)';
@@ -77,12 +68,8 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
   return (
     <div
-      className={`w-full max-w-5xl rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] p-2 md:p-3 lg:p-4 ring-4 ring-black/80 transition-all relative overflow-hidden ${isMobile ? 'min-h-[25vh] max-h-[45vh]' : 'min-h-0 flex-1'} flex flex-col`}
-      style={{
-        ...boardBackgroundStyle,
-        transform: isMobile ? `scale(${boardScale})` : undefined,
-        transformOrigin: 'top center',
-      }}
+      className="w-full max-w-5xl rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] p-2 md:p-3 lg:p-4 ring-4 ring-black/80 transition-all relative overflow-hidden flex-1 min-h-0 flex flex-col"
+      style={boardBackgroundStyle}
     >
       {/* Optional store-theme overlay gradient (Applied to full board now) */}
       {boardTheme?.overlayGradient && (

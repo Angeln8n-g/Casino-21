@@ -74,11 +74,27 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     isSpectator: boolean; 
   }>>({});
   const previousGameStateRef = useRef<GameState | null>(null);
-  const quickEmojis = useRef(['😀', '😮', '🔥', '👏', '💀', '🎉']).current;
+  const quickEmojis = useRef(['😀', '😮', '🔥', '👏', '💀', '🎉', '💩', '😎']).current;
   const roomId = localStorage.getItem('casino21_roomId') || localStorage.getItem('casino21_spectatorRoomId') || '';
   const chatIndexRef = useRef(0);
   const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  
+  const lastEmoteTimeRef = useRef<number>(0);
+  const [emoteCooldownTime, setEmoteCooldownTime] = useState(0);
+
+  useEffect(() => {
+    if (emoteCooldownTime <= 0) return;
+    const interval = setInterval(() => {
+      setEmoteCooldownTime((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [emoteCooldownTime]);
+
   // Custom Emotes from player profile
   const playerEmotes = profile?.equipped_emotics || quickEmojis;
 
@@ -599,6 +615,14 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   const handleQuickEmoji = (emoji: string) => {
     if (!roomId) return;
+    const now = Date.now();
+    if (now - lastEmoteTimeRef.current < 5000) {
+      triggerHaptic('impact_light');
+      playSfx('error', { volumeMultiplier: 0.3 });
+      return;
+    }
+    lastEmoteTimeRef.current = now;
+    setEmoteCooldownTime(5);
     sendMessage(roomId, emoji);
   };
 
@@ -952,25 +976,26 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           `}
           style={!boardThemeUrl && profile?.equipped_board ? { backgroundImage: `url(${profile.equipped_board})` } : {}}
         >
-          {/* Reacciones Centrales (Emotes) */}
-          <div className="absolute inset-0 pointer-events-none z-[100] flex flex-col justify-center overflow-hidden">
+          {/* Reacciones Flotantes a la Altura del Perfil */}
+          <div className="absolute top-2 md:top-4 left-0 right-0 pointer-events-none z-[100] px-2 md:px-6">
             {Object.entries(activeReactions).map(([senderId, reaction], index) => {
               const p = gameState.players.find((player) => player.id === senderId);
               const name = p ? p.name : reaction.senderName;
               const avatarUrl = p ? getAvatarForPlayer(p.id) : null;
+              const playerIndex = gameState.players.findIndex((player) => player.id === senderId);
               
-              const isEven = index % 2 === 0;
-              const animationClass = isEven ? 'animate-emote-left' : 'animate-emote-right';
+              const isRightSide = playerIndex === 1 || (playerIndex === -1 && index % 2 !== 0);
+              const animationClass = isRightSide ? 'animate-emote-right' : 'animate-emote-left';
               
               return (
                 <div 
                   key={reaction.nonce} 
-                  className={`absolute w-full flex ${isEven ? 'justify-start pl-4 md:pl-16' : 'justify-end pr-4 md:pr-16'}`}
-                  style={{ top: `${35 + (index * 15)}%` }}
+                  className={`absolute flex ${isRightSide ? 'right-2 md:right-8 justify-end' : 'left-2 md:left-8 justify-start'}`}
+                  style={{ top: `${index * 3.5}rem` }}
                 >
-                  <div className={`flex items-center gap-3 bg-black/50 backdrop-blur-md pl-2 pr-4 py-2 rounded-full border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden shimmer-overlay ${animationClass}`}>
+                  <div className={`flex items-center gap-2 md:gap-3 bg-black/85 backdrop-blur-md pl-2 pr-3 py-1.5 md:py-2 rounded-full border border-yellow-400/60 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden shimmer-overlay ${animationClass}`}>
                     {/* Avatar */}
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-sm font-black text-casino-gold shrink-0">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-xs md:text-sm font-black text-casino-gold shrink-0">
                       {avatarUrl ? (
                         <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
                       ) : (
@@ -978,17 +1003,17 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                       )}
                     </div>
                     {/* Name */}
-                    <span className="text-white font-bold text-xs md:text-sm max-w-[100px] md:max-w-[140px] truncate flex flex-col justify-center">
+                    <span className="text-white font-bold text-xs max-w-[80px] md:max-w-[120px] truncate flex flex-col justify-center">
                       <span>{name}</span>
                       {reaction.isSpectator && (
-                        <span className="text-[9px] text-blue-300 font-normal leading-tight">Espectador</span>
+                        <span className="text-[8px] text-blue-300 font-normal leading-tight">Espectador</span>
                       )}
                     </span>
                     
                     {/* Emote / Text / Animation */}
                     <div className="flex items-center justify-center">
                       {typeof reaction.emoji === 'string' && (reaction.emoji.startsWith('http') || reaction.emoji.includes('/storage/v1/object/public/') || /\.(gif|webp|png|jpg|jpeg)$/i.test(reaction.emoji)) ? (
-                        <div className="w-14 h-14 md:w-20 md:h-20 flex items-center justify-center -ml-1">
+                        <div className="w-10 h-10 md:w-14 md:h-14 flex items-center justify-center -ml-1">
                           <img 
                             src={reaction.emoji} 
                             alt="emote" 
@@ -996,7 +1021,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                           />
                         </div>
                       ) : (
-                        <span className="bg-black/70 text-white font-bold text-xs md:text-sm px-3.5 py-1.5 rounded-2xl border border-white/20 shadow-lg max-w-[160px] md:max-w-[220px] truncate leading-normal ml-1">
+                        <span className="bg-black/70 text-white font-bold text-xs md:text-sm px-2.5 py-1 rounded-xl border border-white/20 shadow-lg max-w-[140px] truncate leading-normal ml-1">
                           {reaction.emoji}
                         </span>
                       )}
@@ -1071,13 +1096,14 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           {isSpectator ? (
             <div className="relative z-30 w-full flex flex-col gap-2 items-center justify-center px-2 py-1.5 rounded-xl border border-blue-500/20 bg-blue-950/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)]">
               <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar w-full justify-center">
-                {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
+                {(playerEmotes || []).filter(Boolean).slice(0, 8).map((emoji: string) => {
                   const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
                   return (
                     <button
                       key={emoji}
+                      disabled={emoteCooldownTime > 0}
                       onClick={() => handleQuickEmoji(emoji)}
-                      className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 hover:bg-white/15 hover:scale-105 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden shadow-md font-sans"
+                      className={`w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden shadow-md font-sans ${emoteCooldownTime > 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/15 hover:scale-105'}`}
                       title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
                     >
                       {isUrl ? (
@@ -1090,7 +1116,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                 })}
               </div>
               <div className="text-[10px] font-bold text-blue-300 tracking-wider flex items-center gap-1.5 animate-pulse uppercase">
-                <span>👁️</span> MODO ESPECTADOR — ENVÍA UNA REACCIÓN
+                <span>👁️</span> MODO ESPECTADOR — ENVÍA UNA REACCIÓN {emoteCooldownTime > 0 && <span className="text-yellow-400">({emoteCooldownTime}s)</span>}
               </div>
             </div>
           ) : (
@@ -1102,13 +1128,14 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               )}
               <div className="relative z-30 w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border border-white/10 bg-black/25">
                 <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
-                  {(playerEmotes || []).filter(Boolean).map((emoji: string) => {
+                  {(playerEmotes || []).filter(Boolean).slice(0, 8).map((emoji: string) => {
                     const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
                     return (
                       <button
                         key={emoji}
+                        disabled={emoteCooldownTime > 0}
                         onClick={() => handleQuickEmoji(emoji)}
-                        className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden"
+                        className={`w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden ${emoteCooldownTime > 0 ? 'opacity-40 cursor-not-allowed font-semibold' : 'hover:bg-white/15 hover:scale-105'}`}
                         title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
                       >
                         {isUrl ? (
@@ -1123,6 +1150,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                 <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-gray-300">
                   <span className="text-gray-500">🙂</span>
                   Emoticonos
+                  {emoteCooldownTime > 0 && (
+                    <span className="text-yellow-400 font-mono text-xs font-bold ml-1 animate-pulse">({emoteCooldownTime}s)</span>
+                  )}
                 </div>
               </div>
               <HandView 
