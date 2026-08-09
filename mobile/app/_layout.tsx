@@ -16,6 +16,8 @@ export default function RootLayout() {
           <AudioProvider>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="game" options={{ headerShown: false }} />
             </Stack>
           </AudioProvider>
         </AuthProvider>

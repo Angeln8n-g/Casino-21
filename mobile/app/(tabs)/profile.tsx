@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
-import { LogOut, Trophy, Award, Zap, Sparkles } from 'lucide-react-native';
+import { LogOut, LogIn, Trophy, Award, Zap, Sparkles } from 'lucide-react-native';
 
 export function getDivisionFromElo(elo: number) {
   if (elo < 1200) return { label: 'Bronce', icon: '🥉', color: 'text-amber-700' };
@@ -17,7 +18,8 @@ export function calculateLevelFromXp(xp: number): number {
 }
 
 export default function ProfileScreen() {
-  const { profile, signOut } = useAuth();
+  const router = useRouter();
+  const { profile, user, signOut } = useAuth();
 
   const elo = profile?.elo || 1000;
   const xp = profile?.xp || 0;
@@ -47,7 +49,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <Text className="text-white font-bold text-2xl">{profile?.username || 'Jugador K21'}</Text>
+        <Text className="text-white font-bold text-2xl">{profile?.username || (user ? 'Jugador K21' : 'Invitado')}</Text>
         {profile?.equipped_title && (
           <Text className="text-amber-400 text-xs font-bold uppercase tracking-wider mt-1">
             ✨ {profile.equipped_title}
@@ -108,14 +110,24 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Botón de Cerrar Sesión */}
-      <Pressable
-        onPress={handleSignOut}
-        className="bg-red-500/10 active:bg-red-500/20 border border-red-500/30 p-4 rounded-2xl flex-row items-center justify-center mb-12"
-      >
-        <LogOut color="#ef4444" size={20} className="mr-2" />
-        <Text className="text-red-400 font-bold text-base">Cerrar Sesión</Text>
-      </Pressable>
+      {/* Botón de Iniciar / Cerrar Sesión */}
+      {user ? (
+        <Pressable
+          onPress={handleSignOut}
+          className="bg-red-500/10 active:bg-red-500/20 border border-red-500/30 p-4 rounded-2xl flex-row items-center justify-center mb-12"
+        >
+          <LogOut color="#ef4444" size={20} className="mr-2" />
+          <Text className="text-red-400 font-bold text-base">Cerrar Sesión</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => router.push('/auth')}
+          className="bg-amber-500 active:bg-amber-600 p-4 rounded-2xl flex-row items-center justify-center mb-12"
+        >
+          <LogIn color="#020617" size={20} className="mr-2" />
+          <Text className="text-slate-950 font-bold text-base">Iniciar Sesión / Registrarse</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }

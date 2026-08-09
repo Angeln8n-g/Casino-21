@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, Alert, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
@@ -8,7 +8,7 @@ import { CardView } from '../components/CardView';
 import { DraggableCard } from '../components/DraggableCard';
 import { GameState } from 'domain/game-state';
 import { Card } from 'domain/card';
-import { ArrowLeft, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Bot, Trophy, Frown, Home } from 'lucide-react-native';
 
 export default function GameScreen() {
   const router = useRouter();
@@ -27,6 +27,10 @@ export default function GameScreen() {
         
         socket.on('game_state_update', (state: GameState) => {
           setGameState(state);
+          if (state.phase === 'completed') {
+            const isWinner = state.winnerId === user?.id;
+            playSfx(isWinner ? 'victory' : 'defeat');
+          }
         });
 
         socket.on('timer_update', ({ remaining }: { remaining: number }) => {
@@ -45,7 +49,7 @@ export default function GameScreen() {
         socket.off('timer_update');
       }
     };
-  }, []);
+  }, [user?.id]);
 
   const handleSelectCard = (index: number) => {
     setSelectedCardIndex(index === selectedCardIndex ? null : index);
@@ -71,6 +75,9 @@ export default function GameScreen() {
 
   const localPlayer = gameState?.players.find(p => p.id === user?.id) || gameState?.players[0];
   const opponent = gameState?.players.find(p => p.id !== user?.id) || gameState?.players[1];
+  const isBotOpponent = opponent?.name?.toLowerCase().includes('bot') || opponent?.id?.startsWith('bot-');
+  const isGameOver = gameState?.phase === 'completed';
+  const isWinner = gameState?.winnerId === localPlayer?.id;
 
   return (
     <View className="flex-1 bg-slate-950 px-4 pt-12">
@@ -90,7 +97,14 @@ export default function GameScreen() {
 
       {/* Info del Oponente */}
       <View className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 flex-row justify-between items-center mb-4">
-        <Text className="text-slate-300 font-bold">{opponent?.name || 'Oponente'}</Text>
+        <View className="flex-row items-center">
+          {isBotOpponent && (
+            <View className="bg-cyan-500/20 p-1.5 rounded-lg mr-2 border border-cyan-500/40">
+              <Bot color="#06b6d4" size={16} />
+            </View>
+          )}
+          <Text className="text-slate-300 font-bold">{opponent?.name || 'Oponente'}</Text>
+        </View>
         <Text className="text-amber-400 font-bold">Puntos: {opponent?.score || 0}</Text>
       </View>
 
@@ -143,6 +157,38 @@ export default function GameScreen() {
           </View>
         ))}
       </ScrollView>
+
+      {/* Modal Fin de Partida (Victoria / Derrota) */}
+      <Modal visible={isGameOver} transparent animationType="slide">
+        <View className="flex-1 bg-black/80 items-center justify-center p-6">
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full items-center">
+            {isWinner ? (
+              <View className="bg-amber-500/20 p-4 rounded-full mb-3 border border-amber-500/40">
+                <Trophy color="#fbbf24" size={48} />
+              </View>
+            ) : (
+              <View className="bg-red-500/20 p-4 rounded-full mb-3 border border-red-500/40">
+                <Frown color="#ef4444" size={48} />
+              </View>
+            )}
+
+            <Text className="text-white font-bold text-2xl mb-1">
+              {isWinner ? '¡VICTORIA!' : 'DERROTA'}
+            </Text>
+            <Text className="text-slate-400 text-sm mb-6 text-center">
+              {isWinner ? 'Has ganado la partida K21' : 'Buen intento, sigue practicando'}
+            </Text>
+
+            <Pressable
+              onPress={() => router.replace('/(tabs)')}
+              className="bg-amber-500 active:bg-amber-600 px-6 py-3 rounded-xl flex-row items-center w-full justify-center"
+            >
+              <Home color="#020617" size={20} className="mr-2" />
+              <Text className="text-slate-950 font-bold text-base">Volver al Lobby</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
