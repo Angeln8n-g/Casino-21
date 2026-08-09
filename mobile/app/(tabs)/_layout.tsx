@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { ShoppingBag, Home, User, Users } from 'lucide-react-native';
+import { ShoppingBag, Home, User, Users, Calendar } from 'lucide-react-native';
 
 export default function TabsLayout() {
   return (
@@ -30,6 +30,13 @@ export default function TabsLayout() {
         options={{
           title: 'Tienda',
           tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: 'Eventos',
+          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Tabs.Screen

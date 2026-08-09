@@ -16,6 +16,18 @@ interface StoreItem {
   theme_key?: string | null;
 }
 
+export function resolveImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const baseUrl = process.env.EXPO_PUBLIC_SOCKET_URL || process.env.VITE_SOCKET_URL || 'http://localhost:4000';
+  if (url.startsWith('/')) {
+    return `${baseUrl}${url}`;
+  }
+  return `${baseUrl}/assets/store/${url}`;
+}
+
 export default function ShopScreen() {
   const { profile, user, refetchProfile } = useAuth();
   const { playSfx } = useAudio();
@@ -29,7 +41,6 @@ export default function ShopScreen() {
     try {
       setLoading(true);
       
-      // Real API calls to Supabase (NO MOCK DATA)
       const { data: storeData, error: storeError } = await supabase
         .from('store_items')
         .select('*')
@@ -39,7 +50,6 @@ export default function ShopScreen() {
         console.error('Error fetching store items:', storeError);
       } else if (storeData) {
         setItems(storeData as StoreItem[]);
-        // Rule 5.3: Mandatory console log to prove real data fetching
         console.log('Shop items from API:', storeData);
       }
 
@@ -94,6 +104,17 @@ export default function ShopScreen() {
     }
   };
 
+  const getItemEmoji = (type: string) => {
+    switch (type) {
+      case 'avatar': return '👤';
+      case 'title': return '✨';
+      case 'board': return '🃏';
+      case 'theme': return '🎨';
+      case 'emotic': return '🎭';
+      default: return '🎁';
+    }
+  };
+
   const filteredItems = items.filter(item => 
     activeCategory === 'all' ? true : item.item_type === activeCategory
   );
@@ -143,15 +164,20 @@ export default function ShopScreen() {
           renderItem={({ item }) => {
             const isOwned = inventory.includes(item.id);
             const isBuying = processingId === item.id;
+            const fullImageUrl = resolveImageUrl(item.image_url);
 
             return (
               <View className="bg-slate-900/90 rounded-2xl p-4 mb-4 border border-slate-800 flex-row items-center justify-between">
                 <View className="flex-row items-center flex-1 mr-3">
-                  {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} className="w-14 h-14 rounded-xl mr-3 bg-slate-800" />
+                  {fullImageUrl ? (
+                    <Image
+                      source={{ uri: fullImageUrl }}
+                      contentFit="cover"
+                      className="w-14 h-14 rounded-xl mr-3 bg-slate-800 border border-slate-700"
+                    />
                   ) : (
                     <View className="w-14 h-14 rounded-xl mr-3 bg-amber-500/10 border border-amber-500/30 items-center justify-center">
-                      <Text className="text-2xl">🃏</Text>
+                      <Text className="text-2xl">{getItemEmoji(item.item_type)}</Text>
                     </View>
                   )}
                   <View className="flex-1">

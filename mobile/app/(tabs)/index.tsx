@@ -9,7 +9,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('expert');
   const [roomIdInput, setRoomIdInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* OPORTUNIDAD DE JUEGO 1: JUGAR VS BOTS (IA) */}
+      {/* JUGAR VS BOTS (IA) */}
       <View className="bg-slate-900/80 rounded-3xl p-5 mb-5 border border-slate-800">
         <View className="flex-row items-center mb-3">
           <View className="bg-cyan-500/10 p-2.5 rounded-xl mr-3 border border-cyan-500/30">
@@ -147,25 +147,31 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Selección de Dificultad */}
+        {/* Selección de Dificultad (Incluye Experto ⚜️) */}
         <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Dificultad de la IA</Text>
         <View className="flex-row mb-4">
-          {(['easy', 'medium', 'hard'] as const).map((diff) => (
+          {(['easy', 'medium', 'hard', 'expert'] as const).map((diff) => (
             <Pressable
               key={diff}
               onPress={() => setDifficulty(diff)}
-              className={`flex-1 py-2 rounded-xl mr-2 items-center border ${
+              className={`flex-1 py-2 rounded-xl mr-1.5 items-center border ${
                 difficulty === diff
                   ? 'bg-cyan-500 border-cyan-400'
                   : 'bg-slate-800 border-slate-700'
               }`}
             >
               <Text
-                className={`font-bold capitalize text-xs ${
+                className={`font-bold capitalize text-[11px] ${
                   difficulty === diff ? 'text-slate-950' : 'text-slate-400'
                 }`}
               >
-                {diff === 'easy' ? 'Fácil' : diff === 'medium' ? 'Normal' : 'Difícil'}
+                {diff === 'easy'
+                  ? 'Fácil'
+                  : diff === 'medium'
+                  ? 'Normal'
+                  : diff === 'hard'
+                  ? 'Difícil'
+                  : 'Experto ⚜️'}
               </Text>
             </Pressable>
           ))}
@@ -187,7 +193,7 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* OPORTUNIDAD DE JUEGO 2: MULTIJUGADOR RANKED 1v1 */}
+      {/* MULTIJUGADOR RANKED 1v1 */}
       <View className="bg-slate-900/80 rounded-3xl p-5 mb-5 border border-slate-800">
         <View className="flex-row items-center mb-3">
           <View className="bg-amber-500/10 p-2.5 rounded-xl mr-3 border border-amber-500/30">
@@ -215,7 +221,7 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* OPORTUNIDAD DE JUEGO 3: SALAS PRIVADAS */}
+      {/* SALAS PRIVADAS */}
       <View className="bg-slate-900/80 rounded-3xl p-5 mb-10 border border-slate-800">
         <View className="flex-row items-center mb-4">
           <View className="bg-purple-500/10 p-2.5 rounded-xl mr-3 border border-purple-500/30">
