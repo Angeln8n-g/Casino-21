@@ -1,22 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, Alert, Modal } from 'react-native';
+import { View, Text, Pressable, Alert, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
-import { CardView } from '../components/CardView';
-import { DraggableCard } from '../components/DraggableCard';
+import { MatchPointHUD } from '../components/MatchPointHUD';
+import { BoardView } from '../components/BoardView';
+import { EmoteBar } from '../components/EmoteBar';
+import { HandView } from '../components/HandView';
+import { ActionPanel, ActionPayload } from '../components/ActionPanel';
 import { GameState } from 'domain/game-state';
-import { Card } from 'domain/card';
-import { ArrowLeft, Bot, Trophy, Frown, Home } from 'lucide-react-native';
+import { Trophy, Frown, Home } from 'lucide-react-native';
 
 export default function GameScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { playSfx } = useAudio();
+
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
+  const [selectedFormationIds, setSelectedFormationIds] = useState<Set<string>>(new Set());
+
   const [timeRemaining, setTimeRemaining] = useState(30);
+  const [activeEmoteNotification, setActiveEmoteNotification] = useState<{ senderName: string; emoji: string } | null>(null);
 
   useEffect(() => {
     let socket: any;
@@ -36,6 +43,11 @@ export default function GameScreen() {
         socket.on('timer_update', ({ remaining }: { remaining: number }) => {
           setTimeRemaining(Math.ceil(remaining / 1000));
         });
+
+        socket.on('chat_message', (msg: { senderName: string; text: string }) => {
+          setActiveEmoteNotification({ senderName: msg.senderName, emoji: msg.text });
+          setTimeout(() => setActiveEmoteNotification(null), 3000);
+        });
       } catch (err) {
         console.error("Error conectando socket en GameScreen:", err);
       }
@@ -47,116 +59,136 @@ export default function GameScreen() {
       if (socket) {
         socket.off('game_state_update');
         socket.off('timer_update');
+        socket.off('chat_message');
       }
     };
   }, [user?.id]);
 
-  const handleSelectCard = (index: number) => {
-    setSelectedCardIndex(index === selectedCardIndex ? null : index);
+  const handleSelectHandCard = (index: number) => {
+    if (selectedCardIndex === index) {
+      setSelectedCardIndex(null);
+    } else {
+      setSelectedCardIndex(index);
+      playSfx('cardPlay');
+    }
+  };
+
+  const handleToggleBoardCard = (cardId: string) => {
+    const nextSet = new Set(selectedBoardCardIds);
+    if (nextSet.has(cardId)) {
+      nextSet.delete(cardId);
+    } else {
+      nextSet.add(cardId);
+    }
+    setSelectedBoardCardIds(nextSet);
     playSfx('cardPlay');
   };
 
-  const handlePlaceCardOnFormation = (formationIndex: number, specifiedCardIndex?: number) => {
-    const cardIdx = specifiedCardIndex ?? selectedCardIndex;
-    if (cardIdx === null || cardIdx === undefined || !gameState) return;
+  const handleToggleFormation = (formationId: string) => {
+    const nextSet = new Set(selectedFormationIds);
+    if (nextSet.has(formationId)) {
+      nextSet.delete(formationId);
+    } else {
+      nextSet.add(formationId);
+    }
+    setSelectedFormationIds(nextSet);
+    playSfx('cardPlay');
+  };
+
+  const handleClearSelection = () => {
+    setSelectedCardIndex(null);
+    setSelectedBoardCardIds(new Set());
+    setSelectedFormationIds(new Set());
+  };
+
+  const localPlayer = gameState?.players.find(p => p.id === user?.id) || gameState?.players[0];
+  const opponent = gameState?.players.find(p => p.id !== user?.id) || gameState?.players[1];
+  
+  const isCurrentTurn = gameState ? gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id : true;
+  const isGameOver = gameState?.phase === 'completed';
+  const isWinner = gameState?.winnerId === localPlayer?.id;
+
+  const handlePlayAction = (actionPayload: ActionPayload) => {
+    if (selectedCardIndex === null || !localPlayer) return;
+
+    const handCard = localPlayer.hand[selectedCardIndex];
+    if (!handCard) return;
 
     try {
       const socket = socketService.getSocket();
-      socket.emit('play_card', {
-        cardIndex: cardIdx,
-        targetFormationIndex: formationIndex,
-      });
-      setSelectedCardIndex(null);
+      
+      const fullAction = {
+        ...actionPayload,
+        playerId: localPlayer.id,
+        cardId: handCard.id,
+      };
+
+      socket.emit('play_card', fullAction);
+      handleClearSelection();
       playSfx('cardDeal');
     } catch (e) {
       Alert.alert('Error', 'No se pudo enviar la jugada al servidor.');
     }
   };
 
-  const localPlayer = gameState?.players.find(p => p.id === user?.id) || gameState?.players[0];
-  const opponent = gameState?.players.find(p => p.id !== user?.id) || gameState?.players[1];
-  const isBotOpponent = opponent?.name?.toLowerCase().includes('bot') || opponent?.id?.startsWith('bot-');
-  const isGameOver = gameState?.phase === 'completed';
-  const isWinner = gameState?.winnerId === localPlayer?.id;
-
   return (
-    <View className="flex-1 bg-slate-950 px-4 pt-12">
-      {/* Navbar Superior */}
-      <View className="flex-row items-center justify-between mb-4">
-        <Pressable onPress={() => router.back()} className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-          <ArrowLeft color="#ffffff" size={20} />
-        </Pressable>
-        <View className="items-center">
-          <Text className="text-amber-400 font-bold text-lg">PARTIDA K21</Text>
-          <Text className="text-slate-400 text-xs">Fase: {gameState?.phase || 'Esperando'}</Text>
+    <View className="flex-1 bg-slate-950 px-3 pt-10 pb-4 justify-between">
+      {/* Notificación Flotante de Emotes */}
+      {activeEmoteNotification && (
+        <View className="absolute top-12 left-6 right-6 z-50 bg-slate-900/95 border border-amber-400/60 p-2.5 rounded-full items-center flex-row justify-center shadow-2xl">
+          <Text className="text-white font-bold text-xs mr-2">{activeEmoteNotification.senderName}:</Text>
+          <Text className="text-xl">{activeEmoteNotification.emoji}</Text>
         </View>
-        <View className="bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-500/40">
-          <Text className="text-amber-400 font-bold text-sm">⏳ {timeRemaining}s</Text>
-        </View>
-      </View>
+      )}
 
-      {/* Info del Oponente */}
-      <View className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 flex-row justify-between items-center mb-4">
-        <View className="flex-row items-center">
-          {isBotOpponent && (
-            <View className="bg-cyan-500/20 p-1.5 rounded-lg mr-2 border border-cyan-500/40">
-              <Bot color="#06b6d4" size={16} />
-            </View>
-          )}
-          <Text className="text-slate-300 font-bold">{opponent?.name || 'Oponente'}</Text>
-        </View>
-        <Text className="text-amber-400 font-bold">Puntos: {opponent?.score || 0}</Text>
-      </View>
+      {/* 1. Header & Panel VS (MatchPointHUD) */}
+      <MatchPointHUD
+        localPlayer={localPlayer}
+        opponent={opponent}
+        isCurrentTurn={isCurrentTurn}
+        timeRemaining={timeRemaining}
+        roundCount={gameState?.roundCount || 0}
+        onLeaveMatch={() => router.back()}
+      />
 
-      {/* Tablero (4 Formaciones Verticales) */}
-      <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Formaciones del Tablero (Arrastra o toca)</Text>
-      <View className="flex-row justify-between mb-6">
-        {[0, 1, 2, 3].map(colIndex => {
-          const formation = gameState?.board.formations[colIndex];
-          const sum = formation?.cards.reduce((acc, c) => acc + (typeof c.rank === 'number' ? c.rank : 10), 0) || 0;
+      {/* 2. Zona Central: Tapete con Cartas Sueltas & Formaciones (BoardView) */}
+      <BoardView
+        board={gameState?.board}
+        selectedBoardCardIds={selectedBoardCardIds}
+        selectedFormationIds={selectedFormationIds}
+        onToggleBoardCard={handleToggleBoardCard}
+        onToggleFormation={handleToggleFormation}
+      />
 
-          return (
-            <Pressable
-              key={colIndex}
-              onPress={() => handlePlaceCardOnFormation(colIndex)}
-              className={`w-[23%] h-44 rounded-2xl bg-slate-900 p-2 items-center justify-between border-2 ${
-                selectedCardIndex !== null ? 'border-amber-500/80 bg-amber-500/5' : 'border-slate-800'
-              }`}
-            >
-              <Text className="text-amber-400 font-bold text-xs">Col {colIndex + 1}</Text>
-              <View className="items-center">
-                {formation?.cards.map((c, i) => (
-                  <View key={i} className={i > 0 ? '-mt-10' : ''}>
-                    <CardView card={c} />
-                  </View>
-                ))}
-              </View>
-              <Text className="text-slate-400 text-xs font-bold">Suma: {sum}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* 3. ActionPanel (Botones dinámicos Formar, Llevar, Agrupar, Aumentar, Colocar) */}
+      <ActionPanel
+        selectedHandCardId={selectedCardIndex !== null ? localPlayer?.hand[selectedCardIndex]?.id || null : null}
+        selectedBoardCardIds={selectedBoardCardIds}
+        selectedFormationIds={selectedFormationIds}
+        onPlayAction={handlePlayAction}
+        onClearSelection={handleClearSelection}
+      />
 
-      {/* Info del Jugador Local */}
-      <View className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 flex-row justify-between items-center mb-3">
-        <Text className="text-amber-400 font-bold">{localPlayer?.name || 'Tú'}</Text>
-        <Text className="text-amber-400 font-bold">Puntos: {localPlayer?.score || 0}</Text>
-      </View>
+      {/* 4. EmoteBar (Reacciones Rápidas) */}
+      <EmoteBar
+        onSendEmote={(emoji) => {
+          try {
+            const socket = socketService.getSocket();
+            socket.emit('send_chat_message', { roomId: gameState?.id || '', text: emoji });
+          } catch (e) {}
+        }}
+      />
 
-      {/* Mano de Cartas del Jugador Local con Drag & Drop */}
-      <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Tu Mano (Arrastra hacia arriba o toca)</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-        {localPlayer?.hand.map((card: Card, index: number) => (
-          <View key={index} className="mr-3">
-            <DraggableCard
-              card={card}
-              selected={selectedCardIndex === index}
-              onPress={() => handleSelectCard(index)}
-              onDropOnFormation={(formationIdx) => handlePlaceCardOnFormation(formationIdx, index)}
-            />
-          </View>
-        ))}
-      </ScrollView>
+      {/* 5. Zona Jugador (HandView) */}
+      <HandView
+        localPlayer={localPlayer}
+        isCurrentTurn={isCurrentTurn}
+        selectedCardIndex={selectedCardIndex}
+        onSelectCard={handleSelectHandCard}
+        onDropOnFormation={(_, cardIdx) => {
+          setSelectedCardIndex(cardIdx);
+        }}
+      />
 
       {/* Modal Fin de Partida (Victoria / Derrota) */}
       <Modal visible={isGameOver} transparent animationType="slide">
