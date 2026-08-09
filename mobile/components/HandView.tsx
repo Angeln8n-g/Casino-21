@@ -23,7 +23,18 @@ export function HandView({
   const hand = localPlayer?.hand || [];
 
   return (
-    <View className={`bg-slate-900/90 rounded-3xl p-3.5 border ${isCurrentTurn ? 'border-amber-400/60 shadow-2xl' : 'border-slate-800'}`}>
+    <View
+      style={{
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        borderRadius: 24,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: isCurrentTurn ? 'rgba(251, 191, 36, 0.6)' : '#1e293b',
+        zIndex: 9999,
+        elevation: 9999,
+        overflow: 'visible',
+      }}
+    >
       {/* Banner Superior de Tu Zona */}
       <View className="flex-row justify-between items-center mb-3 px-1">
         <View className="flex-row items-center">
@@ -41,12 +52,17 @@ export function HandView({
       </View>
 
       {/* Cartas de la Mano del Jugador */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row py-1">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ overflow: 'visible' }}
+        contentContainerStyle={{ overflow: 'visible', paddingVertical: 4 }}
+      >
         {hand.length === 0 ? (
           <Text className="text-slate-500 text-xs italic py-4">No tienes cartas en tu mano</Text>
         ) : (
           hand.map((card: Card, index: number) => (
-            <View key={index} className="mr-3">
+            <View key={index} style={{ marginRight: 12, overflow: 'visible', zIndex: 9999, elevation: 9999 }}>
               <DraggableCard
                 card={card}
                 selected={selectedCardIndex === index}

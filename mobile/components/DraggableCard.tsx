@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -64,14 +64,15 @@ export function DraggableCard({
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },
-      { scale: isDragging.value ? 1.15 : 1 },
+      { scale: isDragging.value ? 1.18 : 1 },
     ],
-    zIndex: isDragging.value ? 999 : 1,
+    zIndex: isDragging.value ? 99999 : 1,
+    elevation: isDragging.value ? 99999 : 1,
   }));
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View style={animatedStyle}>
+      <Animated.View style={[animatedStyle, { overflow: 'visible' }]}>
         <CardView card={card} selected={selected} onPress={onPress} disabled={disabled} />
       </Animated.View>
     </GestureDetector>
