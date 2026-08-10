@@ -3,6 +3,8 @@ import { View, Text, Pressable, ScrollView, TextInput, ActivityIndicator, Alert 
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../services/socket';
+import { CreateRoomModal } from '../../components/CreateRoomModal';
+import { WaitingRoomModal } from '../../components/WaitingRoomModal';
 import { Bot, Swords, Users, PlusCircle, LogIn, Trophy } from 'lucide-react-native';
 
 export default function HomeScreen() {
@@ -14,9 +16,17 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
+  // Modales de Salas Privadas
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [roomMode, setRoomMode] = useState<'1v1' | '2v2'>('1v1');
+  const [roomBetAmount, setRoomBetAmount] = useState<number>(0);
+  const [playersInRoomData, setPlayersInRoomData] = useState<Array<{ name: string; id?: string; avatar?: string | null; team?: 1 | 2 }>>([]);
+
   const playerName = profile?.username || 'Jugador K21';
 
-  // Suscripción a eventos de socket para navegación
+  // Suscripción a eventos de socket para navegación y estado de salas
   useEffect(() => {
     let socket: any;
 
@@ -24,15 +34,47 @@ export default function HomeScreen() {
       try {
         socket = await socketService.connect();
 
-        const handleRoomReady = ({ roomId }: { roomId: string }) => {
+        // 1. Al crear la sala
+        socket.on('room_created', ({ roomId, mode, betAmount }: any) => {
           setLoading(false);
           setLoadingAction(null);
-          router.push('/game');
-        };
+          setCurrentRoomId(roomId);
+          if (mode) setRoomMode(mode);
+          if (betAmount !== undefined) setRoomBetAmount(betAmount);
+          setPlayersInRoomData([{ name: playerName, avatar: profile?.avatar_url }]);
+          setShowWaitingModal(true);
+        });
 
-        socket.on('room_created', handleRoomReady);
-        socket.on('room_joined', handleRoomReady);
-        socket.on('match_found', handleRoomReady);
+        // 2. Al unirse a la sala
+        socket.on('room_joined', ({ roomId, mode, betAmount }: any) => {
+          setLoading(false);
+          setLoadingAction(null);
+          setCurrentRoomId(roomId);
+          if (mode) setRoomMode(mode);
+          if (betAmount !== undefined) setRoomBetAmount(betAmount);
+          setShowWaitingModal(true);
+        });
+
+        // 3. Cuando se une otro jugador
+        socket.on('player_joined', ({ playersData }: any) => {
+          if (playersData && Array.isArray(playersData)) {
+            setPlayersInRoomData(playersData);
+          }
+        });
+
+        // 4. Cuando la partida inicia
+        socket.on('game_state_update', () => {
+          setShowWaitingModal(false);
+          setShowCreateModal(false);
+          router.push('/game');
+        });
+
+        socket.on('room_closed', () => {
+          setShowWaitingModal(false);
+          setCurrentRoomId(null);
+          setPlayersInRoomData([]);
+          Alert.alert('Sala cerrada', 'La sala ha sido cerrada.');
+        });
 
         socket.on('error', (msg: string) => {
           setLoading(false);
@@ -50,11 +92,13 @@ export default function HomeScreen() {
       if (socket) {
         socket.off('room_created');
         socket.off('room_joined');
-        socket.off('match_found');
+        socket.off('player_joined');
+        socket.off('game_state_update');
+        socket.off('room_closed');
         socket.off('error');
       }
     };
-  }, []);
+  }, [playerName, profile?.avatar_url]);
 
   // 1. Jugar vs Bot
   const handlePlayVsBot = async () => {
@@ -88,13 +132,14 @@ export default function HomeScreen() {
     }
   };
 
-  // 3. Crear Sala Privada
-  const handleCreateRoom = async () => {
+  // 3. Confirmar Creación de Sala Privada
+  const handleCreateRoomConfirm = async (mode: '1v1' | '2v2', betAmount: number) => {
     try {
+      setShowCreateModal(false);
       setLoading(true);
       setLoadingAction('create');
       const socket = await socketService.connect();
-      socket.emit('create_room', { playerName, mode: '1v1', betAmount: 0 });
+      socket.emit('create_room', { playerName, mode, betAmount });
     } catch (err) {
       setLoading(false);
       setLoadingAction(null);
@@ -102,7 +147,19 @@ export default function HomeScreen() {
     }
   };
 
-  // 4. Unirse por Código
+  // 4. Cancelar y Salir de Sala
+  const handleCancelRoom = async () => {
+    try {
+      if (currentRoomId) {
+        const socket = socketService.getSocket();
+        socket.emit('cancel_room', { roomId: currentRoomId });
+      }
+    } catch (e) {}
+    setShowWaitingModal(false);
+    setCurrentRoomId(null);
+  };
+
+  // 5. Unirse por Código
   const handleJoinRoom = async () => {
     if (!roomIdInput.trim()) {
       Alert.alert('Código requerido', 'Ingresa un código de sala válido.');
@@ -147,7 +204,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Selección de Dificultad (Incluye Experto ⚜️) */}
+        {/* Selección de Dificultad */}
         <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Dificultad de la IA</Text>
         <View className="flex-row mb-4">
           {(['easy', 'medium', 'hard', 'expert'] as const).map((diff) => (
@@ -233,20 +290,14 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Crear Sala */}
+        {/* Abrir Modal de Crear Sala */}
         <Pressable
           disabled={loading}
-          onPress={handleCreateRoom}
-          className="bg-purple-600 active:bg-purple-700 p-3 rounded-xl items-center flex-row justify-center mb-4"
+          onPress={() => setShowCreateModal(true)}
+          className="bg-purple-600 active:bg-purple-700 p-3.5 rounded-2xl items-center flex-row justify-center mb-4"
         >
-          {loading && loadingAction === 'create' ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <>
-              <PlusCircle color="#ffffff" size={18} className="mr-2" />
-              <Text className="text-white font-bold text-sm">Crear Nueva Sala</Text>
-            </>
-          )}
+          <PlusCircle color="#ffffff" size={18} className="mr-2" />
+          <Text className="text-white font-bold text-sm uppercase">Configurar y Crear Sala</Text>
         </Pressable>
 
         {/* Unirse con Código */}
@@ -275,6 +326,30 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Modal 1: Configuración de Sala Privada */}
+      <CreateRoomModal
+        visible={showCreateModal}
+        userCoins={profile?.coins || 0}
+        onClose={() => setShowCreateModal(false)}
+        onCreateRoom={handleCreateRoomConfirm}
+      />
+
+      {/* Modal 2: Sala de Espera Nativa con Código y Jugadores */}
+      <WaitingRoomModal
+        visible={showWaitingModal}
+        roomId={currentRoomId}
+        mode={roomMode}
+        betAmount={roomBetAmount}
+        playersData={playersInRoomData}
+        onCancelRoom={handleCancelRoom}
+        onSwitchTeam={(team) => {
+          try {
+            const socket = socketService.getSocket();
+            socket.emit('switch_team', { roomId: currentRoomId, team });
+          } catch (e) {}
+        }}
+      />
     </ScrollView>
   );
 }

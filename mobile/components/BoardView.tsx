@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, TouchableOpacity } from 'react-native';
 import { Board } from 'domain/board';
 import { Card } from 'domain/card';
 import { CardView } from './CardView';
@@ -30,10 +30,10 @@ export function BoardView({
           <Text className="text-amber-400 font-bold text-xs uppercase tracking-widest">
             CARTAS SUELTAS EN MESA ({looseCards.length})
           </Text>
-          <Text className="text-slate-400 text-[10px]">Toca para seleccionar</Text>
+          <Text className="text-amber-300 font-semibold text-[10px]">Toca una o varias cartas</Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row min-h-[90px] py-1">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row min-h-[95px] py-1">
           {looseCards.length === 0 ? (
             <View className="flex-1 items-center justify-center py-4 px-6 border border-dashed border-slate-700/50 rounded-2xl">
               <Text className="text-slate-500 text-xs italic">No hay cartas sueltas en la mesa</Text>
@@ -42,17 +42,23 @@ export function BoardView({
             looseCards.map((card: Card) => {
               const isSelected = selectedBoardCardIds.has(card.id);
               return (
-                <Pressable
+                <View
                   key={card.id}
-                  onPress={() => onToggleBoardCard(card.id)}
-                  className={`mr-3 p-1 rounded-2xl border-2 ${
-                    isSelected
-                      ? 'border-amber-400 bg-amber-500/20 shadow-xl scale-105'
-                      : 'border-transparent'
-                  }`}
+                  style={{
+                    marginRight: 12,
+                    padding: 2,
+                    borderRadius: 16,
+                    borderWidth: isSelected ? 3 : 0,
+                    borderColor: isSelected ? '#fbbf24' : 'transparent',
+                    backgroundColor: isSelected ? 'rgba(251, 191, 36, 0.25)' : 'transparent',
+                  }}
                 >
-                  <CardView card={card} selected={isSelected} />
-                </Pressable>
+                  <CardView
+                    card={card}
+                    selected={isSelected}
+                    onPress={() => onToggleBoardCard(card.id)}
+                  />
+                </View>
               );
             })
           )}
@@ -76,14 +82,21 @@ export function BoardView({
               const sum = formation.cards.reduce((acc, c) => acc + (typeof c.rank === 'number' ? c.rank : 10), 0);
 
               return (
-                <Pressable
+                <TouchableOpacity
                   key={formation.id || index}
+                  activeOpacity={0.8}
                   onPress={() => onToggleFormation(formation.id)}
-                  className={`mr-3 p-3 rounded-2xl bg-slate-900/90 border-2 items-center justify-between min-w-[100px] ${
-                    isSelected
-                      ? 'border-amber-400 bg-amber-500/20 shadow-2xl'
-                      : 'border-slate-800'
-                  }`}
+                  style={{
+                    marginRight: 12,
+                    padding: 10,
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    borderWidth: 2,
+                    borderColor: isSelected ? '#fbbf24' : '#1e293b',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    minWidth: 105,
+                  }}
                 >
                   <Text className="text-amber-400 font-bold text-xs">Formación #{index + 1}</Text>
                   
@@ -98,7 +111,7 @@ export function BoardView({
                   <Text className="text-slate-300 text-[10px] font-bold">
                     Suma: <Text className="text-amber-400 font-bold">{sum}</Text>
                   </Text>
-                </Pressable>
+                </TouchableOpacity>
               );
             })
           )}

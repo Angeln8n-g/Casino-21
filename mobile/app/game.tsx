@@ -10,6 +10,7 @@ import { EmoteBar } from '../components/EmoteBar';
 import { HandView } from '../components/HandView';
 import { ActionPanel, ActionPayload } from '../components/ActionPanel';
 import { GameState } from 'domain/game-state';
+import { Card } from 'domain/card';
 import { Trophy, Frown, Home } from 'lucide-react-native';
 
 export default function GameScreen() {
@@ -108,11 +109,12 @@ export default function GameScreen() {
   const isGameOver = gameState?.phase === 'completed';
   const isWinner = gameState?.winnerId === localPlayer?.id;
 
-  const handlePlayAction = (actionPayload: ActionPayload) => {
-    if (selectedCardIndex === null || !localPlayer) return;
+  const selectedHandCard: Card | null = selectedCardIndex !== null && localPlayer?.hand[selectedCardIndex]
+    ? localPlayer.hand[selectedCardIndex]
+    : null;
 
-    const handCard = localPlayer.hand[selectedCardIndex];
-    if (!handCard) return;
+  const handlePlayAction = (actionPayload: ActionPayload) => {
+    if (!selectedHandCard || !localPlayer) return;
 
     try {
       const socket = socketService.getSocket();
@@ -120,7 +122,7 @@ export default function GameScreen() {
       const fullAction = {
         ...actionPayload,
         playerId: localPlayer.id,
-        cardId: handCard.id,
+        cardId: selectedHandCard.id,
       };
 
       socket.emit('play_card', fullAction);
@@ -160,9 +162,9 @@ export default function GameScreen() {
         onToggleFormation={handleToggleFormation}
       />
 
-      {/* 3. ActionPanel (Botones dinámicos Formar, Llevar, Agrupar, Aumentar, Colocar) */}
+      {/* 3. ActionPanel (Botones dinámicos Formar, Llevar, Agrupar, Aumentar, Cantar As, Colocar) */}
       <ActionPanel
-        selectedHandCardId={selectedCardIndex !== null ? localPlayer?.hand[selectedCardIndex]?.id || null : null}
+        handCard={selectedHandCard}
         selectedBoardCardIds={selectedBoardCardIds}
         selectedFormationIds={selectedFormationIds}
         onPlayAction={handlePlayAction}
