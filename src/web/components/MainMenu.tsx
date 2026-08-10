@@ -1179,7 +1179,7 @@ export function MainMenu() {
               {/* VS BOT Cards — Difficulty Selection */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {[
-                  { key: 'easy' as const, label: 'Fácil', emoji: '🤖', color: 'emerald', desc: 'Para aprender' },
+                  { key: 'easy' as const, label: 'Fácil', emoji: '💡', color: 'emerald', desc: 'Guía / Tutorial' },
                   { key: 'medium' as const, label: 'Medio', emoji: '🧠', color: 'amber', desc: 'Desafiante' },
                   { key: 'hard' as const, label: 'Difícil', emoji: '👑', color: 'rose', desc: 'Sin piedad' },
                   { key: 'expert' as const, label: 'Experto', emoji: '⚜️', color: 'violet', desc: 'Imposible' },

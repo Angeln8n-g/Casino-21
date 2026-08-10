@@ -22,6 +22,7 @@ import {
   MatchCompletedScreen,
   MatchAbandonedScreen,
   AbandonConfirmModal,
+  BotTutorialOverlay,
 } from './game';
 import { getTheme, BoardTheme } from '../themes/themeRegistry';
 import { triggerHaptic } from '../utils/haptics';
@@ -57,6 +58,17 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   // Custom hook to handle match music sequences reactively based on game round/phase
   useGameMusic(gameState);
   
+  // Detección de partida contra Bot Fácil para activar la guía tutorial
+  const isEasyBotMatch = useMemo(() => {
+    if (!gameState) return false;
+    return gameState.players.some(p =>
+      p.id === 'bot-easy' ||
+      (p.name && (p.name.toLowerCase().includes('bot fácil') || p.name.toLowerCase().includes('bot facil')))
+    );
+  }, [gameState]);
+
+  const [showTutorialGuide, setShowTutorialGuide] = useState<boolean>(true);
+
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
   const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
   const [selectedFormationIds, setSelectedFormationIds] = useState<Set<string>>(new Set());
@@ -906,6 +918,20 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
             <div className="hidden md:flex items-center gap-3">
               <AudioControlButton compact />
+              {isEasyBotMatch && (
+                <button
+                  onClick={() => setShowTutorialGuide(prev => !prev)}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg border transition font-bold ${
+                    showTutorialGuide
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-white/5 hover:bg-white/10 text-gray-400 border-white/10'
+                  }`}
+                  title="Alternar Guía Tutorial"
+                >
+                  <span>💡</span>
+                  <span>Guía Bot Fácil</span>
+                </button>
+              )}
             </div>
             
             <button 
@@ -1198,6 +1224,16 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
         {!isMockMobile && (
           <GameChat roomId={roomId} isSpectator={isSpectator} />
+        )}
+
+        {isEasyBotMatch && showTutorialGuide && (
+          <BotTutorialOverlay
+            gameState={gameState}
+            localPlayerId={localPlayerId}
+            selectedHandCardId={selectedHandCardId}
+            selectedBoardCardIds={selectedBoardCardIds}
+            onClose={() => setShowTutorialGuide(false)}
+          />
         )}
         </div>
       </div>

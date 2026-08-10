@@ -8,3 +8,5 @@ export { MatchAbandonedScreen } from './MatchAbandonedScreen';
 export { AbandonConfirmModal } from './AbandonConfirmModal';
 export { DragActionModal } from './DragActionModal';
 export type { DragModalData } from './DragActionModal';
+export { BotTutorialOverlay } from './BotTutorialOverlay';
+
