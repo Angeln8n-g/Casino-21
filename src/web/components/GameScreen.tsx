@@ -678,10 +678,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const scorePercent = Math.min((scoreVal / 21) * 100, 100);
 
     return (
-      <div className={`flex items-center gap-2 md:gap-2.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-xl md:rounded-2xl border transition-all ${isTurn ? teamTurnBgClass : teamBgClass} min-w-[130px] md:min-w-[160px]`}>
+      <div className={`flex items-center gap-1.5 sm:gap-2.5 px-2 py-1.5 md:px-3 md:py-2 rounded-xl md:rounded-2xl border transition-all ${isTurn ? teamTurnBgClass : teamBgClass} flex-1 min-w-0 max-w-[220px]`}>
         <div className="relative shrink-0">
-          <div className="w-9 h-9 md:w-11 md:h-11 rounded-full p-[2px]" style={ringStyle}>
-            <div className="w-full h-full rounded-full bg-black/60 border border-white/15 overflow-hidden flex items-center justify-center text-sm md:text-base font-bold text-amber-300">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-11 md:h-11 rounded-full p-[2px]" style={ringStyle}>
+            <div className="w-full h-full rounded-full bg-black/60 border border-white/15 overflow-hidden flex items-center justify-center text-xs sm:text-sm md:text-base font-bold text-amber-300">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={p.name} className="w-full h-full object-cover" />
               ) : (
@@ -694,7 +694,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-xs md:text-sm font-bold text-white truncate max-w-[80px] md:max-w-[110px]" title={p.name}>
+              <span className="text-xs md:text-sm font-bold text-white truncate max-w-[85px] sm:max-w-[110px] md:max-w-[130px]" title={p.name}>
                 {p.name}
               </span>
               {p.id === localPlayerId && (
@@ -845,25 +845,26 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Desktop Header Layout (md:flex) */}
+          <div className="hidden md:flex items-center justify-between gap-4 w-full">
             {/* Brand and Round */}
-            <div className="flex items-center gap-2">
-              <img src={brand21Icon} alt="Kasino21 icono" className="w-7 h-7 md:w-8 md:h-8 rounded-lg object-cover border border-amber-400/30" />
+            <div className="flex items-center gap-2 shrink-0">
+              <img src={brand21Icon} alt="Kasino21 icono" className="w-8 h-8 rounded-lg object-cover border border-amber-400/30" />
               <div>
-                <h1 className="text-base md:text-lg font-black text-amber-400 tracking-tight leading-none">Kasino21</h1>
+                <h1 className="text-base font-black text-amber-400 tracking-tight leading-none">Kasino21</h1>
                 <p className="text-[10px] text-gray-400 font-medium">Ronda {gameState.roundCount}</p>
               </div>
             </div>
-            
+
             {/* Players Matchup Center */}
-            <div className="flex-1 min-w-0 max-w-2xl px-1">
+            <div className="flex-1 min-w-0 max-w-2xl px-2">
               {gameState.mode === '1v1' && gameState.players.length === 2 ? (
-                <div className="w-full flex items-center justify-center gap-2 md:gap-4">
-                  <div className="flex-1 min-w-0 max-w-[210px]">{renderTurnPlayer(gameState.players[0], 0)}</div>
-                  <div className="shrink-0 text-amber-400/70 font-black tracking-widest text-xs md:text-sm drop-shadow-sm">
+                <div className="w-full flex items-center justify-center gap-4">
+                  <div className="flex-1 min-w-0 max-w-[220px]">{renderTurnPlayer(gameState.players[0], 0)}</div>
+                  <div className="shrink-0 text-amber-400/70 font-black tracking-widest text-xs md:text-sm drop-shadow-sm px-1">
                     VS
                   </div>
-                  <div className="flex-1 min-w-0 max-w-[210px]">{renderTurnPlayer(gameState.players[1], 1)}</div>
+                  <div className="flex-1 min-w-0 max-w-[220px]">{renderTurnPlayer(gameState.players[1], 1)}</div>
                 </div>
               ) : (
                 <div className="w-full relative flex items-center justify-center min-h-[80px] md:min-h-[95px]">
@@ -874,25 +875,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                     const isLocalP3 = localPlayerId === gameState.players[2]?.id;
                     const isLocalP4 = localPlayerId === gameState.players[3]?.id;
 
-                    let partnerIndex = -1;
-                    let leftOpponentIndex = -1;
-                    let rightOpponentIndex = -1;
-
-                    if (isSpectator) {
-                      partnerIndex = 2;
-                      leftOpponentIndex = 1;
-                      rightOpponentIndex = 3;
-                    } else if (isLocalP1) {
-                      partnerIndex = 2; leftOpponentIndex = 1; rightOpponentIndex = 3;
-                    } else if (isLocalP3) {
-                      partnerIndex = 0; leftOpponentIndex = 3; rightOpponentIndex = 1;
-                    } else if (isLocalP2) {
-                      partnerIndex = 3; leftOpponentIndex = 0; rightOpponentIndex = 2;
-                    } else if (isLocalP4) {
-                      partnerIndex = 1; leftOpponentIndex = 2; rightOpponentIndex = 0;
-                    } else {
-                      partnerIndex = 2; leftOpponentIndex = 1; rightOpponentIndex = 3;
-                    }
+                    let partnerIndex = isSpectator ? 2 : (isLocalP1 ? 2 : isLocalP3 ? 0 : isLocalP2 ? 3 : isLocalP4 ? 1 : 2);
+                    let leftOpponentIndex = isSpectator ? 1 : (isLocalP1 ? 1 : isLocalP3 ? 3 : isLocalP2 ? 0 : isLocalP4 ? 2 : 1);
+                    let rightOpponentIndex = isSpectator ? 3 : (isLocalP1 ? 3 : isLocalP3 ? 1 : isLocalP2 ? 2 : isLocalP4 ? 0 : 3);
 
                     return (
                       <>
@@ -915,13 +900,13 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               )}
             </div>
 
-            {/* Utility Controls */}
-            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+            {/* Desktop Utility Controls */}
+            <div className="flex items-center gap-2 shrink-0">
               <AudioControlButton compact />
               {isEasyBotMatch && (
                 <button
                   onClick={() => setShowTutorialGuide(prev => !prev)}
-                  className={`flex items-center gap-1 text-xs px-2 md:px-2.5 py-1 rounded-lg border transition font-bold ${
+                  className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border transition font-bold ${
                     showTutorialGuide
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                       : 'bg-white/5 hover:bg-white/10 text-gray-400 border-white/10'
@@ -929,7 +914,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   title="Alternar Guía Tutorial"
                 >
                   <span>💡</span>
-                  <span className="hidden sm:inline">Guía</span>
+                  <span>Guía</span>
                 </button>
               )}
               <button 
@@ -938,6 +923,88 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
               >
                 Salir
               </button>
+            </div>
+          </div>
+
+          {/* Mobile Header Layout (md:hidden) */}
+          <div className="flex flex-col gap-1.5 w-full md:hidden">
+            {/* Row 1: Brand & Top Utilities */}
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-1.5">
+                <img src={brand21Icon} alt="Kasino21 icono" className="w-6 h-6 rounded-lg object-cover border border-amber-400/30" />
+                <span className="text-xs font-black text-amber-400 tracking-tight">Kasino21</span>
+                <span className="text-[9px] text-gray-400 font-semibold px-1.5 py-0.5 rounded bg-white/5 border border-white/5">
+                  Ronda {gameState.roundCount}
+                </span>
+              </div>
+
+              {/* Mobile Right Utilities: Sound, Guide, Exit */}
+              <div className="flex items-center gap-1.5">
+                {isEasyBotMatch && (
+                  <button
+                    onClick={() => setShowTutorialGuide(prev => !prev)}
+                    className={`w-7 h-7 flex items-center justify-center rounded-lg border text-xs transition active:scale-95 ${
+                      showTutorialGuide
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-white/5 text-gray-400 border-white/10'
+                    }`}
+                    title="Alternar Guía Tutorial"
+                  >
+                    💡
+                  </button>
+                )}
+                <AudioControlButton compact />
+                <button 
+                  onClick={() => setShowAbandonConfirm(true)}
+                  className="text-[11px] bg-red-950/40 hover:bg-red-900/60 text-red-300 px-2.5 py-1 rounded-lg border border-red-500/30 transition active:scale-95 font-medium"
+                >
+                  Salir
+                </button>
+              </div>
+            </div>
+
+            {/* Row 2: Matchup (100% full width on mobile) */}
+            <div className="w-full">
+              {gameState.mode === '1v1' && gameState.players.length === 2 ? (
+                <div className="w-full flex items-center justify-between gap-1.5">
+                  <div className="flex-1 min-w-0">{renderTurnPlayer(gameState.players[0], 0)}</div>
+                  <div className="shrink-0 text-amber-400/70 font-black tracking-widest text-[11px] drop-shadow-sm px-0.5">
+                    VS
+                  </div>
+                  <div className="flex-1 min-w-0">{renderTurnPlayer(gameState.players[1], 1)}</div>
+                </div>
+              ) : (
+                <div className="w-full relative flex items-center justify-center min-h-[80px]">
+                  {/* Equipo 1 vs Equipo 2 Layout en Cruz */}
+                  {(() => {
+                    const isLocalP1 = localPlayerId === gameState.players[0]?.id;
+                    const isLocalP2 = localPlayerId === gameState.players[1]?.id;
+                    const isLocalP3 = localPlayerId === gameState.players[2]?.id;
+                    const isLocalP4 = localPlayerId === gameState.players[3]?.id;
+
+                    let partnerIndex = isSpectator ? 2 : (isLocalP1 ? 2 : isLocalP3 ? 0 : isLocalP2 ? 3 : isLocalP4 ? 1 : 2);
+                    let leftOpponentIndex = isSpectator ? 1 : (isLocalP1 ? 1 : isLocalP3 ? 3 : isLocalP2 ? 0 : isLocalP4 ? 2 : 1);
+                    let rightOpponentIndex = isSpectator ? 3 : (isLocalP1 ? 3 : isLocalP3 ? 1 : isLocalP2 ? 2 : isLocalP4 ? 0 : 3);
+
+                    return (
+                      <>
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 scale-90">
+                          {gameState.players[partnerIndex] && renderTurnPlayer(gameState.players[partnerIndex], partnerIndex)}
+                        </div>
+                        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10 scale-85 origin-left">
+                          {gameState.players[leftOpponentIndex] && renderTurnPlayer(gameState.players[leftOpponentIndex], leftOpponentIndex)}
+                        </div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shrink-0 text-amber-400/40 font-black tracking-widest text-xs drop-shadow-sm z-0">
+                          VS
+                        </div>
+                        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10 scale-85 origin-right">
+                          {gameState.players[rightOpponentIndex] && renderTurnPlayer(gameState.players[rightOpponentIndex], rightOpponentIndex)}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </header>

@@ -30,17 +30,17 @@ export function AudioControlButton({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <button
           type="button"
           onClick={toggleMuted}
-          className={`flex items-center justify-center rounded-2xl border border-white/10 bg-black/40 text-gray-200 transition-all hover:border-casino-gold/40 hover:text-white hover:bg-black/60 ${
-            compact ? 'w-10 h-10' : 'w-10 h-10 md:w-auto md:px-3 md:py-2'
+          className={`flex items-center justify-center border border-white/10 bg-white/5 text-gray-200 transition-all hover:border-amber-400/40 hover:text-white hover:bg-white/10 active:scale-95 ${
+            compact ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-lg' : 'w-10 h-10 md:w-auto md:px-3 md:py-2 rounded-2xl bg-black/40'
           }`}
           title={muted ? 'Activar audio' : 'Silenciar audio'}
           aria-label={muted ? 'Activar audio' : 'Silenciar audio'}
         >
-          {muted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          {muted || volume === 0 ? <VolumeX size={compact ? 15 : 18} /> : <Volume2 size={compact ? 15 : 18} />}
           {!compact && (
             <span className="hidden md:inline ml-2 text-[10px] font-black uppercase tracking-[0.24em]">
               {muted ? 'Off' : `Vol ${currentPercent}`}
@@ -51,14 +51,14 @@ export function AudioControlButton({
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
-          className={`flex items-center justify-center rounded-2xl border border-white/10 bg-black/40 text-gray-400 hover:text-white hover:border-casino-gold/30 transition-all ${
-            compact ? 'w-10 h-10' : 'w-10 h-10 md:w-auto md:px-3 md:py-2 text-[10px] font-black uppercase tracking-[0.24em]'
+          className={`items-center justify-center border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:border-amber-400/30 transition-all active:scale-95 ${
+            compact ? 'hidden md:flex w-7 h-7 sm:w-8 sm:h-8 rounded-lg' : 'flex w-10 h-10 md:w-auto md:px-3 md:py-2 rounded-2xl bg-black/40 text-[10px] font-black uppercase tracking-[0.24em]'
           }`}
           title="Ajustar volumen"
           aria-label="Ajustar volumen"
         >
           {compact ? (
-            <SlidersHorizontal size={16} />
+            <SlidersHorizontal size={14} />
           ) : (
             <>
               <span className="hidden md:inline">Mezcla</span>
