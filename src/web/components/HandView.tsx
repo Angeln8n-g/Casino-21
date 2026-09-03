@@ -40,18 +40,22 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
       }}
     >
       <div className="flex-grow w-full min-w-0">
-        <div className="flex justify-between items-center mb-1.5 md:mb-2">
-          <h3 className="text-sm md:text-lg lg:text-xl font-bold flex items-center gap-2 md:gap-3 drop-shadow-md truncate">
-            {player.name}
+        <div className="flex justify-between items-center mb-1 px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-300">
+              Tu Mano <span className="text-gray-400 font-normal">({hand.length})</span>
+            </span>
             {isCurrentTurn && (
-              <span className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[9px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 rounded-full animate-pulse shadow-lg shrink-0">
+              <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-[10px] px-2 py-0.2 rounded-full font-bold uppercase tracking-wider">
                 Tu Turno
               </span>
             )}
-          </h3>
-          <div className="text-[10px] md:text-xs text-gray-100 bg-black/35 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-white/15 shrink-0">
-            Virados: <span className="font-bold text-yellow-400">{player.virados}</span>
           </div>
+          {player.virados > 0 && (
+            <div className="text-[10px] text-amber-200/90 font-medium">
+              Virados: <span className="font-bold text-amber-400">{player.virados}</span>
+            </div>
+          )}
         </div>
 
         {/* Card hand container — horizontal scroll on mobile, centered on desktop */}

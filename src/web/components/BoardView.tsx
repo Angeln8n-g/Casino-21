@@ -120,39 +120,24 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
       
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
       
-      {/* Show classic inner rings and watermark ONLY if no custom theme is applied, to keep custom themes clean */}
+      {/* Single clean subtle table rail */}
       {!boardThemeUrl && !boardTheme && (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `linear-gradient(135deg, ${boardInnerRing.replace('0.35', '0.18')}, transparent 30%, transparent 70%, ${boardInnerRing.replace('0.35', '0.12')})`,
-            }}
-          />
-          <div className="absolute inset-1 md:inset-2 rounded-xl md:rounded-[3rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing}` }} />
-          <div className="absolute inset-2 md:inset-5 rounded-xl md:rounded-[2.5rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.2')}` }} />
-          <div className="absolute inset-3 md:inset-8 rounded-lg md:rounded-[2rem] pointer-events-none" style={{ border: `1px solid ${boardInnerRing.replace('0.35', '0.1')}` }} />
-          
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-2xl md:rounded-[3rem]">
-            <span
-              className="text-3xl md:text-8xl font-black tracking-[0.2em] uppercase transform -rotate-12 select-none"
-              style={{ color: `rgba(255,255,255,${watermarkOpacity})` }}
-            >
-              Kasino21
-            </span>
-          </div>
-        </>
+        <div
+          className="absolute inset-2 md:inset-3 rounded-xl md:rounded-[2.5rem] pointer-events-none border border-yellow-500/15"
+        />
       )}
 
       <div className="relative z-10 flex flex-col items-center w-full h-full overflow-y-auto custom-scrollbar p-1 md:p-2">
         {board.cards.length === 0 && board.formations.length === 0 && board.cantedCards.length === 0 && (
-          <div className="text-yellow-200/35 text-lg md:text-3xl font-bold mt-6 md:mt-16 uppercase tracking-widest drop-shadow-md">Mesa Vacia</div>
+          <div className="text-gray-400/50 text-base md:text-xl font-bold mt-8 md:mt-16 tracking-widest uppercase">
+            Mesa Vacía
+          </div>
         )}
 
         {/* Cartas Sueltas — zona central */}
         {board.cards.length > 0 && (
-          <div className="mb-2 md:mb-3 w-full text-center p-2 md:p-2.5 betting-box bg-black/10">
-            <h3 className="text-[10px] md:text-xs font-bold mb-1 md:mb-2 text-yellow-300 drop-shadow-md tracking-wider uppercase">Cartas Sueltas</h3>
+          <div className="mb-2 md:mb-3 w-full text-center p-2 rounded-xl bg-black/15 border border-white/5">
+            <h3 className="text-[10px] md:text-xs font-semibold mb-1 md:mb-1.5 text-amber-200/80 tracking-wider uppercase">Cartas en Mesa</h3>
             <div className="flex flex-wrap gap-1.5 md:gap-3 justify-center min-h-[50px] md:min-h-[75px]">
               {board.cards.map(card => (
                 <DroppableBoardCard
@@ -168,8 +153,8 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Formaciones — zona separada visualmente */}
         {board.formations.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-3 md:gap-8 mt-1 md:mt-4 pt-5 md:pt-8 pb-2 md:pb-4 w-full relative betting-box bg-black/10">
-            <div className="absolute top-1.5 md:top-2 bg-black/40 px-2 md:px-4 text-yellow-200/70 text-[9px] md:text-xs font-bold tracking-widest uppercase">Formaciones</div>
+          <div className="flex flex-wrap justify-center gap-2.5 md:gap-6 mt-1 md:mt-3 pt-4 md:pt-6 pb-2 w-full relative rounded-xl bg-black/15 border border-white/5">
+            <div className="absolute -top-2 bg-gray-900/90 border border-white/10 px-2.5 py-0.5 rounded-full text-amber-200/80 text-[9px] md:text-[10px] font-bold tracking-wider uppercase shadow">Formaciones</div>
             {board.formations.map(form => (
               <DroppableFormation
                 key={form.id}
@@ -183,11 +168,11 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
 
         {/* Cartas Cantadas — zona separada */}
         {board.cantedCards.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 md:gap-6 mt-1 md:mt-4 pt-5 md:pt-8 pb-2 md:pb-4 w-full relative betting-box bg-black/10">
-            <div className="absolute top-1.5 md:top-2 bg-black/40 px-2 md:px-4 text-yellow-200/70 text-[9px] md:text-xs font-bold tracking-widest uppercase">Cartas Cantadas</div>
+          <div className="flex flex-wrap justify-center gap-2 md:gap-5 mt-1 md:mt-3 pt-4 md:pt-6 pb-2 w-full relative rounded-xl bg-black/15 border border-white/5">
+            <div className="absolute -top-2 bg-gray-900/90 border border-white/10 px-2.5 py-0.5 rounded-full text-amber-200/80 text-[9px] md:text-[10px] font-bold tracking-wider uppercase shadow">Cartas Cantadas</div>
             {board.cantedCards.map(canted => (
               <div key={canted.card.id} className="relative group">
-                <div className="absolute -top-2 md:-top-4 -right-2 md:-right-4 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-[7px] md:text-xs px-1.5 md:px-3 py-0.5 md:py-1 rounded-full z-10 font-black shadow-xl transform group-hover:scale-110 transition-transform border border-yellow-200">
+                <div className="absolute -top-2 md:-top-3 -right-2 md:-right-3 bg-amber-400 text-amber-950 text-[8px] md:text-[10px] px-1.5 py-0.5 rounded-full z-10 font-black shadow-md border border-amber-200">
                   CANTADA
                 </div>
                 <DroppableBoardCard

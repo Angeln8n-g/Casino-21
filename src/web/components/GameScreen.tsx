@@ -92,6 +92,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   const reactionTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const lastEmoteTimeRef = useRef<number>(0);
   const [emoteCooldownTime, setEmoteCooldownTime] = useState(0);
+  const [showEmotes, setShowEmotes] = useState(false);
 
   useEffect(() => {
     if (emoteCooldownTime <= 0) return;
@@ -660,10 +661,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
       isMyTeam = p.teamId === myTeamId;
     }
     
-    const teamBaseColor = gameState.mode === '2v2' ? (isMyTeam ? '#06b6d4' : '#f43f5e') : '#ef4444'; // Cyan o Rosa/Rojo
-    const teamBgClass = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-900/30 border-cyan-500/30' : 'bg-rose-900/30 border-rose-500/30') : 'bg-black/35 border-white/10';
-    const teamTurnBgClass = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-900/60 border-cyan-400 shadow-[0_0_18px_rgba(6,182,212,0.3)]' : 'bg-rose-900/60 border-rose-400 shadow-[0_0_18px_rgba(244,63,94,0.3)]') : 'bg-white/10 border-white/20 shadow-[0_0_18px_rgba(34,211,238,0.15)]';
-    const teamTextColor = gameState.mode === '2v2' ? (isMyTeam ? 'text-cyan-200' : 'text-rose-200') : 'text-cyan-200';
+    const teamBaseColor = gameState.mode === '2v2' ? (isMyTeam ? '#06b6d4' : '#f43f5e') : '#f59e0b'; // Cyan, Rosa o Ámbar
+    const teamBgClass = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-950/30 border-cyan-500/25' : 'bg-rose-950/30 border-rose-500/25') : 'bg-black/35 border-white/10';
+    const teamTurnBgClass = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_14px_rgba(6,182,212,0.25)]' : 'bg-rose-950/60 border-rose-400 shadow-[0_0_14px_rgba(244,63,94,0.25)]') : 'bg-amber-950/30 border-amber-400/50 shadow-[0_0_14px_rgba(245,158,11,0.2)]';
+    const teamBarColor = gameState.mode === '2v2' ? (isMyTeam ? 'bg-cyan-400' : 'bg-rose-500') : 'bg-amber-400';
 
     const ringColor = isTurn ? (timeRemaining < 10000 ? '#ef4444' : teamBaseColor) : '#334155';
     const ringStyle: React.CSSProperties = {
@@ -671,12 +672,16 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     };
 
     const avatarUrl = getAvatarForPlayer(p.id);
+    const scoreVal = gameState.mode === '2v2'
+      ? (gameState.teams.find((t) => t.id === p.teamId)?.score ?? 0)
+      : p.score;
+    const scorePercent = Math.min((scoreVal / 21) * 100, 100);
 
     return (
-      <div className={`flex items-center gap-2 md:gap-3 px-2.5 py-1.5 md:px-3 md:py-2 rounded-xl md:rounded-2xl border ${isTurn ? teamTurnBgClass : teamBgClass}`}>
+      <div className={`flex items-center gap-2 md:gap-2.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-xl md:rounded-2xl border transition-all ${isTurn ? teamTurnBgClass : teamBgClass} min-w-[130px] md:min-w-[160px]`}>
         <div className="relative shrink-0">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full p-[2px] md:p-[3px]" style={ringStyle}>
-            <div className="w-full h-full rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-base md:text-lg font-black text-casino-gold">
+          <div className="w-9 h-9 md:w-11 md:h-11 rounded-full p-[2px]" style={ringStyle}>
+            <div className="w-full h-full rounded-full bg-black/60 border border-white/15 overflow-hidden flex items-center justify-center text-sm md:text-base font-bold text-amber-300">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={p.name} className="w-full h-full object-cover" />
               ) : (
@@ -686,22 +691,38 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         </div>
 
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs md:text-sm font-black text-white truncate max-w-[120px]" title={p.name}>
-              {p.name}
-            </span>
-            {p.id === localPlayerId && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold uppercase tracking-wider">
-                Tu
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-xs md:text-sm font-bold text-white truncate max-w-[80px] md:max-w-[110px]" title={p.name}>
+                {p.name}
               </span>
-            )}
+              {p.id === localPlayerId && (
+                <span className="text-[8px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 font-bold uppercase tracking-wider shrink-0">
+                  Tú
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] md:text-xs font-mono font-bold text-amber-300 shrink-0">
+              {scoreVal}<span className="text-gray-400 text-[9px] font-normal">/21</span>
+            </span>
           </div>
-          <div className={`text-[10px] md:text-xs font-black uppercase tracking-widest ${isTurn ? teamTextColor : 'text-gray-400'}`}>
-            {isTurn ? 'Turno' : 'Espera'}
+
+          <div className="flex items-center justify-between gap-2 mt-0.5 text-[10px]">
+            <span className={`font-semibold ${isTurn ? 'text-amber-300' : 'text-gray-400'}`}>
+              {isTurn ? 'Turno' : 'Espera'}
+            </span>
+            <span className="text-gray-300 font-medium">
+              🃏 {p.collectedCards.length}
+            </span>
           </div>
-          <div className="text-[10px] md:text-xs text-yellow-300/90 font-bold">
-            Recogidas: {p.collectedCards.length}
+
+          {/* Integrated slim progress bar */}
+          <div className="w-full bg-black/40 rounded-full h-1 md:h-1.5 mt-1 overflow-hidden">
+            <div
+              className={`${teamBarColor} h-full transition-all duration-700 ease-out rounded-full`}
+              style={{ width: `${scorePercent}%` }}
+            />
           </div>
         </div>
       </div>
@@ -726,10 +747,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           100% { transform: translateX(200%) skewX(-20deg); }
         }
         .animate-emote-left {
-          animation: slideInLeft 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-emote-right {
-          animation: slideInRight 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .shimmer-overlay::after {
           content: '';
@@ -824,56 +845,41 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
           )}
 
-          <div className="flex flex-wrap justify-between items-center gap-2 md:gap-0">
-            <div className="flex items-center justify-between w-full md:w-auto md:block">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Brand and Round */}
+            <div className="flex items-center gap-2">
+              <img src={brand21Icon} alt="Kasino21 icono" className="w-7 h-7 md:w-8 md:h-8 rounded-lg object-cover border border-amber-400/30" />
               <div>
-                <div className="flex items-center gap-2">
-                  <img src={brand21Icon} alt="Kasino21 icono" className="w-7 h-7 md:w-10 md:h-10 rounded-lg object-cover border border-yellow-400/30" />
-                  <h1 className="text-xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-sm leading-none">Kasino21</h1>
-                </div>
-                <p className="text-xs md:text-sm text-gray-300 mt-0.5 md:mt-1 font-medium">Ronda: {gameState.roundCount}</p>
-              </div>
-              <div className="flex gap-2 items-center md:hidden">
-                <AudioControlButton compact />
-                <button 
-                  onClick={() => setShowAbandonConfirm(true)}
-                  className="text-[10px] bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-1.5 rounded border border-red-500/30 transition cursor-pointer"
-                >
-                  Salir
-                </button>
+                <h1 className="text-base md:text-lg font-black text-amber-400 tracking-tight leading-none">Kasino21</h1>
+                <p className="text-[10px] text-gray-400 font-medium">Ronda {gameState.roundCount}</p>
               </div>
             </div>
             
-            <div className="w-full md:w-auto flex justify-center mt-2 md:mt-0 order-3 md:order-none">
+            {/* Players Matchup Center */}
+            <div className="flex-1 min-w-0 max-w-2xl px-1">
               {gameState.mode === '1v1' && gameState.players.length === 2 ? (
-                <div className="w-full flex items-center justify-between gap-3 md:gap-6">
-                  <div className="flex-1 min-w-0">{renderTurnPlayer(gameState.players[0], 0)}</div>
-                  <div className="shrink-0 text-yellow-300/90 font-black tracking-widest text-lg md:text-2xl drop-shadow-sm">
+                <div className="w-full flex items-center justify-center gap-2 md:gap-4">
+                  <div className="flex-1 min-w-0 max-w-[210px]">{renderTurnPlayer(gameState.players[0], 0)}</div>
+                  <div className="shrink-0 text-amber-400/70 font-black tracking-widest text-xs md:text-sm drop-shadow-sm">
                     VS
                   </div>
-                  <div className="flex-1 min-w-0 flex justify-end">{renderTurnPlayer(gameState.players[1], 1)}</div>
+                  <div className="flex-1 min-w-0 max-w-[210px]">{renderTurnPlayer(gameState.players[1], 1)}</div>
                 </div>
               ) : (
-                <div className="w-full relative flex items-center justify-center min-h-[90px] md:min-h-[105px]">
+                <div className="w-full relative flex items-center justify-center min-h-[80px] md:min-h-[95px]">
                   {/* Equipo 1 vs Equipo 2 Layout en Cruz */}
                   {(() => {
-                    // Identificar compañeros y oponentes
                     const isLocalP1 = localPlayerId === gameState.players[0]?.id;
                     const isLocalP2 = localPlayerId === gameState.players[1]?.id;
                     const isLocalP3 = localPlayerId === gameState.players[2]?.id;
                     const isLocalP4 = localPlayerId === gameState.players[3]?.id;
 
-                    // Equipo 1: players[0] y players[2]
-                    // Equipo 2: players[1] y players[3]
-                    
-                    // Lógica para saber quién va en cada posición (Arriba: compañero, Izquierda/Derecha: oponentes)
                     let partnerIndex = -1;
                     let leftOpponentIndex = -1;
                     let rightOpponentIndex = -1;
 
                     if (isSpectator) {
-                      // Vista de espectador estándar
-                      partnerIndex = 2; // Compañero del host
+                      partnerIndex = 2;
                       leftOpponentIndex = 1;
                       rightOpponentIndex = 3;
                     } else if (isLocalP1) {
@@ -885,29 +891,21 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                     } else if (isLocalP4) {
                       partnerIndex = 1; leftOpponentIndex = 2; rightOpponentIndex = 0;
                     } else {
-                      // Fallback por si acaso
                       partnerIndex = 2; leftOpponentIndex = 1; rightOpponentIndex = 3;
                     }
 
                     return (
                       <>
-                        {/* Compañero (Arriba Centro) */}
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 scale-90 md:scale-100">
                           {gameState.players[partnerIndex] && renderTurnPlayer(gameState.players[partnerIndex], partnerIndex)}
                         </div>
-                        
-                        {/* Oponente Izquierda */}
-                        <div className="absolute top-1/2 -translate-y-1/2 left-0 md:left-4 z-10 scale-90 md:scale-100 origin-left">
+                        <div className="absolute top-1/2 -translate-y-1/2 left-0 md:left-2 z-10 scale-85 md:scale-95 origin-left">
                           {gameState.players[leftOpponentIndex] && renderTurnPlayer(gameState.players[leftOpponentIndex], leftOpponentIndex)}
                         </div>
-
-                        {/* VS Central */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shrink-0 text-yellow-300/50 font-black tracking-widest text-lg md:text-2xl drop-shadow-sm z-0">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shrink-0 text-amber-400/40 font-black tracking-widest text-xs md:text-sm drop-shadow-sm z-0">
                           VS
                         </div>
-
-                        {/* Oponente Derecha */}
-                        <div className="absolute top-1/2 -translate-y-1/2 right-0 md:right-4 z-10 scale-90 md:scale-100 origin-right">
+                        <div className="absolute top-1/2 -translate-y-1/2 right-0 md:right-2 z-10 scale-85 md:scale-95 origin-right">
                           {gameState.players[rightOpponentIndex] && renderTurnPlayer(gameState.players[rightOpponentIndex], rightOpponentIndex)}
                         </div>
                       </>
@@ -916,12 +914,14 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                 </div>
               )}
             </div>
-            <div className="hidden md:flex items-center gap-3">
+
+            {/* Utility Controls */}
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
               <AudioControlButton compact />
               {isEasyBotMatch && (
                 <button
                   onClick={() => setShowTutorialGuide(prev => !prev)}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg border transition font-bold ${
+                  className={`flex items-center gap-1 text-xs px-2 md:px-2.5 py-1 rounded-lg border transition font-bold ${
                     showTutorialGuide
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                       : 'bg-white/5 hover:bg-white/10 text-gray-400 border-white/10'
@@ -929,75 +929,22 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   title="Alternar Guía Tutorial"
                 >
                   <span>💡</span>
-                  <span>Guía Bot Fácil</span>
+                  <span className="hidden sm:inline">Guía</span>
                 </button>
               )}
+              <button 
+                onClick={() => setShowAbandonConfirm(true)}
+                className="text-xs bg-red-950/40 hover:bg-red-900/60 text-red-300 px-2.5 py-1 rounded-lg border border-red-500/30 transition active:scale-95"
+              >
+                Salir
+              </button>
             </div>
-            
-            <button 
-              onClick={() => setShowAbandonConfirm(true)}
-              className="hidden md:block text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-500/30 transition cursor-pointer order-last"
-            >
-              Abandonar Partida
-            </button>
-          </div>
-
-          {/* Progress Bars */}
-          <div className="flex gap-2 md:gap-4 w-full">
-            {getEntities().map(entity => {
-              const progress = Math.min((entity.score / 21) * 100, 100);
-              
-              // Lógica de nombres de equipos en 2v2
-              let entityName = (entity as any).name || `Equipo ${entity.id}`;
-              let isMyTeam = false;
-              let teamColorClass = "bg-green-500";
-              let teamBgClass = "bg-gray-700";
-              let teamBorderClass = "";
-
-              if (gameState.mode === '2v2') {
-                const teamPlayers = gameState.players.filter(p => p.teamId === entity.id);
-                if (teamPlayers.length === 2) {
-                  isMyTeam = teamPlayers.some(p => p.id === localPlayerId);
-                  
-                  if (isMyTeam) {
-                    const me = teamPlayers.find(p => p.id === localPlayerId);
-                    const partner = teamPlayers.find(p => p.id !== localPlayerId);
-                    entityName = `Tú & ${partner?.name}`;
-                    teamColorClass = "bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.8)]"; // Cyan para tu equipo
-                    teamBgClass = "bg-cyan-950/50";
-                    teamBorderClass = "border border-cyan-500/30";
-                  } else {
-                    entityName = `${teamPlayers[0].name} & ${teamPlayers[1].name}`;
-                    teamColorClass = "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]"; // Rojo/Rosa para oponentes
-                    teamBgClass = "bg-rose-950/50";
-                    teamBorderClass = "border border-rose-500/30";
-                  }
-                }
-              }
-
-              return (
-                <div key={entity.id} className={`flex-1 p-1.5 md:p-2 rounded-lg ${teamBorderClass} bg-black/20`}>
-                  <div className="flex justify-between text-[9px] md:text-xs mb-0.5 md:mb-1">
-                    <span className={`truncate pr-1 font-bold ${isMyTeam ? 'text-cyan-300' : (gameState.mode === '2v2' ? 'text-rose-300' : 'text-gray-200')}`}>
-                      {entityName}
-                    </span>
-                    <span className="shrink-0 text-white font-mono">{entity.score} / 21</span>
-                  </div>
-                  <div className={`w-full ${teamBgClass} rounded-full h-1.5 md:h-3 overflow-hidden`}>
-                    <div 
-                      className={`${teamColorClass} h-1.5 md:h-3 transition-all duration-1000 ease-in-out`}
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </header>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-100 p-3 rounded-lg text-center animate-bounce">
+          <div className="bg-red-500/20 border border-red-500 text-red-100 p-2.5 rounded-xl text-center text-xs md:text-sm font-semibold animate-in fade-in slide-in-from-top-1">
             {error}
           </div>
         )}
@@ -1028,9 +975,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                   className={`absolute flex ${isRightSide ? 'right-2 md:right-8 justify-end' : 'left-2 md:left-8 justify-start'}`}
                   style={{ top: `${index * 3.5}rem` }}
                 >
-                  <div className={`flex items-center gap-2 md:gap-3 bg-black/85 backdrop-blur-md pl-2 pr-3 py-1.5 md:py-2 rounded-full border border-yellow-400/60 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative overflow-hidden shimmer-overlay ${animationClass}`}>
+                  <div className={`flex items-center gap-2 bg-black/80 backdrop-blur-md pl-1.5 pr-2.5 py-1 rounded-full border border-white/15 shadow-lg ${animationClass}`}>
                     {/* Avatar */}
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-xs md:text-sm font-black text-casino-gold shrink-0">
+                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-xs font-bold text-amber-300 shrink-0">
                       {avatarUrl ? (
                         <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
                       ) : (
@@ -1067,10 +1014,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             })}
           </div>
 
-          {/* Indicador visual de turno grande */}
+          {/* Indicador visual de turno sutil */}
           {!isCurrentTurn && (
-            <div className={`absolute ${isMobile ? 'top-2 px-4 py-1.5 text-xs' : 'top-4 px-6 py-2 text-base'} bg-black/60 rounded-full border border-white/10 text-gray-300 font-bold tracking-widest z-0 pointer-events-none animate-pulse`}>
-              ESPERANDO AL OPONENTE...
+            <div className={`absolute ${isMobile ? 'top-2 px-3 py-1 text-[11px]' : 'top-3 px-4 py-1.5 text-xs'} bg-black/50 rounded-full border border-white/10 text-gray-400 font-semibold tracking-wider z-0 pointer-events-none`}>
+              Esperando al oponente...
             </div>
           )}
 
@@ -1088,15 +1035,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             <MatchPointHUD score={currentPlayer.score} />
           )}
         </main>
-
-        {/* ===== Separador visual zona central / zona jugador ===== */}
-        {isMobile && (
-          <div className="w-full flex items-center gap-2 px-4 opacity-40">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
-            <span className="text-[8px] text-yellow-300/50 font-bold tracking-[0.3em] uppercase shrink-0">Tu zona</span>
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
-          </div>
-        )}
 
         {/* Action Panel */}
         {!isSpectator && (
@@ -1117,11 +1055,11 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           className={`
             bg-black/60 backdrop-blur-xl rounded-2xl md:rounded-3xl border
             ${isCurrentTurn ? 'border-yellow-500/50 shadow-[0_0_30px_rgba(250,204,21,0.15),inset_0_0_15px_rgba(0,0,0,0.5)]' : 'border-white/10 shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]'}
-            flex flex-col items-center gap-1.5 md:gap-3 relative overflow-hidden
+            flex flex-col items-center gap-1 md:gap-2 relative overflow-visible
             transition-all duration-300 w-full shrink-0
             ${isMobile
               ? 'mt-auto p-2 sticky bottom-0 z-30'
-              : 'mt-auto p-2.5 md:p-3 lg:p-4'
+              : 'mt-auto p-2 md:p-3'
             }
           `}
           style={isMobile ? {
@@ -1156,37 +1094,49 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             </div>
           ) : (
             <>
-              {!isCurrentTurn && (
-                <div className="absolute inset-0 bg-black/60 z-20 flex items-center justify-center backdrop-blur-sm">
-                  <span className="text-gray-300 font-black tracking-widest text-xs md:text-base animate-pulse">ESPERANDO TURNO...</span>
-                </div>
-              )}
-              <div className="relative z-30 w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border border-white/10 bg-black/25">
-                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
-                  {(playerEmotes || []).filter(Boolean).slice(0, 8).map((emoji: string) => {
-                    const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
-                    return (
-                      <button
-                        key={emoji}
-                        disabled={emoteCooldownTime > 0}
-                        onClick={() => handleQuickEmoji(emoji)}
-                        className={`w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white/5 border border-white/10 transition-all text-base shrink-0 flex items-center justify-center overflow-hidden ${emoteCooldownTime > 0 ? 'opacity-40 cursor-not-allowed font-semibold' : 'hover:bg-white/15 hover:scale-105'}`}
-                        title={isUrl ? "Enviar Emote" : `Enviar ${emoji}`}
-                      >
-                        {isUrl ? (
-                          <img src={emoji} alt="emote" className="w-6 h-6 md:w-7 md:h-7 object-contain drop-shadow-md" />
-                        ) : (
-                          <span>{emoji}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-gray-300">
-                  <span className="text-gray-500">🙂</span>
-                  Emoticonos
-                  {emoteCooldownTime > 0 && (
-                    <span className="text-yellow-400 font-mono text-xs font-bold ml-1 animate-pulse">({emoteCooldownTime}s)</span>
+              <div className="relative z-30 w-full flex items-center justify-end px-1">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowEmotes((prev) => !prev)}
+                    disabled={emoteCooldownTime > 0}
+                    className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-xs font-semibold transition-all ${
+                      showEmotes
+                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
+                    } ${emoteCooldownTime > 0 ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+                    title="Enviar Reacción"
+                  >
+                    <span>🙂</span>
+                    <span className="text-[11px]">Reaccionar</span>
+                    {emoteCooldownTime > 0 && (
+                      <span className="text-amber-400 font-mono text-[10px]">({emoteCooldownTime}s)</span>
+                    )}
+                  </button>
+
+                  {showEmotes && (
+                    <div className="absolute bottom-full mb-2 right-0 z-50 bg-gray-950/95 border border-white/15 rounded-xl p-1.5 shadow-2xl backdrop-blur-xl flex items-center gap-1.5 animate-in fade-in slide-in-from-bottom-2">
+                      {(playerEmotes || []).filter(Boolean).slice(0, 8).map((emoji: string) => {
+                        const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
+                        return (
+                          <button
+                            key={emoji}
+                            disabled={emoteCooldownTime > 0}
+                            onClick={() => {
+                              handleQuickEmoji(emoji);
+                              setShowEmotes(false);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center transition-all active:scale-90"
+                            title={isUrl ? 'Enviar Emote' : `Enviar ${emoji}`}
+                          >
+                            {isUrl ? (
+                              <img src={emoji} alt="emote" className="w-6 h-6 object-contain" />
+                            ) : (
+                              <span className="text-sm">{emoji}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>

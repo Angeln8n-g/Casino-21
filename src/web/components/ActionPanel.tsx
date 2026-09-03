@@ -28,11 +28,7 @@ export function ActionPanel({
   onClearSelection
 }: ActionPanelProps) {
   if (!selectedHandCardId) {
-    return (
-      <div className="h-8 md:h-10 flex items-center justify-center text-xs md:text-sm text-gray-400 px-4 text-center font-medium">
-        Selecciona una carta de tu mano para ver las acciones disponibles.
-      </div>
-    );
+    return null;
   }
 
   const handleColocar = () => {
@@ -40,11 +36,9 @@ export function ActionPanel({
   };
 
   const handleLlevar = () => {
-    // If the player has a pending formation that matches the hand card's value, we should auto-include it
-    // if they haven't explicitly selected it, to avoid the validation error.
     let currentFormationIds = Array.from(selectedFormationIds);
     const player = gameState.players[gameState.currentTurnPlayerIndex];
-    const handCard = player.hand.find(c => c.id === selectedHandCardId);
+    const handCard = player?.hand.find(c => c.id === selectedHandCardId);
     
     if (handCard) {
       const targetValues = handCard.rank === 'A' ? [1, 14] : [handCard.value];
@@ -67,26 +61,6 @@ export function ActionPanel({
   };
 
   const handleFormar = () => {
-    // Determine the expected formation value to see if we should auto-merge with an existing formation
-    const player = gameState.players[gameState.currentTurnPlayerIndex];
-    const handCard = player.hand.find(c => c.id === selectedHandCardId);
-    
-    if (handCard) {
-      const boardCards = gameState.board.cards.filter(c => selectedBoardCardIds.has(c.id));
-      const targetSum = handCard.value + boardCards.reduce((sum, c) => sum + c.value, 0);
-      
-      const existingFormation = gameState.board.formations.find(f => 
-        f.createdBy === player.id && f.value === targetSum
-      );
-      
-      if (existingFormation && !selectedFormationIds.has(existingFormation.id)) {
-        // Instead of calling 'formar', if they have a formation of this value, 
-        // the game-engine's 'formar' automatically merges it now, so we can just proceed with 'formar'.
-        // Or we can convert it to 'formarPar' internally if needed.
-        // We'll just dispatch 'formar' and the engine will handle the merge and set isGroup = true.
-      }
-    }
-
     onPlayAction({
       type: 'formar',
       boardCardIds: Array.from(selectedBoardCardIds)
@@ -114,40 +88,59 @@ export function ActionPanel({
   };
 
   return (
-    <div className="h-auto md:h-14 lg:h-16 flex flex-wrap md:flex-nowrap items-center justify-center md:justify-start gap-2 md:gap-3 bg-black/40 backdrop-blur-md p-2 md:p-3 rounded-xl md:rounded-2xl shadow-2xl border border-white/20 w-full max-w-full">
-      <span className="hidden md:inline text-xs lg:text-sm font-bold text-gray-300 mr-2 drop-shadow">Acciones:</span>
-      
-      <div className="flex flex-wrap justify-center gap-2 md:gap-3 w-full md:w-auto flex-1">
+    <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-2 bg-gray-950/90 backdrop-blur-xl px-3 py-2 rounded-xl md:rounded-2xl shadow-xl border border-white/10 w-full animate-in fade-in slide-in-from-bottom-2">
+      <div className="flex flex-wrap items-center gap-2 flex-1 justify-center md:justify-start">
         {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
           <>
-            <button onClick={handleColocar} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+            <button
+              onClick={handleColocar}
+              className="min-h-[36px] bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all shadow active:scale-95 border border-cyan-400/30"
+            >
               Colocar
             </button>
-            <button onClick={handleCantar} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+            <button
+              onClick={handleCantar}
+              className="min-h-[36px] bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 px-4 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all shadow active:scale-95 border border-purple-500/30"
+            >
               Cantar As
             </button>
           </>
         ) : (
           <>
-            <button onClick={handleLlevar} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+            <button
+              onClick={handleLlevar}
+              className="min-h-[36px] bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all shadow-md active:scale-95 border border-emerald-400/40"
+            >
               Llevar
             </button>
             {selectedBoardCardIds.size > 0 && selectedFormationIds.size === 0 && (
               <>
-                <button onClick={handleFormar} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 text-black touch-manipulation">
+                <button
+                  onClick={handleFormar}
+                  className="min-h-[36px] bg-gray-800 hover:bg-gray-700 text-amber-300 px-4 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all border border-amber-500/30 active:scale-95"
+                >
                   Formar
                 </button>
-                <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
+                <button
+                  onClick={handleFormarPar}
+                  className="min-h-[36px] bg-gray-800 hover:bg-gray-700 text-amber-200 px-4 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all border border-amber-500/30 active:scale-95"
+                >
                   Agrupar
                 </button>
               </>
             )}
             {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
               <>
-                <button onClick={handleFormarPar} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 text-white touch-manipulation">
+                <button
+                  onClick={handleFormarPar}
+                  className="min-h-[36px] bg-gray-800 hover:bg-gray-700 text-amber-200 px-4 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all border border-amber-500/30 active:scale-95"
+                >
                   Pares
                 </button>
-                <button onClick={handleAumentarFormacion} className="btn flex-1 md:flex-none min-w-[90px] min-h-[38px] bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg hover:scale-105 border border-white/10 touch-manipulation">
+                <button
+                  onClick={handleAumentarFormacion}
+                  className="min-h-[36px] bg-gray-800 hover:bg-gray-700 text-rose-300 px-4 py-1.5 rounded-lg font-bold text-xs md:text-sm transition-all border border-rose-500/30 active:scale-95"
+                >
                   Aumentar
                 </button>
               </>
@@ -156,7 +149,10 @@ export function ActionPanel({
         )}
       </div>
 
-      <button onClick={onClearSelection} className="btn w-full md:w-auto min-h-[38px] bg-white/10 hover:bg-white/20 px-3 md:px-5 py-1.5 md:py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg border border-white/20 md:ml-auto mt-2 md:mt-0 touch-manipulation">
+      <button
+        onClick={onClearSelection}
+        className="min-h-[36px] bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white px-3 py-1.5 rounded-lg font-medium text-xs transition-colors border border-white/10 active:scale-95"
+      >
         Cancelar
       </button>
     </div>
