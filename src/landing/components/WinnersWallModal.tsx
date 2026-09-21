@@ -50,7 +50,7 @@ export default function WinnersWallModal({ isOpen, onClose, winners }: Props) {
               <button
                 onClick={onClose}
                 aria-label="Cerrar muro de ganadores"
-                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>

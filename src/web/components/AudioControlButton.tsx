@@ -51,7 +51,7 @@ export function AudioControlButton({
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
-          className={`items-center justify-center border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:border-amber-400/30 transition-all active:scale-95 ${
+          className={`items-center justify-center border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-amber-400/30 transition-all active:scale-95 ${
             compact ? 'hidden md:flex w-7 h-7 sm:w-8 sm:h-8 rounded-lg' : 'flex w-10 h-10 md:w-auto md:px-3 md:py-2 rounded-2xl bg-black/40 text-[10px] font-black uppercase tracking-[0.24em]'
           }`}
           title="Ajustar volumen"

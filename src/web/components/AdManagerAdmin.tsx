@@ -528,7 +528,7 @@ export function AdManagerAdmin() {
           className={`flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm transition-colors uppercase tracking-wider ${
             activeSubTab === 'dashboard'
               ? 'border-casino-gold text-casino-gold'
-              : 'border-transparent text-gray-400 hover:text-white'
+              : 'border-transparent text-gray-300 hover:text-white'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -539,7 +539,7 @@ export function AdManagerAdmin() {
           className={`flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm transition-colors uppercase tracking-wider ${
             activeSubTab === 'networks'
               ? 'border-casino-gold text-casino-gold'
-              : 'border-transparent text-gray-400 hover:text-white'
+              : 'border-transparent text-gray-300 hover:text-white'
           }`}
         >
           <Settings2 className="w-4 h-4" />
@@ -550,7 +550,7 @@ export function AdManagerAdmin() {
           className={`flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm transition-colors uppercase tracking-wider ${
             activeSubTab === 'sponsors'
               ? 'border-amber-400 text-amber-400'
-              : 'border-transparent text-gray-400 hover:text-white'
+              : 'border-transparent text-gray-300 hover:text-white'
           }`}
         >
           <Award className="w-4 h-4" />
@@ -570,7 +570,7 @@ export function AdManagerAdmin() {
                 <button
                   onClick={() => setTimeRange('today')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    timeRange === 'today' ? 'bg-casino-gold text-black' : 'text-gray-400 hover:text-white'
+                    timeRange === 'today' ? 'bg-casino-gold text-black' : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   Hoy
@@ -578,7 +578,7 @@ export function AdManagerAdmin() {
                 <button
                   onClick={() => setTimeRange('7d')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    timeRange === '7d' ? 'bg-casino-gold text-black' : 'text-gray-400 hover:text-white'
+                    timeRange === '7d' ? 'bg-casino-gold text-black' : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   7 días
@@ -586,7 +586,7 @@ export function AdManagerAdmin() {
                 <button
                   onClick={() => setTimeRange('30d')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    timeRange === '30d' ? 'bg-casino-gold text-black' : 'text-gray-400 hover:text-white'
+                    timeRange === '30d' ? 'bg-casino-gold text-black' : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   30 días
@@ -932,7 +932,7 @@ export function AdManagerAdmin() {
           <div className="mb-4">
             <button
               onClick={() => setShowGuide(!showGuide)}
-              className="text-xs text-gray-500 hover:text-casino-gold transition-colors flex items-center gap-1"
+              className="text-xs text-gray-300 hover:text-casino-gold transition-colors flex items-center gap-1"
             >
               <span className={`inline-block transition-transform ${showGuide ? 'rotate-90' : ''}`}>▶</span>
               {showGuide ? 'Ocultar guía' : '¿Cómo agregar una red de anuncios?'}
@@ -1121,7 +1121,7 @@ export function AdManagerAdmin() {
                 </div>
                 <div className="flex gap-2 justify-end pt-4">
                   <button type="button" onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/10 transition">Cancelar</button>
+                    className="px-4 py-2 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 transition">Cancelar</button>
                   <button type="submit"
                     className="px-6 py-2 rounded-lg text-sm font-bold bg-casino-gold text-black hover:bg-yellow-400 transition">Guardar</button>
                 </div>
@@ -1159,7 +1159,7 @@ export function AdManagerAdmin() {
                             className={`px-2 py-1 rounded text-xs font-bold transition ${
                               cfg.enabled
                                 ? 'bg-green-500/20 text-green-400 hover:bg-green-500/40'
-                                : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/40'
+                                : 'bg-gray-500/20 text-gray-200 hover:bg-gray-500/40'
                             }`}>
                             {cfg.enabled ? 'Activo' : 'Inactivo'}
                           </button>

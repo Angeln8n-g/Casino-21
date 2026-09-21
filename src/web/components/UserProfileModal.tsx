@@ -227,7 +227,7 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
           {/* Close Button */}
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-300 hover:text-white transition-all z-20 border border-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
             aria-label="Cerrar perfil"
           >
             <X className="w-4 h-4" />
@@ -282,7 +282,7 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
                   </h2>
                   <button
                     onClick={handleEditUsername}
-                    className="p-1 rounded-lg text-gray-500 hover:text-casino-gold hover:bg-white/5 opacity-0 group-hover/name:opacity-100 focus:opacity-100 transition-opacity"
+                    className="p-1 rounded-lg text-gray-300 hover:text-casino-gold hover:bg-white/5 opacity-0 group-hover/name:opacity-100 focus:opacity-100 transition-opacity"
                     title="Editar nombre de usuario"
                   >
                     <Edit2 className="w-3.5 h-3.5" />

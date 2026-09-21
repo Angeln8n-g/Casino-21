@@ -154,7 +154,7 @@ export function MatchCard({
             EN VIVO
           </span>
         ) : status === 'completed' ? (
-          <span className="text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full">
+          <span className="text-gray-300 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full">
             Completado
           </span>
         ) : (
@@ -234,7 +234,7 @@ export function MatchCard({
       )}
 
       {opponentId && isCooldownActive && status !== 'completed' && (
-        <div className="text-center py-2 bg-slate-950/40 rounded-xl border border-white/5 text-[10px] text-gray-500 font-mono">
+        <div className="text-center py-2 bg-slate-950/40 rounded-xl border border-white/5 text-[10px] text-gray-300 font-mono">
           Espera {cooldownSeconds}s para avisar de nuevo
         </div>
       )}

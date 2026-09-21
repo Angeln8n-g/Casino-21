@@ -223,7 +223,7 @@ export function ProfileHistory() {
         <button 
           onClick={loadMore}
           disabled={loadingMore}
-          className="mt-6 mx-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-black/40 hover:bg-white/5 hover:border-casino-gold/30 text-gray-400 hover:text-casino-gold font-bold text-xs uppercase tracking-widest transition-all duration-300 group"
+          className="mt-6 mx-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-black/40 hover:bg-white/5 hover:border-casino-gold/30 text-gray-300 hover:text-casino-gold font-bold text-xs uppercase tracking-widest transition-all duration-300 group"
         >
           {loadingMore ? (
             <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-casino-gold"></div>

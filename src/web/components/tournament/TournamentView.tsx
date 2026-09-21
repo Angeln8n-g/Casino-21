@@ -126,7 +126,7 @@ export function TournamentView({
       <div className="flex items-center justify-between">
         <button
           onClick={onClose}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 bg-slate-900/60 text-xs font-black text-gray-400 hover:text-white hover:border-casino-gold/30 hover:bg-slate-900/80 transition-all select-none"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 bg-slate-900/60 text-xs font-black text-gray-300 hover:text-white hover:border-casino-gold/30 hover:bg-slate-900/80 transition-all select-none"
         >
           ← Volver a Eventos
         </button>
@@ -176,7 +176,7 @@ export function TournamentView({
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
                     bracketLayout === 'tree'
                       ? 'bg-gradient-to-r from-casino-gold to-yellow-500 text-casino-bg shadow-md'
-                      : 'text-gray-400 hover:text-white'
+                      : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   🌿 Árbol (Visual)
@@ -186,7 +186,7 @@ export function TournamentView({
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
                     bracketLayout === 'list'
                       ? 'bg-gradient-to-r from-casino-gold to-yellow-500 text-casino-bg shadow-md'
-                      : 'text-gray-400 hover:text-white'
+                      : 'text-gray-300 hover:text-white'
                   }`}
                 >
                   📋 Lista (Rondas)

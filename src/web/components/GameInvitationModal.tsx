@@ -173,7 +173,7 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
             <button
               onClick={handleReject}
               disabled={accepting}
-              className="w-full py-3 rounded-xl bg-white/[0.03] text-gray-400 hover:text-white hover:bg-white/[0.05] text-xs font-bold transition-all border border-white/5 focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none"
+              className="w-full py-3 rounded-xl bg-white/[0.03] text-gray-300 hover:text-white hover:bg-white/[0.05] text-xs font-bold transition-all border border-white/5 focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none"
             >
               No, gracias ({secondsLeft}s)
             </button>

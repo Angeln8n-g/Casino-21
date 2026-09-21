@@ -221,7 +221,7 @@ export function AudioAdmin() {
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-4">
-              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/10 transition focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none">Cancelar</button>
+              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 transition focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none">Cancelar</button>
               <button type="submit" className="px-6 py-2 rounded-lg text-sm font-bold bg-casino-gold text-black hover:bg-yellow-400 transition shadow-[0_0_15px_rgba(255,215,0,0.3)] focus-visible:ring-2 focus-visible:ring-casino-gold focus-visible:outline-none">Guardar Pista</button>
             </div>
           </form>
@@ -233,7 +233,7 @@ export function AudioAdmin() {
               <button 
                 onClick={() => setActiveCategory('lobby')}
                 className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                  activeCategory === 'lobby' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-500 hover:text-white'
+                  activeCategory === 'lobby' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-300 hover:text-white'
                 }`}
               >
                 Música Lobby
@@ -241,7 +241,7 @@ export function AudioAdmin() {
               <button 
                 onClick={() => setActiveCategory('game')}
                 className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                  activeCategory === 'game' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-500 hover:text-white'
+                  activeCategory === 'game' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-300 hover:text-white'
                 }`}
               >
                 Música Partidas
@@ -252,7 +252,7 @@ export function AudioAdmin() {
               <button 
                 onClick={() => setActiveStyle('classic')}
                 className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                  activeStyle === 'classic' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-500 hover:text-white'
+                  activeStyle === 'classic' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-300 hover:text-white'
                 }`}
               >
                 Estilo Clásico
@@ -260,7 +260,7 @@ export function AudioAdmin() {
               <button 
                 onClick={() => setActiveStyle('modern')}
                 className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                  activeStyle === 'modern' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-white'
+                  activeStyle === 'modern' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-300 hover:text-white'
                 }`}
               >
                 Estilo Moderno

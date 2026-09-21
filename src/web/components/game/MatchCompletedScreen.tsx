@@ -448,7 +448,7 @@ export function MatchCompletedScreen({
                  disabled={hasAcceptedRematch}
                  className={`flex-1 w-full flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-base uppercase tracking-widest transition transform hover:-translate-y-1 ${
                    hasAcceptedRematch 
-                     ? 'bg-slate-800 text-gray-400 border border-white/5 shadow-none pointer-events-none'
+                     ? 'bg-slate-800 text-gray-300 border border-white/5 shadow-none pointer-events-none'
                      : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-amber-950 shadow-[0_10px_20px_rgba(245,158,11,0.2)]'
                  }`}
                >
@@ -486,7 +486,7 @@ export function MatchCompletedScreen({
               
               <button
                 onClick={() => setIsShareModalOpen(false)}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-colors"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-colors"
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>

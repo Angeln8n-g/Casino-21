@@ -139,7 +139,7 @@ export default function BlogSection() {
               {/* Close Button */}
               <button
                 onClick={() => setSelectedPost(null)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
                 aria-label="Cerrar artículo"
               >
                 <X size={16} />

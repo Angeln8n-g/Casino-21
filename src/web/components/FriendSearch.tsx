@@ -254,7 +254,7 @@ export function FriendSearch() {
           <button
             aria-label="Limpiar búsqueda de jugador"
             onClick={() => { setQuery(''); setResults([]); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -429,7 +429,7 @@ export function PlayerProfileModal({ player, relationshipStatus, onSendRequest, 
         <button
           onClick={onClose}
           aria-label="Cerrar búsqueda de amigos"
-          className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 group focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+          className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 hover:text-white transition-all z-20 group focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
         >
           <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />

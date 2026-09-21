@@ -274,7 +274,7 @@ export function QuestManager() {
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
-              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/10 transition">Cancelar</button>
+              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 transition">Cancelar</button>
               <button type="submit" className="px-6 py-2 rounded-lg text-sm font-bold bg-blue-500 text-white hover:bg-blue-400 transition">Guardar Misión</button>
             </div>
           </form>
@@ -319,7 +319,7 @@ export function QuestManager() {
                         </span>
                       </td>
                       <td className="p-4">
-                        <span className="text-[10px] text-gray-400 uppercase bg-white/5 px-2 py-1 rounded">{quest.quest_type.replace('_', ' ')}</span>
+                        <span className="text-[10px] text-gray-200 uppercase bg-white/5 px-2 py-1 rounded">{quest.quest_type.replace('_', ' ')}</span>
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col gap-1">
@@ -330,7 +330,7 @@ export function QuestManager() {
                       <td className="p-4 text-center">
                         <button 
                           onClick={() => toggleActive(quest)}
-                          className={`text-[10px] px-2 py-1 rounded font-bold transition ${quest.is_active ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'}`}
+                          className={`text-[10px] px-2 py-1 rounded font-bold transition ${quest.is_active ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-gray-500/20 text-gray-200 hover:bg-gray-500/30'}`}
                         >
                           {quest.is_active ? 'ACTIVO' : 'INACTIVO'}
                         </button>

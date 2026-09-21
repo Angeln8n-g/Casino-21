@@ -73,8 +73,8 @@ export function TournamentHero({
         );
       default:
         return (
-          <span className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border border-gray-500/50 bg-gray-500/10 text-gray-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+          <span className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border border-gray-500/50 bg-gray-500/10 text-gray-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
             FINALIZADO
           </span>
         );

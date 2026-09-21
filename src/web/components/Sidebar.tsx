@@ -87,7 +87,7 @@ export function Sidebar({ activeTab, onTabChange, isAdmin, isCollapsed }: Sideba
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group ${
                 activeTab === 'admin' 
                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
-                  : 'text-slate-400 hover:text-purple-400 hover:bg-purple-500/10'
+                  : 'text-slate-300 hover:text-purple-400 hover:bg-purple-500/10'
               }`}
             >
               <ShieldAlert className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 text-purple-500" />
@@ -101,16 +101,16 @@ export function Sidebar({ activeTab, onTabChange, isAdmin, isCollapsed }: Sideba
       <div className="p-4 border-t border-white/5 space-y-2">
         <button
           onClick={signOut}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-300 group"
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10 transition-all duration-300 group"
         >
           <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           <span className="font-semibold text-sm">Cerrar Sesión</span>
         </button>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-2 mt-2 opacity-40 hover:opacity-100 transition-opacity">
-          <a href="/terms" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Términos</a>
-          <a href="/privacy" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Privacidad</a>
-          <a href="/cookies" className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-casino-gold">Cookies</a>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-2 mt-2 opacity-60 hover:opacity-100 transition-opacity">
+          <a href="/terms" className="text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-casino-gold">Términos</a>
+          <a href="/privacy" className="text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-casino-gold">Privacidad</a>
+          <a href="/cookies" className="text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-casino-gold">Cookies</a>
         </div>
       </div>
       </div>

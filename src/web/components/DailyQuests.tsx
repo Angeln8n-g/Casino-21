@@ -196,7 +196,7 @@ export function DailyQuests() {
                     </span>
                   </button>
                 ) : !quest.is_completed ? (
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider ml-auto sm:ml-0 bg-black/40 px-3 py-1 rounded-full border border-white/5">
+                  <span className="text-[10px] text-gray-300 uppercase font-bold tracking-wider ml-auto sm:ml-0 bg-black/40 px-3 py-1 rounded-full border border-white/5">
                     En progreso
                   </span>
                 ) : null}

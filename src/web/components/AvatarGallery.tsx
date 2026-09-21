@@ -111,7 +111,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
           <button 
             onClick={onClose}
             aria-label="Cerrar galería de avatares"
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
           >
             ✕
           </button>
@@ -124,7 +124,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <h4 className="text-xs font-black text-purple-400 uppercase tracking-widest">⭐ Premium</h4>
-                <span className="text-[9px] text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{purchasedAvatars.length} comprados</span>
+                <span className="text-[9px] text-gray-300 bg-white/10 px-2 py-0.5 rounded-full">{purchasedAvatars.length} comprados</span>
               </div>
               <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
                 {purchasedAvatars.map((avatar) => (
@@ -181,7 +181,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
         <div className="p-6 border-t border-white/10 bg-slate-900/50 shrink-0 flex justify-end gap-3">
           <button 
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl font-bold text-gray-400 hover:bg-white/10 transition-colors"
+            className="px-6 py-2.5 rounded-xl font-bold text-gray-300 hover:bg-white/10 transition-colors"
             disabled={isSaving}
           >
             Cancelar
@@ -192,7 +192,7 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
             className={`
               px-8 py-2.5 rounded-xl font-bold uppercase tracking-wider transition-all
               ${isSaving || !selectedAvatar || selectedAvatar === currentEquipped
-                ? 'bg-white/5 text-gray-500 cursor-not-allowed'
+                ? 'bg-white/5 text-gray-400 cursor-not-allowed border border-white/5'
                 : 'bg-gradient-to-r from-casino-gold to-yellow-600 text-black hover:from-yellow-400 hover:to-casino-gold shadow-[0_0_15px_rgba(234,179,8,0.4)]'}
             `}
           >

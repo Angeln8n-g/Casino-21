@@ -112,7 +112,7 @@ function LegendLeaderboard({ leaderboard, onOpenTop100, calculateProjection }: P
                     } else if (player.rank === 3) {
                       rankBadge = <Medal size={18} className="text-amber-600 drop-shadow-[0_0_6px_rgba(217,119,6,0.6)]" />;
                     } else {
-                      rankBadge = <span className="text-gray-400 font-black font-mono">#{player.rank}</span>;
+                      rankBadge = <span className="text-gray-200 font-black font-mono">#{player.rank}</span>;
                     }
 
                     return (

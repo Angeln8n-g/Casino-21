@@ -124,7 +124,7 @@ export default function TournamentCarousel({ events }: { events: EventItem[] }) 
           <span className={`text-[10px] uppercase tracking-[0.2em] font-bold font-['Chakra_Petch'] ${accent.text}`}>
             {displayStatus}
           </span>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500 border border-white/[0.06] px-2 py-0.5 rounded font-['Chakra_Petch']">
+          <span className="text-[10px] uppercase tracking-[0.2em] text-gray-300 border border-white/[0.06] px-2 py-0.5 rounded font-['Chakra_Petch']">
             {displayType}
           </span>
           {e.status === 'live' && <Sparkles size={12} className={accent.text} />}
@@ -175,7 +175,7 @@ export default function TournamentCarousel({ events }: { events: EventItem[] }) 
             <div className="flex items-center gap-3">
               <button
                 onClick={prev}
-                className="p-1.5 rounded-lg border border-white/[0.06] text-gray-500 hover:text-white hover:border-white/20 transition-all"
+                className="p-1.5 rounded-lg border border-white/[0.06] text-gray-300 hover:text-white hover:border-white/20 transition-all"
                 aria-label="Anterior"
               >
                 <ChevronLeft size={16} />
@@ -194,7 +194,7 @@ export default function TournamentCarousel({ events }: { events: EventItem[] }) 
               </div>
               <button
                 onClick={next}
-                className="p-1.5 rounded-lg border border-white/[0.06] text-gray-500 hover:text-white hover:border-white/20 transition-all"
+                className="p-1.5 rounded-lg border border-white/[0.06] text-gray-300 hover:text-white hover:border-white/20 transition-all"
                 aria-label="Siguiente"
               >
                 <ChevronRight size={16} />

@@ -94,7 +94,7 @@ export function FriendRequestModal({
         <button
           onClick={onClose}
           aria-label="Cerrar ventana"
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 hover:text-white transition-all z-10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -180,7 +180,7 @@ export function FriendRequestModal({
               <button
                 onClick={() => handleAction('rejected')}
                 disabled={loading !== null}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 font-bold text-sm border border-white/10 hover:border-red-500/30 transition-all active:scale-[0.98] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-red-400/50 focus-visible:outline-none"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-red-500/10 hover:text-red-400 font-bold text-sm border border-white/10 hover:border-red-500/30 transition-all active:scale-[0.98] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-red-400/50 focus-visible:outline-none"
               >
                 {loading === 'reject' ? '...' : '✕ Rechazar'}
               </button>

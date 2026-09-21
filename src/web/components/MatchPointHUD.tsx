@@ -67,7 +67,7 @@ export const MatchPointHUD: React.FC<MatchPointHUDProps> = ({ score }) => {
             <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">Reglas Match Point</span>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-white text-xs p-0.5"
+              className="text-gray-300 hover:text-white text-xs p-0.5"
             >
               ✕
             </button>

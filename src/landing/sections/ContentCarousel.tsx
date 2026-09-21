@@ -130,7 +130,7 @@ export default function ContentCarousel() {
             <button
               onClick={slidePrev}
               disabled={currentIndex === 0}
-              className="p-3 rounded-xl border border-white/[0.06] bg-[#050811]/40 text-gray-400 hover:text-white hover:border-yellow-500/30 disabled:opacity-30 disabled:pointer-events-none transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md"
+              className="p-3 rounded-xl border border-white/[0.06] bg-[#050811]/40 text-gray-300 hover:text-white hover:border-yellow-500/30 disabled:opacity-30 disabled:pointer-events-none transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md"
               aria-label="Anterior"
             >
               <ChevronLeft size={18} />
@@ -138,7 +138,7 @@ export default function ContentCarousel() {
             <button
               onClick={slideNext}
               disabled={currentIndex >= maxIndex}
-              className="p-3 rounded-xl border border-white/[0.06] bg-[#050811]/40 text-gray-400 hover:text-white hover:border-yellow-500/30 disabled:opacity-30 disabled:pointer-events-none transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md"
+              className="p-3 rounded-xl border border-white/[0.06] bg-[#050811]/40 text-gray-300 hover:text-white hover:border-yellow-500/30 disabled:opacity-30 disabled:pointer-events-none transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md"
               aria-label="Siguiente"
             >
               <ChevronRight size={18} />

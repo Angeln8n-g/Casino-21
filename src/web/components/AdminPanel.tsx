@@ -585,7 +585,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('events')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'events' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-500 hover:text-white'
+                activeTab === 'events' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-300 hover:text-white'
               }`}
             >
               Eventos
@@ -593,7 +593,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('store')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'store' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-500 hover:text-white'
+                activeTab === 'store' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-300 hover:text-white'
               }`}
             >
               Tienda
@@ -601,7 +601,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('quests')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'quests' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-white'
+                activeTab === 'quests' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-300 hover:text-white'
               }`}
             >
               Misiones
@@ -609,7 +609,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('ads')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'ads' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-white'
+                activeTab === 'ads' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-300 hover:text-white'
               }`}
             >
               Anuncios
@@ -617,7 +617,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('audio')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'audio' ? 'bg-pink-500/20 text-pink-400' : 'text-gray-500 hover:text-white'
+                activeTab === 'audio' ? 'bg-pink-500/20 text-pink-400' : 'text-gray-300 hover:text-white'
               }`}
             >
               Audio
@@ -625,7 +625,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('prizes')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'prizes' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-white'
+                activeTab === 'prizes' ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-300 hover:text-white'
               }`}
             >
               Premios ($)
@@ -633,7 +633,7 @@ export function AdminPanel() {
             <button 
               onClick={() => setActiveTab('championship')}
               className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'championship' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-500 hover:text-white'
+                activeTab === 'championship' ? 'bg-casino-gold/20 text-casino-gold' : 'text-gray-300 hover:text-white'
               }`}
             >
               Championship
@@ -864,7 +864,7 @@ export function AdminPanel() {
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-4">
-              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/10 transition">Cancelar</button>
+              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 transition">Cancelar</button>
               <button type="submit" className="px-6 py-2 rounded-lg text-sm font-bold bg-casino-gold text-black hover:bg-yellow-400 transition">Guardar Evento</button>
             </div>
           </form>
@@ -951,7 +951,7 @@ export function AdminPanel() {
               </div>
               <button 
                 onClick={() => setParticipantsModalOpen(false)}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
               >
                 ✕
               </button>
@@ -971,7 +971,7 @@ export function AdminPanel() {
                           {p.profiles.avatar_url ? (
                             <img src={p.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="font-bold text-gray-400">{p.profiles.username?.charAt(0).toUpperCase()}</span>
+                            <span className="font-bold text-gray-200">{p.profiles.username?.charAt(0).toUpperCase()}</span>
                           )}
                         </div>
                         <div>
@@ -1021,7 +1021,7 @@ export function AdminPanel() {
                   setBracketModalOpen(false);
                   stopLoop('event-bracket-audio');
                 }}
-                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors shrink-0"
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors shrink-0"
               >
                 ✕
               </button>

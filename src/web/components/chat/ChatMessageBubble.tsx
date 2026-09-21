@@ -121,7 +121,7 @@ export function ChatMessageBubble({
           onClick={() => onAvatarClick?.(message.sender_id)}
           className="flex items-center gap-2 mb-1 px-1.5 py-0.5 rounded-lg cursor-pointer active:scale-95 active:bg-white/10 md:hover:bg-white/5 transition-all select-none"
         >
-          <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden shadow-sm">
+          <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-200 shrink-0 border border-white/5 overflow-hidden shadow-sm">
             {profile.equipped_avatar ? (
               <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : profile.avatar_url ? (
@@ -194,7 +194,7 @@ export function ChatMessageBubble({
           <div className={`absolute top-0 ${isMe ? '-left-16' : '-right-16'} hidden group-hover/msg:flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity`}>
             <button
               onClick={() => onReply(message)}
-              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-500 hover:text-white transition-colors"
+              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 hover:text-white transition-colors"
               title="Responder"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +203,7 @@ export function ChatMessageBubble({
             </button>
             <button
               onClick={() => setShowReactionPicker(true)}
-              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-500 hover:text-white transition-colors text-xs"
+              className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 hover:text-white transition-colors text-xs"
               title="Reaccionar"
             >
               😀

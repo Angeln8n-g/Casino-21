@@ -403,7 +403,7 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
             className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'leaderboard'
                 ? 'bg-casino-gold text-slate-950 shadow-[0_0_10px_rgba(251,191,36,0.4)]'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             🏆 Ranking Global
@@ -416,7 +416,7 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
             className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'history'
                 ? 'bg-casino-gold text-slate-950 shadow-[0_0_10px_rgba(251,191,36,0.4)]'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             📜 Mi Historial de Puntos

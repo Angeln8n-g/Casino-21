@@ -123,14 +123,14 @@ export function TournamentProgress({ maxParticipants, matches, currentUserId }: 
                       ? 'bg-casino-emerald border-casino-emerald text-casino-bg'
                       : isActive
                       ? 'bg-casino-gold border-casino-gold text-casino-bg shadow-[0_0_10px_rgba(251,191,36,0.5)] scale-110'
-                      : 'bg-slate-900 border-slate-700 text-gray-500'
+                      : 'bg-slate-900 border-slate-700 text-gray-300'
                   }`}
                 >
                   {isCompleted ? '✓' : index + 1}
                 </div>
                 <span
                   className={`text-[8px] font-bold uppercase tracking-wider mt-1.5 absolute -bottom-5 whitespace-nowrap transition-colors duration-500 ${
-                    isActive ? 'text-casino-gold' : isCompleted ? 'text-casino-emerald' : 'text-gray-500'
+                    isActive ? 'text-casino-gold' : isCompleted ? 'text-casino-emerald' : 'text-gray-300'
                   }`}
                 >
                   {label}

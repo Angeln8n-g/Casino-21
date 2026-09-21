@@ -79,7 +79,7 @@ export const InstallPrompt: React.FC = () => {
             </button>
             <button
               onClick={handleDismiss}
-              className="px-4 py-2 text-slate-400 hover:text-white text-sm font-bold transition-colors font-outfit"
+              className="px-4 py-2 text-slate-300 hover:text-white text-sm font-bold transition-colors font-outfit"
             >
               Más tarde
             </button>
@@ -88,7 +88,7 @@ export const InstallPrompt: React.FC = () => {
 
         <button 
           onClick={handleDismiss}
-          className="text-slate-500 hover:text-white transition-colors"
+          className="text-slate-300 hover:text-white transition-colors"
         >
           <X className="w-5 h-5" />
         </button>

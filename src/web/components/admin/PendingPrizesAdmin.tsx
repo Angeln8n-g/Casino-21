@@ -228,7 +228,7 @@ export const PendingPrizesAdmin: React.FC = () => {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setSelectedClaim(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:outline-none rounded-xl"
+                className="px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:outline-none rounded-xl"
               >
                 Cancelar
               </button>

@@ -140,13 +140,13 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
         {isSpectator && (
           <div className="flex text-xs font-bold border-b border-white/10">
             <button 
-              className={`flex-1 py-2 transition-colors ${activeTab === 'global' ? 'bg-casino-gold/20 text-casino-gold border-b-2 border-casino-gold' : 'text-gray-400 hover:bg-white/5'}`}
+              className={`flex-1 py-2 transition-colors ${activeTab === 'global' ? 'bg-casino-gold/20 text-casino-gold border-b-2 border-casino-gold' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
               onClick={() => setActiveTab('global')}
             >
               JUGADORES
             </button>
             <button 
-              className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-400 hover:bg-white/5'}`}
+              className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
               onClick={() => setActiveTab('spectator')}
             >
               ESPECTADORES
@@ -249,7 +249,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
             </h3>
             <button 
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer"
+              className="text-gray-300 hover:text-white transition-colors p-1 cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -259,13 +259,13 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
           {isSpectator && (
             <div className="flex text-xs font-bold border-b border-white/10">
               <button 
-                className={`flex-1 py-2 transition-colors ${activeTab === 'global' ? 'bg-casino-gold/20 text-casino-gold border-b-2 border-casino-gold' : 'text-gray-400 hover:bg-white/5'}`}
+                className={`flex-1 py-2 transition-colors ${activeTab === 'global' ? 'bg-casino-gold/20 text-casino-gold border-b-2 border-casino-gold' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
                 onClick={() => setActiveTab('global')}
               >
                 JUGADORES
               </button>
               <button 
-                className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-400 hover:bg-white/5'}`}
+                className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
                 onClick={() => setActiveTab('spectator')}
               >
                 ESPECTADORES

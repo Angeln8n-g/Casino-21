@@ -78,7 +78,7 @@ export const ChampionshipLiveFinalView: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center text-sm font-bold text-white">
                     <span>Player{i}A</span>
-                    <span className="text-gray-500">vs</span>
+                    <span className="text-gray-300">vs</span>
                     <span>Player{i}B</span>
                   </div>
                   <button className="w-full mt-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors opacity-0 group-hover:opacity-100">

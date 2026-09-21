@@ -707,7 +707,7 @@ export function MainMenu() {
             {/* Layout de equipos si es 2v2 */}
             {mode === '2v2' ? (
               <div className="grid grid-cols-2 gap-4 relative">
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-full w-8 h-8 flex items-center justify-center border border-white/10 z-10 font-black text-[10px] text-gray-500">
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-full w-8 h-8 flex items-center justify-center border border-white/10 z-10 font-black text-[10px] text-gray-300">
                   VS
                 </div>
                 
@@ -895,7 +895,7 @@ export function MainMenu() {
         animate={{ left: leftCollapsed ? 16 : 272 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         onClick={() => setLeftCollapsed(!leftCollapsed)}
-        className="hidden lg:flex fixed top-6 z-50 p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 text-slate-400 hover:text-white transition-colors shadow-2xl hover:scale-105"
+        className="hidden lg:flex fixed top-6 z-50 p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 text-slate-300 hover:text-white transition-colors shadow-2xl hover:scale-105"
         aria-label={leftCollapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
       >
         {leftCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
@@ -1248,7 +1248,7 @@ export function MainMenu() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 glass-panel-strong border-t border-white/[0.05] flex justify-around items-center p-3 px-6 z-50">
         <button 
           onClick={() => setMobileTab('social')}
-          className={`flex flex-col items-center gap-1 transition-colors relative ${mobileTab === 'social' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex flex-col items-center gap-1 transition-colors relative ${mobileTab === 'social' ? 'text-casino-gold' : 'text-gray-300 hover:text-white'}`}
         >
           <span className="text-xl">👥</span>
           <span className="text-[10px] font-bold uppercase tracking-wider">Social</span>
@@ -1260,28 +1260,28 @@ export function MainMenu() {
         </button>
         <button 
           onClick={() => setMobileTab('lobby')}
-          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'lobby' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'lobby' ? 'text-casino-gold' : 'text-gray-300 hover:text-white'}`}
         >
           <span className="text-xl">🎲</span>
           <span className="text-[10px] font-bold uppercase tracking-wider">Lobby</span>
         </button>
         <button 
           onClick={() => setMobileTab('events')}
-          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'events' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'events' ? 'text-casino-gold' : 'text-gray-300 hover:text-white'}`}
         >
           <span className="text-xl">📅</span>
           <span className="text-[10px] font-bold uppercase tracking-wider">Eventos</span>
         </button>
         <button 
           onClick={() => setMobileTab('stats')}
-          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'stats' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'stats' ? 'text-casino-gold' : 'text-gray-300 hover:text-white'}`}
         >
           <span className="text-xl">📊</span>
           <span className="text-[10px] font-bold uppercase tracking-wider">Stats</span>
         </button>
         <button 
           onClick={() => setMobileTab('store')}
-          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'store' ? 'text-purple-400' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'store' ? 'text-purple-400' : 'text-gray-300 hover:text-white'}`}
         >
           <span className="text-xl">🏪</span>
           <span className="text-[10px] font-bold uppercase tracking-wider">Tienda</span>
@@ -1289,7 +1289,7 @@ export function MainMenu() {
         {profile?.is_admin && (
           <button 
             onClick={() => setMobileTab('admin')}
-            className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'admin' ? 'text-casino-gold' : 'text-gray-500 hover:text-gray-300'}`}
+            className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'admin' ? 'text-casino-gold' : 'text-gray-300 hover:text-white'}`}
           >
             <span className="text-xl">🛡️</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">Admin</span>
@@ -1337,7 +1337,7 @@ export function MainMenu() {
             <button 
               onClick={() => setShowBetModal(false)}
               aria-label="Cerrar modal de configuración"
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-all z-10 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all z-10 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
             >
               ✕
             </button>
@@ -1358,13 +1358,13 @@ export function MainMenu() {
                   className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
                     roomMode === '1v1'
                       ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)] scale-[1.02]'
-                      : 'bg-black/40 border-white/10 text-gray-500 hover:border-blue-500/30 hover:bg-blue-500/5'
+                      : 'bg-black/40 border-white/10 text-gray-300 hover:border-blue-500/30 hover:bg-blue-500/5 hover:text-white'
                   }`}
                 >
                   <div className={`text-3xl transition-transform duration-300 ${roomMode === '1v1' ? 'scale-110 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'grayscale opacity-50'}`}>
                     ⚔️
                   </div>
-                  <span className={`font-black uppercase tracking-widest text-sm ${roomMode === '1v1' ? 'text-blue-400' : 'text-gray-500'}`}>
+                  <span className={`font-black uppercase tracking-widest text-sm ${roomMode === '1v1' ? 'text-blue-400' : 'text-gray-300'}`}>
                     1 vs 1
                   </span>
                 </button>
@@ -1374,13 +1374,13 @@ export function MainMenu() {
                   className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:outline-none ${
                     roomMode === '2v2'
                       ? 'bg-purple-500/20 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.2)] scale-[1.02]'
-                      : 'bg-black/40 border-white/10 text-gray-500 hover:border-purple-500/30 hover:bg-purple-500/5'
+                      : 'bg-black/40 border-white/10 text-gray-300 hover:border-purple-500/30 hover:bg-purple-500/5 hover:text-white'
                   }`}
                 >
                   <div className={`text-3xl transition-transform duration-300 ${roomMode === '2v2' ? 'scale-110 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'grayscale opacity-50'}`}>
                     🤝
                   </div>
-                  <span className={`font-black uppercase tracking-widest text-sm ${roomMode === '2v2' ? 'text-purple-400' : 'text-gray-500'}`}>
+                  <span className={`font-black uppercase tracking-widest text-sm ${roomMode === '2v2' ? 'text-purple-400' : 'text-gray-300'}`}>
                     2 vs 2
                   </span>
                 </button>

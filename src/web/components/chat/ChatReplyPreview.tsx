@@ -41,7 +41,7 @@ export function ChatReplyPreview({ username, text, inline, onCancel, onClick }: 
       {onCancel && (
         <button
           onClick={onCancel}
-          className="shrink-0 p-1 rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+          className="shrink-0 p-1 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
           title="Cancelar respuesta"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

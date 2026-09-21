@@ -151,7 +151,7 @@ export function GameInviteToast({ data, onAccept, onReject }: GameInviteToastPro
           <button
             onClick={() => onReject(data.invitationId)}
             disabled={accepting}
-            className="flex-1 py-2.5 rounded-xl bg-white/[0.04] text-gray-400 hover:text-white hover:bg-white/[0.08] font-bold text-sm border border-white/[0.06] hover:border-white/[0.12] transition-all active:scale-[0.97] disabled:opacity-40"
+            className="flex-1 py-2.5 rounded-xl bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] font-bold text-sm border border-white/[0.06] hover:border-white/[0.12] transition-all active:scale-[0.97] disabled:opacity-40"
           >
             ✕ Rechazar
           </button>

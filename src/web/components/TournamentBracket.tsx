@@ -151,7 +151,7 @@ function MatchNode({
             disabled={isCooldownActive}
             className={`absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 text-black text-[7px] sm:text-[8px] font-black uppercase px-1.5 sm:px-2 py-0.5 rounded-sm shadow-[0_0_10px_rgba(234,179,8,0.6)] z-20 transition-colors tracking-widest border whitespace-nowrap flex items-center gap-0.5 ${
               isCooldownActive
-                ? 'bg-slate-700/90 text-gray-400 border-slate-600 cursor-not-allowed shadow-none'
+                ? 'bg-slate-700/90 text-gray-300 border-slate-600 cursor-not-allowed shadow-none'
                 : 'bg-casino-gold/90 hover:bg-yellow-400 border-casino-gold/50'
             }`}
             title={isCooldownActive ? `Espera para volver a avisar` : "Avisar a tu rival"}
@@ -353,7 +353,7 @@ export function TournamentBracket({
           </button>
           <button
             onClick={handleZoomReset}
-            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-gray-400 hover:text-white uppercase transition-all"
+            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold text-gray-300 hover:text-white uppercase transition-all"
             title="Restablecer zoom al 100%"
           >
             100%

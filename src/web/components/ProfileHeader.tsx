@@ -175,7 +175,7 @@ export function ProfileHeader({
             </button>
             <button 
               onClick={signOut}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 transition-all duration-300"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 transition-all duration-300"
               title="Cerrar Sesión"
             >
               <LogOut className="w-4 h-4 translate-x-0.5" />
@@ -241,7 +241,7 @@ export function ProfileHeader({
                       e.stopPropagation();
                       onDeleteRead?.();
                     }}
-                    className="text-[10px] font-black text-gray-400 hover:text-red-400 transition-colors uppercase tracking-wider"
+                    className="text-[10px] font-black text-gray-300 hover:text-red-400 transition-colors uppercase tracking-wider"
                     title="Borrar notificaciones leídas"
                   >
                     Borrar leídas
@@ -294,7 +294,7 @@ export function ProfileHeader({
                         e.stopPropagation();
                         onDeleteNotification?.(n.id);
                       }}
-                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-500 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
+                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-300 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
                       title="Eliminar notificación"
                     >
                       ×
@@ -422,7 +422,7 @@ export function ProfileHeader({
 
           <button 
             onClick={signOut}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 bg-black/50 transition-all duration-300"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-gray-300 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/10 bg-black/50 transition-all duration-300"
             title="Cerrar Sesión"
           >
             <LogOut className="w-5 h-5 translate-x-0.5" />
@@ -463,7 +463,7 @@ export function ProfileHeader({
                         e.stopPropagation();
                         onDeleteRead?.();
                       }}
-                      className="text-[10px] font-black text-gray-400 hover:text-red-400 transition-colors uppercase tracking-wider"
+                      className="text-[10px] font-black text-gray-300 hover:text-red-400 transition-colors uppercase tracking-wider"
                       title="Borrar notificaciones leídas"
                     >
                       Borrar leídas
@@ -516,7 +516,7 @@ export function ProfileHeader({
                           e.stopPropagation();
                           onDeleteNotification?.(n.id);
                         }}
-                        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-500 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
+                        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-300 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
                         title="Eliminar notificación"
                       >
                         ×

@@ -295,14 +295,14 @@ export default function AdBanner({
         <>
           <button
             onClick={(e) => { e.stopPropagation(); prev(); }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-lg border border-white/5 bg-black/45 backdrop-blur-md text-gray-400 hover:text-white hover:border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-lg border border-white/5 bg-black/45 backdrop-blur-md text-gray-300 hover:text-white hover:border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
             aria-label="Anterior"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); next(); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-lg border border-white/5 bg-black/45 backdrop-blur-md text-gray-400 hover:text-white hover:border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-lg border border-white/5 bg-black/45 backdrop-blur-md text-gray-300 hover:text-white hover:border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
             aria-label="Siguiente"
           >
             <ChevronRight size={16} />

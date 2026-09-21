@@ -262,7 +262,7 @@ export function BotTutorialOverlay({
           className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold tracking-wide transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'live'
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+              : 'text-gray-300 hover:text-white hover:bg-white/5'
           }`}
         >
           <span>🎯</span> Sugerencia en Vivo
@@ -274,7 +274,7 @@ export function BotTutorialOverlay({
           className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold tracking-wide transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'tutorial'
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+              : 'text-gray-300 hover:text-white hover:bg-white/5'
           }`}
         >
           <span>📘</span> Reglas Paso a Paso

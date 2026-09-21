@@ -82,13 +82,13 @@ export function CookieConsent() {
             <div className="flex items-center gap-2 shrink-0">
               <a
                 href="/cookies"
-                className="text-xs text-gray-500 hover:text-gray-300 px-3 py-2 rounded-lg transition-colors font-bold uppercase tracking-wider"
+                className="text-xs text-gray-300 hover:text-white px-3 py-2 rounded-lg transition-colors font-bold uppercase tracking-wider"
               >
                 Configurar
               </a>
               <button
                 onClick={handleReject}
-                className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-wider"
+                className="text-xs text-gray-200 hover:text-white border border-white/10 hover:border-white/30 px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-wider"
               >
                 Rechazar
               </button>

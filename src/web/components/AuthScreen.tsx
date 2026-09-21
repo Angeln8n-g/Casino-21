@@ -171,7 +171,7 @@ export function AuthScreen() {
                 type="button"
                 onClick={() => setIsLogin(true)}
                 className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-display font-bold transition-all duration-300 ${
-                  isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-500 hover:text-gray-300'
+                  isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-300 hover:text-white'
                 }`}
               >
                 Iniciar Sesión
@@ -180,7 +180,7 @@ export function AuthScreen() {
                 type="button"
                 onClick={() => setIsLogin(false)}
                 className={`flex-1 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-display font-bold transition-all duration-300 ${
-                  !isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-500 hover:text-gray-300'
+                  !isLogin ? 'bg-casino-gold/20 text-casino-gold shadow-[0_0_10px_rgba(212,175,55,0.2)]' : 'text-gray-300 hover:text-white'
                 }`}
               >
                 Registrarse
@@ -300,7 +300,7 @@ export function AuthScreen() {
               <button 
                 type="button"
                 onClick={() => setIsRecovery(false)}
-                className="w-full py-2 text-xs text-gray-400 hover:text-white transition-colors"
+                className="w-full py-2 text-xs text-gray-300 hover:text-white transition-colors"
               >
                 Volver a Iniciar Sesión
               </button>
@@ -320,7 +320,7 @@ export function AuthScreen() {
               </div>
               <button
                 onClick={() => setShowTerms(false)}
-                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition-all"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />

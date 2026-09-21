@@ -145,7 +145,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
                 ✓ INSCRITO
               </span>
             )}
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/5">
+            <span className="text-[10px] font-bold text-gray-200 uppercase tracking-widest bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/5">
               {type === 'gran_pool' || title.includes('El Gran Pool') ? '👑 GRAN POOL (TOP 32)' : type === 'torneo' ? '⚔️ TORNEO' : type === 'liga' ? '🏆 LIGA' : '💎 ESPECIAL'}
             </span>
           </div>
@@ -165,7 +165,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
                 <span className="text-xs">🏆</span>
                 <span className="text-xs font-bold text-casino-gold">{prize_pool}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[9px] font-mono text-gray-400 bg-black/30 px-2.5 py-0.5 rounded-md border border-white/5 w-fit">
+              <div className="flex items-center gap-1.5 text-[9px] font-mono text-gray-200 bg-black/30 px-2.5 py-0.5 rounded-md border border-white/5 w-fit">
                 <span>👥 {participants_count}/{max_participants}</span>
               </div>
             </div>
@@ -191,7 +191,7 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
                   e.stopPropagation();
                   onViewRules(rules, title);
                 }}
-                className="text-[10px] uppercase font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors border border-white/5"
+                className="text-[10px] uppercase font-bold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors border border-white/5"
               >
                 Reglas
               </button>
@@ -866,7 +866,7 @@ export function EventsPage() {
           <h3 className="text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
             Cartelera de Eventos
           </h3>
-          <span className="text-xs text-gray-400 font-bold bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+          <span className="text-xs text-gray-200 font-bold bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
             {filteredEvents.length} {filteredEvents.length === 1 ? 'evento disponible' : 'eventos disponibles'}
           </span>
         </div>
@@ -891,7 +891,7 @@ export function EventsPage() {
               <button
                 onClick={() => setSearchQuery('')}
                 aria-label="Limpiar búsqueda"
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-500 hover:text-white focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none rounded"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-300 hover:text-white focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none rounded"
               >
                 ✕
               </button>
@@ -917,19 +917,19 @@ export function EventsPage() {
             <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5 h-[36px]">
               <button 
                 onClick={() => setFilter('all')}
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white'}`}
               >
                 Todos
               </button>
               <button 
                 onClick={() => setFilter('live')}
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'live' ? 'bg-red-500/25 text-red-400 border border-red-500/30' : 'text-gray-500 hover:text-gray-300'}`}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'live' ? 'bg-red-500/25 text-red-400 border border-red-500/30' : 'text-gray-300 hover:text-white'}`}
               >
                 En Vivo
               </button>
               <button 
                 onClick={() => setFilter('upcoming')}
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'upcoming' ? 'bg-cyan-500/25 text-cyan-400 border border-cyan-500/30' : 'text-gray-500 hover:text-gray-300'}`}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'upcoming' ? 'bg-cyan-500/25 text-cyan-400 border border-cyan-500/30' : 'text-gray-300 hover:text-white'}`}
               >
                 Próximos
               </button>
@@ -976,7 +976,7 @@ export function EventsPage() {
               <button 
                 onClick={() => setRulesModalOpen(false)}
                 aria-label="Cerrar reglas del evento"
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
               >
                 ✕
               </button>

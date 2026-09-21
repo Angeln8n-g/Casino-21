@@ -243,7 +243,7 @@ export const ChampionshipAdmin: React.FC = () => {
             key={tab.id}
             onClick={() => setSubTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors cursor-pointer ${
-              subTab === tab.id ? 'bg-casino-gold text-black' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              subTab === tab.id ? 'bg-casino-gold text-black' : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -465,7 +465,7 @@ export const ChampionshipAdmin: React.FC = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Cola de Verificación KYC</h3>
-              <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-gray-400">
+              <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-gray-200">
                 {kycQueue.length} Solicitudes Pendientes
               </span>
             </div>
@@ -481,10 +481,10 @@ export const ChampionshipAdmin: React.FC = () => {
                   </div>
 
                   <div className="flex gap-2 h-28">
-                    <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-xs text-gray-500">
+                    <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-xs text-gray-300">
                       ID Documento
                     </div>
-                    <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-xs text-gray-500">
+                    <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center text-xs text-gray-300">
                       Selfie Verificación
                     </div>
                   </div>

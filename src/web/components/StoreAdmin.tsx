@@ -310,7 +310,7 @@ export function StoreAdmin() {
           <button
             onClick={() => setActiveSection('items')}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-              activeSection === 'items' ? 'bg-[#7C3AED] text-white' : 'text-gray-400 hover:text-white'
+              activeSection === 'items' ? 'bg-[#7C3AED] text-white' : 'text-gray-300 hover:text-white'
             }`}
           >
             Artículos
@@ -318,7 +318,7 @@ export function StoreAdmin() {
           <button
             onClick={() => { setActiveSection('themes'); fetchThemes(); fetchBoardItems(); }}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-              activeSection === 'themes' ? 'bg-[#7C3AED] text-white' : 'text-gray-400 hover:text-white'
+              activeSection === 'themes' ? 'bg-[#7C3AED] text-white' : 'text-gray-300 hover:text-white'
             }`}
           >
             Temas
@@ -522,7 +522,7 @@ export function StoreAdmin() {
                         <button
                           type="button"
                           onClick={() => setCurrentItem({...currentItem, image_url: ''})}
-                          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/80 text-gray-400 hover:text-rose-400 flex items-center justify-center transition-colors shadow-lg border border-white/10"
+                          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/80 text-gray-300 hover:text-rose-400 flex items-center justify-center transition-colors shadow-lg border border-white/10"
                           aria-label="Eliminar imagen"
                         >
                           ✕

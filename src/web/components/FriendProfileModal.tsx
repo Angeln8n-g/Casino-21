@@ -210,7 +210,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
           <button
             onClick={onClose}
             aria-label="Cerrar ventana"
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-300 hover:text-white transition-all z-20 border border-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -224,7 +224,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
             <div className="flex items-center gap-3 px-4 py-3 bg-[#0F0E0C] border-b border-[#2A2722] shrink-0 min-h-[56px] pr-12">
               <button
                 onClick={() => setShowChat(false)}
-                className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
                 title="Volver al perfil"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,7 +233,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               </button>
 
               <div className="relative">
-                <div className="w-8 h-8 rounded-full bg-[#1A1815] flex items-center justify-center text-xs font-bold text-gray-400 shrink-0 border border-white/5 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-[#1A1815] flex items-center justify-center text-xs font-bold text-gray-200 shrink-0 border border-white/5 overflow-hidden">
                   {friend.equipped_avatar ? (
                     <img src={friend.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : friend.avatar_url ? (
@@ -251,7 +251,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
 
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-white truncate">{friend.username}</p>
-                <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
                   {friend.isOnline ? (isInRoom ? 'En partida' : 'En línea') : 'Desconectado'}
                 </p>
               </div>
@@ -274,7 +274,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               {/* Close Button in Chat view */}
               <button
                 onClick={onClose}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20"
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 hover:text-white transition-all z-20"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -474,7 +474,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </div>
                       <button
                         onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
-                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
                       >
                         Intentar de nuevo
                       </button>
@@ -489,7 +489,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </div>
                       <button
                         onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
-                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
                       >
                         Intentar de nuevo
                       </button>
@@ -621,7 +621,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </div>
                       <button
                         onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
-                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
                       >
                         Intentar de nuevo
                       </button>
@@ -636,7 +636,7 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                       </div>
                       <button
                         onClick={() => { setChallengeState('idle'); setInvitationId(null); }}
-                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                        className="w-full py-2.5 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] text-gray-300 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
                       >
                         Intentar de nuevo
                       </button>

@@ -172,7 +172,7 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
                   Patrocinio Oficial: {sponsorName}
                 </span>
               </div>
-              <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-md">
+              <span className="text-xs text-slate-200 bg-slate-800 px-2 py-1 rounded-md font-mono font-bold">
                 {adCompleted ? '¡Completado!' : `Quedan ${adSecondsRemaining}s`}
               </span>
             </div>
