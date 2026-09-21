@@ -775,6 +775,17 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           animation: shimmerEffect 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
           pointer-events: none;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-emote-left,
+          .animate-emote-right {
+            animation: none !important;
+            transform: none !important;
+            opacity: 1 !important;
+          }
+          .shimmer-overlay::after {
+            display: none !important;
+          }
+        }
       `}</style>
       <div className="absolute inset-0 w-screen h-screen overflow-hidden pointer-events-none">
         {/* ── Full-screen theme background ── */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Sparkles, Palette, CheckCircle, Layers, Zap, Crown, Compass } from 'lucide-react';
 
 interface PreviewTheme {
@@ -118,8 +118,10 @@ export default function ThemesPreview() {
   const [activeTheme, setActiveTheme] = useState<PreviewTheme>(PREVIEW_THEMES[0]);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [dealCount, setDealCount] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (shouldReduceMotion) return;
     const el = e.currentTarget;
     const rect = el.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
@@ -251,12 +253,12 @@ export default function ThemesPreview() {
                   {/* Card 1: Front */}
                   <motion.div
                     key={`card-front-${activeTheme.key}-${dealCount}`}
-                    initial={{ rotateY: 90, opacity: 0, scale: 0.5, y: -100 }}
-                    animate={{ rotateY: 0, opacity: 1, scale: 1, y: 0 }}
-                    exit={{ rotateY: -90, opacity: 0 }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    initial={shouldReduceMotion ? { opacity: 0 } : { rotateY: 90, opacity: 0, scale: 0.5, y: -100 }}
+                    animate={shouldReduceMotion ? { opacity: 1 } : { rotateY: 0, opacity: 1, scale: 1, y: 0 }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { rotateY: -90, opacity: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.15 : 0.5, ease: 'easeOut' }}
                     style={{
-                      transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+                      transform: shouldReduceMotion ? undefined : `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
                       ...activeTheme.cardStyle,
                     }}
                     className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl flex flex-col justify-between p-4 relative shadow-2xl transition-shadow duration-300"
@@ -279,12 +281,12 @@ export default function ThemesPreview() {
                   {/* Card 2: Back */}
                   <motion.div
                     key={`card-back-${activeTheme.key}-${dealCount}`}
-                    initial={{ rotateY: -90, opacity: 0, scale: 0.5, y: -100 }}
-                    animate={{ rotateY: 0, opacity: 1, scale: 1, y: 0 }}
-                    exit={{ rotateY: 90, opacity: 0 }}
-                    transition={{ duration: 0.5, ease: 'easeOut', delay: 0.08 }}
+                    initial={shouldReduceMotion ? { opacity: 0 } : { rotateY: -90, opacity: 0, scale: 0.5, y: -100 }}
+                    animate={shouldReduceMotion ? { opacity: 1 } : { rotateY: 0, opacity: 1, scale: 1, y: 0 }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { rotateY: 90, opacity: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.15 : 0.5, ease: 'easeOut', delay: shouldReduceMotion ? 0 : 0.08 }}
                     style={{
-                      transform: `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+                      transform: shouldReduceMotion ? undefined : `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
                       ...activeTheme.cardBackStyle,
                     }}
                     className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl relative shadow-2xl flex flex-col justify-between p-3"

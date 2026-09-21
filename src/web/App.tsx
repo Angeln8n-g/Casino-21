@@ -1,4 +1,5 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { GameProvider, useGame } from './hooks/useGame';
 import { AudioProvider, useAudio } from './hooks/useAudio';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -217,23 +218,23 @@ function PublicAdPage({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <Suspense fallback={<LoadingFallback />}>
         {children}
       </Suspense>
       <CookieConsent />
-    </>
+    </MotionConfig>
   );
 }
 
 export default function App() {
   // ─── Legal Page Router (public, no auth required) ─────────────────────────
   const pathname = window.location.pathname;
-  if (pathname === '/privacy') return <Suspense fallback={<LoadingFallback />}><PrivacyPolicy /></Suspense>;
-  if (pathname === '/terms')   return <Suspense fallback={<LoadingFallback />}><TermsOfService /></Suspense>;
-  if (pathname === '/cookies') return <Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense>;
-  if (pathname === '/about') return <Suspense fallback={<LoadingFallback />}><About /></Suspense>;
-  if (pathname === '/contact' || pathname === '/contacto') return <Suspense fallback={<LoadingFallback />}><Contact /></Suspense>;
+  if (pathname === '/privacy') return <MotionConfig reducedMotion="user"><Suspense fallback={<LoadingFallback />}><PrivacyPolicy /></Suspense></MotionConfig>;
+  if (pathname === '/terms')   return <MotionConfig reducedMotion="user"><Suspense fallback={<LoadingFallback />}><TermsOfService /></Suspense></MotionConfig>;
+  if (pathname === '/cookies') return <MotionConfig reducedMotion="user"><Suspense fallback={<LoadingFallback />}><CookiePolicy /></Suspense></MotionConfig>;
+  if (pathname === '/about') return <MotionConfig reducedMotion="user"><Suspense fallback={<LoadingFallback />}><About /></Suspense></MotionConfig>;
+  if (pathname === '/contact' || pathname === '/contacto') return <MotionConfig reducedMotion="user"><Suspense fallback={<LoadingFallback />}><Contact /></Suspense></MotionConfig>;
 
 
   // ─── Public pages with ad support ─────────────────────────────────────────
@@ -277,22 +278,24 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AudioProvider>
-        <GameProvider>
-          <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white font-sans"
-            style={{ background: 'radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%)' }}
-          >
-            {/* Noise texture overlay */}
-            <div className="noise-overlay" />
-            <Suspense fallback={<LoadingFallback />}>
-              <AppContent />
-            </Suspense>
-          </div>
-          <CookieConsent />
-          <ChampionshipToast />
-        </GameProvider>
-      </AudioProvider>
-    </AuthProvider>
+    <MotionConfig reducedMotion="user">
+      <AuthProvider>
+        <AudioProvider>
+          <GameProvider>
+            <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white font-sans"
+              style={{ background: 'radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%)' }}
+            >
+              {/* Noise texture overlay */}
+              <div className="noise-overlay" />
+              <Suspense fallback={<LoadingFallback />}>
+                <AppContent />
+              </Suspense>
+            </div>
+            <CookieConsent />
+            <ChampionshipToast />
+          </GameProvider>
+        </AudioProvider>
+      </AuthProvider>
+    </MotionConfig>
   );
 }

@@ -330,6 +330,12 @@ export function Store() {
           animation: float3d 6s ease-in-out infinite;
           transform-style: preserve-3d;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-float-3d {
+            animation: none !important;
+            transform: none !important;
+          }
+        }
         .masonry-grid {
           column-count: 1;
           column-gap: 1.25rem;

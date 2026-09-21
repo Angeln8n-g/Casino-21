@@ -79,7 +79,7 @@ export function HandView({ player, isCurrentTurn, selectedCardId, onCardClick, i
             return (
               <div
                 key={card.id || `fallback-${index}`}
-                className={`relative shrink-0 snap-center ${isDealing ? 'animate-deal' : ''}`}
+                className={`relative shrink-0 snap-center ${isDealing ? 'animate-deal motion-reduce:animate-none motion-reduce:transform-none' : ''}`}
                 style={{
                   animationDelay: isDealing ? `${index * 0.1}s` : '0s',
                   /* Ensure minimum 44px touch target on mobile */

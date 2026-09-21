@@ -583,21 +583,205 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Respect prefers-reduced-motion */
+/* ═══════════════════════════════════════════════════════════════
+   PREFERS-REDUCED-MOTION (WCAG 2.1 / 2.2 AA & AAA - SC 2.3.3 / 2.2.2)
+   Comprehensive neutralization for:
+   1. Tailwind bouncing loops (badges, arrows, emojis, buttons)
+   2. Ambient glowing orbs and continuous floating/pulsing loops
+   3. Card deal keyframes, flips, and translation animations
+   4. Hover vibration, shakes, and aggressive interactive transforms
+   ═══════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
+  /* 1. Global Baseline: Suppress motion loops and transitions */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Exempt essential async loading spinners to prevent high-frequency strobing */
+  .animate-spin,
+  [class*="animate-spin"],
+  .lucide-loader-2,
+  .lucide-loader {
+    animation-duration: 2s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* 2. Neutralize Tailwind Bouncing Loops */
+  .animate-bounce,
+  .animate-bounce-short,
+  [class*="animate-bounce"],
+  [class*="hover:animate-bounce"],
+  [class*="group-hover:animate-bounce"],
+  [class*="animate-[bounce_"] {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  @keyframes bounce {
+    0%, 50%, 100% {
+      transform: none !important;
+    }
+  }
+
+  /* 3. Neutralize Ambient Orbs and Continuous Pulsing/Flashing Backgrounds */
+  .ambient-orb,
+  .ambient-orb-gold,
+  .ambient-orb-emerald,
+  .ambient-orb-purple,
+  [class*="ambient-orb"] {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  @keyframes floatOrb {
+    0%, 50%, 100% {
+      transform: none !important;
+    }
+  }
+
+  @keyframes float {
+    0%, 50%, 100% {
+      transform: none !important;
+    }
+  }
+
+  @keyframes float3d {
+    0%, 50%, 100% {
+      transform: none !important;
+    }
+  }
+
+  .animate-float,
+  .animate-float-3d,
+  .animate-strobe,
+  .animate-gradient-x {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .animate-pulse,
+  .animate-pulse-slow,
+  .animate-glow-pulse,
+  [class*="animate-pulse"],
+  [class*="animate-[pulse_"] {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .animate-ping,
+  [class*="animate-ping"] {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .animate-shimmer,
+  [class*="animate-shimmer"],
+  [class*="animate-[shimmer_"] {
+    animation: none !important;
+  }
+
+  /* 4. Neutralize Card Deal Keyframes and Animations */
+  .animate-deal,
+  .animate-card-enter,
+  [class*="animate-deal"],
+  [class*="animate-card-enter"] {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  @keyframes deal-card {
+    0%, 100% {
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
+
+  @keyframes cardEnter {
+    0%, 100% {
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
+
+  @keyframes cardGlow {
+    0%, 50%, 100% {
+      box-shadow: 0 0 14px 3px rgba(250, 204, 21, 0.6), 0 10px 20px -5px rgba(0,0,0,0.5) !important;
+    }
+  }
+
+  @keyframes cardShimmer {
+    0%, 100% {
+      background-position: 0 0 !important;
+    }
+  }
+
+  /* 5. Neutralize Hover Vibration, Shakes and Interactive Transforms */
+  .btn-gold:hover,
+  .btn-gold:active,
+  button:hover,
+  [role="button"]:hover {
+    animation: none !important;
+  }
+
+  @keyframes btnVibrate {
+    0%, 20%, 40%, 60%, 80%, 100% {
+      transform: none !important;
+    }
+  }
+
+  .btn-gold,
+  .btn-emerald,
+  .btn-ghost,
+  .btn-gold:hover,
+  .btn-emerald:hover,
+  .btn-ghost:hover,
+  .btn-gold:active,
+  .btn-emerald:active {
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .btn-gold::after {
+    animation: none !important;
+    display: none !important;
+  }
+
+  .animate-shake,
+  .animate-swing,
+  [class*="animate-shake"],
+  [class*="animate-swing"] {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* 6. Neutralize Glitch, CRT, Confetti, Virado Banners, and Holographic Effects */
   .animate-glitch,
   .animate-glitch-fast,
   .animate-cta-pulse,
   .animate-power-on,
+  .animate-virado-banner,
+  .animate-confetti-fall,
+  .animate-scale-up,
+  .animate-slide-up,
+  .animate-slide-down,
   .holo-text {
     animation: none !important;
+    transform: none !important;
     transition: none !important;
   }
+
   .crt-overlay::after {
-    display: none;
+    display: none !important;
   }
+
   html {
-    scroll-behavior: auto;
+    scroll-behavior: auto !important;
   }
 }
 

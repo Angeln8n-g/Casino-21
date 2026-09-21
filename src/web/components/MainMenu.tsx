@@ -878,8 +878,8 @@ export function MainMenu() {
       />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(2,6,23,0.82)_0%,rgba(2,6,23,0.7)_45%,rgba(2,6,23,0.9)_100%)]" />
       {/* Ambient background orbs */}
-      <div className="ambient-orb ambient-orb-gold w-[400px] h-[400px] -top-40 -left-20" />
-      <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10" />
+      <div className="ambient-orb ambient-orb-gold w-[400px] h-[400px] -top-40 -left-20 motion-reduce:animate-none" />
+      <div className="ambient-orb ambient-orb-emerald w-[300px] h-[300px] bottom-20 right-10 motion-reduce:animate-none" />
 
       {/* ═════ DESKTOP SIDEBAR ═════ */}
       <Sidebar 

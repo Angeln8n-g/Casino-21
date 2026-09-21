@@ -51,9 +51,9 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
         }}
         className={`
           relative w-[clamp(2.6rem,14vw,5.2rem)] h-[clamp(3.9rem,21vw,7.8rem)] md:w-[clamp(4.2rem,5.5vw,5.5rem)] md:h-[clamp(6.3rem,8.2vw,8.2rem)] rounded-xl flex flex-col justify-between p-1.5 md:p-2.5
-          select-none transition-all duration-300 transform-gpu touch-manipulation
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 md:hover:-translate-y-3 hover:shadow-2xl'}
-          ${selected ? 'scale-[1.03] md:scale-[1.07] -translate-y-1 md:-translate-y-4 premium-card-selected' : 'premium-card-edge'}
+          select-none transition-all duration-300 transform-gpu touch-manipulation motion-reduce:transition-none
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 md:hover:-translate-y-3 hover:shadow-2xl motion-reduce:hover:translate-y-0 motion-reduce:hover:transform-none'}
+          ${selected ? 'scale-[1.03] md:scale-[1.07] -translate-y-1 md:-translate-y-4 premium-card-selected motion-reduce:scale-100 motion-reduce:translate-y-0' : 'premium-card-edge'}
           ${t.extraClass ?? ''}
           ${className}
         `}
