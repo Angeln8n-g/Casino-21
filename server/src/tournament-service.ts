@@ -1,15 +1,23 @@
 import { supabase } from './supabase';
 import { Server } from 'socket.io';
 import { RoomStore } from './room-store';
+import { sendPushToUser } from './web-push';
+
+export const NO_SHOW_TIMEOUT_MS = 180_000; // 3 minutos de tolerancia para presentarse
+const activeWaitTimers = new Map<string, NodeJS.Timeout>();
 
 export async function handleTournamentFinal(matchData: any, winnerId: string) {
   const { data: eventData } = await supabase
     .from('events')
-    .select('id, title, prize_pool, is_championship')
+    .select('id, title, prize_pool, is_championship, is_sponsored')
     .eq('id', matchData.event_id)
     .single();
 
-  if (eventData?.is_championship || eventData?.title?.includes('El Gran Pool') || eventData?.title?.includes('Championship')) {
+  const isChampionship = eventData?.is_championship || 
+    eventData?.title?.includes('El Gran Pool') || 
+    eventData?.title?.includes('Championship');
+
+  if (isChampionship) {
     console.log(`[Championship] Gran Final de Championship completada. Invocando distribución de premios en $USD...`);
     const { data: distRes, error: distErr } = await supabase.rpc('calculate_championship_prize_distribution', {
       p_event_id: matchData.event_id
@@ -19,25 +27,177 @@ export async function handleTournamentFinal(matchData: any, winnerId: string) {
     } else {
       console.log(`[Championship] Distribución completada. Reclamos creados: ${distRes?.claims_created || 0}`);
     }
+
+    // Recompensa complementaria en monedas fijas para el campeón del Championship (10,000 monedas)
+    const CHAMPIONSHIP_COIN_BONUS = 10000;
+    const { error: bonusError } = await supabase.rpc('award_tournament_prize', {
+      event_id_param: matchData.event_id,
+      winner_id_param: winnerId,
+      prize_amount: CHAMPIONSHIP_COIN_BONUS
+    });
+    if (bonusError) {
+      console.error(`[Championship] Error entregando bonus de monedas al campeón:`, bonusError);
+    } else {
+      console.log(`[Championship] Bonus de ${CHAMPIONSHIP_COIN_BONUS} monedas entregado al campeón ${winnerId}`);
+    }
+    return;
   }
 
+  // Torneo estándar o patrocinado regular (premios en monedas)
   let finalPrize = 0;
   if (eventData?.prize_pool) {
-    const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
-    if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
-  }
-
-  if (finalPrize > 0) {
-    console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
-    const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
-      event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
-    });
-    if (rewardError) {
-      console.error(`[Torneo] Error entregando premio final:`, rewardError);
-    } else {
-      console.log(`[Torneo] Premio entregado exitosamente.`);
+    // Si contiene USD, es premio en dólares (no sumarlo como monedas arbitrarias)
+    if (!eventData.prize_pool.toUpperCase().includes('USD')) {
+      const matchAmount = eventData.prize_pool.match(/\d[\d,.]*/);
+      if (matchAmount) finalPrize = parseInt(matchAmount[0].replace(/,/g, ''), 10);
     }
   }
+
+  console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
+  const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
+    event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
+  });
+  if (rewardError) {
+    console.error(`[Torneo] Error entregando premio final:`, rewardError);
+  } else {
+    console.log(`[Torneo] Premio entregado exitosamente.`);
+  }
+}
+
+/**
+ * Inicia el temporizador de incomparecencia (no-show) cuando un jugador entra a la sala
+ * y está esperando a su oponente.
+ */
+export async function startNoShowTimer(
+  io: Server,
+  roomStore: RoomStore,
+  gameRoomId: string,
+  waitingPlayerId: string,
+  waitingPlayerName: string
+) {
+  if (activeWaitTimers.has(gameRoomId)) return;
+
+  const { data: matchData } = await supabase
+    .from('tournament_matches')
+    .select('id, event_id, player1_id, player2_id, status, events(title)')
+    .eq('game_room_id', gameRoomId)
+    .single();
+
+  if (!matchData || matchData.status === 'completed' || matchData.status === 'playing') return;
+
+  const opponentId = matchData.player1_id === waitingPlayerId ? matchData.player2_id : matchData.player1_id;
+  if (!opponentId) return;
+
+  // Registrar en base de datos la marca de tiempo de espera
+  await supabase
+    .from('tournament_matches')
+    .update({
+      waiting_player_id: waitingPlayerId,
+      waiting_since: new Date().toISOString(),
+      status: 'ready'
+    })
+    .eq('id', matchData.id);
+
+  console.log(`[Torneo No-Show] Temporizador iniciado para sala ${gameRoomId} (${waitingPlayerName} esperando a ${opponentId})`);
+
+  // Enviar push al oponente advirtiendo del límite de tiempo
+  sendPushToUser(opponentId, {
+    type: 'tournament_match_invite',
+    title: '⚔️ ¡Tu rival te está esperando!',
+    body: `¡${waitingPlayerName} ya está en la mesa de torneo! Tienes 3 minutos para entrar o perderás por incomparecencia.`,
+    data: {
+      roomId: gameRoomId,
+      eventId: matchData.event_id,
+      isTournament: true
+    }
+  }).catch(err => console.error(`[Torneo No-Show] Error enviando push a ${opponentId}:`, err));
+
+  const timer = setTimeout(async () => {
+    activeWaitTimers.delete(gameRoomId);
+
+    const room = await roomStore.get(gameRoomId);
+    // Si la sala ya inició la partida o ya tiene 2 jugadores, no ejecutar walkover
+    if (room && (room.state || room.players.length >= 2)) {
+      return;
+    }
+
+    console.log(`[Torneo No-Show] Tiempo agotado en sala ${gameRoomId}. Declarando walkover a favor de ${waitingPlayerId}`);
+
+    // Declarar victoria por walkover
+    await supabase
+      .from('tournament_matches')
+      .update({
+        winner_id: waitingPlayerId,
+        status: 'completed',
+        walkover_reason: 'opponent_no_show',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', matchData.id);
+
+    // Notificar al ganador
+    io.to(gameRoomId).emit('tournament_walkover_won', {
+      matchId: matchData.id,
+      message: '¡Tu rival no se presentó a tiempo! Has avanzado a la siguiente ronda por incomparecencia (Walkover).'
+    });
+
+    // Notificar al ausente por push
+    sendPushToUser(opponentId, {
+      type: 'tournament_start',
+      title: '❌ Eliminado por Incomparecencia',
+      body: 'No te presentaste a tiempo a tu partida de torneo y has quedado eliminado por Walkover.',
+      data: { eventId: matchData.event_id, isTournament: true }
+    }).catch(err => console.error(`[Torneo No-Show] Error avisando eliminación a ${opponentId}:`, err));
+
+    // Procesar avance de ronda para el ganador
+    await processTournamentAdvancement(io, roomStore, gameRoomId, waitingPlayerId, true);
+  }, NO_SHOW_TIMEOUT_MS);
+
+  activeWaitTimers.set(gameRoomId, timer);
+}
+
+/**
+ * Cancela el temporizador de incomparecencia cuando el rival ingresa a la sala.
+ */
+export function clearNoShowTimer(gameRoomId: string) {
+  const timer = activeWaitTimers.get(gameRoomId);
+  if (timer) {
+    clearTimeout(timer);
+    activeWaitTimers.delete(gameRoomId);
+    console.log(`[Torneo No-Show] Temporizador cancelado para sala ${gameRoomId} (rival conectado)`);
+  }
+}
+
+/**
+ * Permite a un jugador reclamar manualmente el walkover si esperó los 3 minutos.
+ */
+export async function claimTournamentWalkover(
+  io: Server,
+  roomStore: RoomStore,
+  matchId: string,
+  userId: string
+) {
+  const { data, error } = await supabase.rpc('claim_tournament_walkover', {
+    p_match_id: matchId,
+    p_user_id: userId
+  });
+
+  if (error || !data?.success) {
+    return { success: false, error: data?.error || error?.message };
+  }
+
+  // Si fue exitoso, avanzar ronda
+  const { data: matchData } = await supabase
+    .from('tournament_matches')
+    .select('game_room_id')
+    .eq('id', matchId)
+    .single();
+
+  if (matchData?.game_room_id) {
+    clearNoShowTimer(matchData.game_room_id);
+    await processTournamentAdvancement(io, roomStore, matchData.game_room_id, userId, true);
+  }
+
+  return { success: true, ...data };
 }
 
 export function notifyTournamentPlayers(

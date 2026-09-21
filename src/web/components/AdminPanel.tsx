@@ -9,6 +9,7 @@ import { AudioAdmin } from './AudioAdmin';
 import { PendingPrizesAdmin } from './admin/PendingPrizesAdmin';
 import { ChampionshipAdmin } from './admin/ChampionshipAdmin';
 import { useAudio } from '../hooks/useAudio';
+import { getTournamentSeedPairs } from '../../domain/championship';
 
 interface EventData {
   id: string;
@@ -184,10 +185,13 @@ export function AdminPanel() {
         
       const players = entries ? entries.map(e => e.player_id) : [];
       
-      // Shuffle players randomly
-      for (let i = players.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [players[i], players[j]] = [players[j], players[i]];
+      // Shuffle players randomly only if NOT a seeded championship tournament
+      const isChampionship = (event as any).is_championship || event.title?.includes('Championship');
+      if (!isChampionship) {
+        for (let i = players.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [players[i], players[j]] = [players[j], players[i]];
+        }
       }
 
       // 3. Generate matches based on max_participants
@@ -201,7 +205,7 @@ export function AdminPanel() {
       const startRound = 4 - totalRounds + 1;
       
       const matchesToInsert = [];
-      let playerIndex = 0;
+      const seedPairs = getTournamentSeedPairs(maxP);
 
       // Generate series_id for the final (best-of-3)
       const finalSeriesId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + '-' + Date.now().toString(36);
@@ -214,10 +218,11 @@ export function AdminPanel() {
           let p1 = null;
           let p2 = null;
           
-          // Only assign players in the first round played
+          // Only assign players in the first round played using standard seeding
           if (i === 0) {
-            if (playerIndex < players.length) p1 = players[playerIndex++];
-            if (playerIndex < players.length) p2 = players[playerIndex++];
+            const [s1, s2] = seedPairs[order - 1] || [order * 2 - 1, order * 2];
+            p1 = players[s1 - 1] || null;
+            p2 = players[s2 - 1] || null;
           }
           
           // If this is the final round (round 4), generate 3 games for best-of-3

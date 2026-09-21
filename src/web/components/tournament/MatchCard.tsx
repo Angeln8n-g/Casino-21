@@ -7,6 +7,7 @@ interface MatchCardProps {
   isAdmin: boolean;
   onJoinMatch: (match: TournamentMatch) => void;
   onInviteOpponent: (opponentId: string, match: TournamentMatch) => void;
+  onClaimWalkover?: (matchId: string) => void;
   inviteCooldowns: Record<string, number>;
   onViewPlayer?: (playerId: string) => void;
 }
@@ -25,6 +26,7 @@ export function MatchCard({
   isAdmin,
   onJoinMatch,
   onInviteOpponent,
+  onClaimWalkover,
   inviteCooldowns,
   onViewPlayer,
 }: MatchCardProps) {
@@ -142,7 +144,11 @@ export function MatchCard({
       {/* Header Info */}
       <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono">
         <span>PARTIDO {position}</span>
-        {status === 'live' ? (
+        {match.walkover_reason ? (
+          <span className="text-amber-400 font-bold uppercase tracking-widest bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20 text-[9px] flex items-center gap-1">
+            ⚡ Walkover
+          </span>
+        ) : status === 'live' ? (
           <span className="flex items-center gap-1 text-[#FF0055] font-black uppercase tracking-widest bg-[#FF0055]/10 px-2 py-0.5 rounded-full border border-[#FF0055]/20 animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FF0055]" />
             EN VIVO
@@ -199,6 +205,19 @@ export function MatchCard({
             </button>
           ) : null}
         </div>
+      )}
+
+      {/* Reclamar victoria por incomparecencia (Walkover) */}
+      {isPlayerInMatch && status !== 'completed' && match.waiting_since && match.waiting_player_id === currentUserId && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClaimWalkover?.(match.id);
+          }}
+          className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all shadow-md mt-1 active:scale-95 border border-amber-400"
+        >
+          ⚖️ Reclamar Victoria (No-Show)
+        </button>
       )}
 
       {/* Invite Opponent Action */}

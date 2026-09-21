@@ -339,7 +339,10 @@ export function EventsPage() {
         game_room_id: m.game_room_id,
         best_of: m.best_of,
         series_game: m.series_game,
-        series_id: m.series_id
+        series_id: m.series_id,
+        walkover_reason: m.walkover_reason,
+        waiting_player_id: m.waiting_player_id,
+        waiting_since: m.waiting_since
       };
     });
     setTournamentMatches(mappedMatches);
@@ -401,6 +404,38 @@ export function EventsPage() {
     } catch (e) {
       console.error(e);
       alert('Error de red al enviar el aviso.');
+    }
+  };
+
+  const handleClaimWalkover = async (matchId: string) => {
+    if (!user) return;
+    try {
+      const apiUrl = import.meta.env.VITE_SOCKET_URL || (
+        import.meta.env.PROD && typeof window !== 'undefined'
+          ? window.location.origin
+          : 'http://localhost:4000'
+      );
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${apiUrl}/api/tournament/match/${matchId}/claim-walkover`, {
+        method: 'POST',
+        headers
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('🏆 ¡Victoria por incomparecencia (Walkover) adjudicada! Has avanzado en el cuadro.');
+        if (selectedTournament) {
+          await fetchBracketData(selectedTournament);
+        }
+      } else {
+        alert(`No se pudo adjudicar walkover: ${data.error || 'Tiempo reglamentario no cumplido.'}`);
+      }
+    } catch (e) {
+      console.error('Error al reclamar walkover:', e);
+      alert('Error de conexión al reclamar walkover.');
     }
   };
 
@@ -710,6 +745,7 @@ export function EventsPage() {
         inviteCooldowns={inviteCooldowns}
         onJoinMatch={handleJoinMatch}
         onInviteOpponent={handleInviteOpponent}
+        onClaimWalkover={handleClaimWalkover}
         onClose={closeBracketModal}
       />
     );

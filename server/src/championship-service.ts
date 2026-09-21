@@ -159,6 +159,34 @@ export async function handleChampionshipAdCompleted(
   }
 }
 
+export function getTournamentSeedPairs(maxP: number): [number, number][] {
+  if (maxP === 8) {
+    return [
+      [1, 8], [4, 5],
+      [2, 7], [3, 6]
+    ];
+  }
+  if (maxP === 16) {
+    return [
+      [1, 16], [8, 9],
+      [4, 13], [5, 12],
+      [2, 15], [7, 10],
+      [3, 14], [6, 11]
+    ];
+  }
+  // Default 32
+  return [
+    [1, 32], [16, 17],
+    [9, 24], [8, 25],
+    [4, 29], [13, 20],
+    [12, 21], [5, 28],
+    [2, 31], [15, 18],
+    [10, 23], [7, 26],
+    [3, 30], [14, 19],
+    [11, 22], [6, 27]
+  ];
+}
+
 /**
  * Genera el bracket de eliminación directa para los 32 clasificados.
  * Construye las filas en `tournament_matches` de la misma forma que AdminPanel.handleGenerateBracket.
@@ -212,17 +240,30 @@ export async function generateChampionshipBracket(eventId: string) {
     const totalRounds = Math.log2(maxP); // 5 rondas: 0,1,2,3,4
     const startRound = 4 - totalRounds + 1; // Ronda 0 (32avos)
 
-    const baseMatchesPayload: Array<Record<string, unknown>> = [];
+    type BracketMatchPayload = {
+      round_number: number;
+      match_order: number;
+      player1_id: string | null;
+      player2_id: string | null;
+      status: string;
+      best_of: number;
+    };
 
-    // 3. Generar la primera ronda con emparejamiento por seed
-    const firstRoundMatchCount = maxP / 2;
+    const baseMatchesPayload: BracketMatchPayload[] = [];
+
+    // 3. Generar la primera ronda con emparejamiento por seed profesional (ej: Seed 1 vs 32, Seed 2 vs 31)
+    const seedPairs = getTournamentSeedPairs(maxP);
+    const firstRoundMatchCount = seedPairs.length;
     for (let i = 0; i < firstRoundMatchCount; i++) {
+      const [s1, s2] = seedPairs[i];
+      const p1 = players[s1 - 1] || null;
+      const p2 = players[s2 - 1] || null;
       baseMatchesPayload.push({
         round_number: startRound,
         match_order: i + 1,
-        player1_id: players[i * 2] || null,
-        player2_id: players[i * 2 + 1] || null,
-        status: (players[i * 2] && players[i * 2 + 1]) ? 'pending' : (players[i * 2] || players[i * 2 + 1]) ? 'bye' : 'pending',
+        player1_id: p1,
+        player2_id: p2,
+        status: (p1 && p2) ? 'pending' : (p1 || p2) ? 'bye' : 'pending',
         best_of: 1
       });
     }

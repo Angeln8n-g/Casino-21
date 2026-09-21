@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { DefaultGameEngine } from './application/game-engine';
-import { processTournamentAdvancement, handleTournamentFinal, notifyTournamentPlayers } from './tournament-service';
+import { processTournamentAdvancement, handleTournamentFinal, notifyTournamentPlayers, startNoShowTimer, clearNoShowTimer, claimTournamentWalkover } from './tournament-service';
 import { GameState } from './domain/game-state';
 import { Action } from './application/action-validator';
 import dotenv from 'dotenv';
@@ -298,6 +298,46 @@ app.post('/api/tournament/invite-opponent', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Error al enviar invitación de torneo al oponente:', err);
     return res.status(500).json({ error: 'Error interno de servidor' });
+  }
+});
+
+// ── Endpoint REST: Reclamar victoria por walkover en torneo ────────────────
+app.post('/api/tournament/match/:matchId/claim-walkover', requireAuth, async (req, res) => {
+  const matchId = Array.isArray(req.params.matchId) ? req.params.matchId[0] : req.params.matchId;
+  const currentUser = (req as any).user;
+  if (!matchId) return res.status(400).json({ error: 'matchId es requerido' });
+
+  try {
+    const result = await claimTournamentWalkover(io, roomStore, matchId, currentUser.id);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    return res.status(200).json(result);
+  } catch (err: any) {
+    console.error('Error al reclamar walkover:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
+  }
+});
+
+// ── Endpoint REST: Check-in a evento/torneo ───────────────────────────────
+app.post('/api/tournament/event/:eventId/check-in', requireAuth, async (req, res) => {
+  const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+  const currentUser = (req as any).user;
+  if (!eventId) return res.status(400).json({ error: 'eventId es requerido' });
+
+  try {
+    const { data, error } = await supabase.rpc('check_in_to_event', {
+      p_event_id: eventId,
+      p_player_id: currentUser.id
+    });
+    if (error) throw error;
+    if (!data?.success) {
+      return res.status(400).json({ error: data?.error });
+    }
+    return res.status(200).json(data);
+  } catch (err: any) {
+    console.error('Error en check-in de torneo:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
   }
 });
 
@@ -1014,6 +1054,7 @@ io.on('connection', async (socket) => {
         socketToRoomMap.set(socket.id, roomId);
         socket.emit('room_created', { roomId, playerId: userId });
         console.log(`Sala de torneo ${roomId} creada automáticamente por ${playerName}`);
+        startNoShowTimer(io, roomStore, roomId, userId, playerName);
         return;
       } else {
         socket.emit('error', 'La sala no existe');
@@ -1208,6 +1249,7 @@ io.on('connection', async (socket) => {
         startTurnTimer(roomId, room);
 
         if (room.isTournament) {
+          clearNoShowTimer(roomId);
           supabase.from('tournament_matches')
             .update({ status: 'playing' })
             .eq('game_room_id', roomId)
@@ -1808,7 +1850,13 @@ io.on('connection', async (socket) => {
         message: 'El oponente se ha desconectado. Esperando reconexión...'
       });
       if (!room.state) {
-        await closeRoom(roomId, 'creator_disconnected');
+        if (room.isTournament) {
+          room.players = room.players.filter(p => p.userId !== userId);
+          await persistRoom(roomId, room);
+          console.log(`[Torneo] Jugador ${userId} salió de sala de torneo ${roomId} antes de iniciar. Sala preservada.`);
+        } else {
+          await closeRoom(roomId, 'creator_disconnected');
+        }
       } else {
         await persistRoom(roomId, room);
       }
