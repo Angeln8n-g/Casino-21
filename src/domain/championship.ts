@@ -208,3 +208,36 @@ export function calculatePrizeForRank(rank: number, poolUsd: number): number {
   }
   return 0;
 }
+
+/**
+ * Retorna las parejas de emparejamiento por semillas (seeding) estándar para brackets
+ * de 8, 16 o 32 jugadores, garantizando que el seed 1 y 2 solo se enfrenten en la Final.
+ */
+export function getTournamentSeedPairs(maxP: number): [number, number][] {
+  if (maxP === 8) {
+    return [
+      [1, 8], [4, 5],
+      [2, 7], [3, 6]
+    ];
+  }
+  if (maxP === 16) {
+    return [
+      [1, 16], [8, 9],
+      [4, 13], [5, 12],
+      [2, 15], [7, 10],
+      [3, 14], [6, 11]
+    ];
+  }
+  // Default 32
+  return [
+    [1, 32], [16, 17],
+    [9, 24], [8, 25],
+    [4, 29], [13, 20],
+    [12, 21], [5, 28],
+    [2, 31], [15, 18],
+    [10, 23], [7, 26],
+    [3, 30], [14, 19],
+    [11, 22], [6, 27]
+  ];
+}
+

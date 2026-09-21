@@ -9,6 +9,7 @@ interface TournamentVerticalBracketProps {
   isAdmin: boolean;
   onJoinMatch: (match: TournamentMatch) => void;
   onInviteOpponent: (opponentId: string, match: TournamentMatch) => void;
+  onClaimWalkover?: (matchId: string) => void;
   inviteCooldowns: Record<string, number>;
   onViewPlayer?: (playerId: string) => void;
 }
@@ -32,6 +33,7 @@ export function TournamentVerticalBracket({
   isAdmin,
   onJoinMatch,
   onInviteOpponent,
+  onClaimWalkover,
   inviteCooldowns,
   onViewPlayer,
 }: TournamentVerticalBracketProps) {
@@ -110,6 +112,7 @@ export function TournamentVerticalBracket({
               isAdmin={isAdmin}
               onJoinMatch={onJoinMatch}
               onInviteOpponent={onInviteOpponent}
+              onClaimWalkover={onClaimWalkover}
               inviteCooldowns={inviteCooldowns}
               onViewPlayer={onViewPlayer}
             />
@@ -128,39 +131,29 @@ export function TournamentVerticalBracket({
             <button
               key={r}
               onClick={() => setSelectedRound(r)}
-              className={`shrink-0 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 border transform active:scale-95 ${
+              className={`py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 border ${
                 isActive
-                  ? 'bg-casino-gold text-casino-bg border-casino-gold shadow-[0_0_12px_rgba(251,191,36,0.3)]'
+                  ? 'bg-casino-gold text-casino-bg border-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.3)]'
                   : isCurrentActiveRound
-                  ? 'bg-transparent text-casino-gold border-casino-gold/40 hover:bg-casino-gold/10'
-                  : isRoundCompleted
-                  ? 'bg-black/30 text-casino-emerald border-casino-emerald/20 hover:bg-white/5'
-                  : 'bg-black/30 text-gray-500 border-white/5 hover:bg-white/5'
+                  ? 'bg-casino-emerald/10 text-casino-emerald border-casino-emerald/30'
+                  : 'bg-white/5 text-gray-400 border-white/5 hover:border-white/10 hover:text-white'
               }`}
             >
-              <div className="flex items-center gap-1.5">
-                {ROUND_LABELS[r]}
-                {isRoundCompleted && <span className="text-[10px]">✓</span>}
-                {isCurrentActiveRound && !isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-casino-gold animate-pulse" />
-                )}
-              </div>
+              <span>{ROUND_LABELS[r] || `Ronda ${r}`}</span>
+              {isRoundCompleted && <span className="text-[10px]">✓</span>}
+              {isCurrentActiveRound && !isRoundCompleted && (
+                <span className="w-1.5 h-1.5 rounded-full bg-casino-emerald animate-pulse" />
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Matches List */}
-      <div className="space-y-4">
+      {/* Matches in selected round */}
+      <div className="mt-4">
         {filteredMatches.length === 0 ? (
-          <div className="glass-panel p-8 text-center border-white/5 bg-slate-900/20">
-            <span className="text-3xl block mb-2 opacity-50">🛡️</span>
-            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">
-              Partidos no disponibles
-            </h4>
-            <p className="text-xs text-gray-500 max-w-xs mx-auto leading-relaxed">
-              Los emparejamientos de esta ronda se generarán en cuanto finalice el último partido de la ronda anterior.
-            </p>
+          <div className="text-center py-12 text-gray-500 text-sm">
+            No hay partidos programados para esta ronda aún.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
@@ -172,6 +165,7 @@ export function TournamentVerticalBracket({
                 isAdmin={isAdmin}
                 onJoinMatch={onJoinMatch}
                 onInviteOpponent={onInviteOpponent}
+                onClaimWalkover={onClaimWalkover}
                 inviteCooldowns={inviteCooldowns}
                 onViewPlayer={onViewPlayer}
               />

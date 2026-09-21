@@ -37,6 +37,7 @@ interface TournamentViewProps {
   inviteCooldowns: Record<string, number>;
   onJoinMatch: (match: TournamentMatch) => void;
   onInviteOpponent: (opponentId: string, match: TournamentMatch) => void;
+  onClaimWalkover?: (matchId: string) => void;
   onClose: () => void;
 }
 
@@ -52,6 +53,7 @@ export function TournamentView({
   inviteCooldowns,
   onJoinMatch,
   onInviteOpponent,
+  onClaimWalkover,
   onClose,
 }: TournamentViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>('bracket');
@@ -201,6 +203,7 @@ export function TournamentView({
                 isAdmin={isAdmin}
                 onJoinMatch={onJoinMatch}
                 onInviteOpponent={onInviteOpponent}
+                onClaimWalkover={onClaimWalkover}
                 inviteCooldowns={inviteCooldowns}
                 prizePool={event.prize_pool}
                 onViewPlayer={handleViewPlayer}
@@ -213,6 +216,7 @@ export function TournamentView({
                 isAdmin={isAdmin}
                 onJoinMatch={onJoinMatch}
                 onInviteOpponent={onInviteOpponent}
+                onClaimWalkover={onClaimWalkover}
                 inviteCooldowns={inviteCooldowns}
                 onViewPlayer={handleViewPlayer}
               />

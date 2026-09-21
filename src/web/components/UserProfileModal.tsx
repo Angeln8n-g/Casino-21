@@ -399,6 +399,49 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
             </div>
           </div>
 
+          {/* Vitrina de Trofeos */}
+          <div className="bg-[#0F0E0C] border border-[#2A2722] p-4 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Trophy className="w-3.5 h-3.5 text-casino-gold" /> Vitrina de Trofeos
+              </span>
+              <span className="text-[10px] font-bold text-casino-gold">
+                {tournamentsWon > 0 ? `${tournamentsWon} ${tournamentsWon === 1 ? 'Trofeo' : 'Trofeos'}` : 'Sin trofeos aún'}
+              </span>
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              {tournamentsWon > 0 ? (
+                Array.from({ length: Math.min(tournamentsWon, 5) }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-xl"
+                  >
+                    <span className="text-base">🏆</span>
+                    <div>
+                      <span className="text-[10px] font-black text-yellow-400 block leading-tight">Campeón</span>
+                      <span className="text-[8px] text-gray-400 font-mono">Torneo #{idx + 1}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="w-full text-center py-2 text-[10px] text-gray-500 italic">
+                  Compite en torneos semanales para desbloquear tus primeros trofeos.
+                </div>
+              )}
+
+              {championshipData?.isQualified && (
+                <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-xl">
+                  <span className="text-base">👑</span>
+                  <div>
+                    <span className="text-[10px] font-black text-purple-400 block leading-tight">Top 32 Finalista</span>
+                    <span className="text-[8px] text-gray-400 font-mono">Kasino21 Championship</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Record & Win Rate */}
           <div className="bg-[#0F0E0C] border border-[#2A2722] p-4 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">

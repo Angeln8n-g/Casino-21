@@ -18,6 +18,9 @@ export interface TournamentMatch {
   best_of?: number;
   series_game?: number;
   series_id?: string | null;
+  walkover_reason?: string | null;
+  waiting_player_id?: string | null;
+  waiting_since?: string | null;
 }
 
 export interface TournamentBracketProps {
@@ -26,6 +29,7 @@ export interface TournamentBracketProps {
   maxParticipants?: number;
   onJoinMatch?: (match: TournamentMatch) => void;
   onInviteOpponent?: (opponentId: string, match: TournamentMatch) => void;
+  onClaimWalkover?: (matchId: string) => void;
   currentUserId?: string | null;
   isAdmin?: boolean;
   prizePool?: string;
