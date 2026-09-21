@@ -115,7 +115,22 @@ export function MatchCard({
             won ? 'border-casino-emerald/50 bg-casino-emerald/10 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : p.id === currentUserId ? 'border-casino-gold/50 bg-casino-gold/10' : 'border-white/5 bg-[#1e293b]'
           }`}>
             {p.avatar ? (
-              <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+              <img 
+                src={p.avatar} 
+                alt={p.name} 
+                className="w-full h-full object-cover" 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('.matchcard-avatar-fallback')) {
+                    const span = document.createElement('span');
+                    span.className = 'matchcard-avatar-fallback';
+                    span.textContent = p.name?.charAt(0).toUpperCase() || 'P';
+                    parent.appendChild(span);
+                  }
+                }}
+              />
             ) : (
               p.name.charAt(0).toUpperCase()
             )}

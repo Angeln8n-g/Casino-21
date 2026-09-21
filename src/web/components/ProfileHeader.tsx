@@ -134,9 +134,39 @@ export function ProfileHeader({
               className="w-10 h-10 rounded-lg bg-casino-surface-light flex items-center justify-center text-lg font-black text-casino-gold border border-casino-gold/20 hover:border-casino-gold/60 transition-colors overflow-hidden"
             >
               {profile?.equipped_avatar ? (
-                <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
+                <img 
+                  src={profile.equipped_avatar} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover animate-fade-in" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.avatar-fallback-letter')) {
+                      const span = document.createElement('span');
+                      span.className = 'avatar-fallback-letter';
+                      span.textContent = profile?.username?.charAt(0).toUpperCase() || 'P';
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
               ) : profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
+                <img 
+                  src={profile.avatar_url} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover animate-fade-in" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.avatar-fallback-letter')) {
+                      const span = document.createElement('span');
+                      span.className = 'avatar-fallback-letter';
+                      span.textContent = profile?.username?.charAt(0).toUpperCase() || 'P';
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
               ) : (
                 profile?.username?.charAt(0).toUpperCase() || 'P'
               )}
@@ -344,9 +374,39 @@ export function ProfileHeader({
           className="w-16 h-16 rounded-2xl bg-gradient-to-br from-casino-surface-light to-casino-surface border-2 border-casino-gold/30 flex items-center justify-center text-3xl font-black text-casino-gold shadow-[0_0_15px_rgba(251,191,36,0.2)] overflow-hidden shrink-0 group-hover:scale-105 transition-transform"
         >
           {profile?.equipped_avatar ? (
-            <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
+            <img 
+              src={profile.equipped_avatar} 
+              alt="Avatar" 
+              className="w-full h-full object-cover animate-fade-in" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && !parent.querySelector('.bento-avatar-fallback-letter')) {
+                  const span = document.createElement('span');
+                  span.className = 'bento-avatar-fallback-letter';
+                  span.textContent = profile?.username?.charAt(0).toUpperCase() || 'P';
+                  parent.appendChild(span);
+                }
+              }}
+            />
           ) : profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover animate-fade-in" />
+            <img 
+              src={profile.avatar_url} 
+              alt="Avatar" 
+              className="w-full h-full object-cover animate-fade-in" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && !parent.querySelector('.bento-avatar-fallback-letter')) {
+                  const span = document.createElement('span');
+                  span.className = 'bento-avatar-fallback-letter';
+                  span.textContent = profile?.username?.charAt(0).toUpperCase() || 'P';
+                  parent.appendChild(span);
+                }
+              }}
+            />
           ) : (
             profile?.username?.charAt(0).toUpperCase() || 'P'
           )}

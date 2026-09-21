@@ -690,7 +690,22 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-11 md:h-11 rounded-full p-[2px]" style={ringStyle}>
             <div className="w-full h-full rounded-full bg-black/60 border border-white/15 overflow-hidden flex items-center justify-center text-xs sm:text-sm md:text-base font-bold text-amber-300">
               {avatarUrl ? (
-                <img src={avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                <img 
+                  src={avatarUrl} 
+                  alt={p.name} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.player-avatar-fallback')) {
+                      const span = document.createElement('span');
+                      span.className = 'player-avatar-fallback';
+                      span.textContent = p.name?.charAt(0)?.toUpperCase() || '?';
+                      parent.appendChild(span);
+                    }
+                  }}
+                />
               ) : (
                 (p.name?.charAt(0)?.toUpperCase() || '?')
               )}
@@ -1064,7 +1079,22 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                     {/* Avatar */}
                     <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-black/50 border border-white/15 overflow-hidden flex items-center justify-center text-xs font-bold text-amber-300 shrink-0">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+                        <img 
+                          src={avatarUrl} 
+                          alt={name} 
+                          className="w-full h-full object-cover" 
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent && !parent.querySelector('.reaction-avatar-fallback')) {
+                              const span = document.createElement('span');
+                              span.className = 'reaction-avatar-fallback';
+                              span.textContent = name?.charAt(0)?.toUpperCase() || '?';
+                              parent.appendChild(span);
+                            }
+                          }}
+                        />
                       ) : (
                         (name?.charAt(0)?.toUpperCase() || '?')
                       )}

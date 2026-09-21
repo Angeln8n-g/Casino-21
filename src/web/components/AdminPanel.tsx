@@ -969,7 +969,22 @@ export function AdminPanel() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-black/50 border border-white/10 flex items-center justify-center">
                           {p.profiles.avatar_url ? (
-                            <img src={p.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                            <img 
+                              src={p.profiles.avatar_url} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector('.admin-participant-fallback')) {
+                                  const span = document.createElement('span');
+                                  span.className = 'admin-participant-fallback font-bold text-gray-200';
+                                  span.textContent = p.profiles.username?.charAt(0).toUpperCase() || 'P';
+                                  parent.appendChild(span);
+                                }
+                              }}
+                            />
                           ) : (
                             <span className="font-bold text-gray-200">{p.profiles.username?.charAt(0).toUpperCase()}</span>
                           )}

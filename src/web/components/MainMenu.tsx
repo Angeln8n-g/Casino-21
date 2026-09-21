@@ -729,7 +729,22 @@ export function MainMenu() {
                               <div className="w-12 h-12 rounded-full border-2 border-cyan-400 p-0.5 relative">
                                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full animate-ping" />
                                 {p.avatar ? (
-                                  <img src={p.avatar} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                                  <img 
+                                    src={p.avatar} 
+                                    alt={p.name} 
+                                    className="w-full h-full rounded-full object-cover" 
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent && !parent.querySelector('.team1-fallback')) {
+                                        const div = document.createElement('div');
+                                        div.className = 'team1-fallback w-full h-full rounded-full bg-cyan-900 flex items-center justify-center text-cyan-200 font-black';
+                                        div.textContent = p.name.charAt(0).toUpperCase();
+                                        parent.appendChild(div);
+                                      }
+                                    }}
+                                  />
                                 ) : (
                                   <div className="w-full h-full rounded-full bg-cyan-900 flex items-center justify-center text-cyan-200 font-black">{p.name.charAt(0).toUpperCase()}</div>
                                 )}
@@ -776,7 +791,22 @@ export function MainMenu() {
                               <div className="w-12 h-12 rounded-full border-2 border-rose-400 p-0.5 relative">
                                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-400 rounded-full animate-ping" />
                                 {p.avatar ? (
-                                  <img src={p.avatar} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                                  <img 
+                                    src={p.avatar} 
+                                    alt={p.name} 
+                                    className="w-full h-full rounded-full object-cover" 
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent && !parent.querySelector('.team2-fallback')) {
+                                        const div = document.createElement('div');
+                                        div.className = 'team2-fallback w-full h-full rounded-full bg-rose-900 flex items-center justify-center text-rose-200 font-black';
+                                        div.textContent = p.name.charAt(0).toUpperCase();
+                                        parent.appendChild(div);
+                                      }
+                                    }}
+                                  />
                                 ) : (
                                   <div className="w-full h-full rounded-full bg-rose-900 flex items-center justify-center text-rose-200 font-black">{p.name.charAt(0).toUpperCase()}</div>
                                 )}
@@ -813,7 +843,22 @@ export function MainMenu() {
                     <div className="w-10 h-10 rounded-full border-2 border-casino-emerald p-0.5 shrink-0 relative">
                       <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-casino-emerald rounded-full animate-ping" />
                       {p.avatar ? (
-                        <img src={p.avatar} alt={p.name} className="w-full h-full rounded-full object-cover" />
+                        <img 
+                          src={p.avatar} 
+                          alt={p.name} 
+                          className="w-full h-full rounded-full object-cover" 
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent && !parent.querySelector('.standard-room-fallback')) {
+                              const div = document.createElement('div');
+                              div.className = 'standard-room-fallback w-full h-full rounded-full bg-emerald-900 flex items-center justify-center text-emerald-200 font-black text-sm';
+                              div.textContent = p.name.charAt(0).toUpperCase();
+                              parent.appendChild(div);
+                            }
+                          }}
+                        />
                       ) : (
                         <div className="w-full h-full rounded-full bg-emerald-900 flex items-center justify-center text-emerald-200 font-black text-sm">{p.name.charAt(0).toUpperCase()}</div>
                       )}

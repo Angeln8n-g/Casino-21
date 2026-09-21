@@ -1,38 +1,49 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
+import { safeStorage } from '../../utils/safeStorage';
 
 export const InstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Check if previously dismissed within 7 days
-    const dismissedAt = localStorage.getItem('kasino21_pwa_dismissed');
-    if (dismissedAt) {
-      const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) {
-        return;
+    try {
+      const dismissedAt = safeStorage.getItem('kasino21_pwa_dismissed');
+      if (dismissedAt) {
+        const daysSinceDismissed = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 60 * 60 * 24);
+        if (daysSinceDismissed < 7) {
+          return;
+        }
       }
-    }
+    } catch {}
 
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      // Prevent automatic browser mini-infobar so custom banner can be shown
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
       
-      // Show prompt after 30 seconds of usage
-      const timer = setTimeout(() => {
+      // Show prompt after 30 seconds of active usage
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
         setIsVisible(true);
       }, 30000);
+    };
 
-      return () => clearTimeout(timer);
+    const handleAppInstalled = () => {
+      setIsVisible(false);
+      setDeferredPrompt(null);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -40,20 +51,26 @@ export const InstallPrompt: React.FC = () => {
     setIsVisible(false);
     if (!deferredPrompt) return;
     
-    // Show the install prompt
-    deferredPrompt.prompt();
-    
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    
-    // We've used the prompt, and can't use it again, throw it away
-    setDeferredPrompt(null);
+    try {
+      // Show the install prompt
+      await deferredPrompt.prompt();
+      const userChoice = await deferredPrompt.userChoice;
+      if (userChoice?.outcome === 'accepted') {
+        console.log('[PWA] User accepted the installation');
+      }
+    } catch (err) {
+      console.warn('[PWA] Prompt invocation failed:', err);
+    } finally {
+      setDeferredPrompt(null);
+    }
   };
 
   const handleDismiss = () => {
     setIsVisible(false);
-    localStorage.setItem('kasino21_pwa_dismissed', Date.now().toString());
+    if (timerRef.current) clearTimeout(timerRef.current);
+    try {
+      safeStorage.setItem('kasino21_pwa_dismissed', Date.now().toString());
+    } catch {}
   };
 
   if (!isVisible) return null;

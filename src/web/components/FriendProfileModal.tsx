@@ -235,9 +235,39 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
               <div className="relative">
                 <div className="w-8 h-8 rounded-full bg-[#1A1815] flex items-center justify-center text-xs font-bold text-gray-200 shrink-0 border border-white/5 overflow-hidden">
                   {friend.equipped_avatar ? (
-                    <img src={friend.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    <img 
+                      src={friend.equipped_avatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.friend-avatar-fallback')) {
+                          const span = document.createElement('span');
+                          span.className = 'friend-avatar-fallback';
+                          span.textContent = friend.username?.charAt(0).toUpperCase() || 'P';
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
                   ) : friend.avatar_url ? (
-                    <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    <img 
+                      src={friend.avatar_url} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.friend-avatar-fallback')) {
+                          const span = document.createElement('span');
+                          span.className = 'friend-avatar-fallback';
+                          span.textContent = friend.username?.charAt(0).toUpperCase() || 'P';
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
                   ) : (
                     friend.username.charAt(0).toUpperCase()
                   )}

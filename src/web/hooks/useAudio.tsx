@@ -7,7 +7,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
+import { safeStorage } from '../utils/safeStorage';
 import cardDealSrc from '../../Public/card_deal.mp3';
 import cardPlaySrc from '../../Public/card_play.mp3';
 import chipsClinkSrc from '../../Public/clips_click.mp3';
@@ -85,7 +86,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [muted, setMuted] = useState<boolean>(() => {
     try {
-      const stored = localStorage.getItem(AUDIO_SETTINGS_KEY);
+      const stored = safeStorage.getItem(AUDIO_SETTINGS_KEY);
       return stored ? JSON.parse(stored).muted ?? false : false;
     } catch {
       return false;
@@ -93,7 +94,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   });
   const [volume, setVolumeState] = useState<number>(() => {
     try {
-      const stored = localStorage.getItem(AUDIO_SETTINGS_KEY);
+      const stored = safeStorage.getItem(AUDIO_SETTINGS_KEY);
       return stored ? clamp(JSON.parse(stored).volume ?? 0.7, 0, 1) : 0.7;
     } catch {
       return 0.7;
@@ -103,10 +104,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const templatesRef = useRef<Map<AudioCue, Howl>>(new Map());
   const loopPlayersRef = useRef<Map<string, Howl>>(new Map());
   const lastPlayAtRef = useRef<Map<AudioCue, number>>(new Map());
+  const unlockedRef = useRef(false);
 
   useEffect(() => {
     try {
-      localStorage.setItem(
+      safeStorage.setItem(
         AUDIO_SETTINGS_KEY,
         JSON.stringify({
           muted,
@@ -116,32 +118,56 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [muted, volume]);
 
-  useEffect(() => {
-    const templates = new Map<AudioCue, Howl>();
+  const initAudio = useCallback(() => {
+    if (unlockedRef.current) return;
+    unlockedRef.current = true;
 
-    (Object.keys(AUDIO_CATALOG) as AudioCue[]).forEach((cue) => {
-      const howl = new Howl({
-        src: [AUDIO_CATALOG[cue].src],
-        preload: true,
-        html5: false, // Forces Web Audio API for stutter-free audio mixing
+    try {
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+    } catch {}
+
+    if (templatesRef.current.size === 0) {
+      const templates = new Map<AudioCue, Howl>();
+      (Object.keys(AUDIO_CATALOG) as AudioCue[]).forEach((cue) => {
+        const howl = new Howl({
+          src: [AUDIO_CATALOG[cue].src],
+          preload: true,
+          html5: false, // Forces Web Audio API for stutter-free audio mixing
+        });
+        templates.set(cue, howl);
       });
-      templates.set(cue, howl);
-    });
+      templatesRef.current = templates;
+    }
+  }, []);
 
-    templatesRef.current = templates;
+  useEffect(() => {
+    const handleFirstGesture = () => {
+      initAudio();
+    };
+
+    window.addEventListener('pointerdown', handleFirstGesture, { capture: true, once: true });
+    window.addEventListener('keydown', handleFirstGesture, { capture: true, once: true });
+    window.addEventListener('touchstart', handleFirstGesture, { capture: true, once: true });
 
     return () => {
+      window.removeEventListener('pointerdown', handleFirstGesture, { capture: true });
+      window.removeEventListener('keydown', handleFirstGesture, { capture: true });
+      window.removeEventListener('touchstart', handleFirstGesture, { capture: true });
+
       loopPlayersRef.current.forEach((howl) => {
         howl.stop();
         howl.unload();
       });
       loopPlayersRef.current.clear();
-      templates.forEach((howl) => {
+      templatesRef.current.forEach((howl) => {
         howl.stop();
         howl.unload();
       });
+      templatesRef.current.clear();
     };
-  }, []);
+  }, [initAudio]);
 
   useEffect(() => {
     loopPlayersRef.current.forEach((howl) => {
@@ -172,8 +198,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       lastPlayAtRef.current.set(cue, now);
 
-      const howl = templatesRef.current.get(cue);
+      if (!unlockedRef.current) {
+        initAudio();
+      }
+
+      let howl = templatesRef.current.get(cue);
+      if (!howl) {
+        initAudio();
+        howl = templatesRef.current.get(cue);
+      }
+
       if (howl) {
+        try {
+          if (Howler.ctx && Howler.ctx.state === 'suspended') {
+            Howler.ctx.resume();
+          }
+        } catch {}
+
         const targetVol = clamp(volume * config.baseVolume * (options?.volumeMultiplier ?? 1), 0, 1);
         const playRate = clamp(options?.playbackRate ?? 1, 0.6, 1.8);
         
@@ -183,7 +224,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         howl.play();
       }
     },
-    [muted, volume]
+    [initAudio, muted, volume]
   );
 
   const playUrl = useCallback(
@@ -221,6 +262,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const startLoop = useCallback(
     (id: string, cue: AudioCue, options?: PlaySfxOptions) => {
       stopLoop(id);
+
+      if (!unlockedRef.current) {
+        initAudio();
+      }
+      try {
+        if (Howler.ctx && Howler.ctx.state === 'suspended') {
+          Howler.ctx.resume();
+        }
+      } catch {}
 
       const config = AUDIO_CATALOG[cue];
       const howl = new Howl({

@@ -6,6 +6,7 @@ import { CardView } from './CardView';
 import { getTheme, getAllThemes } from '../themes/themeRegistry';
 import { createCard } from '../../domain/card';
 import { triggerHaptic } from '../utils/haptics';
+import { safeStorage } from '../utils/safeStorage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 
@@ -99,7 +100,7 @@ export function Store() {
   const loadAdCountFromLocalStorage = () => {
     if (!user) return;
     try {
-      const cached = localStorage.getItem(`ad_views_daily_${user.id}`);
+      const cached = safeStorage.getItem(`ad_views_daily_${user.id}`);
       if (cached) {
         const { date, count } = JSON.parse(cached);
         const todayStr = new Date().toISOString().split('T')[0];
@@ -109,7 +110,7 @@ export function Store() {
         }
       }
     } catch (e) {
-      console.error('Error reading localStorage for ads:', e);
+      console.error('Error reading safeStorage for ads:', e);
     }
     setAdViewsCount(0);
   };
@@ -122,7 +123,7 @@ export function Store() {
       if (!error && typeof data === 'number') {
         setAdViewsCount(data);
         const todayStr = new Date().toISOString().split('T')[0];
-        localStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: data }));
+        safeStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: data }));
       } else {
         loadAdCountFromLocalStorage();
       }
@@ -437,7 +438,7 @@ export function Store() {
                         const nextCount = adViewsCount + 1;
                         setAdViewsCount(nextCount);
                         const todayStr = new Date().toISOString().split('T')[0];
-                        localStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: nextCount }));
+                        safeStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: nextCount }));
                         
                         window.dispatchEvent(new CustomEvent('coins_updated'));
                         playSfx('victory');
@@ -449,7 +450,7 @@ export function Store() {
                         if (data?.error === 'DAILY_LIMIT_REACHED') {
                           setAdViewsCount(3);
                           const todayStr = new Date().toISOString().split('T')[0];
-                          localStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: 3 }));
+                          safeStorage.setItem(`ad_views_daily_${user.id}`, JSON.stringify({ date: todayStr, count: 3 }));
                           setShowLimitReachedAnimation(true);
                           playSfx('victory');
                         }
@@ -553,8 +554,13 @@ export function Store() {
                         }`}
                         onError={(e) => { 
                           const target = e.target as HTMLImageElement;
-                          if (!target.src.includes('/assets/store/')) {
-                            target.src = `/assets/store/${item.image_url}`; 
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.store-fallback-placeholder')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'store-fallback-placeholder w-full h-full flex items-center justify-center text-4xl select-none opacity-40 bg-[#141210]';
+                            fallback.textContent = item.item_type === 'avatar' ? '👤' : item.item_type === 'board' ? '🃏' : item.item_type === 'emotic' ? '💬' : '✨';
+                            parent.appendChild(fallback);
                           }
                         }}
                       />

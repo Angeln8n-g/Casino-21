@@ -115,17 +115,20 @@
     }
     </script>
 
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JQE3R8SW8H"></script>
+    <!-- Google Analytics & Consent Mode v2 -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'analytics_storage': 'granted'
+      });
       gtag('js', new Date());
       gtag('config', 'G-JQE3R8SW8H');
     </script>
-
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7975398244257516" crossorigin="anonymous"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JQE3R8SW8H"></script>
 
     <meta name="google-site-verification" content="XYAwlNxQEJrgweXOF14fkR6xu4D7lJy7bN47co-oJZs" />
 

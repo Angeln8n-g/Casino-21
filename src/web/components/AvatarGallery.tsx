@@ -142,6 +142,17 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
                       src={avatar.image_url} 
                       alt={avatar.name} 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.avatar-gallery-fallback')) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'avatar-gallery-fallback w-full h-full flex items-center justify-center font-black text-casino-gold text-2xl bg-black/60';
+                          fallback.textContent = avatar.name?.charAt(0).toUpperCase() || '👤';
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                     {/* Premium badge */}
                     <div className="absolute top-1 left-1 bg-purple-500/80 text-white text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider backdrop-blur-sm">

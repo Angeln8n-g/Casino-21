@@ -207,9 +207,39 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
           </div>
 
           {profile?.equipped_avatar ? (
-            <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+            <img 
+              src={profile.equipped_avatar} 
+              alt="Avatar" 
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && !parent.querySelector('.user-profile-modal-fallback')) {
+                  const fallback = document.createElement('div');
+                  fallback.className = 'user-profile-modal-fallback w-full h-full flex items-center justify-center text-8xl font-black text-casino-gold bg-[#1A1815] transition-transform duration-700 group-hover:scale-110';
+                  fallback.textContent = profile?.username?.charAt(0).toUpperCase() || 'P';
+                  parent.appendChild(fallback);
+                }
+              }}
+            />
           ) : profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+            <img 
+              src={profile.avatar_url} 
+              alt="Avatar" 
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent && !parent.querySelector('.user-profile-modal-fallback')) {
+                  const fallback = document.createElement('div');
+                  fallback.className = 'user-profile-modal-fallback w-full h-full flex items-center justify-center text-8xl font-black text-casino-gold bg-[#1A1815] transition-transform duration-700 group-hover:scale-110';
+                  fallback.textContent = profile?.username?.charAt(0).toUpperCase() || 'P';
+                  parent.appendChild(fallback);
+                }
+              }}
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-8xl font-black text-casino-gold bg-[#1A1815] transition-transform duration-700 group-hover:scale-110">
               {profile?.username?.charAt(0).toUpperCase() || 'P'}

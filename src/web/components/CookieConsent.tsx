@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { safeStorage } from '../utils/safeStorage';
 
 const STORAGE_KEY = 'cookie_consent';
 
@@ -9,7 +10,7 @@ interface ConsentData {
 
 export function getCookieConsent(): ConsentData | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     // localStorage unavailable (private browsing)
@@ -19,26 +20,37 @@ export function getCookieConsent(): ConsentData | null {
 
 export function setCookieConsent(accepted: boolean): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify({
       accepted,
       timestamp: new Date().toISOString(),
     }));
   } catch {
-    // localStorage unavailable
+    // storage unavailable
   }
 }
 
 export function clearCookieConsent(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    safeStorage.removeItem(STORAGE_KEY);
   } catch {
-    // localStorage unavailable
+    // storage unavailable
   }
 }
 
 export function hasAdConsent(): boolean {
   const consent = getCookieConsent();
   return consent?.accepted === true;
+}
+
+function updateGoogleConsent(accepted: boolean) {
+  if (typeof (window as any).gtag === 'function') {
+    (window as any).gtag('consent', 'update', {
+      'ad_storage': accepted ? 'granted' : 'denied',
+      'ad_user_data': accepted ? 'granted' : 'denied',
+      'ad_personalization': accepted ? 'granted' : 'denied',
+      'analytics_storage': accepted ? 'granted' : 'denied',
+    });
+  }
 }
 
 export function CookieConsent() {
@@ -48,6 +60,8 @@ export function CookieConsent() {
     const consent = getCookieConsent();
     if (!consent) {
       setVisible(true);
+    } else {
+      updateGoogleConsent(consent.accepted);
     }
   }, []);
 
@@ -55,12 +69,14 @@ export function CookieConsent() {
 
   const handleAccept = () => {
     setCookieConsent(true);
+    updateGoogleConsent(true);
     setVisible(false);
     window.dispatchEvent(new CustomEvent('cookie_consent_changed', { detail: { accepted: true } }));
   };
 
   const handleReject = () => {
     setCookieConsent(false);
+    updateGoogleConsent(false);
     setVisible(false);
     window.dispatchEvent(new CustomEvent('cookie_consent_changed', { detail: { accepted: false } }));
   };

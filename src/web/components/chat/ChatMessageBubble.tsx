@@ -123,11 +123,41 @@ export function ChatMessageBubble({
         >
           <div className="w-6 h-6 rounded-full bg-casino-surface-light flex items-center justify-center text-[8px] font-bold text-gray-200 shrink-0 border border-white/5 overflow-hidden shadow-sm">
             {profile.equipped_avatar ? (
-              <img src={profile.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+              <img 
+                src={profile.equipped_avatar} 
+                alt="Avatar" 
+                className="w-full h-full object-cover" 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('.chat-avatar-fallback')) {
+                    const span = document.createElement('span');
+                    span.className = 'chat-avatar-fallback';
+                    span.textContent = profile.username?.charAt(0).toUpperCase() || 'P';
+                    parent.appendChild(span);
+                  }
+                }}
+              />
             ) : profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              <img 
+                src={profile.avatar_url} 
+                alt="Avatar" 
+                className="w-full h-full object-cover" 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('.chat-avatar-fallback')) {
+                    const span = document.createElement('span');
+                    span.className = 'chat-avatar-fallback';
+                    span.textContent = profile.username?.charAt(0).toUpperCase() || 'P';
+                    parent.appendChild(span);
+                  }
+                }}
+              />
             ) : (
-              profile.username.charAt(0).toUpperCase()
+              profile.username?.charAt(0).toUpperCase() || 'P'
             )}
           </div>
           <span className="text-[10px] font-bold tracking-wide text-casino-gold/70 hover:text-casino-gold transition-colors">

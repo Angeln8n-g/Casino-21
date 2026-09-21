@@ -280,9 +280,39 @@ export function FriendSearch() {
               <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedPlayer(r)}>
                 <div className="w-8 h-8 rounded-full bg-casino-surface-light flex items-center justify-center text-xs font-bold text-gray-300 shrink-0 overflow-hidden shadow-inner border border-white/10">
                   {r.equipped_avatar ? (
-                    <img src={r.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    <img 
+                      src={r.equipped_avatar} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.search-avatar-fallback')) {
+                          const span = document.createElement('span');
+                          span.className = 'search-avatar-fallback';
+                          span.textContent = r.username?.charAt(0).toUpperCase() || 'P';
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
                   ) : r.avatar_url ? (
-                    <img src={r.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    <img 
+                      src={r.avatar_url} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.search-avatar-fallback')) {
+                          const span = document.createElement('span');
+                          span.className = 'search-avatar-fallback';
+                          span.textContent = r.username?.charAt(0).toUpperCase() || 'P';
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
                   ) : (
                     r.username.charAt(0).toUpperCase()
                   )}
@@ -451,9 +481,39 @@ export function PlayerProfileModal({ player, relationshipStatus, onSendRequest, 
                 player.elo >= 1500 ? 'text-casino-gold' : 'text-gray-300'
               }`}>
                 {player.equipped_avatar ? (
-                  <img src={player.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  <img 
+                    src={player.equipped_avatar} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.detail-avatar-fallback')) {
+                        const span = document.createElement('span');
+                        span.className = 'detail-avatar-fallback';
+                        span.textContent = player.username?.charAt(0).toUpperCase() || 'P';
+                        parent.appendChild(span);
+                      }
+                    }}
+                  />
                 ) : player.avatar_url ? (
-                  <img src={player.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  <img 
+                    src={player.avatar_url} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.detail-avatar-fallback')) {
+                        const span = document.createElement('span');
+                        span.className = 'detail-avatar-fallback';
+                        span.textContent = player.username?.charAt(0).toUpperCase() || 'P';
+                        parent.appendChild(span);
+                      }
+                    }}
+                  />
                 ) : (
                   player.username.charAt(0).toUpperCase()
                 )}

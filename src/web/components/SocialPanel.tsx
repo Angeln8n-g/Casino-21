@@ -1091,9 +1091,39 @@ export function SocialPanel() {
                               : 'bg-white/5 text-gray-500 border border-white/10 hover:border-white/20'
                         }`}>
                           {friend.equipped_avatar ? (
-                            <img src={friend.equipped_avatar} alt="Avatar" className="w-full h-full object-cover" />
+                            <img 
+                              src={friend.equipped_avatar} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector('.social-avatar-fallback')) {
+                                  const span = document.createElement('span');
+                                  span.className = 'social-avatar-fallback';
+                                  span.textContent = friend.username?.charAt(0).toUpperCase() || 'P';
+                                  parent.appendChild(span);
+                                }
+                              }}
+                            />
                           ) : friend.avatar_url ? (
-                            <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                            <img 
+                              src={friend.avatar_url} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector('.social-avatar-fallback')) {
+                                  const span = document.createElement('span');
+                                  span.className = 'social-avatar-fallback';
+                                  span.textContent = friend.username?.charAt(0).toUpperCase() || 'P';
+                                  parent.appendChild(span);
+                                }
+                              }}
+                            />
                           ) : (
                             friend.username.charAt(0).toUpperCase()
                           )}
