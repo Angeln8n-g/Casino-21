@@ -262,7 +262,7 @@ export async function generateChampionshipBracket(eventId: string) {
         totalInserted += matchesToInsert.length;
 
         // Auto-resolver byes
-        for (const match of matchesToInsert) {
+        for (const match of matchesToInsert as any[]) {
           if (match.status === 'bye') {
             const winnerId = match.player1_id || match.player2_id;
             if (winnerId) {

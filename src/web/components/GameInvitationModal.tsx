@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { GameInviteToastData } from '../hooks/useNotifications';
 import { getDivisionFromElo } from './ProfileHeader';
 import { useAudio } from '../hooks/useAudio';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface GameInvitationModalProps {
   invite: GameInviteToastData;
@@ -74,6 +75,8 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
     onClose();
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose: handleReject });
+
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center px-4">
       {/* Backdrop */}
@@ -83,7 +86,13 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
       />
       
       {/* Modal Card */}
-      <div className="relative w-full max-w-sm glass-panel-strong border-casino-gold/50 shadow-[0_0_50px_rgba(251,191,36,0.3)] animate-scale-up overflow-hidden">
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Invitación a partida"
+        className="relative w-full max-w-sm glass-panel-strong border-casino-gold/50 shadow-[0_0_50px_rgba(251,191,36,0.3)] animate-scale-up overflow-hidden"
+      >
         {/* Progress Bar */}
         <div className="h-1.5 w-full bg-white/5">
           <div
@@ -146,7 +155,7 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
             <button
               onClick={handleAccept}
               disabled={accepting}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-black text-sm uppercase tracking-widest hover:brightness-110 transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/25 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-black text-sm uppercase tracking-widest hover:brightness-110 transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/25 flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-casino-gold/60 focus-visible:outline-none"
             >
               {accepting ? (
                 <>
@@ -164,7 +173,7 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
             <button
               onClick={handleReject}
               disabled={accepting}
-              className="w-full py-3 rounded-xl bg-white/[0.03] text-gray-400 hover:text-white hover:bg-white/[0.05] text-xs font-bold transition-all border border-white/5"
+              className="w-full py-3 rounded-xl bg-white/[0.03] text-gray-400 hover:text-white hover:bg-white/[0.05] text-xs font-bold transition-all border border-white/5 focus-visible:ring-2 focus-visible:ring-gray-400/50 focus-visible:outline-none"
             >
               No, gracias ({secondsLeft}s)
             </button>

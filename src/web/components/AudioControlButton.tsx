@@ -74,7 +74,7 @@ export function AudioControlButton({
         <div className="absolute right-0 top-[calc(100%+0.75rem)] z-[120] w-64 rounded-2xl border border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-2xl p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.24em] font-black text-gray-500">Audio maestro</p>
+              <label htmlFor="master-volume-slider" className="text-[10px] uppercase tracking-[0.24em] font-black text-gray-500 block cursor-pointer">Audio maestro</label>
               <p className="text-sm font-bold text-white">{muted ? 'Silenciado' : `${currentPercent}%`}</p>
             </div>
             <button
@@ -91,6 +91,7 @@ export function AudioControlButton({
           </div>
 
           <input
+            id="master-volume-slider"
             type="range"
             min={0}
             max={100}

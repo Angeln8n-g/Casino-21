@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trophy, Search } from 'lucide-react';
 import type { ChampionshipLeaderboardItem } from '../hooks/useChampionshipLanding';
+import { useFocusTrap } from '../../web/hooks/useFocusTrap';
 
 interface Props {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function Top100Modal({ isOpen, onClose, leaderboard }: Props) {
+  const modalRef = useFocusTrap({ isOpen, onClose });
   const [searchTerm, setSearchTerm] = useState('');
 
   const filtered = leaderboard.filter((item) =>
@@ -30,6 +32,10 @@ export default function Top100Modal({ isOpen, onClose, leaderboard }: Props) {
           />
 
           <motion.div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="top100-modal-title"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -42,14 +48,15 @@ export default function Top100Modal({ isOpen, onClose, leaderboard }: Props) {
                   <Trophy size={20} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black font-['Russo_One'] text-white">TOP CLASIFICATORIO CHAMPIONSHIP</h3>
+                  <h3 id="top100-modal-title" className="text-xl font-black font-['Russo_One'] text-white">TOP CLASIFICATORIO CHAMPIONSHIP</h3>
                   <p className="text-xs text-gray-400 font-['Chakra_Petch']">Los 32 primeros clasifican para disputar la gran final</p>
                 </div>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar ranking Top 100"
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>
@@ -60,11 +67,13 @@ export default function Top100Modal({ isOpen, onClose, leaderboard }: Props) {
               <div className="relative">
                 <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
+                  id="top100-search-input"
+                  aria-label="Buscar usuario en el ranking Top 100"
                   type="text"
                   placeholder="Buscar usuario en el ranking..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-black/60 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500/50 font-['Chakra_Petch']"
+                  className="w-full bg-black/60 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 focus-visible:outline-none focus:border-yellow-500/50 font-['Chakra_Petch']"
                 />
               </div>
             </div>

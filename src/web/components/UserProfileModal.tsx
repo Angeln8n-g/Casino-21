@@ -6,6 +6,7 @@ import { getDivisionFromElo, calculateLevelFromXp, xpForLevel } from './ProfileH
 import { AvatarGallery } from './AvatarGallery';
 import { Edit2, Check, X, Coins, Trophy, Award, TrendingUp, Sparkles, LogOut } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface UserProfileModalProps {
   onClose: () => void;
@@ -173,6 +174,8 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
     }
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   const content = (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       {/* Backdrop */}
@@ -180,6 +183,10 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
 
       {/* Modal Container */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Perfil de Usuario"
         className="relative w-full max-w-sm rounded-3xl border border-[#2A2722] overflow-hidden shadow-2xl transition-all max-h-[90vh] flex flex-col bg-[#1A1815] hover:border-[#FACC15]/30 duration-300"
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -220,7 +227,8 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
           {/* Close Button */}
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+            aria-label="Cerrar perfil"
           >
             <X className="w-4 h-4" />
           </button>
@@ -238,10 +246,12 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
               {isEditingUsername ? (
                 <div className="flex items-center gap-2 w-full mt-1">
                   <input
+                    id="edit-profile-username"
+                    aria-label="Nuevo nombre de usuario"
                     type="text"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
-                    className="flex-1 min-w-0 bg-[#0F0E0C] border border-[#2A2722] focus:border-casino-gold rounded-xl px-3 py-1.5 text-left text-base text-white font-bold placeholder:text-gray-600 outline-none"
+                    className="flex-1 min-w-0 bg-[#0F0E0C] border border-[#2A2722] focus:border-casino-gold focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none rounded-xl px-3 py-1.5 text-left text-base text-white font-bold placeholder:text-gray-600 outline-none"
                     placeholder="Nuevo nombre..."
                     maxLength={15}
                     autoFocus

@@ -183,6 +183,8 @@ export function ChatInput({
 
         {/* Textarea */}
         <textarea
+          id="chat-message-textarea"
+          aria-label={placeholder || "Escribe un mensaje de chat"}
           ref={textareaRef}
           value={text}
           onChange={handleChange}
@@ -192,7 +194,7 @@ export function ChatInput({
           disabled={disabled}
           rows={1}
           autoFocus={false}
-          className="flex-1 bg-black/40 border border-white/5 focus:border-casino-gold/50 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 resize-none custom-scrollbar transition-colors focus:outline-none disabled:opacity-40"
+          className="flex-1 bg-black/40 border border-white/5 focus:border-casino-gold/50 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 resize-none custom-scrollbar transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none disabled:opacity-40"
           style={{ minHeight: '36px', maxHeight: '120px' }}
         />
 
@@ -200,11 +202,12 @@ export function ChatInput({
         <button
           type="submit"
           disabled={!text.trim() || disabled}
-          className={`shrink-0 p-2 rounded-xl transition-all disabled:opacity-30 ${
+          className={`shrink-0 p-2 rounded-xl transition-all disabled:opacity-30 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none ${
             isEditing
               ? 'text-casino-emerald hover:text-white hover:bg-casino-emerald/20'
               : 'text-casino-gold hover:text-white hover:bg-white/10'
           }`}
+          aria-label={isEditing ? 'Confirmar edición' : 'Enviar mensaje'}
           title={isEditing ? 'Confirmar edición' : 'Enviar'}
         >
           {isEditing ? (

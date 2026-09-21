@@ -124,16 +124,16 @@ function HeroChampionship({ prizePoolUsd, globalViews, activeLiveUsers }: Props)
         >
           <div className="absolute -inset-4 bg-gradient-to-r from-yellow-500/20 via-amber-500/30 to-yellow-500/20 rounded-3xl blur-2xl opacity-75 group-hover:opacity-100 transition duration-700 animate-pulse" />
           
-          <div className="relative bg-gradient-to-b from-[#121929] to-[#080d19] border-2 border-yellow-500/40 rounded-3xl px-8 py-5 sm:px-14 sm:py-7 shadow-[0_0_50px_rgba(251,191,36,0.25)] flex flex-col items-center backdrop-blur-xl">
-            <div className="flex items-baseline justify-center gap-2">
-              <span className="text-4xl sm:text-7xl font-black text-yellow-400 font-['Russo_One'] drop-shadow-[0_0_20px_rgba(251,191,36,0.6)]">
+          <div className="relative bg-gradient-to-b from-[#121929] to-[#080d19] border-2 border-yellow-500/40 rounded-3xl px-4 py-4 sm:px-14 sm:py-7 shadow-[0_0_50px_rgba(251,191,36,0.25)] flex flex-col items-center backdrop-blur-xl">
+            <div className="flex items-baseline justify-center gap-1.5 xs:gap-2">
+              <span className="text-3xl xs:text-4xl sm:text-7xl font-black text-yellow-400 font-['Russo_One'] drop-shadow-[0_0_20px_rgba(251,191,36,0.6)]">
                 ${formattedPrize}
               </span>
-              <span className="text-xl sm:text-3xl font-black text-yellow-500/80 font-['Russo_One']">USD</span>
+              <span className="text-lg xs:text-xl sm:text-3xl font-black text-yellow-500/80 font-['Russo_One']">USD</span>
             </div>
             
-            <p className="text-gray-400 text-xs sm:text-sm font-bold uppercase tracking-[0.2em] font-['Chakra_Petch'] mt-1 flex items-center gap-1.5">
-              <Trophy size={14} className="text-yellow-400" /> Pozo del KASINO21 CHAMPIONSHIP
+            <p className="text-gray-400 text-[10px] xs:text-xs sm:text-sm font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] font-['Chakra_Petch'] mt-1 flex items-center gap-1.5 text-center">
+              <Trophy size={14} className="text-yellow-400 shrink-0" /> Pozo del KASINO21 CHAMPIONSHIP
             </p>
           </div>
         </motion.div>
@@ -186,7 +186,7 @@ function HeroChampionship({ prizePoolUsd, globalViews, activeLiveUsers }: Props)
         >
           <a
             href="/login"
-            className="group relative bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-black font-black text-lg sm:text-xl px-9 py-4 sm:px-11 sm:py-5 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-[0_0_30px_rgba(251,191,36,0.4)] font-['Russo_One'] tracking-wider w-full sm:w-auto flex items-center justify-center gap-3 cursor-pointer"
+            className="group relative bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-black font-black text-sm xs:text-base sm:text-xl px-4 py-3.5 sm:px-11 sm:py-5 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-[0_0_30px_rgba(251,191,36,0.4)] font-['Russo_One'] tracking-wider w-full sm:w-auto flex items-center justify-center gap-2.5 xs:gap-3 cursor-pointer"
           >
             <Sparkles size={20} className="text-black group-hover:rotate-12 transition-transform" />
             ENTRAR A LA LIGA AHORA
@@ -194,7 +194,7 @@ function HeroChampionship({ prizePoolUsd, globalViews, activeLiveUsers }: Props)
 
           <a
             href="#como-funciona"
-            className="border border-white/20 bg-white/[0.04] hover:bg-white/[0.1] text-gray-200 hover:text-white font-bold text-base px-8 py-4 rounded-2xl transition-all duration-300 font-['Chakra_Petch'] w-full sm:w-auto flex items-center justify-center gap-2 backdrop-blur-md cursor-pointer"
+            className="border border-white/20 bg-white/[0.04] hover:bg-white/[0.1] text-gray-200 hover:text-white font-bold text-xs xs:text-sm sm:text-base px-4 py-3.5 sm:px-8 sm:py-4 rounded-2xl transition-all duration-300 font-['Chakra_Petch'] w-full sm:w-auto flex items-center justify-center gap-2 backdrop-blur-md cursor-pointer"
           >
             ¿CÓMO FUNCIONA?
             <ArrowDown size={18} className="animate-bounce" />

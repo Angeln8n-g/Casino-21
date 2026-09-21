@@ -10,6 +10,7 @@ import { TournamentView } from './tournament/TournamentView';
 import { SponsoredTournamentModal } from './tournament/SponsoredTournamentModal';
 import { PrizeClaimModal } from './tournament/PrizeClaimModal';
 import { PrizeClaim } from '../../domain/sponsored-tournament';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface EventData {
   id: string;
@@ -226,9 +227,11 @@ export function EventsPage() {
 
   const { isSupported, isSubscribed, subscribeToPush } = usePushNotifications();
   const [pushPromptModalOpen, setPushPromptModalOpen] = useState(false);
+  const pushPromptModalRef = useFocusTrap({ isOpen: pushPromptModalOpen, onClose: () => setPushPromptModalOpen(false) });
   const [pendingEnrollment, setPendingEnrollment] = useState<EventData | null>(null);
 
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
+  const rulesModalRef = useFocusTrap({ isOpen: rulesModalOpen, onClose: () => setRulesModalOpen(false) });
   const [selectedRules, setSelectedRules] = useState({ title: '', content: '' });
 
   const [bracketModalOpen, setBracketModalOpen] = useState(false);
@@ -343,6 +346,7 @@ export function EventsPage() {
   };
 
   const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false);
+  const enrollmentModalRef = useFocusTrap({ isOpen: enrollmentModalOpen, onClose: () => setEnrollmentModalOpen(false) });
   const [enrollmentStatus, setEnrollmentStatus] = useState<'success' | 'already_enrolled' | 'error'>('success');
   const [enrollmentEventTitle, setEnrollmentEventTitle] = useState('');
 
@@ -839,16 +843,19 @@ export function EventsPage() {
               🔍
             </span>
             <input
+              id="events-search-input"
+              aria-label="Buscar eventos por título, reglas o descripción"
               type="text"
               placeholder="Buscar por título, reglas o descripción..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-casino-gold/40 focus:ring-1 focus:ring-casino-gold/20 transition-all font-medium"
+              className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/40 transition-all font-medium"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-500 hover:text-white"
+                aria-label="Limpiar búsqueda"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-500 hover:text-white focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none rounded"
               >
                 ✕
               </button>
@@ -858,9 +865,11 @@ export function EventsPage() {
           <div className="flex flex-wrap items-center gap-3">
             {/* Type Selector Dropdown */}
             <select
+              id="events-type-filter"
+              aria-label="Filtrar eventos por tipo"
               value={typeFilter}
               onChange={(e: any) => setTypeFilter(e.target.value)}
-              className="bg-black/45 border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-gray-300 font-black uppercase tracking-wider focus:outline-none focus:border-casino-gold/40 cursor-pointer min-w-[130px] h-[36px]"
+              className="bg-black/45 border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-gray-300 font-black uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/40 cursor-pointer min-w-[130px] h-[36px]"
             >
               <option value="all">Todos los Tipos</option>
               <option value="torneo">⚔️ Torneos</option>
@@ -915,15 +924,23 @@ export function EventsPage() {
 
       {rulesModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setRulesModalOpen(false)}>
-          <div className="glass-panel-strong w-full max-w-lg rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+          <div 
+            ref={rulesModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rules-modal-title"
+            className="glass-panel-strong w-full max-w-lg rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[80vh]" 
+            onClick={e => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0">
               <div>
                 <h3 className="text-xs font-bold text-casino-gold uppercase tracking-widest mb-1">Reglas del Evento</h3>
-                <h2 className="text-2xl font-black text-white leading-tight">{selectedRules.title}</h2>
+                <h2 id="rules-modal-title" className="text-2xl font-black text-white leading-tight">{selectedRules.title}</h2>
               </div>
               <button 
                 onClick={() => setRulesModalOpen(false)}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                aria-label="Cerrar reglas del evento"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
               >
                 ✕
               </button>
@@ -936,7 +953,7 @@ export function EventsPage() {
             <div className="p-6 border-t border-white/10 bg-slate-900/50 shrink-0">
               <button 
                 onClick={() => setRulesModalOpen(false)}
-                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm"
+                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
               >
                 Entendido
               </button>
@@ -949,9 +966,15 @@ export function EventsPage() {
       {/* Enrollment Status Modal */}
       {enrollmentModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setEnrollmentModalOpen(false)}>
-          <div className="glass-panel-strong w-full max-w-sm rounded-3xl border shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col p-8 text-center" 
-               style={{ borderColor: enrollmentStatus === 'success' ? 'rgba(34,197,94,0.3)' : enrollmentStatus === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(234,179,8,0.3)' }}
-               onClick={e => e.stopPropagation()}>
+          <div 
+            ref={enrollmentModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="enrollment-modal-title"
+            className="glass-panel-strong w-full max-w-sm rounded-3xl border shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col p-8 text-center" 
+            style={{ borderColor: enrollmentStatus === 'success' ? 'rgba(34,197,94,0.3)' : enrollmentStatus === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(234,179,8,0.3)' }}
+            onClick={e => e.stopPropagation()}
+          >
             
             <div className="mb-6 flex justify-center">
               {enrollmentStatus === 'success' && (
@@ -971,7 +994,7 @@ export function EventsPage() {
               )}
             </div>
 
-            <h2 className="text-2xl font-black text-white mb-2">
+            <h2 id="enrollment-modal-title" className="text-2xl font-black text-white mb-2">
               {enrollmentStatus === 'success' ? '¡Inscripción Exitosa!' : 
                enrollmentStatus === 'already_enrolled' ? '¡Ya Estás Inscrito!' : 
                'Error de Inscripción'}
@@ -985,7 +1008,7 @@ export function EventsPage() {
 
             <button 
               onClick={() => setEnrollmentModalOpen(false)}
-              className={`w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm
+              className={`w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none
                 ${enrollmentStatus === 'success' ? 'bg-green-500 text-black hover:bg-green-400' : 
                   enrollmentStatus === 'already_enrolled' ? 'bg-casino-gold text-black hover:bg-yellow-400' : 
                   'bg-red-500 text-white hover:bg-red-400'}`}
@@ -999,8 +1022,14 @@ export function EventsPage() {
       {/* Push Prompt Modal */}
       {pushPromptModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => handlePushChoice(false)}>
-          <div className="glass-panel-strong w-full max-w-sm rounded-3xl border border-casino-gold/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] overflow-hidden flex flex-col p-8 text-center" 
-               onClick={e => e.stopPropagation()}>
+          <div 
+            ref={pushPromptModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="push-prompt-title"
+            className="glass-panel-strong w-full max-w-sm rounded-3xl border border-casino-gold/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] overflow-hidden flex flex-col p-8 text-center" 
+            onClick={e => e.stopPropagation()}
+          >
             
             <div className="mb-6 flex justify-center">
               <div className="w-20 h-20 bg-casino-gold/20 rounded-full flex items-center justify-center border border-casino-gold/50 text-4xl shadow-[0_0_20px_rgba(234,179,8,0.4)]">
@@ -1008,7 +1037,7 @@ export function EventsPage() {
               </div>
             </div>
 
-            <h2 className="text-2xl font-black text-white mb-2">
+            <h2 id="push-prompt-title" className="text-2xl font-black text-white mb-2">
               ¿Deseas activar las notificaciones?
             </h2>
             
@@ -1019,13 +1048,13 @@ export function EventsPage() {
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => handlePushChoice(true)}
-                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-casino-gold text-black hover:bg-yellow-400"
+                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-casino-gold text-black hover:bg-yellow-400 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
               >
                 Sí, Avísame
               </button>
               <button 
                 onClick={() => handlePushChoice(false)}
-                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-white/5 text-white hover:bg-white/10"
+                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-white/5 text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
               >
                 No por ahora
               </button>

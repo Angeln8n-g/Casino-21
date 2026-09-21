@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { X, Upload, CheckCircle2, AlertCircle, Camera, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export const ChampionshipKYCModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [idFile, setIdFile] = useState<File | null>(null);
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'pending' | 'uploading' | 'success' | 'error'>('pending');
+
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
 
   const handleSubmit = () => {
     if (!idFile || !selfieFile) return;
@@ -19,12 +22,20 @@ export const ChampionshipKYCModal: React.FC<{ onClose: () => void }> = ({ onClos
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
       <motion.div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Verificación de Identidad"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className="w-full max-w-2xl bg-slate-900 border border-casino-gold/30 rounded-3xl overflow-hidden shadow-2xl relative"
       >
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/50 hover:text-white transition-colors z-10">
+        <button 
+          onClick={onClose} 
+          aria-label="Cerrar verificación"
+          className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/50 hover:text-white transition-colors z-10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+        >
           <X className="w-5 h-5" />
         </button>
 
@@ -50,26 +61,26 @@ export const ChampionshipKYCModal: React.FC<{ onClose: () => void }> = ({ onClos
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* ID Upload */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Documento de Identidad (Frente)</label>
-                  <div className="border-2 border-dashed border-white/20 rounded-2xl bg-black/40 p-6 flex flex-col items-center justify-center text-center hover:bg-white/5 hover:border-casino-gold/50 transition-colors cursor-pointer min-h-[160px]">
-                    <Upload className="w-8 h-8 text-gray-500 mb-2" />
+                  <label htmlFor="kyc-id-file" className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Documento de Identidad (Frente)</label>
+                  <label htmlFor="kyc-id-file" className="border-2 border-dashed border-white/20 rounded-2xl bg-black/40 p-6 flex flex-col items-center justify-center text-center hover:bg-white/5 hover:border-casino-gold/50 transition-colors cursor-pointer min-h-[160px] block">
+                    <Upload className="w-8 h-8 text-gray-500 mb-2 mx-auto" />
                     <span className="text-xs font-bold text-white mb-1">Haz clic o arrastra</span>
                     <span className="text-[10px] text-gray-500">JPG, PNG, max 5MB</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setIdFile(e.target.files?.[0] || null)} />
+                    <input id="kyc-id-file" aria-label="Subir documento de identidad (frente)" type="file" className="hidden" accept="image/*" onChange={(e) => setIdFile(e.target.files?.[0] || null)} />
                     {idFile && <span className="mt-2 text-xs text-casino-gold font-bold truncate max-w-[150px]">{idFile.name}</span>}
-                  </div>
+                  </label>
                 </div>
 
                 {/* Selfie Upload */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Selfie con Documento</label>
-                  <div className="border-2 border-dashed border-white/20 rounded-2xl bg-black/40 p-6 flex flex-col items-center justify-center text-center hover:bg-white/5 hover:border-casino-gold/50 transition-colors cursor-pointer min-h-[160px]">
-                    <Camera className="w-8 h-8 text-gray-500 mb-2" />
+                  <label htmlFor="kyc-selfie-file" className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Selfie con Documento</label>
+                  <label htmlFor="kyc-selfie-file" className="border-2 border-dashed border-white/20 rounded-2xl bg-black/40 p-6 flex flex-col items-center justify-center text-center hover:bg-white/5 hover:border-casino-gold/50 transition-colors cursor-pointer min-h-[160px] block">
+                    <Camera className="w-8 h-8 text-gray-500 mb-2 mx-auto" />
                     <span className="text-xs font-bold text-white mb-1">Haz clic o arrastra</span>
                     <span className="text-[10px] text-gray-500">JPG, PNG, max 5MB</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] || null)} />
+                    <input id="kyc-selfie-file" aria-label="Subir selfie con documento" type="file" className="hidden" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] || null)} />
                     {selfieFile && <span className="mt-2 text-xs text-casino-gold font-bold truncate max-w-[150px]">{selfieFile.name}</span>}
-                  </div>
+                  </label>
                 </div>
               </div>
 

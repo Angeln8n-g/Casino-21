@@ -212,7 +212,7 @@ export function ProfileHeader({
             ref={dropdownRef}
             className="
               absolute top-[calc(100%+10px)] right-0
-              w-[90vw] md:w-[350px] max-h-[480px]
+              w-[calc(100vw-2rem)] max-w-[350px] md:w-[350px] max-h-[480px]
               bg-[#020617]/95 backdrop-blur-[12px]
               border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
               overflow-hidden z-[1000] animate-scale-up origin-top-right
@@ -434,7 +434,7 @@ export function ProfileHeader({
               ref={dropdownRef}
               className="
                 absolute top-[calc(100%+10px)] right-0 lg:-right-4 xl:-right-6 2xl:-right-8
-                w-[90vw] md:w-[350px] max-h-[480px]
+                w-[calc(100vw-2rem)] max-w-[350px] md:w-[350px] max-h-[480px]
                 bg-[#020617]/95 backdrop-blur-[12px]
                 border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.8)]
                 overflow-hidden z-[1000] animate-scale-up origin-top-right

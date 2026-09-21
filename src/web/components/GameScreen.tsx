@@ -176,7 +176,14 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
   }, []);
 
   // Detect mobile for layout decisions
-  const isMobileActual = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [isMobileActual, setIsMobileActual] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileActual(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Track total number of turns specifically to detect mid-round deals
   // The sum of all hands goes up when a new deal happens
@@ -1260,9 +1267,9 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   if (isSpectator && isTournament && !isMobileActual) {
     return (
-      <div className="w-screen h-screen bg-[#0A0908] flex items-center justify-center p-4 md:p-8 gap-8 select-none overflow-hidden font-sans">
+      <div className="w-full min-h-screen max-w-full bg-[#0A0908] flex flex-col lg:flex-row items-center justify-center p-4 md:p-8 gap-8 select-none overflow-x-hidden font-sans">
         {/* Virtual Mobile Frame on Left */}
-        <div className="w-[430px] max-w-[45vw] h-[90vh] max-h-[880px] aspect-[9/19] bg-[#11100F] border-4 border-[#2D2A26] rounded-[48px] shadow-[0_25px_60px_rgba(0,0,0,0.8),0_0_0_12px_#1E1C1A] overflow-hidden relative flex flex-col scale-[0.98] transition-all hover:scale-100 duration-500">
+        <div className="w-full max-w-[430px] lg:max-w-[45vw] h-[90vh] max-h-[880px] aspect-[9/19] bg-[#11100F] border-4 border-[#2D2A26] rounded-[48px] shadow-[0_25px_60px_rgba(0,0,0,0.8),0_0_0_12px_#1E1C1A] overflow-hidden relative flex flex-col scale-[0.98] transition-all hover:scale-100 duration-500">
           {/* Simulated phone notch/speaker */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-[#1E1C1A] rounded-b-2xl z-[9999] flex items-center justify-center gap-1.5 shadow-inner">
             <div className="w-12 h-1 bg-white/10 rounded-full"></div>
@@ -1276,7 +1283,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         </div>
 
         {/* Chat Panel on Right */}
-        <div className="flex-1 max-w-[400px] h-[90vh] max-h-[880px] flex flex-col pointer-events-auto">
+        <div className="w-full flex-1 max-w-[400px] h-[90vh] max-h-[880px] flex flex-col pointer-events-auto">
           <GameChat roomId={roomId} isSpectator={true} inline={true} isOpenForce={true} />
         </div>
       </div>

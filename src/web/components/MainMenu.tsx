@@ -27,6 +27,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { LobbyMusicSelector } from './LobbyMusicSelector';
 import { ChampionshipLobbyWidget } from './championship/ChampionshipLobbyWidget';
 import { ReferralModal } from './championship/ReferralModal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import mainMenuBg from '../../Public/background.webp';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
@@ -64,6 +65,7 @@ export function MainMenu() {
   
   // ─── Modal Apuesta Sala ───
   const [showBetModal, setShowBetModal] = useState(false);
+  const betModalRef = useFocusTrap({ isOpen: showBetModal, onClose: () => setShowBetModal(false) });
   const [betAmount, setBetAmount] = useState<number>(0);
   const [roomBet, setRoomBet] = useState<number>(0); // Guardamos la apuesta de la sala actual
   const [roomMode, setRoomMode] = useState<'1v1' | '2v2'>('1v1'); // Selección de modo al crear sala
@@ -1156,20 +1158,22 @@ export function MainMenu() {
               </button>
 
               <div className="flex-1 relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-center gap-3">
-                <h3 className="text-[10px] uppercase tracking-widest font-bold text-gray-500">Unirse a Sala</h3>
+                <label htmlFor="join-room-code-input" className="text-[10px] uppercase tracking-widest font-bold text-gray-500 cursor-pointer">Unirse a Sala</label>
                 <div className="flex gap-2">
                   <input 
+                    id="join-room-code-input"
+                    aria-label="Código de sala para unirse"
                     type="text" 
                     value={roomIdInput} 
                     onChange={e => setRoomIdInput(e.target.value.toUpperCase())} 
                     onKeyDown={e => { if (e.key === 'Enter') handleJoinRoom(); }}
-                    className="flex-1 min-w-0 bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-center font-mono text-lg uppercase tracking-widest placeholder:text-xs placeholder:normal-case placeholder:tracking-normal focus:border-blue-500/50 outline-none text-white transition-colors" 
+                    className="flex-1 min-w-0 bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-center font-mono text-lg uppercase tracking-widest placeholder:text-xs placeholder:normal-case placeholder:tracking-normal focus:border-blue-500/50 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none text-white transition-colors" 
                     placeholder="Código..."
                     maxLength={6}
                   />
                   <button 
                     onClick={handleJoinRoom}
-                    className="px-6 py-3 shrink-0 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500/60 rounded-xl font-black text-sm uppercase tracking-wider transition-all"
+                    className="px-6 py-3 shrink-0 bg-blue-500/20 hover:bg-blue-500/40 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500/60 rounded-xl font-black text-sm uppercase tracking-wider transition-all focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
                   >
                     IR
                   </button>
@@ -1319,14 +1323,21 @@ export function MainMenu() {
       {/* ─── Modal Crear Sala (Apuesta y Modo) ─── */}
       {showBetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900/90 border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.15)] rounded-3xl p-6 w-full max-w-md relative overflow-hidden">
+          <div 
+            ref={betModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="config-sala-title"
+            className="bg-slate-900/90 border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.15)] rounded-3xl p-6 w-full max-w-md relative overflow-hidden"
+          >
             {/* Ambient Background */}
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
 
             <button 
               onClick={() => setShowBetModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-all z-10"
+              aria-label="Cerrar modal de configuración"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-all z-10 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
             >
               ✕
             </button>
@@ -1335,7 +1346,7 @@ export function MainMenu() {
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30 text-xl">
                 ⚙️
               </div>
-              <h3 className="font-display font-black text-xl text-white uppercase tracking-widest">Configurar Sala</h3>
+              <h3 id="config-sala-title" className="font-display font-black text-xl text-white uppercase tracking-widest">Configurar Sala</h3>
             </div>
             
             {/* ─── Selección de Modo ─── */}
@@ -1344,7 +1355,7 @@ export function MainMenu() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setRoomMode('1v1')}
-                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 ${
+                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
                     roomMode === '1v1'
                       ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)] scale-[1.02]'
                       : 'bg-black/40 border-white/10 text-gray-500 hover:border-blue-500/30 hover:bg-blue-500/5'
@@ -1360,7 +1371,7 @@ export function MainMenu() {
 
                 <button
                   onClick={() => setRoomMode('2v2')}
-                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 ${
+                  className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-2 focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:outline-none ${
                     roomMode === '2v2'
                       ? 'bg-purple-500/20 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.2)] scale-[1.02]'
                       : 'bg-black/40 border-white/10 text-gray-500 hover:border-purple-500/30 hover:bg-purple-500/5'
@@ -1385,7 +1396,7 @@ export function MainMenu() {
                   <button
                     key={amount}
                     onClick={() => setBetAmount(amount)}
-                    className={`py-2.5 rounded-xl border text-sm font-black transition-all ${
+                    className={`py-2.5 rounded-xl border text-sm font-black transition-all focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:outline-none ${
                       betAmount === amount 
                         ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.2)] scale-[1.02]' 
                         : 'bg-black/40 border-white/10 text-gray-400 hover:bg-white/5 hover:border-yellow-500/30'
@@ -1397,23 +1408,26 @@ export function MainMenu() {
               </div>
 
               <div className="relative">
+                <label htmlFor="custom-bet-amount-input" className="sr-only">Monto de apuesta personalizado</label>
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-yellow-500">
                   🪙
                 </div>
                 <input 
+                  id="custom-bet-amount-input"
+                  aria-label="Monto de apuesta personalizado"
                   type="number" 
                   min={0}
                   value={betAmount || ''}
                   onChange={e => setBetAmount(parseInt(e.target.value) || 0)}
                   placeholder="Monto personalizado..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-yellow-400 font-bold focus:border-yellow-500/50 focus:bg-yellow-500/5 outline-none transition-colors placeholder:text-gray-600"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-yellow-400 font-bold focus:border-yellow-500/50 focus:bg-yellow-500/5 outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 focus-visible:outline-none transition-colors placeholder:text-gray-600"
                 />
               </div>
             </div>
 
             <button 
               onClick={handleCreateRoomConfirm}
-              className="relative w-full py-4 rounded-xl font-black text-lg uppercase tracking-widest overflow-hidden group transition-transform hover:scale-[1.02] shadow-[0_10px_20px_rgba(0,0,0,0.5)]"
+              className="relative w-full py-4 rounded-xl font-black text-lg uppercase tracking-widest overflow-hidden group transition-transform hover:scale-[1.02] shadow-[0_10px_20px_rgba(0,0,0,0.5)] focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 group-hover:from-blue-500 group-hover:via-cyan-400 group-hover:to-blue-400 transition-colors" />
               <div className="relative z-10 text-white flex items-center justify-center gap-2">

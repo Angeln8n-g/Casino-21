@@ -187,42 +187,42 @@ export function AudioAdmin() {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nombre</label>
-                <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none transition" value={currentTrack.name || ''} onChange={e => setCurrentTrack({...currentTrack, name: e.target.value})} placeholder="Ej. Piano Longe" />
+                <label htmlFor="track-name" className="block text-xs font-bold text-gray-400 uppercase mb-1">Nombre</label>
+                <input id="track-name" aria-label="Nombre de la pista" required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition" value={currentTrack.name || ''} onChange={e => setCurrentTrack({...currentTrack, name: e.target.value})} placeholder="Ej. Piano Longe" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Orden de Reproducción</label>
-                <input required type="number" min="1" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none transition" value={currentTrack.track_order || 0} onChange={e => setCurrentTrack({...currentTrack, track_order: parseInt(e.target.value) || 0})} />
+                <label htmlFor="track-order" className="block text-xs font-bold text-gray-400 uppercase mb-1">Orden de Reproducción</label>
+                <input id="track-order" aria-label="Orden de reproducción" required type="number" min="1" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition" value={currentTrack.track_order || 0} onChange={e => setCurrentTrack({...currentTrack, track_order: parseInt(e.target.value) || 0})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Categoría</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none transition" value={currentTrack.category} onChange={e => setCurrentTrack({...currentTrack, category: e.target.value as any})}>
+                <label htmlFor="track-category" className="block text-xs font-bold text-gray-400 uppercase mb-1">Categoría</label>
+                <select id="track-category" aria-label="Categoría de audio" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition" value={currentTrack.category} onChange={e => setCurrentTrack({...currentTrack, category: e.target.value as any})}>
                   <option value="lobby">Lobby (Menú Principal)</option>
                   <option value="game">Partidas (In-Game)</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Estilo</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none transition" value={currentTrack.style} onChange={e => setCurrentTrack({...currentTrack, style: e.target.value as any})}>
+                <label htmlFor="track-style" className="block text-xs font-bold text-gray-400 uppercase mb-1">Estilo</label>
+                <select id="track-style" aria-label="Estilo de audio" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-casino-gold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition" value={currentTrack.style} onChange={e => setCurrentTrack({...currentTrack, style: e.target.value as any})}>
                   <option value="classic">Clásico</option>
                   <option value="modern">Moderno</option>
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Archivo de Audio (URL o Subir)</label>
+                <label htmlFor="track-src" className="block text-xs font-bold text-gray-400 uppercase mb-1">Archivo de Audio (URL o Subir)</label>
                 <div className="flex gap-2 items-center">
-                  <input required type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-casino-gold outline-none transition" placeholder="https://... o ruta local" value={currentTrack.src || ''} onChange={e => setCurrentTrack({...currentTrack, src: e.target.value})} />
-                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-casino-gold/30 px-4 py-2 rounded-lg cursor-pointer text-sm font-bold text-casino-gold transition-colors flex items-center justify-center min-w-[120px]">
+                  <input id="track-src" aria-label="URL o ruta del archivo de audio" required type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-casino-gold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition" placeholder="https://... o ruta local" value={currentTrack.src || ''} onChange={e => setCurrentTrack({...currentTrack, src: e.target.value})} />
+                  <label htmlFor="track-upload-file" className="shrink-0 bg-white/5 hover:bg-white/10 border border-casino-gold/30 px-4 py-2 rounded-lg cursor-pointer text-sm font-bold text-casino-gold transition-colors flex items-center justify-center min-w-[120px] focus-within:ring-2 focus-within:ring-casino-gold/50">
                     {isUploading ? 'Subiendo...' : '📂 Subir MP3'}
-                    <input type="file" className="hidden" accept="audio/*" onChange={handleFileUpload} disabled={isUploading} />
+                    <input id="track-upload-file" aria-label="Seleccionar archivo de audio para subir" type="file" className="hidden" accept="audio/*" onChange={handleFileUpload} disabled={isUploading} />
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">Sube un archivo .mp3 o .wav para usar el almacenamiento de Supabase.</p>
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-4">
-              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/10 transition">Cancelar</button>
-              <button type="submit" className="px-6 py-2 rounded-lg text-sm font-bold bg-casino-gold text-black hover:bg-yellow-400 transition shadow-[0_0_15px_rgba(255,215,0,0.3)]">Guardar Pista</button>
+              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/10 transition focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none">Cancelar</button>
+              <button type="submit" className="px-6 py-2 rounded-lg text-sm font-bold bg-casino-gold text-black hover:bg-yellow-400 transition shadow-[0_0_15px_rgba(255,215,0,0.3)] focus-visible:ring-2 focus-visible:ring-casino-gold focus-visible:outline-none">Guardar Pista</button>
             </div>
           </form>
         </div>
@@ -269,8 +269,8 @@ export function AudioAdmin() {
           </div>
 
           <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden flex-1 flex flex-col min-h-0">
-            <div className="overflow-y-auto custom-scrollbar flex-1">
-              <table className="w-full text-left border-collapse relative">
+            <div className="overflow-y-auto overflow-x-auto custom-scrollbar touch-pan-x flex-1">
+              <table className="w-full text-left border-collapse relative min-w-[500px]">
                 <thead className="sticky top-0 bg-slate-900/90 backdrop-blur-md z-10 border-b border-white/10">
                   <tr className="text-xs uppercase tracking-wider text-gray-400">
                     <th className="p-4 font-black w-16 text-center">Orden</th>

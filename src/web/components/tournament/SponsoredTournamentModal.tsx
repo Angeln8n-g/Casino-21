@@ -3,6 +3,7 @@ import { X, Trophy, Users, Coins, Sparkles, AlertCircle, CheckCircle2 } from 'lu
 import { SponsoredTournament } from '../../../domain/sponsored-tournament';
 import { supabase } from '../../services/supabase';
 import { CoinFarmingButton } from './CoinFarmingButton';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface SponsoredTournamentModalProps {
   tournament: SponsoredTournament;
@@ -84,9 +85,17 @@ export const SponsoredTournamentModal: React.FC<SponsoredTournamentModalProps> =
     }
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ isOpen, onClose });
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700/60 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl relative">
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Torneo Patrocinado"
+        className="bg-slate-900 border border-slate-700/60 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl relative"
+      >
         {/* Banner / Cabecera Patrocinada */}
         <div
           className="relative p-6 pt-8 pb-10 overflow-hidden flex flex-col justify-end min-h-[180px]"
@@ -98,7 +107,8 @@ export const SponsoredTournamentModal: React.FC<SponsoredTournamentModalProps> =
         >
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 bg-slate-950/60 hover:bg-slate-950 text-slate-300 hover:text-white p-2 rounded-full backdrop-blur-sm transition-all"
+            aria-label="Cerrar ventana del torneo"
+            className="absolute top-4 right-4 bg-slate-950/60 hover:bg-slate-950 text-slate-300 hover:text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>

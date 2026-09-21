@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export interface SearchResult {
   id: string;
@@ -238,6 +239,8 @@ export function FriendSearch() {
       {/* Search Input */}
       <div className="relative">
         <input
+          id="friend-search-input"
+          aria-label="Buscar jugador por nombre de usuario"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -249,6 +252,7 @@ export function FriendSearch() {
         </svg>
         {query && (
           <button
+            aria-label="Limpiar búsqueda de jugador"
             onClick={() => { setQuery(''); setResults([]); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
           >
@@ -401,6 +405,8 @@ export function PlayerProfileModal({ player, relationshipStatus, onSendRequest, 
     }
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   return (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       {/* Backdrop */}
@@ -408,6 +414,10 @@ export function PlayerProfileModal({ player, relationshipStatus, onSendRequest, 
 
       {/* Modal Container */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Buscar Amigos"
         className="relative w-full max-w-sm rounded-[2rem] border border-white/[0.1] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -418,7 +428,8 @@ export function PlayerProfileModal({ player, relationshipStatus, onSendRequest, 
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 group"
+          aria-label="Cerrar búsqueda de amigos"
+          className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 group focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
         >
           <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />

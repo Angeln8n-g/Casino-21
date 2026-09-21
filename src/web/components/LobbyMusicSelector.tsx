@@ -503,11 +503,14 @@ export function LobbyMusicSelector() {
                   min="0"
                   max="1"
                   step="0.01"
+                  aria-label="Volumen de música"
                   value={muted ? 0 : masterVolume}
                   onChange={(e) => {
                     setVolume(Number(e.target.value));
                   }}
-                  className={`w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer focus:outline-none transition-all duration-300 ${
+                  className={`w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer focus:outline-none focus-visible:ring-2 ${
+                    style === 'classic' ? 'focus-visible:ring-amber-500/50' : 'focus-visible:ring-cyan-500/50'
+                  } focus-visible:outline-none transition-all duration-300 ${
                     style === 'classic' ? 'accent-amber-500' : 'accent-cyan-500'
                   }`}
                   style={{

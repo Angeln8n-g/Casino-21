@@ -133,12 +133,14 @@ export function UpdatePassword() {
             ) : (
               <form onSubmit={handleUpdate} className="space-y-5">
                 <div>
-                  <label className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Nueva Contraseña</label>
+                  <label htmlFor="new-password" className="block text-[11px] text-gray-500 mb-1.5 uppercase tracking-widest font-bold">Nueva Contraseña</label>
                   <input 
+                    id="new-password"
+                    aria-label="Nueva contraseña"
                     type="password" 
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
                     placeholder="••••••••"
                     required
                     minLength={6}
@@ -148,7 +150,7 @@ export function UpdatePassword() {
                 <button 
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 bg-gradient-to-b from-casino-gold to-casino-gold-dark text-black font-display font-black tracking-wide rounded-xl mt-2 hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed"
+                  className="w-full py-3.5 bg-gradient-to-b from-casino-gold to-casino-gold-dark text-black font-display font-black tracking-wide rounded-xl mt-2 hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-casino-gold focus-visible:outline-none"
                 >
                   {loading ? 'ACTUALIZANDO...' : 'GUARDAR CONTRASEÑA'}
                 </button>

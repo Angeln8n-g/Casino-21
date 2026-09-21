@@ -55,9 +55,17 @@ const ACTION_STYLES: Record<string, string> = {
  * player choose which move to make.
  */
 export function DragActionModal({ data, playerId, onSelect, onCancel }: DragActionModalProps) {
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose: onCancel });
+
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-      <div className="bg-gradient-to-b from-gray-800 to-gray-950 p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] max-w-md w-full text-center animate-scale-up">
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Seleccionar jugada"
+        className="bg-gradient-to-b from-gray-800 to-gray-950 p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] max-w-md w-full text-center animate-scale-up"
+      >
         <h2 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 mb-6 drop-shadow-md">
           ¿Qué jugada deseas realizar?
         </h2>
@@ -66,7 +74,7 @@ export function DragActionModal({ data, playerId, onSelect, onCancel }: DragActi
           {data.validActions.map((action, idx) => (
             <button
               key={idx}
-              className={`w-full py-3 md:py-4 rounded-xl font-bold text-lg md:text-xl transition-all shadow-lg border border-white/10 uppercase tracking-widest text-white hover:scale-105 active:scale-95 touch-manipulation ${ACTION_STYLES[action.type] || ''}`}
+              className={`w-full py-3 md:py-4 rounded-xl font-bold text-lg md:text-xl transition-all shadow-lg border border-white/10 uppercase tracking-widest text-white hover:scale-105 active:scale-95 touch-manipulation focus-visible:ring-2 focus-visible:ring-yellow-400/60 focus-visible:outline-none ${ACTION_STYLES[action.type] || ''}`}
               onClick={() => {
                 onSelect({ ...action, playerId, cardId: data.handCard.id } as Action);
               }}
@@ -77,7 +85,7 @@ export function DragActionModal({ data, playerId, onSelect, onCancel }: DragActi
         </div>
 
         <button
-          className="mt-6 w-full py-3 rounded-xl font-bold text-gray-300 bg-white/10 hover:bg-white/20 transition-all border border-white/10"
+          className="mt-6 w-full py-3 rounded-xl font-bold text-gray-300 bg-white/10 hover:bg-white/20 transition-all border border-white/10 focus-visible:ring-2 focus-visible:ring-yellow-400/50 focus-visible:outline-none"
           onClick={onCancel}
         >
           CANCELAR

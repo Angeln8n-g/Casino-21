@@ -414,15 +414,15 @@ export function StoreAdmin() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="itemName" className="block text-xs font-bold text-gray-400 uppercase mb-2">Nombre del artículo</label>
-                <input id="itemName" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all" value={currentItem.name} onChange={e => setCurrentItem({...currentItem, name: e.target.value})} placeholder="Ej: Avatar Neón" />
+                <input id="itemName" aria-label="Nombre del artículo" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={currentItem.name} onChange={e => setCurrentItem({...currentItem, name: e.target.value})} placeholder="Ej: Avatar Neón" />
               </div>
               <div>
                 <label htmlFor="itemPrice" className="block text-xs font-bold text-gray-400 uppercase mb-2">Precio (🪙 Monedas)</label>
-                <input id="itemPrice" required type="number" min="0" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all font-mono" value={currentItem.price} onChange={e => setCurrentItem({...currentItem, price: parseInt(e.target.value) || 0})} />
+                <input id="itemPrice" aria-label="Precio del artículo en monedas" required type="number" min="0" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/50 focus-visible:outline-none focus:border-yellow-400 transition-all font-mono" value={currentItem.price} onChange={e => setCurrentItem({...currentItem, price: parseInt(e.target.value) || 0})} />
               </div>
               <div>
                 <label htmlFor="itemType" className="block text-xs font-bold text-gray-400 uppercase mb-2">Categoría</label>
-                <select id="itemType" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all cursor-pointer" value={currentItem.item_type} onChange={e => setCurrentItem({...currentItem, item_type: e.target.value as any})}>
+                <select id="itemType" aria-label="Categoría del artículo" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all cursor-pointer" value={currentItem.item_type} onChange={e => setCurrentItem({...currentItem, item_type: e.target.value as any})}>
                   <option value="avatar">👤 Avatar</option>
                   <option value="title">🏷️ Título</option>
                   <option value="board">🎲 Tapete de Mesa</option>
@@ -432,26 +432,27 @@ export function StoreAdmin() {
               </div>
               <div>
                 <label htmlFor="itemDesc" className="block text-xs font-bold text-gray-400 uppercase mb-2">Descripción Corta</label>
-                <input id="itemDesc" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all" value={currentItem.description} onChange={e => setCurrentItem({...currentItem, description: e.target.value})} placeholder="Atrae a los compradores con una buena descripción" />
+                <input id="itemDesc" aria-label="Descripción corta del artículo" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={currentItem.description} onChange={e => setCurrentItem({...currentItem, description: e.target.value})} placeholder="Atrae a los compradores con una buena descripción" />
               </div>
               
               {currentItem.item_type === 'theme' && (
                 <div className="md:col-span-2">
                   <label htmlFor="themeKey" className="block text-xs font-bold text-gray-400 uppercase mb-2">Clave del Tema (Theme Registry Key)</label>
-                  <input id="themeKey" type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED] transition-all font-mono text-sm" value={currentItem.theme_key || ''} onChange={e => setCurrentItem({...currentItem, theme_key: e.target.value})} placeholder="Ej: neon_dealer" />
+                  <input id="themeKey" aria-label="Clave del tema" type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all font-mono text-sm" value={currentItem.theme_key || ''} onChange={e => setCurrentItem({...currentItem, theme_key: e.target.value})} placeholder="Ej: neon_dealer" />
                   <p className="text-[10px] text-gray-500 mt-1">Asegúrate de que esta clave exista en src/themes/themeRegistry.ts</p>
                 </div>
               )}
               
               {/* Image Upload Section */}
               <div className="md:col-span-2 border border-white/10 p-6 rounded-2xl bg-black/20">
-                <label className="block text-sm font-bold text-gray-300 uppercase mb-4">🖼️ Asset Visual</label>
+                <label htmlFor="store-asset-upload" className="block text-sm font-bold text-gray-300 uppercase mb-4">🖼️ Asset Visual</label>
                 
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* File Upload / URL input */}
                   <div className="flex-1 space-y-4">
                     <div>
                       <input
+                        id="store-asset-upload"
                         ref={fileInputRef}
                         type="file"
                         accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
@@ -460,7 +461,7 @@ export function StoreAdmin() {
                           const file = e.target.files?.[0];
                           if (file) handleFileUpload(file);
                         }}
-                        aria-label="Subir archivo"
+                        aria-label="Subir archivo de imagen de asset"
                       />
                       <button
                         type="button"
@@ -501,7 +502,7 @@ export function StoreAdmin() {
                       <input 
                         id="imgUrl"
                         type="url" 
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#7C3AED] transition-all" 
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" 
                         placeholder="https://miservidor.com/imagen.gif"
                         value={currentItem.image_url || ''} 
                         onChange={e => setCurrentItem({...currentItem, image_url: e.target.value})} 
@@ -557,7 +558,7 @@ export function StoreAdmin() {
         </div>
       ) : (
         <div className="bg-[#0F0F23] rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto custom-scrollbar touch-pan-x">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-black/60 border-b border-white/10 text-[10px] uppercase tracking-widest text-gray-400">
@@ -704,31 +705,31 @@ export function StoreAdmin() {
                 <form onSubmit={handleSaveTheme} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Key (identificador único)</label>
-                      <input required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-all font-mono text-sm" value={themeForm.key} onChange={e => setThemeForm({...themeForm, key: e.target.value})} placeholder="mi_tema" />
+                      <label htmlFor="theme-key" className="block text-xs font-bold text-gray-400 uppercase mb-2">Key (identificador único)</label>
+                      <input id="theme-key" aria-label="Key o identificador único del tema" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all font-mono text-sm" value={themeForm.key} onChange={e => setThemeForm({...themeForm, key: e.target.value})} placeholder="mi_tema" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Nombre</label>
-                      <input required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.name} onChange={e => setThemeForm({...themeForm, name: e.target.value})} placeholder="Cyber Gold" />
+                      <label htmlFor="theme-name" className="block text-xs font-bold text-gray-400 uppercase mb-2">Nombre</label>
+                      <input id="theme-name" aria-label="Nombre del tema" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.name} onChange={e => setThemeForm({...themeForm, name: e.target.value})} placeholder="Cyber Gold" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Descripción</label>
-                      <input required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.description} onChange={e => setThemeForm({...themeForm, description: e.target.value})} />
+                      <label htmlFor="theme-description" className="block text-xs font-bold text-gray-400 uppercase mb-2">Descripción</label>
+                      <input id="theme-description" aria-label="Descripción del tema" required type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.description} onChange={e => setThemeForm({...themeForm, description: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Emoji</label>
-                      <input type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.emoji} onChange={e => setThemeForm({...themeForm, emoji: e.target.value})} />
+                      <label htmlFor="theme-emoji" className="block text-xs font-bold text-gray-400 uppercase mb-2">Emoji</label>
+                      <input id="theme-emoji" aria-label="Emoji del tema" type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.emoji} onChange={e => setThemeForm({...themeForm, emoji: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Preview Color</label>
+                      <label htmlFor="theme-preview-color" className="block text-xs font-bold text-gray-400 uppercase mb-2">Preview Color</label>
                       <div className="flex gap-2">
-                        <input type="color" className="w-12 h-12 rounded-lg border border-white/10 bg-black/40 cursor-pointer" value={themeForm.previewColor} onChange={e => setThemeForm({...themeForm, previewColor: e.target.value})} />
-                        <input type="text" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.previewColor} onChange={e => setThemeForm({...themeForm, previewColor: e.target.value})} />
+                        <input id="theme-preview-color-picker" aria-label="Selector de preview color" type="color" className="w-12 h-12 rounded-lg border border-white/10 bg-black/40 cursor-pointer" value={themeForm.previewColor} onChange={e => setThemeForm({...themeForm, previewColor: e.target.value})} />
+                        <input id="theme-preview-color" aria-label="Código hexadecimal de preview color" type="text" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.previewColor} onChange={e => setThemeForm({...themeForm, previewColor: e.target.value})} />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Precio (🪙)</label>
-                      <input type="number" min="0" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all font-mono" value={themeForm.price} onChange={e => setThemeForm({...themeForm, price: parseInt(e.target.value) || 0})} />
+                      <label htmlFor="theme-price" className="block text-xs font-bold text-gray-400 uppercase mb-2">Precio (🪙)</label>
+                      <input id="theme-price" aria-label="Precio del tema en monedas" type="number" min="0" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/50 focus-visible:outline-none focus:border-yellow-400 transition-all font-mono" value={themeForm.price} onChange={e => setThemeForm({...themeForm, price: parseInt(e.target.value) || 0})} />
                     </div>
                   </div>
 
@@ -740,9 +741,11 @@ export function StoreAdmin() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {(['background', 'boxShadow', 'boxShadowSelected', 'border', 'innerEdge'] as const).map(field => (
                         <div key={field}>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
+                          <label htmlFor={`card-theme-${field}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
                           <textarea
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#7C3AED] transition-all h-20 resize-y"
+                            id={`card-theme-${field}`}
+                            aria-label={`Propiedad ${field} de Card Theme`}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white font-mono text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all h-20 resize-y"
                             value={themeForm.cardTheme[field]}
                             onChange={e => setThemeForm({
                               ...themeForm,
@@ -753,16 +756,16 @@ export function StoreAdmin() {
                       ))}
                       {(['redSuitColor', 'blackSuitColor'] as const).map(field => (
                         <div key={field}>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
+                          <label htmlFor={`card-suit-${field}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
                           <div className="flex gap-2">
-                            <input type="color" className="w-10 h-10 rounded-lg border border-white/10 bg-black/40 cursor-pointer" value={themeForm.cardTheme[field]} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, [field]: e.target.value}})} />
-                            <input type="text" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.cardTheme[field]} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, [field]: e.target.value}})} />
+                            <input id={`card-suit-${field}-picker`} aria-label={`Selector de color para ${field}`} type="color" className="w-10 h-10 rounded-lg border border-white/10 bg-black/40 cursor-pointer" value={themeForm.cardTheme[field]} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, [field]: e.target.value}})} />
+                            <input id={`card-suit-${field}`} aria-label={`Código hexadecimal para ${field}`} type="text" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.cardTheme[field]} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, [field]: e.target.value}})} />
                           </div>
                         </div>
                       ))}
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">extraClass</label>
-                        <input type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.cardTheme.extraClass} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, extraClass: e.target.value}})} />
+                        <label htmlFor="card-theme-extra-class" className="block text-[10px] font-bold text-gray-500 uppercase mb-1">extraClass</label>
+                        <input id="card-theme-extra-class" aria-label="Clases adicionales para Card Theme" type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.cardTheme.extraClass} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, extraClass: e.target.value}})} />
                       </div>
                     </div>
                   </div>
@@ -775,9 +778,11 @@ export function StoreAdmin() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {(['background', 'overlayGradient'] as const).map(field => (
                         <div key={field}>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
+                          <label htmlFor={`board-theme-${field}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
                           <textarea
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#7C3AED] transition-all h-20 resize-y"
+                            id={`board-theme-${field}`}
+                            aria-label={`Propiedad ${field} de Board Theme`}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white font-mono text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all h-20 resize-y"
                             value={themeForm.boardTheme[field]}
                             onChange={e => setThemeForm({
                               ...themeForm,
@@ -787,12 +792,14 @@ export function StoreAdmin() {
                         </div>
                       ))}
                       <div className="md:col-span-2">
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                        <label htmlFor="board-theme-background-image" className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                           Tapete de fondo (opcional)
                         </label>
                         <div className="flex gap-3 items-start">
                           <select
-                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#7C3AED] transition-all cursor-pointer"
+                            id="board-theme-background-image"
+                            aria-label="Tapete de fondo para Board Theme"
+                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all cursor-pointer"
                             value={themeForm.boardTheme.backgroundImage}
                             onChange={e => setThemeForm({
                               ...themeForm,
@@ -819,16 +826,16 @@ export function StoreAdmin() {
                       </div>
                       {(['borderColor', 'glowColor', 'innerRingColor'] as const).map(field => (
                         <div key={field}>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
+                          <label htmlFor={`board-color-${field}`} className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{field}</label>
                           <div className="flex gap-2">
-                            <input type="color" className="w-10 h-10 rounded-lg border border-white/10 bg-black/40 cursor-pointer" value={themeForm.boardTheme[field]} onChange={e => setThemeForm({...themeForm, boardTheme: {...themeForm.boardTheme, [field]: e.target.value}})} />
-                            <input type="text" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.boardTheme[field]} onChange={e => setThemeForm({...themeForm, boardTheme: {...themeForm.boardTheme, [field]: e.target.value}})} />
+                            <input id={`board-color-${field}-picker`} aria-label={`Selector de color para ${field}`} type="color" className="w-10 h-10 rounded-lg border border-white/10 bg-black/40 cursor-pointer" value={themeForm.boardTheme[field]} onChange={e => setThemeForm({...themeForm, boardTheme: {...themeForm.boardTheme, [field]: e.target.value}})} />
+                            <input id={`board-color-${field}`} aria-label={`Código hexadecimal para ${field}`} type="text" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.boardTheme[field]} onChange={e => setThemeForm({...themeForm, boardTheme: {...themeForm.boardTheme, [field]: e.target.value}})} />
                           </div>
                         </div>
                       ))}
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">watermarkOpacity (0-1)</label>
-                        <input type="number" min="0" max="1" step="0.01" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.boardTheme.watermarkOpacity} onChange={e => setThemeForm({...themeForm, boardTheme: {...themeForm.boardTheme, watermarkOpacity: parseFloat(e.target.value) || 0}})} />
+                        <label htmlFor="board-theme-watermark-opacity" className="block text-[10px] font-bold text-gray-500 uppercase mb-1">watermarkOpacity (0-1)</label>
+                        <input id="board-theme-watermark-opacity" aria-label="Opacidad de la marca de agua del tapete" type="number" min="0" max="1" step="0.01" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.boardTheme.watermarkOpacity} onChange={e => setThemeForm({...themeForm, boardTheme: {...themeForm.boardTheme, watermarkOpacity: parseFloat(e.target.value) || 0}})} />
                       </div>
                     </div>
                   </div>
@@ -893,7 +900,7 @@ export function StoreAdmin() {
               </div>
             ) : (
               <div className="bg-[#0F0F23] rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto custom-scrollbar touch-pan-x">
                   <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead>
                       <tr className="bg-black/60 border-b border-white/10 text-[10px] uppercase tracking-widest text-gray-400">

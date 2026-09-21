@@ -595,9 +595,11 @@ export function AdManagerAdmin() {
 
               {/* Ad Type Filter */}
               <select
+                id="filter-ad-type"
+                aria-label="Filtrar por formato de anuncio"
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="bg-casino-dark-900 border border-white/10 text-white rounded-xl px-3 py-1.5 text-xs font-bold outline-none"
+                className="bg-casino-dark-900 border border-white/10 text-white rounded-xl px-3 py-1.5 text-xs font-bold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 cursor-pointer"
               >
                 <option value="all">Todos los formatos</option>
                 <option value="banner">Banner</option>
@@ -715,8 +717,8 @@ export function AdManagerAdmin() {
                   Sin datos registrados en este período
                 </div>
               ) : (
-                <div className="w-full overflow-x-auto">
-                  <div className="min-w-[500px] h-[200px] relative">
+                <div className="w-full overflow-x-auto custom-scrollbar touch-pan-x">
+                  <div className="w-full min-w-[320px] sm:min-w-[500px] h-[200px] relative">
                     <svg viewBox="0 0 600 200" className="w-full h-full">
                       {/* Grid lines */}
                       <line x1="40" y1="20" x2="580" y2="20" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
@@ -871,8 +873,8 @@ export function AdManagerAdmin() {
               <h4 className="text-sm font-bold uppercase tracking-wider text-casino-gold">Rendimiento por Red de Anuncios</h4>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+              <table className="w-full text-left border-collapse min-w-[650px]">
                 <thead>
                   <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-wider text-gray-400">
                     <th className="p-4 font-black">Red / Configuración</th>
@@ -1016,13 +1018,13 @@ export function AdManagerAdmin() {
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nombre</label>
-                    <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                    <label htmlFor="ad-network-name" className="block text-xs font-bold text-gray-400 uppercase mb-1">Nombre</label>
+                    <input id="ad-network-name" aria-label="Nombre de la red publicitaria" required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo</label>
-                    <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                    <label htmlFor="ad-network-type" className="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo</label>
+                    <select id="ad-network-type" aria-label="Tipo de formato publicitario" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       value={form.ad_type} onChange={e => setForm({ ...form, ad_type: e.target.value as any })}>
                       {Object.entries(AD_TYPE_LABELS).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
@@ -1030,14 +1032,16 @@ export function AdManagerAdmin() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">URL del Script</label>
-                    <input type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                    <label htmlFor="ad-network-script-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">URL del Script</label>
+                    <input id="ad-network-script-url" aria-label="URL del script publicitario" type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       placeholder="https://...js" value={form.script_url || ''}
                       onChange={e => setForm({ ...form, script_url: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">ID del Contenedor</label>
+                    <label htmlFor="ad-network-container-id" className="block text-xs font-bold text-gray-400 uppercase mb-1">ID del Contenedor</label>
                     <select
+                      id="ad-network-container-id"
+                      aria-label="ID del contenedor de anuncio"
                       className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       value={
                         form.container_id === ''
@@ -1065,6 +1069,8 @@ export function AdManagerAdmin() {
                     </select>
                     {showCustomContainerInput && (
                       <input
+                        id="ad-network-custom-container"
+                        aria-label="ID del contenedor personalizado"
                         type="text"
                         required
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white mt-2 animate-fade-in text-sm"
@@ -1075,28 +1081,28 @@ export function AdManagerAdmin() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Smartlink URL (Interstitial/Rewarded)</label>
-                    <input type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                    <label htmlFor="ad-network-smartlink-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">Smartlink URL (Interstitial/Rewarded)</label>
+                    <input id="ad-network-smartlink-url" aria-label="Smartlink URL para interstitial o rewarded" type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       placeholder="https://..." value={form.smartlink_url || ''}
                       onChange={e => setForm({ ...form, smartlink_url: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Imagen del Anuncio (URL - Opcional)</label>
-                    <input type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                    <label htmlFor="ad-network-image-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">Imagen del Anuncio (URL - Opcional)</label>
+                    <input id="ad-network-image-url" aria-label="URL de imagen del anuncio opcional" type="url" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       placeholder="https://.../anuncio.jpg" value={form.image_url || ''}
                       onChange={e => setForm({ ...form, image_url: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Prioridad</label>
-                    <input type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
+                    <label htmlFor="ad-network-priority" className="block text-xs font-bold text-gray-400 uppercase mb-1">Prioridad</label>
+                    <input id="ad-network-priority" aria-label="Prioridad de la red publicitaria" type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white"
                       value={form.priority} onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 0 })} />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                    <label htmlFor="ad-network-csp-domain" className="block text-xs font-bold text-gray-400 uppercase mb-1">
                       Dominios CSP (agregar a Nginx al activar esta red)
                     </label>
                     <div className="flex gap-2 mb-2">
-                      <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                      <input id="ad-network-csp-domain" aria-label="Dominio para política de seguridad de contenido CSP" type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
                         placeholder="https://*.ejemplo.com" value={domainInput}
                         onChange={e => setDomainInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDomain(); } }} />
@@ -1124,8 +1130,8 @@ export function AdManagerAdmin() {
           )}
 
           <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+              <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                   <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-wider text-gray-400">
                     <th className="p-4 font-black">Red</th>
@@ -1199,9 +1205,11 @@ export function AdManagerAdmin() {
 
             <div className="flex items-center gap-3">
               <select
+                id="filter-sponsor-select"
+                aria-label="Filtrar por patrocinador"
                 value={selectedSponsor}
                 onChange={(e) => setSelectedSponsor(e.target.value)}
-                className="bg-slate-950 border border-slate-700 text-white text-xs font-bold rounded-xl px-4 py-2.5 outline-none"
+                className="bg-slate-950 border border-slate-700 text-white text-xs font-bold rounded-xl px-4 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 cursor-pointer"
               >
                 <option value="all">Todos los Patrocinadores</option>
                 {Array.from(new Set(sponsorLogs.map(l => l.sponsor_name))).map(sName => (
@@ -1274,8 +1282,8 @@ export function AdManagerAdmin() {
             <div className="p-4 border-b border-slate-800 font-bold text-sm text-slate-300">
               Historial de Interacciones con la Marca
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+              <table className="w-full text-left text-sm text-slate-300 min-w-[550px]">
                 <thead className="bg-slate-950 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Patrocinador</th>

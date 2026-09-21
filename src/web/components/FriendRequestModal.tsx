@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export interface FriendRequestProfile {
   requestId: string;        // friend_requests.id
@@ -69,6 +70,8 @@ export function FriendRequestModal({
     }
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   return (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4" onClick={onClose}>
       {/* Backdrop */}
@@ -76,6 +79,10 @@ export function FriendRequestModal({
 
       {/* Modal */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Solicitud de Amistad"
         className="relative w-full max-w-sm rounded-2xl border border-white/[0.08] overflow-hidden animate-fade-in"
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -86,7 +93,8 @@ export function FriendRequestModal({
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-10"
+          aria-label="Cerrar ventana"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all z-10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -172,7 +180,7 @@ export function FriendRequestModal({
               <button
                 onClick={() => handleAction('rejected')}
                 disabled={loading !== null}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 font-bold text-sm border border-white/10 hover:border-red-500/30 transition-all active:scale-[0.98] disabled:opacity-40"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 font-bold text-sm border border-white/10 hover:border-red-500/30 transition-all active:scale-[0.98] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-red-400/50 focus-visible:outline-none"
               >
                 {loading === 'reject' ? '...' : '✕ Rechazar'}
               </button>
@@ -181,7 +189,7 @@ export function FriendRequestModal({
               <button
                 onClick={() => handleAction('accepted')}
                 disabled={loading !== null}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] disabled:opacity-40 shadow-lg shadow-casino-gold/20"
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] disabled:opacity-40 shadow-lg shadow-casino-gold/20 focus-visible:ring-2 focus-visible:ring-casino-gold/60 focus-visible:outline-none"
               >
                 {loading === 'accept' ? (
                   <span className="flex items-center justify-center gap-1.5">

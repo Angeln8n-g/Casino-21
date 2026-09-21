@@ -96,16 +96,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
       });
 
+      socket.off('connect');
+
+      socket.on('connect', () => {
+        const activeRoomId = localStorage.getItem('casino21_roomId');
+        if (activeRoomId) {
+          socket.emit('request_game_state', { roomId: activeRoomId });
+        }
+      });
+
       socket.on('room_joined', ({ playerId }: { playerId: string }) => {
         setLocalPlayerId(playerId);
+        localStorage.setItem('casino21_playerId', playerId);
       });
 
       socket.on('room_created', ({ playerId }: { playerId: string }) => {
         setLocalPlayerId(playerId);
+        localStorage.setItem('casino21_playerId', playerId);
       });
 
       socket.on('game_state_update', (state: GameState) => {
         setGameState(state);
+        const savedPlayerId = localStorage.getItem('casino21_playerId');
+        if (savedPlayerId && state.players.some(p => p.id === savedPlayerId)) {
+          setLocalPlayerId(savedPlayerId);
+        }
         if (state.phase !== 'completed') {
           setStatsData(null);
           setRematchStatus(null);

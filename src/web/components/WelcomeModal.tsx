@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export function WelcomeModal() {
   const { profile, user } = useAuth();
@@ -18,6 +19,8 @@ export function WelcomeModal() {
       }
     }
   }, [profile, user]);
+
+  const modalRef = useFocusTrap<HTMLDivElement>({ isOpen, closeOnEscape: false });
 
   if (!isOpen) return null;
 
@@ -62,7 +65,13 @@ export function WelcomeModal() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="glass-panel-strong p-8 max-w-md w-full relative overflow-hidden">
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bienvenida a Casino 21"
+        className="glass-panel-strong p-5 sm:p-8 max-w-md w-full relative overflow-hidden rounded-3xl"
+      >
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-casino-gold to-yellow-600"></div>
         
         <div className="text-center mb-8">
@@ -83,14 +92,16 @@ export function WelcomeModal() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-[10px] uppercase tracking-widest font-bold text-gray-500 mb-2">
+            <label htmlFor="welcome-username" className="block text-[10px] uppercase tracking-widest font-bold text-gray-500 mb-2">
               Nombre de Jugador
             </label>
             <input
+              id="welcome-username"
+              aria-label="Nombre de jugador"
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-center font-display font-bold text-xl text-casino-gold placeholder:text-gray-700 focus:border-casino-gold/50 focus:outline-none transition-colors"
+              className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-center font-display font-bold text-xl text-casino-gold placeholder:text-gray-700 focus:border-casino-gold/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition-colors"
               placeholder="Ej. ProPlayer21"
               maxLength={15}
               autoFocus

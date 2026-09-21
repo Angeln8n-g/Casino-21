@@ -804,16 +804,19 @@ export function SocialPanel() {
               {friends.length > 3 && (
                 <div className="relative shrink-0">
                   <input
+                    id="social-friends-filter-input"
+                    aria-label="Filtrar amigos por nombre"
                     type="text"
                     value={friendSearchQuery}
                     onChange={(e) => setFriendSearchQuery(e.target.value)}
                     placeholder="Filtrar amigos..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-casino-gold/50 transition-colors"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 transition-colors"
                   />
                   {friendSearchQuery && (
                     <button
                       onClick={() => setFriendSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                      aria-label="Limpiar búsqueda"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none rounded"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

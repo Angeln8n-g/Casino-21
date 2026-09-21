@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Landmark, CheckCircle2, Filter, DollarSign, Send } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { PrizeClaim } from '../../../domain/sponsored-tournament';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export const PendingPrizesAdmin: React.FC = () => {
   const [claims, setClaims] = useState<(PrizeClaim & { profiles?: { username: string; email: string }; events?: { title: string; sponsor_name: string }; tx_ref?: string; payment_method?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
+  const claimModalRef = useFocusTrap({ isOpen: !!selectedClaim, onClose: () => setSelectedClaim(null) });
   const [paymentMethod, setPaymentMethod] = useState('Banreservas');
   const [txRef, setTxRef] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -95,9 +97,11 @@ export const PendingPrizesAdmin: React.FC = () => {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-slate-400" />
           <select
+            id="filter-claims-status"
+            aria-label="Filtrar reclamos de premios por estado"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-slate-950 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 outline-none cursor-pointer"
+            className="bg-slate-950 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:outline-none focus:border-emerald-400 cursor-pointer"
           >
             <option value="all">Todos los Reclamos</option>
             <option value="pending_claim">Reclamos Pendientes</option>
@@ -119,8 +123,8 @@ export const PendingPrizesAdmin: React.FC = () => {
       ) : claims.length === 0 ? (
         <div className="text-center py-12 text-slate-500 text-sm">No hay premios en esta categoría.</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[550px]">
             <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-3 px-4">Ganador</th>
@@ -177,8 +181,14 @@ export const PendingPrizesAdmin: React.FC = () => {
       {/* Modal de Confirmación de Pago */}
       {selectedClaim && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-black text-white uppercase flex items-center gap-2">
+          <div 
+            ref={claimModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="process-payout-title"
+            className="bg-slate-900 border-2 border-emerald-500/40 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+          >
+            <h3 id="process-payout-title" className="text-lg font-black text-white uppercase flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               Procesar Pago de Premio
             </h3>
@@ -187,11 +197,13 @@ export const PendingPrizesAdmin: React.FC = () => {
             </p>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5">Método de Pago / Banco</label>
+              <label htmlFor="payout-method" className="block text-xs font-bold text-slate-400 mb-1.5">Método de Pago / Banco</label>
               <select
+                id="payout-method"
+                aria-label="Método de pago o banco"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-400 cursor-pointer"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:outline-none focus:border-emerald-400 cursor-pointer"
               >
                 <option value="Banreservas">Banreservas</option>
                 <option value="PayPal">PayPal</option>
@@ -201,27 +213,29 @@ export const PendingPrizesAdmin: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5">Código / Referencia de Transacción (TX Ref)</label>
+              <label htmlFor="payout-tx-ref" className="block text-xs font-bold text-slate-400 mb-1.5">Código / Referencia de Transacción (TX Ref)</label>
               <input
+                id="payout-tx-ref"
+                aria-label="Código o referencia de transacción"
                 type="text"
                 value={txRef}
                 onChange={(e) => setTxRef(e.target.value)}
                 placeholder="Ej. REF-BR-98412"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus:border-emerald-400"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:outline-none focus:border-emerald-400"
               />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setSelectedClaim(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400/50 focus-visible:outline-none rounded-xl"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleMarkAsPaid}
                 disabled={processing}
-                className="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-5 py-2.5 rounded-xl text-xs shadow-lg uppercase tracking-wider cursor-pointer"
+                className="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-5 py-2.5 rounded-xl text-xs shadow-lg uppercase tracking-wider cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               >
                 {processing ? 'Guardando...' : 'Confirmar Pago'}
               </button>

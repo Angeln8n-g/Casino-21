@@ -208,33 +208,33 @@ export function QuestManager() {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-1">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Código (Único)</label>
-                <input required type="text" placeholder="ej: win_5_games" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.code} onChange={e => setCurrentQuest({...currentQuest, code: e.target.value})} />
+                <label htmlFor="quest-code" className="block text-xs font-bold text-gray-400 uppercase mb-1">Código (Único)</label>
+                <input id="quest-code" aria-label="Código único de la misión" required type="text" placeholder="ej: win_5_games" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.code} onChange={e => setCurrentQuest({...currentQuest, code: e.target.value})} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Título</label>
-                <input required type="text" placeholder="Título visible para el jugador" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.title} onChange={e => setCurrentQuest({...currentQuest, title: e.target.value})} />
+                <label htmlFor="quest-title" className="block text-xs font-bold text-gray-400 uppercase mb-1">Título</label>
+                <input id="quest-title" aria-label="Título de la misión" required type="text" placeholder="Título visible para el jugador" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.title} onChange={e => setCurrentQuest({...currentQuest, title: e.target.value})} />
               </div>
               
               <div className="md:col-span-3">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
-                <input required type="text" placeholder="Descripción detallada de la misión" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.description} onChange={e => setCurrentQuest({...currentQuest, description: e.target.value})} />
+                <label htmlFor="quest-description" className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
+                <input id="quest-description" aria-label="Descripción de la misión" required type="text" placeholder="Descripción detallada de la misión" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.description} onChange={e => setCurrentQuest({...currentQuest, description: e.target.value})} />
               </div>
 
               <div className="md:col-span-3">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tapete de la Misión</label>
+                <label htmlFor="quest-board-theme-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">Tapete de la Misión</label>
                 <div className="flex gap-2 items-center">
-                  <input type="text" placeholder="URL de textura del tapete" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" value={currentQuest.board_theme_url || ''} onChange={e => setCurrentQuest({...currentQuest, board_theme_url: e.target.value})} />
-                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                  <input id="quest-board-theme-url" aria-label="URL de textura del tapete de la misión" type="text" placeholder="URL de textura del tapete" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" value={currentQuest.board_theme_url || ''} onChange={e => setCurrentQuest({...currentQuest, board_theme_url: e.target.value})} />
+                  <label htmlFor="quest-board-file" aria-label="Subir tapete de misión" className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
                     {isUploading ? '...' : '🧵'}
-                    <input type="file" className="hidden" accept="image/*" onChange={handleThemeUpload} disabled={isUploading} />
+                    <input id="quest-board-file" aria-label="Seleccionar archivo de tapete de misión" type="file" className="hidden" accept="image/*" onChange={handleThemeUpload} disabled={isUploading} />
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo de Misión</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.quest_type} onChange={e => setCurrentQuest({...currentQuest, quest_type: e.target.value})}>
+                <label htmlFor="quest-type" className="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo de Misión</label>
+                <select id="quest-type" aria-label="Tipo de misión" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.quest_type} onChange={e => setCurrentQuest({...currentQuest, quest_type: e.target.value})}>
                   <option value="play_match">Jugar Partidas</option>
                   <option value="win_match">Ganar Partidas</option>
                   <option value="play_card">Jugar Cartas</option>
@@ -242,13 +242,13 @@ export function QuestManager() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Cantidad Objetivo</label>
-                <input required type="number" min="1" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.target_amount} onChange={e => setCurrentQuest({...currentQuest, target_amount: parseInt(e.target.value) || 1})} />
+                <label htmlFor="quest-target-amount" className="block text-xs font-bold text-gray-400 uppercase mb-1">Cantidad Objetivo</label>
+                <input id="quest-target-amount" aria-label="Cantidad objetivo" required type="number" min="1" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.target_amount} onChange={e => setCurrentQuest({...currentQuest, target_amount: parseInt(e.target.value) || 1})} />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Dificultad</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.difficulty} onChange={e => handleDifficultyChange(e.target.value as any)}>
+                <label htmlFor="quest-difficulty" className="block text-xs font-bold text-gray-400 uppercase mb-1">Dificultad</label>
+                <select id="quest-difficulty" aria-label="Dificultad de la misión" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.difficulty} onChange={e => handleDifficultyChange(e.target.value as any)}>
                   <option value="easy">Fácil (Easy)</option>
                   <option value="medium">Medio (Medium)</option>
                   <option value="hard">Difícil (Hard)</option>
@@ -257,18 +257,18 @@ export function QuestManager() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Recompensa Coins 🪙</label>
-                <input required type="number" min="0" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.reward_coins} onChange={e => setCurrentQuest({...currentQuest, reward_coins: parseInt(e.target.value) || 0})} />
+                <label htmlFor="quest-reward-coins" className="block text-xs font-bold text-gray-400 uppercase mb-1">Recompensa Coins 🪙</label>
+                <input id="quest-reward-coins" aria-label="Recompensa en monedas" required type="number" min="0" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.reward_coins} onChange={e => setCurrentQuest({...currentQuest, reward_coins: parseInt(e.target.value) || 0})} />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Recompensa XP</label>
-                <input required type="number" min="0" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.reward_xp} onChange={e => setCurrentQuest({...currentQuest, reward_xp: parseInt(e.target.value) || 0})} />
+                <label htmlFor="quest-reward-xp" className="block text-xs font-bold text-gray-400 uppercase mb-1">Recompensa XP</label>
+                <input id="quest-reward-xp" aria-label="Recompensa en XP" required type="number" min="0" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.reward_xp} onChange={e => setCurrentQuest({...currentQuest, reward_xp: parseInt(e.target.value) || 0})} />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Recompensa ELO 🏆</label>
-                <input required type="number" min="0" max="20" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.reward_elo} onChange={e => setCurrentQuest({...currentQuest, reward_elo: parseInt(e.target.value) || 0})} />
+                <label htmlFor="quest-reward-elo" className="block text-xs font-bold text-gray-400 uppercase mb-1">Recompensa ELO 🏆</label>
+                <input id="quest-reward-elo" aria-label="Recompensa en ELO" required type="number" min="0" max="20" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentQuest.reward_elo} onChange={e => setCurrentQuest({...currentQuest, reward_elo: parseInt(e.target.value) || 0})} />
                 <p className="text-[10px] text-gray-500 mt-1 italic">Sugerido para {currentQuest.difficulty}: +{ELO_SUGGESTIONS[currentQuest.difficulty as keyof typeof ELO_SUGGESTIONS]}</p>
               </div>
             </div>
@@ -281,8 +281,8 @@ export function QuestManager() {
         </div>
       ) : (
         <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-wider text-gray-400">
                   <th className="p-4 font-black">Misión</th>

@@ -198,12 +198,14 @@ export function AuthScreen() {
           <form onSubmit={handleAuth} className="space-y-3.5 sm:space-y-4">
             {!isLogin && !isRecovery && (
               <div>
-                <label className="block text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 mb-1 sm:mb-1.5 uppercase tracking-widest font-bold">Usuario</label>
+                <label htmlFor="auth-username" className="block text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 mb-1 sm:mb-1.5 uppercase tracking-widest font-bold">Usuario</label>
                 <input 
+                  id="auth-username"
+                  aria-label="Nombre de usuario"
                   type="text" 
                   value={username} 
                   onChange={e => setUsername(e.target.value)} 
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 xs:px-4 xs:py-3 text-base text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 xs:px-4 xs:py-3 text-base text-white placeholder-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
                   placeholder="Tu alias"
                   required
                   minLength={3}
@@ -213,12 +215,14 @@ export function AuthScreen() {
             )}
 
             <div>
-              <label className="block text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 mb-1 sm:mb-1.5 uppercase tracking-widest font-bold">Email</label>
+              <label htmlFor="auth-email" className="block text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 mb-1 sm:mb-1.5 uppercase tracking-widest font-bold">Email</label>
               <input 
+                id="auth-email"
+                aria-label="Correo electrónico"
                 type="email" 
                 value={email} 
                 onChange={e => setEmail(e.target.value)} 
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 xs:px-4 xs:py-3 text-base text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 xs:px-4 xs:py-3 text-base text-white placeholder-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
                 placeholder="tu@email.com"
                 required
               />
@@ -227,7 +231,7 @@ export function AuthScreen() {
             {!isRecovery && (
               <div>
                 <div className="flex items-center justify-between mb-1 sm:mb-1.5">
-                  <label className="block text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 uppercase tracking-widest font-bold">Contraseña</label>
+                  <label htmlFor="auth-password" className="block text-[9px] xs:text-[10px] sm:text-[11px] text-gray-500 uppercase tracking-widest font-bold">Contraseña</label>
                   {isLogin && (
                     <button 
                       type="button" 
@@ -239,10 +243,12 @@ export function AuthScreen() {
                   )}
                 </div>
                 <input 
+                  id="auth-password"
+                  aria-label="Contraseña"
                   type="password" 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 xs:px-4 xs:py-3 text-base text-white placeholder-gray-600 focus:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 xs:px-4 xs:py-3 text-base text-white placeholder-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 focus:bg-white/10 transition-all font-mono"
                   placeholder="••••••••"
                   required
                   minLength={6}

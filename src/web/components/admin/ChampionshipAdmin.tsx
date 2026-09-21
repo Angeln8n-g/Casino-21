@@ -281,8 +281,10 @@ export const ChampionshipAdmin: React.FC = () => {
                 <h4 className="text-sm font-bold text-yellow-400 uppercase tracking-wider">Parámetros Financieros</h4>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Pozo Base (USD):</label>
+                  <label htmlFor="champ-base-prize" className="block text-xs text-gray-400 mb-1">Pozo Base (USD):</label>
                   <input
+                    id="champ-base-prize"
+                    aria-label="Pozo base en USD"
                     type="number"
                     value={basePrize}
                     onChange={(e) => setBasePrize(Number(e.target.value))}
@@ -291,8 +293,10 @@ export const ChampionshipAdmin: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Pozo Actual en Vivo (USD):</label>
+                  <label htmlFor="champ-current-prize" className="block text-xs text-gray-400 mb-1">Pozo Actual en Vivo (USD):</label>
                   <input
+                    id="champ-current-prize"
+                    aria-label="Pozo actual en vivo en USD"
                     type="number"
                     step="0.01"
                     value={currentPrize}
@@ -302,8 +306,10 @@ export const ChampionshipAdmin: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Pozo Máximo Cap (USD):</label>
+                  <label htmlFor="champ-max-prize" className="block text-xs text-gray-400 mb-1">Pozo Máximo Cap (USD):</label>
                   <input
+                    id="champ-max-prize"
+                    aria-label="Pozo máximo tope en USD"
                     type="number"
                     value={maxPrize}
                     onChange={(e) => setMaxPrize(Number(e.target.value))}
@@ -316,8 +322,10 @@ export const ChampionshipAdmin: React.FC = () => {
                 <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Parámetros de Tráfico y Ads</h4>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Vistas Acumuladas Globales:</label>
+                  <label htmlFor="champ-global-views" className="block text-xs text-gray-400 mb-1">Vistas Acumuladas Globales:</label>
                   <input
+                    id="champ-global-views"
+                    aria-label="Vistas acumuladas globales"
                     type="number"
                     value={globalViews}
                     onChange={(e) => setGlobalViews(Number(e.target.value))}
@@ -326,8 +334,10 @@ export const ChampionshipAdmin: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tope Diario de Ads por Usuario:</label>
+                  <label htmlFor="champ-daily-cap" className="block text-xs text-gray-400 mb-1">Tope Diario de Ads por Usuario:</label>
                   <input
+                    id="champ-daily-cap"
+                    aria-label="Tope diario de ads por usuario"
                     type="number"
                     value={dailyCap}
                     onChange={(e) => setDailyCap(Number(e.target.value))}
@@ -398,6 +408,8 @@ export const ChampionshipAdmin: React.FC = () => {
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Moderación del Ranking</h3>
               <input
+                id="champ-search-user"
+                aria-label="Buscar participante por nombre de usuario"
                 type="text"
                 placeholder="Buscar por usuario..."
                 value={searchUser}
@@ -407,7 +419,8 @@ export const ChampionshipAdmin: React.FC = () => {
             </div>
 
             <div className="bg-black/40 rounded-2xl border border-white/10 overflow-hidden">
-              <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+                <table className="w-full text-left text-xs min-w-[550px]">
                 <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase">
                   <tr>
                     <th className="p-3">Rank</th>
@@ -442,6 +455,7 @@ export const ChampionshipAdmin: React.FC = () => {
                     ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}

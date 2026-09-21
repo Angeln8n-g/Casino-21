@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy, ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ChampionshipCelebrationModalProps {
   rankPosition: number;
@@ -15,9 +16,15 @@ export const ChampionshipCelebrationModal: React.FC<ChampionshipCelebrationModal
   onOpenKyc,
   onClose,
 }) => {
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   return (
     <div className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 font-['Chakra_Petch']">
       <motion.div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="¡Felicidades Campeón!"
         initial={{ opacity: 0, scale: 0.8, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.8, y: 30 }}
@@ -28,7 +35,8 @@ export const ChampionshipCelebrationModal: React.FC<ChampionshipCelebrationModal
 
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white/70 hover:text-white transition-colors cursor-pointer"
+          aria-label="Cerrar ventana de felicitaciones"
+          className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white/70 hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
         >
           <X className="w-5 h-5" />
         </button>

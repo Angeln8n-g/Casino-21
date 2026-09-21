@@ -135,20 +135,24 @@ export const SponsorLeadsAdmin: React.FC = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
           <input
+            id="sponsor-leads-search"
+            aria-label="Buscar prospectos por empresa, correo o teléfono"
             type="text"
             placeholder="Buscar por empresa, correo o teléfono..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500"
           />
         </div>
 
         <div className="flex items-center gap-2">
           <Filter className="text-gray-400 w-4 h-4" />
           <select
+            id="sponsor-leads-status-filter"
+            aria-label="Filtrar prospectos por estado"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="all">Todos los Estados</option>
             <option value="new">Nuevos</option>
@@ -197,11 +201,13 @@ export const SponsorLeadsAdmin: React.FC = () => {
 
             {/* Actions */}
             <div className="flex items-center gap-3 flex-shrink-0">
-              <label className="text-xs font-bold text-gray-400">Cambiar Estado:</label>
+              <label htmlFor={`lead-status-${item.id}`} className="text-xs font-bold text-gray-400">Cambiar Estado:</label>
               <select
+                id={`lead-status-${item.id}`}
+                aria-label={`Cambiar estado de ${item.company_name}`}
                 value={item.status}
                 onChange={(e) => handleStatusChange(item.id, e.target.value as any)}
-                className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="new">Nuevo</option>
                 <option value="contacted">Contactado</option>

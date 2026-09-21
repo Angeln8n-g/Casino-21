@@ -75,12 +75,12 @@ function LegendLeaderboard({ leaderboard, onOpenTop100, calculateProjection }: P
         </div>
 
         {/* TABLERO DE LEYENDAS - TABLA DE TOP 10 CON BORDE DORADO Y FONDO NEGRO */}
-        <div className="relative bg-black border-2 border-yellow-500/40 rounded-3xl p-4 sm:p-7 shadow-[0_0_50px_rgba(251,191,36,0.15)] overflow-hidden backdrop-blur-xl">
+        <div className="relative bg-black border-2 border-yellow-500/40 rounded-3xl p-3 xs:p-4 sm:p-7 shadow-[0_0_50px_rgba(251,191,36,0.15)] overflow-hidden backdrop-blur-xl">
           <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-yellow-500/10 to-transparent rounded-bl-full pointer-events-none" />
 
           {/* Contenedor con Scroll Horizontal en Móvil */}
-          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-yellow-500/20">
-            <table className="w-full text-left border-collapse min-w-[620px]">
+          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-yellow-500/20 touch-pan-x">
+            <table className="w-full text-left border-collapse min-w-[480px] sm:min-w-[620px]">
               <thead>
                 <tr className="border-b border-yellow-500/20 text-yellow-400/80 text-xs font-black uppercase font-['Chakra_Petch'] tracking-wider">
                   <th className="py-3 px-4 w-20">Puesto</th>
@@ -235,10 +235,12 @@ function LegendLeaderboard({ leaderboard, onOpenTop100, calculateProjection }: P
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-              <label className="block text-sm font-bold text-gray-300 font-['Chakra_Petch'] mb-3">
+              <label htmlFor="calc-ads-per-day" className="block text-sm font-bold text-gray-300 font-['Chakra_Petch'] mb-3">
                 Ads que verás por día: <span className="text-yellow-400 font-black text-lg">{calcAdsPerDay} ads/día</span>
               </label>
               <input
+                id="calc-ads-per-day"
+                aria-label="Anuncios que verás por día"
                 type="range"
                 min="5"
                 max="100"

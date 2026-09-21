@@ -142,11 +142,13 @@ export function ChatEmojiPicker({ onSelect, onClose, compact }: ChatEmojiPickerP
       {/* Search */}
       <div className="px-2 pt-2 pb-1">
         <input
+          id="chat-emoji-search-input"
+          aria-label="Buscar emoji"
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar emoji..."
-          className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-casino-gold/40 transition-colors"
+          className="w-full bg-white/[0.05] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/40 focus-visible:outline-none focus:border-casino-gold/40 transition-colors"
           autoFocus
         />
       </div>

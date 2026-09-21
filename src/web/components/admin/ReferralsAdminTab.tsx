@@ -115,28 +115,30 @@ export const ReferralsAdminTab: React.FC = () => {
         </h4>
 
         <div className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase">
-              <tr>
-                <th className="p-3.5">Posición</th>
-                <th className="p-3.5">Usuario Referente</th>
-                <th className="p-3.5">Amigos Invitados</th>
-                <th className="p-3.5">Amigos Calificados</th>
-                <th className="p-3.5 text-right">Puntos Bonus Ganados</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {topReferrers.map((r, idx) => (
-                <tr key={r.username} className="hover:bg-white/[0.02]">
-                  <td className="p-3.5 font-mono font-bold text-yellow-400">#{idx + 1}</td>
-                  <td className="p-3.5 font-bold text-white">@{r.username}</td>
-                  <td className="p-3.5 font-mono text-gray-300">{r.total_referrals} amigos</td>
-                  <td className="p-3.5 font-mono text-emerald-400 font-bold">{r.qualified_referrals} calificados</td>
-                  <td className="p-3.5 font-mono text-purple-400 font-black text-right">+{r.bonus_points} pts</td>
+          <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+            <table className="w-full text-left text-xs min-w-[550px]">
+              <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase">
+                <tr>
+                  <th className="p-3.5">Posición</th>
+                  <th className="p-3.5">Usuario Referente</th>
+                  <th className="p-3.5">Amigos Invitados</th>
+                  <th className="p-3.5">Amigos Calificados</th>
+                  <th className="p-3.5 text-right">Puntos Bonus Ganados</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {topReferrers.map((r, idx) => (
+                  <tr key={r.username} className="hover:bg-white/[0.02]">
+                    <td className="p-3.5 font-mono font-bold text-yellow-400">#{idx + 1}</td>
+                    <td className="p-3.5 font-bold text-white">@{r.username}</td>
+                    <td className="p-3.5 font-mono text-gray-300">{r.total_referrals} amigos</td>
+                    <td className="p-3.5 font-mono text-emerald-400 font-bold">{r.qualified_referrals} calificados</td>
+                    <td className="p-3.5 font-mono text-purple-400 font-black text-right">+{r.bonus_points} pts</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

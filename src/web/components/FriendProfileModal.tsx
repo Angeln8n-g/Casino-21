@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
 import { socketService } from '../services/socket';
 import { ChatWindow } from './ChatWindow';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export interface FriendForModal {
   id: string;
@@ -185,11 +186,17 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
     return `${secs}s`;
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   const content = (
     <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
 
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Perfil de Amigo"
         className={`relative w-full max-w-sm rounded-3xl border border-[#2A2722] overflow-hidden shadow-2xl transition-all duration-300 bg-[#1A1815] ${
           showChat ? 'h-[550px] max-h-[85vh] flex flex-col' : ''
         }`}
@@ -202,7 +209,8 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
         {!showChat && (
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10"
+            aria-label="Cerrar ventana"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-gray-400 hover:text-white transition-all z-20 border border-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -372,14 +380,16 @@ export function FriendProfileModal({ friend, onClose, onOpenChat }: FriendProfil
                     <>
                       {/* Selector de mensaje pre-configurado */}
                       <div className="text-left space-y-1.5">
-                        <label className="text-[10px] text-gray-500 uppercase tracking-widest font-black">
+                        <label htmlFor="friend-push-invite-message" className="text-[10px] text-gray-500 uppercase tracking-widest font-black cursor-pointer">
                           Mensaje de Invitación (Push)
                         </label>
                         <div className="relative">
                           <select
+                            id="friend-push-invite-message"
+                            aria-label="Mensaje de invitación push"
                             value={selectedMessage}
                             onChange={(e) => setSelectedMessage(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl bg-[#0F0E0C] border border-[#2A2722] text-white text-xs font-medium focus:outline-none focus:border-casino-gold/50 appearance-none cursor-pointer"
+                            className="w-full px-4 py-2.5 rounded-xl bg-[#0F0E0C] border border-[#2A2722] text-white text-xs font-medium focus:outline-none focus:border-casino-gold/50 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none appearance-none cursor-pointer"
                           >
                             {PRESET_MESSAGES.map((msg) => (
                               <option key={msg.text} value={msg.text} className="bg-[#0F0E0C]">

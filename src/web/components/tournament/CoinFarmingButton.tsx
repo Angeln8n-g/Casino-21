@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Play, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../services/supabase';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface CoinFarmingButtonProps {
   sponsorName: string;
@@ -22,6 +23,10 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
   onCoinsUpdated
 }) => {
   const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const modalRef = useFocusTrap({
+    isOpen: isWatchingAd,
+    closeOnEscape: false,
+  });
   const [adSecondsRemaining, setAdSecondsRemaining] = useState(15);
   const [adCompleted, setAdCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -143,7 +148,7 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
       {/* Botón de Farmeo */}
       <button
         onClick={startAd}
-        className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all"
+        className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
       >
         <Play className="w-5 h-5 fill-slate-950" />
         <span>Ver Anuncio de {sponsorName} (+{rewardCoinsPerAd} Monedas)</span>
@@ -152,7 +157,13 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
       {/* Modal de Anuncio de Farmeo */}
       {isWatchingAd && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
+          <div 
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ad-sponsor-title"
+            className="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl"
+          >
             {/* Cabecera del reproductor */}
             <div className="bg-slate-950 p-3 px-4 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -178,7 +189,7 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
                 </div>
               )}
 
-              <h3 className="text-2xl font-black text-white mb-2">{sponsorName}</h3>
+              <h3 id="ad-sponsor-title" className="text-2xl font-black text-white mb-2">{sponsorName}</h3>
               <p className="text-sm text-slate-300 max-w-xs mb-6">
                 "Disfruta de las mejores promociones exclusivas en Kasino21 gracias a {sponsorName}"
               </p>
@@ -192,7 +203,7 @@ export const CoinFarmingButton: React.FC<CoinFarmingButtonProps> = ({
                 <button
                   onClick={claimReward}
                   disabled={loading}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-6 py-3 rounded-xl flex items-center gap-2 text-base shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-6 py-3 rounded-xl flex items-center gap-2 text-base shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none cursor-pointer"
                 >
                   <CheckCircle2 className="w-5 h-5" />
                   {loading ? 'Reclamando...' : `Reclamar +${rewardCoinsPerAd} Monedas`}

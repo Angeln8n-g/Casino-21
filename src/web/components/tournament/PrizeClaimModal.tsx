@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Clock, Landmark, Send, CheckCircle2, ShieldCheck, AlertCircle, X } from 'lucide-react';
 import { PrizeClaim, DOMINICAN_BANKS } from '../../../domain/sponsored-tournament';
 import { supabase } from '../../services/supabase';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface PrizeClaimModalProps {
   claim: PrizeClaim;
@@ -138,14 +139,23 @@ export const PrizeClaimModal: React.FC<PrizeClaimModalProps> = ({
     }
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ isOpen, onClose });
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-amber-500/30 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative">
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reclamar Premio"
+        className="bg-slate-900 border border-amber-500/30 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative"
+      >
         {/* Header de Premio */}
         <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 p-6 text-slate-950 relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 p-2 rounded-full transition-all"
+            aria-label="Cerrar ventana de reclamo"
+            className="absolute top-4 right-4 bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 p-2 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-slate-950/50 focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -174,45 +184,53 @@ export const PrizeClaimModal: React.FC<PrizeClaimModalProps> = ({
               </p>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Nombre Completo (como sale en la cédula)</label>
+                <label htmlFor="claim-full-name" className="block text-xs font-bold text-slate-400 mb-1">Nombre Completo (como sale en la cédula)</label>
                 <input
+                  id="claim-full-name"
+                  aria-label="Nombre completo como figura en la cédula"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Ej. Juan Pérez Rosario"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Cédula</label>
+                  <label htmlFor="claim-id-card" className="block text-xs font-bold text-slate-400 mb-1">Cédula</label>
                   <input
+                    id="claim-id-card"
+                    aria-label="Número de cédula"
                     type="text"
                     value={idCardNumber}
                     onChange={(e) => setIdCardNumber(e.target.value)}
                     placeholder="001-0000000-0"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Teléfono</label>
+                  <label htmlFor="claim-phone-number" className="block text-xs font-bold text-slate-400 mb-1">Teléfono</label>
                   <input
+                    id="claim-phone-number"
+                    aria-label="Número de teléfono"
                     type="text"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="809-000-0000"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">Banco</label>
+                <label htmlFor="claim-bank-name" className="block text-xs font-bold text-slate-400 mb-1">Banco</label>
                 <select
+                  id="claim-bank-name"
+                  aria-label="Seleccionar banco dominicano"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
                 >
                   {DOMINICAN_BANKS.map((bank) => (
                     <option key={bank} value={bank}>
@@ -223,13 +241,15 @@ export const PrizeClaimModal: React.FC<PrizeClaimModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1">No. de Cuenta Bancaria</label>
+                <label htmlFor="claim-account-number" className="block text-xs font-bold text-slate-400 mb-1">No. de Cuenta Bancaria</label>
                 <input
+                  id="claim-account-number"
+                  aria-label="Número de cuenta bancaria"
                   type="text"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
                   placeholder="No. de Cuenta"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-400 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
                 />
               </div>
 
@@ -262,6 +282,8 @@ export const PrizeClaimModal: React.FC<PrizeClaimModalProps> = ({
               </p>
 
               <input
+                id="claim-otp-code"
+                aria-label="Código de verificación SMS de 6 dígitos"
                 type="text"
                 maxLength={6}
                 value={otpCode}

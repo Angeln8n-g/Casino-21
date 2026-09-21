@@ -664,24 +664,24 @@ export function AdminPanel() {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Título</label>
-                <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.title} onChange={e => setCurrentEvent({...currentEvent, title: e.target.value})} />
+                <label htmlFor="event-title" className="block text-xs font-bold text-gray-400 uppercase mb-1">Título</label>
+                <input id="event-title" aria-label="Título del evento" required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.title} onChange={e => setCurrentEvent({...currentEvent, title: e.target.value})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Premio (Texto)</label>
-                <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.prize_pool} onChange={e => setCurrentEvent({...currentEvent, prize_pool: e.target.value})} />
+                <label htmlFor="event-prize-pool" className="block text-xs font-bold text-gray-400 uppercase mb-1">Premio (Texto)</label>
+                <input id="event-prize-pool" aria-label="Premio del evento" required type="text" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.prize_pool} onChange={e => setCurrentEvent({...currentEvent, prize_pool: e.target.value})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.type} onChange={e => setCurrentEvent({...currentEvent, type: e.target.value as any})}>
+                <label htmlFor="event-type" className="block text-xs font-bold text-gray-400 uppercase mb-1">Tipo</label>
+                <select id="event-type" aria-label="Tipo de evento" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.type} onChange={e => setCurrentEvent({...currentEvent, type: e.target.value as any})}>
                   <option value="torneo">Torneo</option>
                   <option value="liga">Liga</option>
                   <option value="especial">Especial</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Estado</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.status} onChange={e => setCurrentEvent({...currentEvent, status: e.target.value as any})}>
+                <label htmlFor="event-status" className="block text-xs font-bold text-gray-400 uppercase mb-1">Estado</label>
+                <select id="event-status" aria-label="Estado del evento" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.status} onChange={e => setCurrentEvent({...currentEvent, status: e.target.value as any})}>
                   <option value="draft">Borrador (Draft)</option>
                   <option value="upcoming">Próximo</option>
                   <option value="live">En Vivo</option>
@@ -689,20 +689,20 @@ export function AdminPanel() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha de Inicio</label>
-                <input type="datetime-local" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white [color-scheme:dark]" value={currentEvent.start_date || ''} onChange={e => setCurrentEvent({...currentEvent, start_date: e.target.value})} />
+                <label htmlFor="event-start-date" className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha de Inicio</label>
+                <input id="event-start-date" aria-label="Fecha de inicio del evento" type="datetime-local" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white [color-scheme:dark]" value={currentEvent.start_date || ''} onChange={e => setCurrentEvent({...currentEvent, start_date: e.target.value})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha de Fin</label>
-                <input type="datetime-local" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white [color-scheme:dark]" value={currentEvent.end_date || ''} onChange={e => setCurrentEvent({...currentEvent, end_date: e.target.value})} />
+                <label htmlFor="event-end-date" className="block text-xs font-bold text-gray-400 uppercase mb-1">Fecha de Fin</label>
+                <input id="event-end-date" aria-label="Fecha de fin del evento" type="datetime-local" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white [color-scheme:dark]" value={currentEvent.end_date || ''} onChange={e => setCurrentEvent({...currentEvent, end_date: e.target.value})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Costo de Entrada (Monedas)</label>
-                <input type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.entry_fee} onChange={e => setCurrentEvent({...currentEvent, entry_fee: parseInt(e.target.value) || 0})} />
+                <label htmlFor="event-entry-fee" className="block text-xs font-bold text-gray-400 uppercase mb-1">Costo de Entrada (Monedas)</label>
+                <input id="event-entry-fee" aria-label="Costo de entrada en monedas" type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.entry_fee} onChange={e => setCurrentEvent({...currentEvent, entry_fee: parseInt(e.target.value) || 0})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Máx. Participantes</label>
-                <select className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.max_participants} onChange={e => setCurrentEvent({...currentEvent, max_participants: parseInt(e.target.value)})}>
+                <label htmlFor="event-max-participants" className="block text-xs font-bold text-gray-400 uppercase mb-1">Máx. Participantes</label>
+                <select id="event-max-participants" aria-label="Máximo de participantes" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.max_participants} onChange={e => setCurrentEvent({...currentEvent, max_participants: parseInt(e.target.value)})}>
                   <option value={8}>8 Jugadores</option>
                   <option value={16}>16 Jugadores</option>
                   <option value={32}>32 Jugadores</option>
@@ -713,36 +713,36 @@ export function AdminPanel() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">ELO Mínimo</label>
-                <input type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.min_elo} onChange={e => setCurrentEvent({...currentEvent, min_elo: parseInt(e.target.value) || 0})} />
+                <label htmlFor="event-min-elo" className="block text-xs font-bold text-gray-400 uppercase mb-1">ELO Mínimo</label>
+                <input id="event-min-elo" aria-label="ELO mínimo requerido" type="number" className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.min_elo} onChange={e => setCurrentEvent({...currentEvent, min_elo: parseInt(e.target.value) || 0})} />
               </div>
               <div className="md:col-span-1">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Imagen del Evento</label>
+                <label htmlFor="event-image-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">Imagen del Evento</label>
                 <div className="flex gap-2 items-center">
-                  <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL o subir archivo" value={currentEvent.image_url} onChange={e => setCurrentEvent({...currentEvent, image_url: e.target.value})} />
-                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                  <input id="event-image-url" aria-label="URL de la imagen del evento" type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL o subir archivo" value={currentEvent.image_url} onChange={e => setCurrentEvent({...currentEvent, image_url: e.target.value})} />
+                  <label aria-label="Subir archivo de imagen" className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
                     {isUploading ? '...' : '📁'}
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'image')} disabled={isUploading} />
+                    <input aria-label="Seleccionar imagen de evento" type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'image')} disabled={isUploading} />
                   </label>
                 </div>
               </div>
               <div className="md:col-span-1">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Audio del Evento (Llaves)</label>
+                <label htmlFor="event-audio-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">Audio del Evento (Llaves)</label>
                 <div className="flex gap-2 items-center">
-                  <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL o subir archivo" value={currentEvent.audio_url || ''} onChange={e => setCurrentEvent({...currentEvent, audio_url: e.target.value})} />
-                  <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                  <input id="event-audio-url" aria-label="URL del audio del evento" type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL o subir archivo" value={currentEvent.audio_url || ''} onChange={e => setCurrentEvent({...currentEvent, audio_url: e.target.value})} />
+                  <label aria-label="Subir archivo de audio" className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
                     {isUploading ? '...' : '🎵'}
-                    <input type="file" className="hidden" accept="audio/*" onChange={(e) => handleFileUpload(e, 'audio')} disabled={isUploading} />
+                    <input aria-label="Seleccionar audio de evento" type="file" className="hidden" accept="audio/*" onChange={(e) => handleFileUpload(e, 'audio')} disabled={isUploading} />
                   </label>
                 </div>
               </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tapete del Evento</label>
+                  <label htmlFor="event-board-theme-url" className="block text-xs font-bold text-gray-400 uppercase mb-1">Tapete del Evento</label>
                   <div className="flex gap-2 items-center">
-                    <input type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL de textura del tapete" value={currentEvent.board_theme_url || ''} onChange={e => setCurrentEvent({...currentEvent, board_theme_url: e.target.value})} />
-                    <label className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
+                    <input id="event-board-theme-url" aria-label="URL de textura del tapete" type="text" className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm" placeholder="URL de textura del tapete" value={currentEvent.board_theme_url || ''} onChange={e => setCurrentEvent({...currentEvent, board_theme_url: e.target.value})} />
+                    <label aria-label="Subir archivo de tapete" className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
                       {isUploading ? '...' : '🧵'}
-                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'boardTheme')} disabled={isUploading} />
+                      <input aria-label="Seleccionar tapete de evento" type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'boardTheme')} disabled={isUploading} />
                     </label>
                   </div>
                 </div>
@@ -751,6 +751,8 @@ export function AdminPanel() {
               <div className="md:col-span-2 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-4 space-y-4">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
+                    id="event-is-sponsored"
+                    aria-label="Convertir en Torneo Semántico Patrocinado por Marca"
                     type="checkbox"
                     checked={!!currentEvent.is_sponsored}
                     onChange={(e) => setCurrentEvent({ ...currentEvent, is_sponsored: e.target.checked })}
@@ -769,8 +771,10 @@ export function AdminPanel() {
                 {currentEvent.is_sponsored && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-amber-500/20">
                     <div>
-                      <label className="block text-xs font-bold text-amber-400 uppercase mb-1">Nombre de la Marca (Sponsor)</label>
+                      <label htmlFor="event-sponsor-name" className="block text-xs font-bold text-amber-400 uppercase mb-1">Nombre de la Marca (Sponsor)</label>
                       <input
+                        id="event-sponsor-name"
+                        aria-label="Nombre de la marca patrocinadora"
                         type="text"
                         placeholder="Ej. Banco Popular, JUMBO, Red Bull"
                         className="w-full bg-black/60 border border-amber-500/40 rounded-lg px-3 py-2 text-white text-sm"
@@ -779,8 +783,10 @@ export function AdminPanel() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-amber-400 uppercase mb-1">Bolsa de Premio Real ($ USD)</label>
+                      <label htmlFor="event-cash-prize-pool" className="block text-xs font-bold text-amber-400 uppercase mb-1">Bolsa de Premio Real ($ USD)</label>
                       <input
+                        id="event-cash-prize-pool"
+                        aria-label="Bolsa de premio real en dólares"
                         type="number"
                         placeholder="Ej. 150"
                         className="w-full bg-black/60 border border-amber-500/40 rounded-lg px-3 py-2 text-white text-sm"
@@ -789,8 +795,10 @@ export function AdminPanel() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Logo del Sponsor</label>
+                      <label htmlFor="event-sponsor-logo-url" className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Logo del Sponsor</label>
                       <input
+                        id="event-sponsor-logo-url"
+                        aria-label="URL del logo del sponsor"
                         type="text"
                         placeholder="https://.../logo.png"
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
@@ -799,8 +807,10 @@ export function AdminPanel() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Banner del Sponsor</label>
+                      <label htmlFor="event-sponsor-banner-url" className="block text-xs font-bold text-slate-300 uppercase mb-1">URL Banner del Sponsor</label>
                       <input
+                        id="event-sponsor-banner-url"
+                        aria-label="URL del banner del sponsor"
                         type="text"
                         placeholder="https://.../banner.png"
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
@@ -809,9 +819,11 @@ export function AdminPanel() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Color Principal de Marca</label>
+                      <label htmlFor="event-brand-primary-color" className="block text-xs font-bold text-slate-300 uppercase mb-1">Color Principal de Marca</label>
                       <div className="flex gap-2 items-center">
                         <input
+                          id="event-brand-primary-color-picker"
+                          aria-label="Selector de color principal de marca"
                           type="color"
                           className="w-10 h-9 bg-transparent border-0 rounded cursor-pointer"
                           value={currentEvent.brand_theme?.primaryColor || '#f59e0b'}
@@ -821,6 +833,8 @@ export function AdminPanel() {
                           })}
                         />
                         <input
+                          id="event-brand-primary-color"
+                          aria-label="Código hexadecimal de color principal de marca"
                           type="text"
                           className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono"
                           value={currentEvent.brand_theme?.primaryColor || '#f59e0b'}
@@ -836,12 +850,12 @@ export function AdminPanel() {
               </div>
                 
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
-                <textarea required rows={2} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.description} onChange={e => setCurrentEvent({...currentEvent, description: e.target.value})} />
+                <label htmlFor="event-description" className="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción</label>
+                <textarea id="event-description" aria-label="Descripción del evento" required rows={2} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white" value={currentEvent.description} onChange={e => setCurrentEvent({...currentEvent, description: e.target.value})} />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Reglas del Evento</label>
-                <textarea required rows={4} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm" placeholder="Ej: Las partidas duran 10 min. Eliminación directa..." value={currentEvent.rules} onChange={e => setCurrentEvent({...currentEvent, rules: e.target.value})} />
+                <label htmlFor="event-rules" className="block text-xs font-bold text-gray-400 uppercase mb-1">Reglas del Evento</label>
+                <textarea id="event-rules" aria-label="Reglas del evento" required rows={4} className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm" placeholder="Ej: Las partidas duran 10 min. Eliminación directa..." value={currentEvent.rules} onChange={e => setCurrentEvent({...currentEvent, rules: e.target.value})} />
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-4">
@@ -852,8 +866,8 @@ export function AdminPanel() {
         </div>
       ) : (
         <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+            <table className="w-full text-left border-collapse min-w-[550px]">
               <thead>
                 <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-wider text-gray-400">
                   <th className="p-4 font-black">Título</th>

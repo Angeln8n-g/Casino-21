@@ -273,8 +273,8 @@ function CookieTable({
           <p className="text-xs text-gray-500">{description}</p>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+      <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+        <table className="w-full text-xs min-w-[500px]">
           <thead>
             <tr className="border-b border-white/5 bg-black/20">
               <th className="text-left px-4 py-2 text-gray-600 font-bold uppercase tracking-wider">Nombre de la Cookie</th>

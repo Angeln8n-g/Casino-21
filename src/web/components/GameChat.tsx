@@ -199,17 +199,20 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
         {/* Input Area */}
         <form onSubmit={handleSend} className="p-2 border-t border-white/10 bg-black/40 flex gap-2">
           <input 
+            id="game-chat-input-overlay"
+            aria-label="Escribe un mensaje de chat"
             type="text" 
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={isSpectator && activeTab === 'global' ? 'Solo lectura...' : 'Escribe un mensaje...'}
             disabled={isSpectator && activeTab === 'global'}
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-casino-gold/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button 
             type="submit"
+            aria-label="Enviar mensaje"
             disabled={!inputText.trim() || (isSpectator && activeTab === 'global')}
-            className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
           >
             <Send size={14} />
           </button>
@@ -315,17 +318,20 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
           {/* Input Area */}
           <form onSubmit={handleSend} className="p-2 border-t border-white/10 bg-black/40 flex gap-2">
             <input 
+              id="game-chat-input-drawer"
+              aria-label="Escribe un mensaje de chat"
               type="text" 
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={isSpectator && activeTab === 'global' ? 'Solo lectura...' : 'Escribe un mensaje...'}
               disabled={isSpectator && activeTab === 'global'}
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-casino-gold/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button 
               type="submit"
+              aria-label="Enviar mensaje"
               disabled={!inputText.trim() || (isSpectator && activeTab === 'global')}
-              className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center bg-casino-gold/20 text-casino-gold border border-casino-gold/30 rounded-lg hover:bg-casino-gold hover:text-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
             >
               <Send size={14} />
             </button>

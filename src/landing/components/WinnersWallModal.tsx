@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import type { WinnerProofItem } from '../hooks/useChampionshipLanding';
+import { useFocusTrap } from '../../web/hooks/useFocusTrap';
 
 interface Props {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export default function WinnersWallModal({ isOpen, onClose, winners }: Props) {
+  const modalRef = useFocusTrap({ isOpen, onClose });
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -23,6 +26,10 @@ export default function WinnersWallModal({ isOpen, onClose, winners }: Props) {
           />
 
           <motion.div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="winners-wall-title"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -35,14 +42,15 @@ export default function WinnersWallModal({ isOpen, onClose, winners }: Props) {
                   <ShieldCheck size={20} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black font-['Russo_One'] text-white uppercase">MURO DE GANADORES Y PAGOS</h3>
+                  <h3 id="winners-wall-title" className="text-xl font-black font-['Russo_One'] text-white uppercase">MURO DE GANADORES Y PAGOS</h3>
                   <p className="text-xs text-gray-400 font-['Chakra_Petch']">Histórico de transferencias verificadas a jugadores</p>
                 </div>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar muro de ganadores"
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>

@@ -73,9 +73,10 @@ export default function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden text-white p-2 focus:outline-none hover:text-yellow-400 transition-colors"
+          className="md:hidden text-white p-2 focus:outline-none hover:text-yellow-400 transition-colors focus-visible:ring-2 focus-visible:ring-yellow-400/60 focus-visible:outline-none rounded-lg"
           onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Menú"
+          aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={menuOpen}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {menuOpen ? (

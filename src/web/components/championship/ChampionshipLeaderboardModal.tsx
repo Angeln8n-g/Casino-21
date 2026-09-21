@@ -3,6 +3,7 @@ import { X, Search, Copy, CheckCircle2, Trophy, Users, RefreshCw } from 'lucide-
 import { motion } from 'framer-motion';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export interface ParticipantItem {
   rank: number;
@@ -315,9 +316,15 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
     p.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   return (
     <div className="fixed inset-0 z-[1000] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 pt-16 sm:pt-20 pb-6 font-['Chakra_Petch']">
       <motion.div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Clasificación del Campeonato"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -327,8 +334,9 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
         <div className="relative p-5 sm:p-6 bg-gradient-to-r from-slate-950 via-[#0d142b] to-slate-950 border-b border-white/10 flex-shrink-0">
           <button 
             onClick={onClose} 
-            className="absolute top-4 right-4 z-20 p-2.5 bg-black/60 hover:bg-black/80 rounded-full text-white/70 hover:text-yellow-400 border border-white/20 transition-all cursor-pointer shadow-lg"
+            className="absolute top-4 right-4 z-20 p-2.5 bg-black/60 hover:bg-black/80 rounded-full text-white/70 hover:text-yellow-400 border border-white/20 transition-all cursor-pointer shadow-lg focus-visible:ring-2 focus-visible:ring-yellow-400/50 focus-visible:outline-none"
             title="Cerrar Ranking"
+            aria-label="Cerrar ranking"
           >
             <X className="w-5 h-5" />
           </button>
@@ -344,21 +352,21 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <div className="bg-black/50 border border-white/10 rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-[90px] sm:min-w-[100px]">
-                <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Participantes</span>
-                <span className="text-base sm:text-lg font-black text-white font-mono">{totalCount.toLocaleString()}</span>
+            <div className="grid grid-cols-3 gap-1.5 xs:gap-2 sm:flex sm:gap-3 w-full sm:w-auto">
+              <div className="bg-black/50 border border-white/10 rounded-xl p-2 xs:p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-0 sm:min-w-[100px]">
+                <span className="text-[8px] xs:text-[9px] text-gray-400 uppercase tracking-wider sm:tracking-widest font-bold">Participantes</span>
+                <span className="text-sm xs:text-base sm:text-lg font-black text-white font-mono">{totalCount.toLocaleString()}</span>
               </div>
-              <div className="bg-black/50 border border-yellow-500/30 rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-[90px] sm:min-w-[100px]">
-                <span className="text-[9px] text-yellow-400/90 uppercase tracking-widest font-bold">Tu Rank</span>
-                <span className="text-base sm:text-lg font-black text-casino-gold font-mono">
-                  {userRank ? `#${userRank}` : 'Sin Clasificar'}
+              <div className="bg-black/50 border border-yellow-500/30 rounded-xl p-2 xs:p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-0 sm:min-w-[100px]">
+                <span className="text-[8px] xs:text-[9px] text-yellow-400/90 uppercase tracking-wider sm:tracking-widest font-bold">Tu Rank</span>
+                <span className="text-sm xs:text-base sm:text-lg font-black text-casino-gold font-mono truncate max-w-full">
+                  {userRank ? `#${userRank}` : 'Sin Cl.'}
                 </span>
               </div>
-              <div className="bg-black/50 border border-white/10 rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-[90px] sm:min-w-[100px]">
-                <span className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Ads Hoy</span>
-                <span className="text-base sm:text-lg font-black text-white font-mono">
-                  {userAdsToday}<span className="text-xs text-gray-500">/{dailyCap}</span>
+              <div className="bg-black/50 border border-white/10 rounded-xl p-2 xs:p-2.5 sm:p-3 flex flex-col items-center justify-center min-w-0 sm:min-w-[100px]">
+                <span className="text-[8px] xs:text-[9px] text-gray-400 uppercase tracking-wider sm:tracking-widest font-bold">Ads Hoy</span>
+                <span className="text-sm xs:text-base sm:text-lg font-black text-white font-mono">
+                  {userAdsToday}<span className="text-[10px] xs:text-xs text-gray-500">/{dailyCap}</span>
                 </span>
               </div>
             </div>
@@ -420,11 +428,13 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input 
+              id="championship-leaderboard-search"
+              aria-label="Buscar usuario en la tabla de clasificación"
               type="text" 
               placeholder="Buscar por usuario..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:border-casino-gold outline-none transition-colors"
+              className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:border-casino-gold outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none transition-colors"
             />
           </div>
 
@@ -463,7 +473,7 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
         </div>
 
         {/* Content Area (Ranking or History) */}
-        <div className="flex-1 overflow-y-auto bg-[#060a17] p-0 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto overflow-x-auto bg-[#060a17] p-0 custom-scrollbar touch-pan-x">
           {activeTab === 'history' ? (
             <div className="p-4 space-y-3 font-['Chakra_Petch']">
               <h4 className="text-sm font-bold text-casino-gold uppercase tracking-wider mb-2">
@@ -474,30 +484,32 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
                   Aún no tienes registros recientes de anuncios vistos.
                 </div>
               ) : (
-                <table className="w-full text-left text-xs whitespace-nowrap">
-                  <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase">
-                    <tr>
-                      <th className="p-3">Fecha / Hora</th>
-                      <th className="p-3">Tipo de Anuncio</th>
-                      <th className="p-3 text-right">Puntos Otorgados</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {adHistory.map(log => (
-                      <tr key={log.id} className="hover:bg-white/[0.02]">
-                        <td className="p-3 font-mono text-gray-300">
-                          {new Date(log.created_at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </td>
-                        <td className="p-3 text-white font-bold capitalize">
-                          {log.ad_type} · {log.event_type}
-                        </td>
-                        <td className="p-3 text-right font-mono font-black text-casino-gold">
-                          +{log.event_type === 'click' ? 3 : 1} pts
-                        </td>
+                <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+                  <table className="w-full text-left text-xs whitespace-nowrap min-w-[420px]">
+                    <thead className="bg-white/5 border-b border-white/10 text-gray-400 uppercase">
+                      <tr>
+                        <th className="p-3">Fecha / Hora</th>
+                        <th className="p-3">Tipo de Anuncio</th>
+                        <th className="p-3 text-right">Puntos Otorgados</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {adHistory.map(log => (
+                        <tr key={log.id} className="hover:bg-white/[0.02]">
+                          <td className="p-3 font-mono text-gray-300">
+                            {new Date(log.created_at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td className="p-3 text-white font-bold capitalize">
+                            {log.ad_type} · {log.event_type}
+                          </td>
+                          <td className="p-3 text-right font-mono font-black text-casino-gold">
+                            +{log.event_type === 'click' ? 3 : 1} pts
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           ) : loading ? (
@@ -513,7 +525,8 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
               </p>
             </div>
           ) : (
-            <table className="w-full text-left text-xs whitespace-nowrap font-['Chakra_Petch']">
+            <div className="overflow-x-auto custom-scrollbar touch-pan-x">
+              <table className="w-full text-left text-xs whitespace-nowrap font-['Chakra_Petch'] min-w-[560px]">
               <thead className="sticky top-0 bg-[#090e1f]/95 backdrop-blur-md z-10 text-gray-400 uppercase tracking-widest border-b border-white/10">
                 <tr>
                   <th className="px-5 py-3.5 font-black">Rank</th>
@@ -578,6 +591,7 @@ export const ChampionshipLeaderboardModal: React.FC<{ onClose: () => void }> = (
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </motion.div>

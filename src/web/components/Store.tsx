@@ -352,11 +352,13 @@ export function Store() {
           <div className="relative flex-grow order-2 md:order-1">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" aria-hidden="true">🔍</span>
             <input 
+              id="store-search-input"
+              aria-label={viewMode === 'store' ? "Buscar cosméticos exclusivos" : "Buscar en tu colección"}
               type="text" 
               placeholder={viewMode === 'store' ? "Buscar cosméticos exclusivos..." : "Buscar en tu colección..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1A1815] border border-[#2A2722] rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-[#71717A] focus:outline-none focus:border-[#FACC15] transition-all"
+              className="w-full bg-[#1A1815] border border-[#2A2722] rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-[#71717A] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15]/50 focus-visible:outline-none focus:border-[#FACC15] transition-all"
             />
           </div>
 
@@ -364,13 +366,13 @@ export function Store() {
           <div className="flex p-1 bg-[#1A1815] rounded-xl border border-[#2A2722] order-1 md:order-2 shrink-0 md:h-[54px]">
             <button
               onClick={() => setViewMode('store')}
-              className={`flex-1 md:flex-none px-6 py-2 md:py-0 rounded-lg font-bold text-sm transition-all duration-300 ${viewMode === 'store' ? 'bg-[#2A2722] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white'}`}
+              className={`flex-1 md:flex-none px-6 py-2 md:py-0 rounded-lg font-bold text-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#FACC15]/50 focus-visible:outline-none ${viewMode === 'store' ? 'bg-[#2A2722] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white'}`}
             >
               Catalog
             </button>
             <button
               onClick={() => setViewMode('gallery')}
-              className={`flex-1 md:flex-none px-6 py-2 md:py-0 rounded-lg font-bold text-sm transition-all duration-300 ${viewMode === 'gallery' ? 'bg-[#2A2722] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white'}`}
+              className={`flex-1 md:flex-none px-6 py-2 md:py-0 rounded-lg font-bold text-sm transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#FACC15]/50 focus-visible:outline-none ${viewMode === 'gallery' ? 'bg-[#2A2722] text-white shadow-md' : 'text-[#A1A1AA] hover:text-white'}`}
             >
               Collection ({inventory.length})
             </button>

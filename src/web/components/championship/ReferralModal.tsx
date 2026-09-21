@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, Copy, Check, Share2, Sparkles, Trophy, Flame, Loader2 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface Props {
   isOpen: boolean;
@@ -118,6 +119,8 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
     window.open(whatsappUrl, '_blank');
   };
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ isOpen, onClose });
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -131,6 +134,10 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
           />
 
           <motion.div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Invitar Amigos"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -152,7 +159,8 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
 
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar ventana de referidos"
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>
@@ -160,16 +168,18 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
 
             {/* Unique Link Box & Actions */}
             <div className="bg-black/60 border border-purple-500/30 rounded-2xl p-4 mb-6">
-              <label className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <label htmlFor="referral-link-input" className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-2 flex items-center gap-1.5 cursor-pointer">
                 <Sparkles size={14} className="text-purple-400" /> Tu Link de Invitación Único:
               </label>
 
               <div className="flex items-center gap-2">
                 <input
+                  id="referral-link-input"
+                  aria-label="Tu enlace de invitación único"
                   type="text"
                   readOnly
                   value={referralLink}
-                  className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-purple-200 font-mono focus:outline-none"
+                  className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-purple-200 font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:outline-none"
                 />
 
                 <button

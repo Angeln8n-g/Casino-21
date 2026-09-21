@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { supabase } from '../../web/services/supabase';
+import { useFocusTrap } from '../../web/hooks/useFocusTrap';
 
 interface Props {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function SponsorModal({ isOpen, onClose }: Props) {
+  const modalRef = useFocusTrap({ isOpen, onClose });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ companyName: '', email: '', phone: '', budget: '$500 - $1,500' });
@@ -52,6 +54,10 @@ export default function SponsorModal({ isOpen, onClose }: Props) {
           />
 
           <motion.div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sponsor-modal-title"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -63,14 +69,15 @@ export default function SponsorModal({ isOpen, onClose }: Props) {
                   <Building2 size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black font-['Russo_One'] text-white uppercase">COTIZAR TORNEO MARCAS</h3>
+                  <h3 id="sponsor-modal-title" className="text-lg font-black font-['Russo_One'] text-white uppercase">COTIZAR TORNEO MARCAS</h3>
                   <p className="text-xs text-gray-400 font-['Chakra_Petch']">Impulsa tu marca con audiencias activas</p>
                 </div>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Cerrar modal de patrocinio"
+                className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
               >
                 <X size={18} />
               </button>
@@ -89,47 +96,55 @@ export default function SponsorModal({ isOpen, onClose }: Props) {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4 font-['Chakra_Petch']">
                 <div>
-                  <label className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Nombre de la Empresa / Marca</label>
+                  <label htmlFor="sponsor-company-name" className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Nombre de la Empresa / Marca</label>
                   <input
+                    id="sponsor-company-name"
+                    aria-label="Nombre de la empresa o marca"
                     type="text"
                     required
                     placeholder="Ej. Banreservas, Cervecería, Claro..."
                     value={formData.companyName}
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Correo Electrónico Corporativo</label>
+                  <label htmlFor="sponsor-email" className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Correo Electrónico Corporativo</label>
                   <input
+                    id="sponsor-email"
+                    aria-label="Correo electrónico corporativo"
                     type="email"
                     required
                     placeholder="contacto@empresa.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Teléfono / WhatsApp de contacto</label>
+                  <label htmlFor="sponsor-phone" className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Teléfono / WhatsApp de contacto</label>
                   <input
+                    id="sponsor-phone"
+                    aria-label="Teléfono o WhatsApp de contacto"
                     type="tel"
                     required
                     placeholder="+1 (809) 000-0000"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Presupuesto Estimado de Patrocinio</label>
+                  <label htmlFor="sponsor-budget" className="block text-xs font-bold text-gray-300 uppercase mb-1.5">Presupuesto Estimado de Patrocinio</label>
                   <select
+                    id="sponsor-budget"
+                    aria-label="Presupuesto estimado de patrocinio"
                     value={formData.budget}
                     onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500/50 cursor-pointer"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none focus:border-blue-500/50 cursor-pointer"
                   >
                     <option value="$250 - $500">$250 - $500 USD (Mini Torneo)</option>
                     <option value="$500 - $1,500">$500 - $1,500 USD (Championship Estándar)</option>
@@ -140,7 +155,7 @@ export default function SponsorModal({ isOpen, onClose }: Props) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-4 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-400 hover:to-cyan-300 text-black font-black text-base py-3.5 rounded-xl shadow-lg font-['Russo_One'] uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:scale-[1.02] cursor-pointer disabled:opacity-50"
+                  className="w-full mt-4 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-400 hover:to-cyan-300 text-black font-black text-base py-3.5 rounded-xl shadow-lg font-['Russo_One'] uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:scale-[1.02] cursor-pointer disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
                 >
                   {loading ? (
                     <Loader2 size={18} className="animate-spin" />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 
 interface PurchasedAvatar {
@@ -88,9 +89,18 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
   // Check if current equipped is from store or free
   const currentEquipped = profile?.equipped_avatar || currentAvatarUrl;
 
+  const modalRef = useFocusTrap<HTMLDivElement>({ onClose });
+
   const content = (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="glass-panel-strong w-full max-w-2xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Selecciona tu Avatar"
+        className="glass-panel-strong w-full max-w-2xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]" 
+        onClick={e => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0">
@@ -100,7 +110,8 @@ export function AvatarGallery({ onClose, onAvatarSelected, currentAvatarUrl }: A
           </div>
           <button 
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            aria-label="Cerrar galería de avatares"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
           >
             ✕
           </button>

@@ -609,6 +609,20 @@ function getUserRoomId(userId: string): string | null {
   return null;
 }
 
+async function getUserActiveRoom(userId: string): Promise<{ roomId: string; room: Room } | null> {
+  if (!userId) return null;
+  const localEntries = roomStore.getLocalEntries();
+  for (const [roomId, room] of localEntries.entries()) {
+    if (room.state && room.state.phase !== 'completed') {
+      if (room.players.some(p => p.userId === userId || p.playerId === userId)) {
+        return { roomId, room };
+      }
+    }
+  }
+  return null;
+}
+
+
 async function getAcceptedFriends(userId: string): Promise<string[]> {
   try {
     const { data: friendships, error } = await supabase
@@ -1235,7 +1249,15 @@ io.on('connection', async (socket) => {
     const isSpectator = room.spectators?.some((s: any) => s.userId === userId);
     if (!isPlayer && !isSpectator) return;
 
+    socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
+
     if (isSpectator) {
+      const spectatorEntry = room.spectators?.find((s: any) => s.userId === userId);
+      if (spectatorEntry) {
+        spectatorEntry.socketId = socket.id;
+        await persistRoom(roomId, room);
+      }
       const spectatorSafeState: GameState = JSON.parse(JSON.stringify(room.state));
       spectatorSafeState.players.forEach((statePlayer: any) => {
         statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({
@@ -1247,9 +1269,13 @@ io.on('connection', async (socket) => {
     }
 
     const playerEntry = room.players.find((p: any) => p.userId === userId);
+    if (playerEntry) {
+      playerEntry.socketId = socket.id;
+      await persistRoom(roomId, room);
+    }
     const safeState: GameState = JSON.parse(JSON.stringify(room.state));
     safeState.players.forEach((statePlayer: any) => {
-      if (statePlayer.id !== playerEntry.playerId) {
+      if (playerEntry && statePlayer.id !== playerEntry.playerId) {
         statePlayer.hand = Array.from({ length: statePlayer.hand.length }).map((_, i) => ({
           id: `hidden_${statePlayer.id}_${i}`, rank: '?', suit: 'hidden', value: 0
         }));
@@ -1317,7 +1343,20 @@ io.on('connection', async (socket) => {
 
   socket.on('play_action', async (action: Action) => {
     if (isRateLimited(socket.id)) return;
-    const roomId = socketToRoomMap.get(socket.id);
+    let roomId = socketToRoomMap.get(socket.id);
+    if (!roomId && userId) {
+      const activeRoomInfo = await getUserActiveRoom(userId);
+      if (activeRoomInfo) {
+        roomId = activeRoomInfo.roomId;
+        socketToRoomMap.set(socket.id, roomId);
+        socket.join(roomId);
+        const pEntry = activeRoomInfo.room.players.find((p: any) => p.userId === userId);
+        if (pEntry) {
+          pEntry.socketId = socket.id;
+          await persistRoom(roomId, activeRoomInfo.room);
+        }
+      }
+    }
     if (!roomId) return;
     const room = await roomStore.get(roomId);
     if (!room || !room.state) return;
@@ -2026,6 +2065,21 @@ function broadcastGameState(roomId: string, room: Room) {
   const fullState = room.state;
 
   room.players.forEach((p: any) => {
+    let activeSocketId = p.socketId;
+    if (p.userId && connectedUsers.has(p.userId)) {
+      const userSockets = connectedUsers.get(p.userId);
+      if (userSockets && userSockets.size > 0) {
+        const latestSocketId = Array.from(userSockets)[userSockets.size - 1];
+        if (latestSocketId && latestSocketId !== p.socketId) {
+          activeSocketId = latestSocketId;
+          p.socketId = latestSocketId;
+          socketToRoomMap.set(latestSocketId, roomId);
+          const socketObj = io.sockets.sockets.get(latestSocketId);
+          if (socketObj) socketObj.join(roomId);
+        }
+      }
+    }
+
     const safeState = Object.assign({}, fullState, {
       players: fullState.players.map((sp: any) => {
         if (sp.id === p.playerId) return sp;
@@ -2036,7 +2090,9 @@ function broadcastGameState(roomId: string, room: Room) {
         });
       })
     });
-    io.to(p.socketId).emit('game_state_update', safeState);
+    if (activeSocketId) {
+      io.to(activeSocketId).emit('game_state_update', safeState);
+    }
   });
 
   if (room.spectators && room.spectators.length > 0) {
@@ -2048,7 +2104,17 @@ function broadcastGameState(roomId: string, room: Room) {
       }))
     });
     room.spectators.forEach((s: any) => {
-      io.to(s.socketId).emit('game_state_update', spectatorSafeState);
+      let activeSocketId = s.socketId;
+      if (s.userId && connectedUsers.has(s.userId)) {
+        const userSockets = connectedUsers.get(s.userId);
+        if (userSockets && userSockets.size > 0) {
+          const latestSocketId = Array.from(userSockets)[userSockets.size - 1];
+          if (latestSocketId) activeSocketId = latestSocketId;
+        }
+      }
+      if (activeSocketId) {
+        io.to(activeSocketId).emit('game_state_update', spectatorSafeState);
+      }
     });
   }
 }
