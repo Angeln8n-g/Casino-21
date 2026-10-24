@@ -53,10 +53,12 @@ export async function handleTournamentFinal(matchData: any, winnerId: string) {
     }
   }
 
+  if (!finalPrize || finalPrize <= 0) return;
+
   console.log(`[Torneo] Final del torneo completada. Entregando premio de ${finalPrize} a ${winnerId}`);
-  const { error: rewardError } = await supabase.rpc('award_tournament_prize', {
+  const { error: rewardError } = (await supabase.rpc('award_tournament_prize', {
     event_id_param: matchData.event_id, winner_id_param: winnerId, prize_amount: finalPrize
-  });
+  })) || {};
   if (rewardError) {
     console.error(`[Torneo] Error entregando premio final:`, rewardError);
   } else {
