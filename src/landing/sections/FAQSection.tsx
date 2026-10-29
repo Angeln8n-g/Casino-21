@@ -1,36 +1,56 @@
 import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, ChevronDown } from 'lucide-react';
+import { ChevronDown, ArrowRight } from 'lucide-react';
 import { faqData } from '../../web/data/faq-data';
 
-function FAQAccordion({ question, answer, isOpen, onToggle }: {
+function FAQAccordion({
+  id,
+  question,
+  answer,
+  isOpen,
+  onToggle,
+}: {
+  id: string;
   question: string;
   answer: string;
   isOpen: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-[#050811]/30 border border-white/5 rounded-2xl overflow-hidden transition-all duration-300 hover:border-yellow-500/10 hover:bg-[#050811]/60">
+    <div className="bg-[#081020] border border-white/10 rounded-2xl overflow-hidden transition-all duration-200 hover:border-amber-400/30">
       <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-6 py-5 text-left cursor-pointer"
+        type="button"
+        id={`faq-btn-${id}`}
         aria-expanded={isOpen}
+        aria-controls={`faq-panel-${id}`}
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-6 py-5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
       >
-        <span className="text-sm sm:text-base font-bold text-white pr-4 font-['Chakra_Petch']">{question}</span>
-        <span className={`text-yellow-400 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-180' : ''}`}>
+        <span className="text-sm sm:text-base font-bold text-white pr-4 font-['Chakra_Petch']">
+          {question}
+        </span>
+        <span
+          className={`text-amber-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+          aria-hidden="true"
+        >
           <ChevronDown size={18} />
         </span>
       </button>
-      
+
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
+            id={`faq-panel-${id}`}
+            role="region"
+            aria-labelledby={`faq-btn-${id}`}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
           >
-            <div className="px-6 pb-5 text-xs sm:text-sm text-gray-400 leading-relaxed border-t border-white/[0.03] pt-4 font-['Chakra_Petch']">
+            <div className="px-6 pb-5 text-xs sm:text-sm text-gray-300 leading-relaxed border-t border-white/[0.04] pt-4 font-['Chakra_Petch']">
               {answer}
             </div>
           </motion.div>
@@ -43,35 +63,28 @@ function FAQAccordion({ question, answer, isOpen, onToggle }: {
 function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  // Mostrar una selección de las FAQ más importantes (ej. las primeras 6)
+  // Top 6 most relevant questions for the competitive game landing
   const faqsToShow = faqData.slice(0, 6);
 
   return (
-    <section id="faq" className="py-20 px-6 relative overflow-hidden bg-transparent">
-      {/* Background ambient light */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-cyan-500/[0.01] rounded-full blur-2xl" />
-      </div>
-
-      <div className="max-w-4xl mx-auto relative z-10">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="text-[10px] uppercase tracking-[0.25em] text-cyan-400 font-bold mb-2 font-['Chakra_Petch'] flex items-center justify-center gap-1.5">
-            <HelpCircle size={10} /> FAQ
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-black font-['Russo_One'] text-white">
-            Preguntas <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 neon-blue">Frecuentes</span>
+    <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 relative bg-[#050811] border-t border-white/[0.06]">
+      <div className="max-w-4xl mx-auto">
+        {/* Section Heading (No eyebrow per craft-floor) */}
+        <div className="text-left max-w-3xl mb-12">
+          <h2 className="text-3xl sm:text-5xl font-black font-['Russo_One'] text-white tracking-tight">
+            Preguntas frecuentes
           </h2>
-          <p className="text-gray-400 text-sm mt-3 font-['Chakra_Petch'] max-w-md mx-auto">
-            ¿Tienes dudas sobre el juego? Encuentra respuestas rápidas aquí.
+          <p className="mt-3 text-base sm:text-lg text-gray-300 font-['Chakra_Petch'] leading-relaxed">
+            Respuestas directas sobre reglas, sistema ELO, torneos y cómo empezar a competir.
           </p>
         </div>
 
         {/* Accordions Container */}
-        <div className="max-w-3xl mx-auto space-y-3">
+        <div className="space-y-3">
           {faqsToShow.map((faq, index) => (
             <FAQAccordion
               key={index}
+              id={`faq-${index}`}
               question={faq.question}
               answer={faq.answer}
               isOpen={openIndex === index}
@@ -80,13 +93,14 @@ function FAQSection() {
           ))}
         </div>
 
-        {/* Ver más en FAQ */}
-        <div className="mt-12 text-center">
+        {/* View All FAQ Link */}
+        <div className="mt-10 text-center">
           <a
             href="/faq"
-            className="inline-flex items-center text-xs text-gray-500 hover:text-cyan-400 transition-colors font-['Chakra_Petch'] uppercase tracking-widest cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs font-['Chakra_Petch'] font-bold text-gray-400 hover:text-amber-400 uppercase tracking-widest transition-colors py-2 px-4 rounded-xl bg-white/[0.04] border border-white/10"
           >
-            Ver Todas las Preguntas →
+            <span>Ver Centro de Preguntas Completo</span>
+            <ArrowRight size={13} />
           </a>
         </div>
       </div>
@@ -95,4 +109,3 @@ function FAQSection() {
 }
 
 export default memo(FAQSection);
-
