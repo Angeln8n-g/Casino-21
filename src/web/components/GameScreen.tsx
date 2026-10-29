@@ -27,6 +27,7 @@ import {
 import { getTheme, BoardTheme } from '../themes/themeRegistry';
 import { triggerHaptic } from '../utils/haptics';
 import { GameChat } from './GameChat';
+import { AlertTriangle, Smile } from 'lucide-react';
 
 const getTotalVirados = (state: GameState) =>
   state.players.reduce((sum, player) => sum + player.virados, 0) +
@@ -854,29 +855,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           )}
 
           {/* Top Header */}
-        <header className="flex flex-col gap-2 md:gap-3 bg-black/30 backdrop-blur-md p-2.5 md:p-3.5 rounded-xl md:rounded-2xl border border-white/10 shadow-2xl relative shrink-0">
-          
-          {/* Disconnection Warning */}
-          {disconnectionMessage && (
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white p-4 md:p-6 rounded-2xl shadow-2xl border border-red-500/50 z-50 flex flex-col items-center gap-3 md:gap-4 animate-in slide-in-from-top-4 w-[90%] max-w-sm text-center">
-              <div className="flex items-center gap-2 text-red-400 font-bold text-base md:text-lg">
-                <span className="animate-pulse">⚠️</span>
-                {disconnectionMessage}
-              </div>
-              <div className="text-xs md:text-sm text-gray-400">
-                Sala: <span className="font-mono text-yellow-400 font-bold bg-black/50 px-2 py-1 rounded">{localStorage.getItem('casino21_roomId') || 'Desconocido'}</span>
-              </div>
-              <button 
-                onClick={() => {
-                  localStorage.removeItem('casino21_roomId');
-                  window.location.reload();
-                }}
-                className="mt-2 bg-red-600 hover:bg-red-500 text-white px-4 md:px-6 py-2 rounded-xl font-bold transition-colors w-full text-sm md:text-base"
-              >
-                Salir
-              </button>
-            </div>
-          )}
+        <header className="flex flex-col gap-2 md:gap-3 bg-black/35 backdrop-blur-md p-2.5 md:p-3.5 rounded-xl md:rounded-2xl border border-white/10 shadow-2xl relative z-30 shrink-0">
 
           {/* Desktop Header Layout (md:flex) */}
           <div className="hidden md:flex items-center justify-between gap-4 w-full">
@@ -1042,6 +1021,41 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </div>
         </header>
 
+        {/* Disconnection Warning Banner (in-flow, never clipped or covering HUD) */}
+        {disconnectionMessage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-between gap-2.5 bg-red-950/90 backdrop-blur-md text-red-100 px-3 py-2 md:px-4 md:py-2.5 rounded-xl border border-red-500/40 shadow-[0_8px_24px_rgba(0,0,0,0.45)] shrink-0 z-30 animate-in fade-in slide-in-from-top-2"
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-400/30 flex items-center justify-center shrink-0 text-red-300">
+                <AlertTriangle className="w-4 h-4 animate-pulse" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-bold text-red-100 leading-snug">
+                  {disconnectionMessage}
+                </p>
+                <p className="text-[10px] md:text-xs text-red-200/80 mt-0.5">
+                  Sala:{' '}
+                  <span className="font-mono text-amber-300 font-bold bg-black/45 px-1.5 py-0.5 rounded border border-white/10">
+                    {localStorage.getItem('casino21_roomId') || 'Desconocido'}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('casino21_roomId');
+                window.location.reload();
+              }}
+              className="shrink-0 bg-red-600 hover:bg-red-500 text-white px-3.5 py-1.5 rounded-lg font-bold transition-colors text-xs md:text-sm active:scale-95 shadow-md"
+            >
+              Salir
+            </button>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-red-100 p-2.5 rounded-xl text-center text-xs md:text-sm font-semibold animate-in fade-in slide-in-from-top-1">
@@ -1168,21 +1182,15 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         {/* ===== ZONA JUGADOR — Mano del jugador (sticky bottom en móvil) ===== */}
         <footer
           className={`
-            bg-black/60 backdrop-blur-xl rounded-2xl md:rounded-3xl border
-            ${isCurrentTurn ? 'border-yellow-500/50 shadow-[0_0_30px_rgba(250,204,21,0.15),inset_0_0_15px_rgba(0,0,0,0.5)]' : 'border-white/10 shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]'}
-            flex flex-col items-center gap-1 md:gap-2 relative overflow-visible
-            transition-all duration-300 w-full shrink-0
-            ${isMobile
-              ? 'mt-auto p-2 sticky bottom-0 z-30'
-              : 'mt-auto p-2 md:p-3'
-            }
+            relative overflow-visible w-full shrink-0 mt-auto
+            ${isMobile ? 'sticky bottom-0 z-30' : ''}
           `}
-          style={isMobile ? {
-            paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))',
-          } : {}}
         >
           {isSpectator ? (
-            <div className="relative z-30 w-full flex flex-col gap-2 items-center justify-center px-2 py-1.5 rounded-xl border border-blue-500/20 bg-blue-950/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)]">
+            <div
+              className="relative z-30 w-full flex flex-col gap-2 items-center justify-center px-2.5 py-2 rounded-2xl border border-blue-500/25 bg-blue-950/40 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+              style={isMobile ? { paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' } : {}}
+            >
               <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar w-full justify-center">
                 {(playerEmotes || []).filter(Boolean).slice(0, 8).map((emoji: string) => {
                   const isUrl = typeof emoji === 'string' && (emoji.startsWith('http') || emoji.includes('/storage/v1/object/public/'));
@@ -1204,24 +1212,31 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                 })}
               </div>
               <div className="text-[10px] font-bold text-blue-300 tracking-wider flex items-center gap-1.5 animate-pulse uppercase">
-                <span>👁️</span> MODO ESPECTADOR — ENVÍA UNA REACCIÓN {emoteCooldownTime > 0 && <span className="text-yellow-400">({emoteCooldownTime}s)</span>}
+                <span>MODO ESPECTADOR — ENVÍA UNA REACCIÓN</span>
+                {emoteCooldownTime > 0 && <span className="text-yellow-400">({emoteCooldownTime}s)</span>}
               </div>
             </div>
           ) : (
-            <>
-              <div className="relative z-30 w-full flex items-center justify-end px-1">
+            <HandView
+              player={currentPlayer}
+              isCurrentTurn={isCurrentTurn}
+              selectedCardId={selectedHandCardId}
+              onCardClick={handleCardClick}
+              isDealing={isDealing}
+              cardTheme={localCardTheme.cardTheme}
+              headerAction={
                 <div className="relative">
                   <button
                     onClick={() => setShowEmotes((prev) => !prev)}
                     disabled={emoteCooldownTime > 0}
-                    className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all ${
                       showEmotes
                         ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
+                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-200'
                     } ${emoteCooldownTime > 0 ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
                     title="Enviar Reacción"
                   >
-                    <span>🙂</span>
+                    <Smile className="w-3.5 h-3.5 text-amber-300" />
                     <span className="text-[11px]">Reaccionar</span>
                     {emoteCooldownTime > 0 && (
                       <span className="text-amber-400 font-mono text-[10px]">({emoteCooldownTime}s)</span>
@@ -1254,16 +1269,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
                     </div>
                   )}
                 </div>
-              </div>
-              <HandView 
-                player={currentPlayer}
-                isCurrentTurn={isCurrentTurn}
-                selectedCardId={selectedHandCardId}
-                onCardClick={handleCardClick}
-                isDealing={isDealing}
-                cardTheme={localCardTheme.cardTheme}
-              />
-            </>
+              }
+            />
           )}
         </footer>
 

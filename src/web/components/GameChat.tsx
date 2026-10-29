@@ -146,7 +146,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
               JUGADORES
             </button>
             <button 
-              className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+              className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
               onClick={() => setActiveTab('spectator')}
             >
               ESPECTADORES
@@ -190,7 +190,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
         {hasNewBelow && !isNearBottom && (
           <button
             onClick={scrollToBottom}
-            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce"
+            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all cursor-pointer"
           >
             ↓ Nuevos mensajes
           </button>
@@ -227,11 +227,12 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="absolute bottom-6 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-black/60 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/10 hover:scale-110 transition-all z-50 shadow-[0_0_15px_rgba(0,0,0,0.5)] cursor-pointer"
+          aria-label="Abrir chat de sala"
+          className="absolute bottom-3.5 right-3.5 md:bottom-8 md:right-8 w-11 h-11 md:w-14 md:h-14 bg-gray-950/80 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/10 hover:scale-105 active:scale-95 transition-all z-50 shadow-[0_8px_20px_rgba(0,0,0,0.55)] cursor-pointer"
         >
-          <MessageSquare size={24} />
+          <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-bounce">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
               {unreadCount}
             </span>
           )}
@@ -249,6 +250,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
             </h3>
             <button 
               onClick={() => setIsOpen(false)}
+              aria-label="Cerrar chat"
               className="text-gray-300 hover:text-white transition-colors p-1 cursor-pointer"
             >
               <X size={18} />
@@ -265,7 +267,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
                 JUGADORES
               </button>
               <button 
-                className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-400 border-b-2 border-blue-500' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+                className={`flex-1 py-2 transition-colors ${activeTab === 'spectator' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
                 onClick={() => setActiveTab('spectator')}
               >
                 ESPECTADORES
@@ -309,7 +311,7 @@ export function GameChat({ roomId, isSpectator, isOpenForce = false, inline = fa
           {hasNewBelow && !isNearBottom && (
             <button
               onClick={scrollToBottom}
-              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all animate-bounce cursor-pointer"
+              className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-full bg-casino-gold text-black text-xs font-bold shadow-lg hover:bg-casino-gold/80 transition-all cursor-pointer"
             >
               ↓ Nuevos mensajes
             </button>

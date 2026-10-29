@@ -4,7 +4,20 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { DefaultGameEngine } from './application/game-engine';
-import { processTournamentAdvancement, handleTournamentFinal, notifyTournamentPlayers, startNoShowTimer, clearNoShowTimer, claimTournamentWalkover } from './tournament-service';
+import {
+  processTournamentAdvancement,
+  handleTournamentFinal,
+  notifyTournamentPlayers,
+  startNoShowTimer,
+  clearNoShowTimer,
+  claimTournamentWalkover,
+  verifyTournamentRoomParticipant,
+  generateAndStartTournamentBracket,
+  handlePlayerLeftTournamentWait,
+  adminResolveTournamentMatch,
+  processScheduledTournamentTick,
+} from './tournament-service';
+import { CASH_PRIZES_ENABLED } from './domain/tournament';
 import { GameState } from './domain/game-state';
 import { Action } from './application/action-validator';
 import dotenv from 'dotenv';
@@ -334,9 +347,147 @@ app.post('/api/tournament/event/:eventId/check-in', requireAuth, async (req, res
     if (!data?.success) {
       return res.status(400).json({ error: data?.error });
     }
+    io.emit('tournament_list_updated', { eventId });
     return res.status(200).json(data);
   } catch (err: any) {
     console.error('Error en check-in de torneo:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
+  }
+});
+
+// ── Endpoint REST: Inscripción atómica a torneo (Sit & Go y Programados) ────
+app.post('/api/tournament/event/:eventId/join', requireAuth, async (req, res) => {
+  const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+  const currentUser = (req as any).user;
+  if (!eventId) return res.status(400).json({ error: 'eventId es requerido' });
+
+  try {
+    let rpcResult = await supabase.rpc('join_tournament_v3', {
+      p_event_id: eventId,
+      p_player_id: currentUser.id,
+    });
+
+    // Fallback seguro a join_event si la migración v3 aún no ha sido ejecutada
+    if (rpcResult.error && (rpcResult.error.code === 'PGRST202' || String(rpcResult.error.message || '').includes('join_tournament_v3'))) {
+      rpcResult = await supabase.rpc('join_event', {
+        event_id_param: eventId,
+        player_id_param: currentUser.id,
+      });
+    }
+
+    if (rpcResult.error) throw rpcResult.error;
+    const data = rpcResult.data;
+
+    if (!data?.success) {
+      return res.status(400).json({ error: data?.error || 'No se pudo completar la inscripción' });
+    }
+
+    io.emit('tournament_list_updated', { eventId });
+
+    if (data?.should_start === true) {
+      const startResult = await generateAndStartTournamentBracket(io, roomStore, eventId, {
+        triggeredBy: 'auto_sit_and_go',
+      });
+      return res.status(200).json({
+        ...data,
+        bracketStarted: startResult.success,
+        recreatedEventId: startResult.recreatedEventId || null,
+      });
+    }
+
+    return res.status(200).json(data);
+  } catch (err: any) {
+    console.error('Error al inscribirse al torneo:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
+  }
+});
+
+// ── Endpoint REST: Cancelar inscripción a torneo con reembolso ──────────────
+app.post('/api/tournament/event/:eventId/leave', requireAuth, async (req, res) => {
+  const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+  const currentUser = (req as any).user;
+  if (!eventId) return res.status(400).json({ error: 'eventId es requerido' });
+
+  try {
+    const { data, error } = await supabase.rpc('leave_tournament_v3', {
+      p_event_id: eventId,
+      p_player_id: currentUser.id,
+    });
+    if (error) throw error;
+    if (!data?.success) {
+      return res.status(400).json({ error: data?.error || 'No se pudo cancelar la inscripción' });
+    }
+
+    io.emit('tournament_list_updated', { eventId });
+    return res.status(200).json(data);
+  } catch (err: any) {
+    console.error('Error al cancelar inscripción de torneo:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
+  }
+});
+
+// ── Endpoint REST Admin: Generar llaves e iniciar torneo ────────────────────
+app.post('/api/tournament/admin/:eventId/start', requireAuth, requireAdmin, async (req, res) => {
+  const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+  if (!eventId) return res.status(400).json({ error: 'eventId es requerido' });
+
+  try {
+    const result = await generateAndStartTournamentBracket(io, roomStore, eventId, {
+      triggeredBy: 'admin',
+      skipCheckInFilter: Boolean(req.body?.skipCheckInFilter),
+    });
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    return res.status(200).json(result);
+  } catch (err: any) {
+    console.error('Error admin al iniciar torneo:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
+  }
+});
+
+// ── Endpoint REST Admin: Resolver o reiniciar partido de torneo ─────────────
+app.post('/api/tournament/admin/match/:matchId/resolve', requireAuth, requireAdmin, async (req, res) => {
+  const matchId = Array.isArray(req.params.matchId) ? req.params.matchId[0] : req.params.matchId;
+  const action = req.body?.action;
+  if (!matchId || !['force_p1', 'force_p2', 'reset'].includes(action)) {
+    return res.status(400).json({ error: 'matchId y una acción válida (force_p1, force_p2, reset) son requeridos' });
+  }
+
+  try {
+    const result = await adminResolveTournamentMatch(io, roomStore, matchId, action);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    io.emit('tournament_list_updated', {});
+    return res.status(200).json(result);
+  } catch (err: any) {
+    console.error('Error admin resolviendo partido de torneo:', err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' });
+  }
+});
+
+// ── Endpoint REST Admin: Expulsar inscrito con reembolso ────────────────────
+app.post('/api/tournament/admin/:eventId/kick', requireAuth, requireAdmin, async (req, res) => {
+  const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+  const playerId = req.body?.playerId;
+  if (!eventId || typeof playerId !== 'string') {
+    return res.status(400).json({ error: 'eventId y playerId son requeridos' });
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('leave_tournament_v3', {
+      p_event_id: eventId,
+      p_player_id: playerId,
+    });
+    if (error) throw error;
+    if (!data?.success) {
+      return res.status(400).json({ error: data?.error || 'No se pudo retirar al jugador' });
+    }
+    io.emit('tournament_list_updated', { eventId });
+    return res.status(200).json(data);
+  } catch (err: any) {
+    console.error('Error admin retirando jugador de torneo:', err);
     return res.status(500).json({ error: err.message || 'Error interno del servidor' });
   }
 });
@@ -704,6 +855,7 @@ io.on('connection', async (socket) => {
   console.log(`Usuario autenticado conectado: ${socket.id} (User: ${userId})`);
 
   if (userId) {
+    socket.join(`user:${userId}`);
     const userSockets = connectedUsers.get(userId) || new Set<string>();
     const isNew = userSockets.size === 0;
     userSockets.add(socket.id);
@@ -1036,6 +1188,17 @@ io.on('connection', async (socket) => {
 
     let room = await roomStore.get(roomId);
 
+    if ((isTournament || room?.isTournament) && !isSpectator) {
+      const existingInRoom = room?.players.find(p => p.userId === userId);
+      if (!existingInRoom) {
+        const participantCheck = await verifyTournamentRoomParticipant(roomId, userId);
+        if (!participantCheck.allowed) {
+          socket.emit('error', participantCheck.error || 'No estás autorizado para jugar en esta sala de torneo.');
+          return;
+        }
+      }
+    }
+
     if (!room) {
       if (isTournament && !isSpectator) {
         const newRoom: Room = {
@@ -1262,6 +1425,9 @@ io.on('connection', async (socket) => {
       }
     } else {
       await persistRoom(roomId, room);
+      if (room.isTournament && !room.state && room.players.length === 1) {
+        startNoShowTimer(io, roomStore, roomId, userId, playerName);
+      }
     }
   });
 
@@ -1853,6 +2019,7 @@ io.on('connection', async (socket) => {
         if (room.isTournament) {
           room.players = room.players.filter(p => p.userId !== userId);
           await persistRoom(roomId, room);
+          await handlePlayerLeftTournamentWait(io, roomStore, roomId, userId);
           console.log(`[Torneo] Jugador ${userId} salió de sala de torneo ${roomId} antes de iniciar. Sala preservada.`);
         } else {
           await closeRoom(roomId, 'creator_disconnected');
@@ -2197,37 +2364,7 @@ setInterval(async () => {
 
 async function checkScheduledEvents() {
   try {
-    const { data: startedEvents, error: startError } = await supabase
-      .from('events')
-      .update({ status: 'live' })
-      .eq('status', 'upcoming')
-      .lte('start_date', new Date().toISOString())
-      .select('id, title');
-
-    if (startError) {
-      console.error('[Eventos] Error auto-iniciando eventos:', startError);
-    } else if (startedEvents && startedEvents.length > 0) {
-      for (const event of startedEvents) {
-        console.log(`[Eventos] Evento "${event.title}" iniciado automáticamente`);
-        io.emit('event_started', { eventId: event.id, title: event.title });
-      }
-    }
-
-    const { data: completedEvents, error: completeError } = await supabase
-      .from('events')
-      .update({ status: 'completed' })
-      .eq('status', 'live')
-      .lte('end_date', new Date().toISOString())
-      .select('id, title');
-
-    if (completeError) {
-      console.error('[Eventos] Error auto-finalizando eventos:', completeError);
-    } else if (completedEvents && completedEvents.length > 0) {
-      for (const event of completedEvents) {
-        console.log(`[Eventos] Evento "${event.title}" finalizado automáticamente`);
-        io.emit('event_completed', { eventId: event.id, title: event.title });
-      }
-    }
+    await processScheduledTournamentTick(io, roomStore);
   } catch (err) {
     console.error('[Eventos] Error en checkScheduledEvents:', err);
   }
@@ -2290,7 +2427,9 @@ app.post('/api/admin/championship/:id/match/:matchId/walkover', requireAuth, req
 app.get('/api/admin/championship/:id/analytics', requireAuth, requireAdmin, getAnalytics);
 app.post('/api/admin/championship/:id/prizes/remind', requireAuth, requireAdmin, remindPrizes);
 
-initChampionshipTimers(io, roomStore);
+if (CASH_PRIZES_ENABLED) {
+  initChampionshipTimers(io, roomStore);
+}
 
 const CLUSTER_PORT = process.env.NODE_APP_INSTANCE
   ? parseInt(process.env.PORT || '4000', 10) + parseInt(process.env.NODE_APP_INSTANCE, 10)

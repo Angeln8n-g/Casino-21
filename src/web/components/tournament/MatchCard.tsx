@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TournamentMatch, TournamentPlayer } from '../TournamentBracket';
+import { FINAL_ROUND_NUMBER, getRoundDisplayName } from '../../../domain/tournament';
+
+const NO_SHOW_TIMEOUT_MS = 180_000;
 
 interface MatchCardProps {
   match: TournamentMatch;
+  maxParticipants?: number;
   currentUserId?: string | null;
   isAdmin: boolean;
   onJoinMatch: (match: TournamentMatch) => void;
@@ -12,16 +16,9 @@ interface MatchCardProps {
   onViewPlayer?: (playerId: string) => void;
 }
 
-const ROUND_NAMES: Record<number, string> = {
-  0: '16avos',
-  1: 'Octavos',
-  2: 'Cuartos',
-  3: 'Semis',
-  4: 'Final',
-};
-
 export function MatchCard({
   match,
+  maxParticipants = 16,
   currentUserId,
   isAdmin,
   onJoinMatch,
@@ -31,40 +28,68 @@ export function MatchCard({
   onViewPlayer,
 }: MatchCardProps) {
   const { round, position, player1, player2, status, game_room_id } = match;
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const isPlayerInMatch = currentUserId && (player1?.id === currentUserId || player2?.id === currentUserId);
-  const canJoin = status !== 'completed' && isPlayerInMatch && player1 && player2;
-  const isSpectatable = status !== 'completed' && player1 && player2 && game_room_id;
-  const isClickable = canJoin || isSpectatable || (isAdmin && status !== 'completed');
+  useEffect(() => {
+    if (status === 'completed' || (!match.waiting_since && !(inviteCooldowns[match.id] > Date.now()))) {
+      return;
+    }
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [status, match.waiting_since, match.id, inviteCooldowns]);
 
-  const opponentId = isPlayerInMatch && status !== 'completed'
-    ? (player1?.id === currentUserId ? player2?.id : player1?.id)
-    : null;
+  const isPlayerInMatch = Boolean(
+    currentUserId && (player1?.id === currentUserId || player2?.id === currentUserId)
+  );
+  const canJoin = status !== 'completed' && isPlayerInMatch && Boolean(player1 && player2);
+  const isSpectatable = status !== 'completed' && Boolean(player1 && player2 && game_room_id);
+  const isClickable = canJoin || isSpectatable;
+
+  const opponentId =
+    isPlayerInMatch && status !== 'completed'
+      ? player1?.id === currentUserId
+        ? player2?.id
+        : player1?.id
+      : null;
 
   const cooldownEnd = inviteCooldowns[match.id] || 0;
-  const isCooldownActive = cooldownEnd > Date.now();
-  const cooldownSeconds = Math.ceil((cooldownEnd - Date.now()) / 1000);
+  const isCooldownActive = cooldownEnd > nowMs;
+  const cooldownSeconds = Math.max(0, Math.ceil((cooldownEnd - nowMs) / 1000));
 
-  // Border and shadow styling based on state
+  const waitElapsedMs = match.waiting_since ? Math.max(0, nowMs - new Date(match.waiting_since).getTime()) : 0;
+  const waitRemainingSec = match.waiting_since
+    ? Math.max(0, Math.ceil((NO_SHOW_TIMEOUT_MS - waitElapsedMs) / 1000))
+    : 0;
+  const canClaimWalkoverNow =
+    isPlayerInMatch &&
+    status !== 'completed' &&
+    Boolean(match.waiting_since) &&
+    match.waiting_player_id === currentUserId &&
+    waitRemainingSec === 0;
+
+  const formatWaitClock = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
   const getCardStyle = () => {
     if (status === 'live') {
-      return 'border-[#FF0055]/50 bg-[#FF0055]/5 shadow-[0_0_20px_rgba(255,0,85,0.25)] animate-glow-pulse';
+      return 'border-rose-500/50 bg-slate-900/90 shadow-[0_0_20px_rgba(244,63,94,0.2)]';
     }
     if (isPlayerInMatch) {
-      return 'border-casino-gold/50 bg-casino-gold/5 shadow-[0_0_20px_rgba(251,191,36,0.15)]';
+      return 'border-casino-gold/50 bg-slate-900/90 shadow-[0_0_20px_rgba(251,191,36,0.12)]';
     }
     if (status === 'completed') {
-      return 'border-slate-800 bg-slate-950/40 opacity-90';
+      return 'border-white/10 bg-slate-950/60';
     }
-    return 'border-white/[0.04] bg-slate-900/60 hover:border-white/10 hover:bg-slate-900/80';
+    return 'border-white/10 bg-slate-900/70 hover:border-white/20';
   };
 
   const getPlayerStyle = (p: TournamentPlayer | null) => {
-    if (!p) return 'text-gray-600 italic';
+    if (!p) return 'text-slate-400 italic';
     if (status === 'completed') {
-      return p.isWinner
-        ? 'text-casino-emerald font-black'
-        : 'text-gray-500 line-through opacity-50';
+      return p.isWinner ? 'text-emerald-300 font-black' : 'text-slate-400 line-through opacity-70';
     }
     if (p.id === currentUserId) {
       return 'text-casino-gold font-bold';
@@ -72,25 +97,28 @@ export function MatchCard({
     return 'text-white';
   };
 
-  // Connection metadata
   const getAdvanceInfo = () => {
-    if (round === 4) {
-      return '👑 Gran Final — ¡El ganador será coronado Campeón!';
+    if (round === FINAL_ROUND_NUMBER) {
+      return (match.best_of ?? 1) > 1
+        ? `👑 Gran Final (Juego ${match.series_game || position} de Mejor de ${match.best_of})`
+        : '👑 Gran Final — ¡El ganador se corona Campeón!';
     }
-    const nextRoundName = ROUND_NAMES[round + 1] || 'Siguiente Ronda';
+    const nextRoundName = getRoundDisplayName(round + 1, maxParticipants);
     const nextPos = Math.ceil(position / 2);
-    const siblingPos = position % 2 === 0 ? position - 1 : position + 1;
-    return `👉 El ganador avanza a ${nextRoundName} (Partido ${nextPos}) contra el ganador del Partido ${siblingPos}`;
+    return `El ganador avanza a ${nextRoundName} (Partido ${nextPos})`;
   };
 
-  const renderPlayer = (p: TournamentPlayer | null, isPlayer1: boolean) => {
+  const renderPlayer = (p: TournamentPlayer | null, isSecondSlot: boolean) => {
     if (!p) {
+      const isByeSlot = isSecondSlot && match.walkover_reason === 'bye';
       return (
-        <div className="flex items-center gap-3 py-2 px-3 bg-black/25 rounded-xl border border-dashed border-white/5">
-          <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-xs font-bold text-gray-700 shrink-0 border border-white/5">
-            ?
+        <div className="flex items-center gap-3 py-2 px-3 bg-black/30 rounded-xl border border-dashed border-white/10">
+          <div className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0 border border-white/10">
+            {isByeSlot ? '⚡' : '?'}
           </div>
-          <span className="text-xs text-gray-600 font-mono">Por definir</span>
+          <span className="text-xs text-slate-300 font-mono">
+            {isByeSlot ? 'BYE (Avance directo por seeding)' : 'Por definir'}
+          </span>
         </div>
       );
     }
@@ -105,43 +133,39 @@ export function MatchCard({
             onViewPlayer(p.id);
           }
         }}
-        title={onViewPlayer ? "Ver perfil de jugador" : undefined}
+        title={onViewPlayer ? 'Ver perfil de jugador' : undefined}
         className={`flex items-center justify-between py-2 px-3 rounded-xl transition-all ${
           onViewPlayer ? 'hover:bg-white/5 cursor-pointer' : ''
-        } ${won ? 'bg-casino-emerald/5' : 'bg-black/20'}`}
+        } ${won ? 'bg-black/50 border border-emerald-400/30' : 'bg-black/30 border border-transparent'}`}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 overflow-hidden border ${
-            won ? 'border-casino-emerald/50 bg-casino-emerald/10 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : p.id === currentUserId ? 'border-casino-gold/50 bg-casino-gold/10' : 'border-white/5 bg-[#1e293b]'
-          }`}>
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 overflow-hidden border ${
+              won
+                ? 'border-emerald-400/50 bg-slate-800 text-emerald-300'
+                : p.id === currentUserId
+                ? 'border-casino-gold/50 bg-slate-800 text-casino-gold'
+                : 'border-white/10 bg-slate-800 text-white'
+            }`}
+          >
             {p.avatar ? (
-              <img 
-                src={p.avatar} 
-                alt={p.name} 
-                className="w-full h-full object-cover" 
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent && !parent.querySelector('.matchcard-avatar-fallback')) {
-                    const span = document.createElement('span');
-                    span.className = 'matchcard-avatar-fallback';
-                    span.textContent = p.name?.charAt(0).toUpperCase() || 'P';
-                    parent.appendChild(span);
-                  }
-                }}
-              />
+              <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
             ) : (
               p.name.charAt(0).toUpperCase()
             )}
           </div>
           <span className={`text-xs truncate ${getPlayerStyle(p)}`}>
-            {p.name} {p.id === currentUserId && <span className="text-[9px] bg-casino-gold/10 text-casino-gold px-1 rounded ml-1 border border-casino-gold/20">TÚ</span>}
+            {p.name}{' '}
+            {p.id === currentUserId && (
+              <span className="text-[9px] bg-black/60 text-casino-gold px-1.5 py-0.5 rounded ml-1 border border-casino-gold/30">
+                TÚ
+              </span>
+            )}
           </span>
         </div>
 
         {won && (
-          <span className="text-sm animate-bounce" title="Ganador">
+          <span className="text-sm shrink-0" title="Ganador">
             👑
           </span>
         )}
@@ -149,113 +173,149 @@ export function MatchCard({
     );
   };
 
+  const renderBadge = () => {
+    if (match.walkover_reason === 'bye') {
+      return (
+        <span className="text-emerald-300 font-bold uppercase tracking-widest bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-400/30 text-[9px]">
+          ⚡ Bye (Seed)
+        </span>
+      );
+    }
+    if (match.walkover_reason) {
+      return (
+        <span className="text-amber-300 font-bold uppercase tracking-widest bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-400/30 text-[9px]">
+          ⚖️ Walkover
+        </span>
+      );
+    }
+    if (status === 'live') {
+      return (
+        <span className="flex items-center gap-1.5 text-rose-300 font-black uppercase tracking-widest bg-rose-500/15 px-2.5 py-0.5 rounded-full border border-rose-400/30">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+          EN JUEGO
+        </span>
+      );
+    }
+    if (status === 'completed') {
+      return (
+        <span className="text-slate-200 uppercase tracking-widest bg-white/10 px-2.5 py-0.5 rounded-full">
+          Completado
+        </span>
+      );
+    }
+    return (
+      <span className="text-cyan-300 uppercase tracking-widest bg-cyan-500/15 px-2.5 py-0.5 rounded-full border border-cyan-400/30">
+        Pendiente
+      </span>
+    );
+  };
+
   return (
     <div
       onClick={() => isClickable && onJoinMatch(match)}
-      className={`glass-panel border p-4 flex flex-col gap-3 transition-all duration-300 ${
-        isClickable ? 'cursor-pointer transform hover:-translate-y-1 hover:shadow-lg' : ''
+      className={`rounded-2xl border p-4 flex flex-col gap-3 transition-all duration-300 ${
+        isClickable ? 'cursor-pointer hover:-translate-y-0.5' : ''
       } ${getCardStyle()}`}
     >
-      {/* Header Info */}
-      <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono">
-        <span>PARTIDO {position}</span>
-        {match.walkover_reason ? (
-          <span className="text-amber-400 font-bold uppercase tracking-widest bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20 text-[9px] flex items-center gap-1">
-            ⚡ Walkover
-          </span>
-        ) : status === 'live' ? (
-          <span className="flex items-center gap-1 text-[#FF0055] font-black uppercase tracking-widest bg-[#FF0055]/10 px-2 py-0.5 rounded-full border border-[#FF0055]/20 animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF0055]" />
-            EN VIVO
-          </span>
-        ) : status === 'completed' ? (
-          <span className="text-gray-300 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full">
-            Completado
-          </span>
-        ) : (
-          <span className="text-cyan-400 uppercase tracking-widest bg-cyan-400/5 px-2 py-0.5 rounded-full border border-cyan-400/10">
-            Pendiente
-          </span>
-        )}
+      <div className="flex justify-between items-center text-[10px] text-slate-300 font-mono">
+        <span>
+          {(match.best_of ?? 1) > 1
+            ? `SERIE JUEGO ${match.series_game || position}`
+            : `PARTIDO ${position}`}
+        </span>
+        {renderBadge()}
       </div>
 
-      {/* Players Stack */}
       <div className="flex flex-col gap-1.5">
-        {renderPlayer(player1, true)}
-        {renderPlayer(player2, false)}
+        {renderPlayer(player1, false)}
+        {renderPlayer(player2, true)}
       </div>
 
-      {/* Action CTA Buttons */}
+      {/* Estado de espera No-Show en vivo */}
+      {status !== 'completed' && match.waiting_since && (
+        <div className="px-3 py-2 rounded-xl bg-black/50 border border-amber-400/30 text-xs font-bold text-amber-300 flex items-center justify-between gap-2">
+          <span>
+            {match.waiting_player_id === currentUserId
+              ? '⏳ Esperando a tu rival en sala'
+              : isPlayerInMatch
+              ? '⚠️ Tu rival ya te espera en la sala'
+              : '⏳ Jugador esperando rival'}
+          </span>
+          <span className="font-mono">
+            {waitRemainingSec > 0 ? formatWaitClock(waitRemainingSec) : 'Tiempo cumplido'}
+          </span>
+        </div>
+      )}
+
       {isClickable && (
-        <div className="mt-1">
+        <div className="mt-0.5">
           {canJoin ? (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onJoinMatch(match);
               }}
-              className="w-full bg-casino-emerald text-casino-bg font-black py-2 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.45)] hover:bg-casino-emerald-light transition-all active:scale-95 animate-pulse border border-casino-emerald"
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-2.5 rounded-xl text-xs uppercase tracking-widest transition-colors"
             >
-              🎮 ¡Entrar a Jugar! (Tu Turno)
+              🎮 ¡Entrar a Jugar!
             </button>
           ) : isSpectatable ? (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onJoinMatch(match);
               }}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-2 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all active:scale-95 border border-purple-500/50"
+              className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-colors"
             >
               👁️ Espectar Partida
-            </button>
-          ) : isAdmin ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onJoinMatch(match); // for admin, this opens admin action dialog
-              }}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 rounded-xl text-[10px] uppercase tracking-wider transition-all"
-            >
-              ⚙️ Gestionar Encuentro (Admin)
             </button>
           ) : null}
         </div>
       )}
 
-      {/* Reclamar victoria por incomparecencia (Walkover) */}
-      {isPlayerInMatch && status !== 'completed' && match.waiting_since && match.waiting_player_id === currentUserId && (
+      {/* Reclamar victoria por incomparecencia cuando se cumplen los 3 minutos */}
+      {canClaimWalkoverNow && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onClaimWalkover?.(match.id);
           }}
-          className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-all shadow-md mt-1 active:scale-95 border border-amber-400"
+          className="w-full bg-amber-400 hover:bg-amber-300 text-black font-black py-2.5 rounded-xl text-xs uppercase tracking-widest transition-colors"
         >
-          ⚖️ Reclamar Victoria (No-Show)
+          ⚖️ Reclamar Victoria por Walkover
         </button>
       )}
 
-      {/* Invite Opponent Action */}
+      {/* Avisar al Rival */}
       {opponentId && !isCooldownActive && status !== 'completed' && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onInviteOpponent(opponentId, match);
           }}
-          className="w-full bg-casino-gold hover:bg-yellow-400 text-casino-bg font-black py-2 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_10px_rgba(251,191,36,0.3)] transition-all active:scale-95 border border-casino-gold"
+          className="w-full bg-casino-gold hover:bg-yellow-400 text-black font-black py-2 rounded-xl text-xs uppercase tracking-widest transition-colors"
         >
           🔔 Avisar a mi Rival
         </button>
       )}
 
       {opponentId && isCooldownActive && status !== 'completed' && (
-        <div className="text-center py-2 bg-slate-950/40 rounded-xl border border-white/5 text-[10px] text-gray-300 font-mono">
-          Espera {cooldownSeconds}s para avisar de nuevo
+        <div className="text-center py-2 bg-black/40 rounded-xl border border-white/10 text-[10px] text-slate-300 font-mono">
+          Espera {cooldownSeconds}s para volver a avisar
         </div>
       )}
 
-      {/* Footer connection details */}
-      <div className="border-t border-white/[0.04] pt-2 text-[9px] text-gray-500 font-medium">
+      {isAdmin && status !== 'completed' && !canJoin && !isSpectatable && (
+        <span className="text-[10px] text-slate-400 font-mono text-center">
+          Sala: {game_room_id || 'Pendiente'}
+        </span>
+      )}
+
+      <div className="border-t border-white/10 pt-2 text-[10px] text-slate-300 font-medium">
         {getAdvanceInfo()}
       </div>
     </div>

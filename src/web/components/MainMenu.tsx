@@ -25,7 +25,7 @@ import { useAudio } from '../hooks/useAudio';
 import { AudioControlButton } from './AudioControlButton';
 import { QRCodeSVG } from 'qrcode.react';
 import { LobbyMusicSelector } from './LobbyMusicSelector';
-import { ChampionshipLobbyWidget } from './championship/ChampionshipLobbyWidget';
+import { TournamentLobbyBanner } from './tournament/TournamentLobbyBanner';
 import { ReferralModal } from './championship/ReferralModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import mainMenuBg from '../../Public/background.webp';
@@ -82,6 +82,15 @@ export function MainMenu() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [pendingTournamentMatch, setPendingTournamentMatch] = useState<{gameRoomId: string; eventId: string} | null>(null);
   const [pendingTournamentInvite, setPendingTournamentInvite] = useState<{roomId: string; eventTitle: string; senderName: string} | null>(null);
+  const [tournamentLiveNotice, setTournamentLiveNotice] = useState<{ eventId: string; text: string } | null>(null);
+  const [tournamentRewardModal, setTournamentRewardModal] = useState<{
+    eventId: string;
+    eventTitle: string;
+    place: number;
+    coinsAwarded: number;
+    xpAwarded: number;
+    itemAwardedId: string | null;
+  } | null>(null);
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const joinParamHandled = useRef(false);
   const hasRequestedStateRef = useRef(false);
@@ -444,6 +453,51 @@ export function MainMenu() {
           playSfx('chipsClink');
           setTimeout(() => setPendingTournamentInvite(null), 30000);
         });
+
+        socket.on('tournament_started', (data: { eventId: string; eventTitle: string }) => {
+          playSfx('turnChange');
+          window.dispatchEvent(new CustomEvent('tournament_Refresh'));
+          setTournamentLiveNotice({
+            eventId: data.eventId,
+            text: `🏆 ¡Las llaves de "${data.eventTitle}" han comenzado! Haz clic para ver tu llave.`,
+          });
+          setTimeout(() => setTournamentLiveNotice(null), 25000);
+        });
+
+        socket.on('tournament_checkin_open', (data: { eventId: string; eventTitle: string }) => {
+          playSfx('chipsClink');
+          window.dispatchEvent(new CustomEvent('tournament_Refresh'));
+          setTournamentLiveNotice({
+            eventId: data.eventId,
+            text: `✅ ¡Check-in abierto para "${data.eventTitle}"! Confirma tu asistencia ahora.`,
+          });
+          setTimeout(() => setTournamentLiveNotice(null), 25000);
+        });
+
+        socket.on('tournament_walkover_won', (data: { eventId: string; message?: string }) => {
+          playSfx('chipsClink');
+          window.dispatchEvent(new CustomEvent('tournament_Refresh'));
+          setTournamentLiveNotice({
+            eventId: data.eventId,
+            text: data.message || '⚖️ ¡Avanzaste a la siguiente ronda por incomparecencia (Walkover)!',
+          });
+          setTimeout(() => setTournamentLiveNotice(null), 20000);
+        });
+
+        socket.on('tournament_rewards_distributed', (data: {
+          eventId: string;
+          eventTitle: string;
+          place: number;
+          coinsAwarded: number;
+          xpAwarded: number;
+          itemAwardedId: string | null;
+        }) => {
+          playSfx('chipsClink');
+          window.dispatchEvent(new CustomEvent('coins_updated'));
+          window.dispatchEvent(new CustomEvent('profile_updated'));
+          window.dispatchEvent(new CustomEvent('tournament_Refresh'));
+          setTournamentRewardModal(data);
+        });
         // ─── FIN FASE 8 ───
 
       } catch (err) {
@@ -466,6 +520,10 @@ export function MainMenu() {
         socket.off('room_joined_as_spectator');
         socket.off('tournament_ready');
         socket.off('tournament_invite');
+        socket.off('tournament_started');
+        socket.off('tournament_checkin_open');
+        socket.off('tournament_walkover_won');
+        socket.off('tournament_rewards_distributed');
         if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
       } catch (e) {
         // Socket might not be connected yet
@@ -1094,6 +1152,24 @@ export function MainMenu() {
             </div>
           )}
 
+          {tournamentLiveNotice && (
+            <button
+              type="button"
+              onClick={() => {
+                const targetId = tournamentLiveNotice.eventId;
+                setTournamentLiveNotice(null);
+                setMobileTab('events');
+                setDesktopTab('events');
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('open_tournament_bracket', { detail: { eventId: targetId } }));
+                }, 80);
+              }}
+              className="w-full bg-slate-900/90 text-casino-gold p-3 rounded-xl text-center text-sm border border-casino-gold/40 animate-slide-down font-bold cursor-pointer hover:bg-slate-800 transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold focus-visible:outline-none"
+            >
+              {tournamentLiveNotice.text}
+            </button>
+          )}
+
           {/* Tournament Invite Notification */}
           {pendingTournamentInvite && (
             <div className="bg-casino-emerald/10 text-casino-emerald p-3 rounded-xl text-center text-sm border border-casino-emerald/30 animate-slide-down font-medium cursor-pointer hover:bg-casino-emerald/20 transition-colors"
@@ -1158,7 +1234,19 @@ export function MainMenu() {
           )}
           {/* ─── FIN MATCHMAKING OVERLAY ─── */}
 
-          <ChampionshipLobbyWidget />
+          <TournamentLobbyBanner
+            onOpenEvents={(targetEventId) => {
+              setMobileTab('events');
+              setDesktopTab('events');
+              if (targetEventId) {
+                setTimeout(() => {
+                  window.dispatchEvent(
+                    new CustomEvent('open_tournament_bracket', { detail: { eventId: targetEventId } })
+                  );
+                }, 80);
+              }
+            }}
+          />
 
           {/* ─── NEW GAME MODE CARDS (FASE 12) ─── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-up">
@@ -1484,6 +1572,92 @@ export function MainMenu() {
         </div>
       )}
       </div>
+
+      {tournamentRewardModal && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setTournamentRewardModal(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tournament-reward-modal-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl bg-slate-900 border border-casino-gold/40 p-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.7)] space-y-5"
+          >
+            <div className="w-20 h-20 mx-auto rounded-2xl bg-casino-gold/15 border border-casino-gold/40 flex items-center justify-center text-4xl">
+              {tournamentRewardModal.place === 1
+                ? '🥇'
+                : tournamentRewardModal.place === 2
+                ? '🥈'
+                : tournamentRewardModal.place <= 4
+                ? '🥉'
+                : '🎖️'}
+            </div>
+
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-casino-gold">
+                {tournamentRewardModal.place === 1
+                  ? '¡Campeón del Torneo!'
+                  : tournamentRewardModal.place === 2
+                  ? '¡Subcampeón del Torneo!'
+                  : tournamentRewardModal.place <= 4
+                  ? `¡Semifinalista · Puesto #${tournamentRewardModal.place}!`
+                  : `Torneo Finalizado · Puesto #${tournamentRewardModal.place}`}
+              </p>
+              <h3 id="tournament-reward-modal-title" className="text-2xl font-black text-white mt-1">
+                {tournamentRewardModal.eventTitle}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-black/40 p-4 rounded-2xl border border-white/10">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Monedas</p>
+                <p className="text-xl font-black text-casino-gold mt-0.5">
+                  +{tournamentRewardModal.coinsAwarded.toLocaleString()} 🪙
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Experiencia</p>
+                <p className="text-xl font-black text-emerald-300 mt-0.5">
+                  +{tournamentRewardModal.xpAwarded.toLocaleString()} XP
+                </p>
+              </div>
+            </div>
+
+            {tournamentRewardModal.itemAwardedId && (
+              <div className="px-4 py-3 rounded-xl bg-purple-500/15 border border-purple-400/30 text-purple-200 text-xs font-bold">
+                ✨ ¡Desbloqueaste la recompensa cosmética exclusiva del torneo en tu inventario!
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const evId = tournamentRewardModal.eventId;
+                  setTournamentRewardModal(null);
+                  setMobileTab('events');
+                  setDesktopTab('events');
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('open_tournament_bracket', { detail: { eventId: evId } }));
+                  }, 80);
+                }}
+                className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold focus-visible:outline-none"
+              >
+                Ver Podio
+              </button>
+              <button
+                type="button"
+                onClick={() => setTournamentRewardModal(null)}
+                className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider bg-casino-gold hover:bg-yellow-400 text-black transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold focus-visible:outline-none"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ReferralModal
         isOpen={isReferralModalOpen}

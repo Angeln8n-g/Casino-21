@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { X, Trophy, Users, Coins, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { SponsoredTournament } from '../../../domain/sponsored-tournament';
-import { supabase } from '../../services/supabase';
-import { CoinFarmingButton } from './CoinFarmingButton';
+import {
+  CASH_PRIZES_ENABLED,
+  PrizeTier,
+  buildPrizeDisplayGroups,
+  calculateDynamicPot,
+} from '../../../domain/tournament';
+import { joinTournamentEvent } from '../../services/tournamentApi';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface SponsoredTournamentModalProps {
-  tournament: SponsoredTournament;
+  tournament: SponsoredTournament & {
+    guaranteedPrizeCoins?: number;
+    currentPrizeCoins?: number;
+    entryPoolPercent?: number;
+    prizeTiers?: PrizeTier[] | null;
+    rewardXpWinner?: number;
+  };
   isOpen: boolean;
   userCoins: number;
   onClose: () => void;
@@ -18,213 +29,194 @@ export const SponsoredTournamentModal: React.FC<SponsoredTournamentModalProps> =
   isOpen,
   userCoins,
   onClose,
-  onRegistered
+  onRegistered,
 }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [coins, setCoins] = useState(userCoins);
+
+  const modalRef = useFocusTrap<HTMLDivElement>({ isOpen, onClose });
 
   if (!isOpen) return null;
 
   const primaryColor = tournament.brandTheme?.primaryColor || '#f59e0b';
   const remainingSlots = Math.max(0, tournament.maxParticipants - tournament.participantsCount);
   const isFull = remainingSlots === 0;
-  const hasEnoughCoins = coins >= tournament.entryFeeCoins;
+  const hasEnoughCoins = userCoins >= tournament.entryFeeCoins;
+
+  const coinPot =
+    (tournament.currentPrizeCoins ?? 0) > 0
+      ? tournament.currentPrizeCoins!
+      : calculateDynamicPot(
+          tournament.guaranteedPrizeCoins ?? 0,
+          tournament.entryFeeCoins ?? 0,
+          tournament.participantsCount ?? 0,
+          tournament.entryPoolPercent ?? 90
+        );
+
+  const coinDisplayGroups = buildPrizeDisplayGroups(
+    coinPot,
+    tournament.prizeTiers,
+    tournament.maxParticipants
+  );
 
   const handleRegister = async () => {
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const user = userRes?.user;
+    const result = await joinTournamentEvent(tournament.id);
+    setLoading(false);
 
-      if (!user) {
-        setErrorMsg('Debes iniciar sesión para inscribirte.');
-        setLoading(false);
-        return;
-      }
-
-      // Llamada RPC atómica
-      const { data, error } = await supabase.rpc('register_sponsored_tournament', {
-        p_event_id: tournament.id,
-        p_user_id: user.id
-      });
-
-      if (error) {
-        setErrorMsg(`Error al inscribirse: ${error.message}`);
-        setLoading(false);
-        return;
-      }
-
-      if (data && !data.success) {
-        if (data.error === 'CUPOS_LLENOS') {
-          setErrorMsg('¡Los cupos para este torneo se han agotado!');
-        } else if (data.error === 'MONEDAS_INSUFICIENTES') {
-          setErrorMsg('No tienes suficientes monedas para pagar la entrada.');
-        } else if (data.error === 'YA_INSCRITO') {
-          setErrorMsg('Ya estás inscrito en este torneo.');
-        } else {
-          setErrorMsg(`No se pudo completar la inscripción: ${data.error}`);
-        }
-        setLoading(false);
-        return;
-      }
-
-      setSuccessMsg('¡Inscripción exitosa! Te esperamos en la mesa de juego.');
-      if (data?.remaining_coins !== undefined) {
-        setCoins(data.remaining_coins);
-      }
-      if (onRegistered) onRegistered();
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Error inesperado al inscribirse.');
-    } finally {
-      setLoading(false);
+    if (!result.success) {
+      setErrorMsg(result.error || 'No se pudo completar la inscripción.');
+      return;
     }
-  };
 
-  const modalRef = useFocusTrap<HTMLDivElement>({ isOpen, onClose });
+    setSuccessMsg(
+      result.bracketStarted
+        ? '¡Inscripción exitosa y cupo completado! Las llaves han comenzado.'
+        : '¡Inscripción confirmada! Te esperamos en la mesa patrocinada.'
+    );
+    onRegistered?.();
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div 
+      <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-label="Torneo Patrocinado"
-        className="bg-slate-900 border border-slate-700/60 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl relative"
+        className="bg-slate-900 border border-white/15 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl relative"
       >
-        {/* Banner / Cabecera Patrocinada */}
+        {/* Cabecera Patrocinada */}
         <div
-          className="relative p-6 pt-8 pb-10 overflow-hidden flex flex-col justify-end min-h-[180px]"
+          className="relative p-6 pt-8 pb-8 overflow-hidden flex flex-col justify-end min-h-[170px]"
           style={{
             background: tournament.sponsorBannerUrl
-              ? `linear-gradient(to bottom, rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.95)), url(${tournament.sponsorBannerUrl}) center/cover`
-              : `linear-gradient(135deg, ${primaryColor}33, #0f172a)`
+              ? `linear-gradient(to bottom, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.96)), url(${tournament.sponsorBannerUrl}) center/cover`
+              : `linear-gradient(135deg, ${primaryColor}33, #0f172a)`,
           }}
         >
           <button
+            type="button"
             onClick={onClose}
             aria-label="Cerrar ventana del torneo"
-            className="absolute top-4 right-4 bg-slate-950/60 hover:bg-slate-950 text-slate-300 hover:text-white p-2 rounded-full backdrop-blur-sm transition-all focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
+            className="absolute top-4 right-4 bg-slate-950/70 hover:bg-slate-950 text-slate-200 hover:text-white p-2 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
 
           <div className="flex items-center gap-4">
             {tournament.sponsorLogoUrl ? (
-              <img src={tournament.sponsorLogoUrl} alt={tournament.sponsorName} className="h-14 object-contain bg-slate-950/40 p-2 rounded-xl border border-white/10" />
+              <img
+                src={tournament.sponsorLogoUrl}
+                alt={tournament.sponsorName}
+                className="h-14 object-contain bg-slate-950/60 p-2 rounded-xl border border-white/15"
+              />
             ) : (
-              <div className="w-14 h-14 bg-amber-500/20 text-amber-400 font-black text-2xl rounded-2xl flex items-center justify-center border border-amber-500/40">
+              <div className="w-14 h-14 bg-slate-950/80 text-casino-gold font-black text-2xl rounded-2xl flex items-center justify-center border border-casino-gold/40">
                 {tournament.sponsorName?.charAt(0) || '★'}
               </div>
             )}
             <div>
               <span
-                className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full text-slate-950"
+                className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full text-black"
                 style={{ backgroundColor: primaryColor }}
               >
-                Torneo Oficial {tournament.sponsorName}
+                Torneo Patrocinado · {tournament.sponsorName}
               </span>
-              <h2 className="text-2xl font-black text-white mt-1">{tournament.title}</h2>
+              <h2 className="text-2xl font-black text-white mt-1.5">{tournament.title}</h2>
             </div>
           </div>
         </div>
 
         {/* Cuerpo del Modal */}
-        <div className="p-6 space-y-6">
-          {/* Tarjeta de Bolsa en Cash y Cupos */}
+        <div className="p-6 space-y-5">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-950/60 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center font-bold">
-                <Trophy className="w-6 h-6 text-emerald-400" />
+            <div className="bg-slate-950/70 border border-casino-gold/30 rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-casino-gold/15 text-casino-gold rounded-xl flex items-center justify-center font-bold shrink-0">
+                <Trophy className="w-5 h-5" />
               </div>
-              <div>
-                <span className="text-xs text-slate-400">Bolsa en Dinero Real</span>
-                <p className="text-xl font-black text-emerald-400">${tournament.cashPrizePool} USD</p>
+              <div className="min-w-0">
+                <span className="text-xs text-slate-300 block">
+                  {CASH_PRIZES_ENABLED && tournament.cashPrizePool > 0 ? 'Bolsa Oficial' : 'Pozo Garantizado'}
+                </span>
+                <p className="text-lg font-black text-casino-gold truncate">
+                  {CASH_PRIZES_ENABLED && tournament.cashPrizePool > 0
+                    ? `$${tournament.cashPrizePool} USD`
+                    : `🪙 ${coinPot.toLocaleString('es-ES')}`}
+                </p>
               </div>
             </div>
 
-            <div className="bg-slate-950/60 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center font-bold">
-                <Users className="w-6 h-6 text-amber-400" />
+            <div className="bg-slate-950/70 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center font-bold shrink-0">
+                <Users className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-xs text-slate-400">Plazas Restantes</span>
-                <p className="text-xl font-black text-amber-400">
+                <span className="text-xs text-slate-300 block">Plazas Disponibles</span>
+                <p className="text-lg font-black text-white">
                   {remainingSlots} / {tournament.maxParticipants}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Desglose de Premios en Cash */}
-          <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-4">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              Reparto de Premios (Cash Real)
+          {/* Desglose de Premios */}
+          <div className="bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-casino-gold" />
+              Reparto Oficial de Premios (+{tournament.rewardXpWinner || 300} XP Campeón)
             </h4>
             <div className="space-y-2">
-              {tournament.prizeDistribution.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between text-sm py-1.5 px-3 bg-slate-900/60 rounded-xl border border-slate-800">
-                  <span className="font-semibold text-slate-200">
-                    {item.rank === 1 ? '🥇 1er Lugar' : item.rank === 2 ? '🥈 2do Lugar' : item.rank === 3 ? '🥉 3er Lugar' : `Puesto ${item.rank}`}
+              {coinDisplayGroups.map((group) => (
+                <div
+                  key={group.label}
+                  className="flex items-center justify-between text-sm py-2 px-3 bg-slate-900/80 rounded-xl border border-white/10"
+                >
+                  <span className="font-semibold text-slate-200">{group.label}</span>
+                  <span className="font-black text-casino-gold">
+                    🪙 {group.coinsEach.toLocaleString('es-ES')} ({group.percentEach}%)
                   </span>
-                  <span className="font-black text-emerald-400">${item.amountUsd} USD</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Sección de Farmeo si faltan monedas */}
-          {!hasEnoughCoins && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
-                <AlertCircle className="w-4 h-4" />
-                Necesitas {tournament.entryFeeCoins.toLocaleString()} monedas para la entrada. ¡Farmea ahora!
-              </div>
-              <CoinFarmingButton
-                sponsorName={tournament.sponsorName || 'Patrocinador'}
-                sponsorLogoUrl={tournament.sponsorLogoUrl}
-                targetCoins={tournament.entryFeeCoins}
-                currentCoins={coins}
-                eventId={tournament.id}
-                onCoinsUpdated={(newCoins) => setCoins(newCoins)}
-              />
-            </div>
-          )}
-
-          {/* Mensajes de feedback */}
           {errorMsg && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-sm flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <div className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-sm flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
-          {/* Botón de Inscripción */}
           <button
+            type="button"
             onClick={handleRegister}
-            disabled={loading || isFull || !hasEnoughCoins}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black py-4 px-6 rounded-2xl text-lg shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+            disabled={loading || isFull || !hasEnoughCoins || Boolean(successMsg)}
+            className="w-full bg-casino-gold hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black py-4 px-6 rounded-2xl text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
           >
-            <Coins className="w-6 h-6" />
+            <Coins className="w-5 h-5" />
             {loading
-              ? 'Procesando...'
+              ? 'Procesando inscripción...'
+              : successMsg
+              ? '✓ INSCRITO'
               : isFull
-              ? 'CUPOS LLENOS'
+              ? 'CUPOS COMPLETOS'
               : !hasEnoughCoins
-              ? `FALTAN ${(tournament.entryFeeCoins - coins).toLocaleString()} MONEDAS`
-              : `PAGAR ENTRADA CON ${tournament.entryFeeCoins.toLocaleString()} MONEDAS`}
+              ? `TE FALTAN ${(tournament.entryFeeCoins - userCoins).toLocaleString('es-ES')} MONEDAS`
+              : tournament.entryFeeCoins > 0
+              ? `INSCRIBIRME POR ${tournament.entryFeeCoins.toLocaleString('es-ES')} MONEDAS`
+              : 'INSCRIBIRME GRATIS'}
           </button>
         </div>
       </div>

@@ -1,33 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Zap, Calendar, Trophy, Coins, Sparkles, CheckCircle2, RotateCcw, Shield } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { socketService } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { logger } from '../utils/logger';
-
-import { TournamentBracket, TournamentMatch } from './TournamentBracket';
+import {
+  CASH_PRIZES_ENABLED,
+  PrizeTier,
+  TournamentFormat,
+  buildPrizeDisplayGroups,
+  calculateDynamicPot,
+  parseLegacyCoinPool,
+} from '../../domain/tournament';
+import {
+  checkInTournamentEvent,
+  claimTournamentWalkoverApi,
+  inviteTournamentOpponentApi,
+  joinTournamentEvent,
+  leaveTournamentEvent,
+} from '../services/tournamentApi';
+import { TournamentMatch } from './TournamentBracket';
 import { TournamentView } from './tournament/TournamentView';
 import { SponsoredTournamentModal } from './tournament/SponsoredTournamentModal';
 import { PrizeClaimModal } from './tournament/PrizeClaimModal';
 import { PrizeClaim } from '../../domain/sponsored-tournament';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
-interface EventData {
+export interface EventData {
   id: string;
   title: string;
   description: string;
   rules: string;
   type: string;
   status: 'draft' | 'upcoming' | 'live' | 'completed';
+  tournament_format?: TournamentFormat;
+  auto_recreate?: boolean;
+  check_in_enabled?: boolean;
+  check_in_deadline?: string | null;
+  check_in_window_minutes?: number;
   start_date: string;
   end_date: string;
   entry_fee: number;
   prize_pool: string;
+  guaranteed_prize_coins?: number;
+  current_prize_coins?: number;
+  entry_pool_percent?: number;
+  prize_tiers?: PrizeTier[] | null;
+  reward_xp_winner?: number;
+  reward_xp_podium?: number;
+  reward_xp_participation?: number;
+  reward_store_item_id?: string | null;
+  final_best_of?: number;
   min_elo: number;
   image_url?: string;
   audio_url?: string;
   participants_count: number;
   max_participants: number;
+  is_championship?: boolean;
   is_sponsored?: boolean;
   sponsor_name?: string;
   sponsor_logo_url?: string;
@@ -43,171 +74,265 @@ interface EventData {
   prize_distribution?: { rank: number; amountUsd: number }[];
 }
 
-const MOCK_EVENTS: EventData[] = [
-  {
-    id: 'mock-live-1',
-    title: 'Torneo Relampago Neon',
-    description: 'Compite en rondas rapidas 1v1 con recompensas inmediatas y clasificacion especial.',
-    rules: 'Formato eliminacion directa. Mejor de 1 partida por ronda. Desempates por puntaje total.',
-    type: 'torneo',
-    status: 'live',
-    start_date: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    end_date: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
-    entry_fee: 100,
-    prize_pool: '10,000 Monedas + 500 XP',
-    min_elo: 900,
-    image_url: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=1600',
-    participants_count: 24,
-    max_participants: 32,
-  },
-  {
-    id: 'mock-upcoming-1',
-    title: 'Liga Cyber Elite',
-    description: 'Escala posiciones durante una semana y gana recompensas por division.',
-    rules: 'Sistema de puntos por victoria. 3 puntos por win, 1 por empate tecnico.',
-    type: 'liga',
-    status: 'upcoming',
-    start_date: new Date(Date.now() + 26 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    entry_fee: 250,
-    prize_pool: '25,000 Monedas + Skin Exclusiva',
-    min_elo: 1100,
-    image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=1600',
-    participants_count: 12,
-    max_participants: 64,
-  },
-  {
-    id: 'mock-completed-1',
-    title: 'Especial Fin de Semana',
-    description: 'Evento tematico con bonus de XP y recompensas cosmeticas.',
-    rules: 'Partidas por bloques horarios. Ranking final por mejor racha de victorias.',
-    type: 'especial',
-    status: 'completed',
-    start_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    end_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    entry_fee: 0,
-    prize_pool: '5,000 Monedas + 1,000 XP',
-    min_elo: 0,
-    image_url: 'https://images.unsplash.com/photo-1603484477859-abe6a73f9366?auto=format&fit=crop&q=80&w=1600',
-    participants_count: 48,
-    max_participants: 48,
-  },
-];
+type CategoryTab = 'all' | 'sit_and_go' | 'scheduled' | 'live' | 'completed';
 
-function EventCard({ id, title, type, status, prize_pool, start_date, end_date, image_url, audio_url, rules, max_participants, entry_fee, onViewRules, onViewBracket, onJoinEvent, isEnrolled, isLoading, participants_count }: EventData & { onViewRules: (rules: string, title: string) => void, onViewBracket: (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => void, onJoinEvent: (eventId: string, title: string, e: React.MouseEvent) => void, isEnrolled: boolean, isLoading: boolean }) {
-  const statusColors: Record<string, string> = {
-    draft: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
-    live: 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]',
-    upcoming: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.5)]',
-    completed: 'bg-gray-500/20 text-gray-400 border-gray-500/50',
-  };
+interface UserEntryState {
+  checked_in: boolean;
+}
 
-  const statusLabels: Record<string, string> = {
-    draft: 'BORRADOR',
-    live: 'EN VIVO',
-    upcoming: 'PRÓXIMAMENTE',
-    completed: 'FINALIZADO'
-  };
+function resolveEventCoinPot(ev: EventData): number {
+  if ((ev.current_prize_coins ?? 0) > 0) return ev.current_prize_coins!;
+  const dynamic = calculateDynamicPot(
+    ev.guaranteed_prize_coins ?? 0,
+    ev.entry_fee ?? 0,
+    ev.participants_count ?? 0,
+    ev.entry_pool_percent ?? 90
+  );
+  if (dynamic > 0) return dynamic;
+  return parseLegacyCoinPool(ev.prize_pool);
+}
 
-  const getHoverShadow = () => {
-    if (status === 'live') {
-      return 'hover:border-red-500/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.3)]';
-    }
-    if (status === 'upcoming') {
-      return 'hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.3)]';
-    }
-    return 'hover:border-casino-gold/50 hover:shadow-[0_0_25px_rgba(234,179,8,0.2)]';
-  };
+function EventCard({
+  event,
+  entryState,
+  isLoading,
+  onViewRules,
+  onViewBracket,
+  onJoinEvent,
+  onLeaveEvent,
+  onCheckInEvent,
+}: {
+  event: EventData;
+  entryState?: UserEntryState;
+  isLoading: boolean;
+  onViewRules: (rules: string, title: string) => void;
+  onViewBracket: (event: EventData) => void;
+  onJoinEvent: (event: EventData, e: React.MouseEvent) => void;
+  onLeaveEvent: (event: EventData, e: React.MouseEvent) => void;
+  onCheckInEvent: (event: EventData, e: React.MouseEvent) => void;
+}) {
+  const isEnrolled = Boolean(entryState);
+  const isCheckedIn = Boolean(entryState?.checked_in);
+  const isSitAndGo = event.tournament_format === 'sit_and_go';
+  const maxPlayers = Math.max(2, event.max_participants || 8);
+  const currentPlayers = Math.min(maxPlayers, event.participants_count || 0);
+  const fillPercent = Math.min(100, Math.round((currentPlayers / maxPlayers) * 100));
+
+  const potCoins = resolveEventCoinPot(event);
+  const prizeGroups = buildPrizeDisplayGroups(potCoins, event.prize_tiers, maxPlayers);
+  const firstPrize = prizeGroups[0]?.coinsEach ?? 0;
+  const secondPrize = prizeGroups[1]?.coinsEach ?? 0;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
-    <div className={`glass-panel group relative overflow-hidden rounded-2xl border border-white/10 hover:-translate-y-2 transition-all duration-300 cursor-pointer h-64 flex flex-col ${getHoverShadow()}`}>
-      {/* Background Image Placeholder */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent z-10" />
-      <div 
-        className="absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity bg-cover bg-center"
-        style={{ backgroundImage: `url(${image_url || 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&q=80&w=800'})` }}
-      />
-      
-      {/* Content */}
-      <div className="relative z-20 p-5 flex flex-col h-full justify-between">
-        <div className="flex justify-between items-start w-full">
-          <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border ${statusColors[status] || statusColors.completed}`}>
-            {statusLabels[status] || status}
-          </span>
-          <div className="flex gap-1.5 items-center">
-            {isEnrolled && (
-              <span className="text-[9px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-lg font-black tracking-widest animate-pulse select-none">
-                ✓ INSCRITO
+    <div
+      onClick={() => {
+        if (event.status === 'live' || event.status === 'completed') {
+          onViewBracket(event);
+        } else {
+          onViewRules(event.rules, event.title);
+        }
+      }}
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/85 hover:border-casino-gold/40 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between p-5 gap-4 shadow-lg"
+    >
+      {event.image_url && (
+        <div
+          className="absolute inset-0 opacity-15 group-hover:opacity-25 transition-opacity bg-cover bg-center pointer-events-none"
+          style={{ backgroundImage: `url(${event.image_url})` }}
+        />
+      )}
+
+      {/* Cabecera de badges */}
+      <div className="relative z-10 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {event.status === 'live' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                EN CURSO
+              </span>
+            ) : event.status === 'completed' ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/10 text-slate-200 border border-white/15">
+                FINALIZADO
+              </span>
+            ) : isSitAndGo ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-casino-gold/15 text-casino-gold border border-casino-gold/35">
+                <Zap className="w-3 h-3" />
+                Sit &amp; Go
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-400/35">
+                <Calendar className="w-3 h-3" />
+                Programado
               </span>
             )}
-            <span className="text-[10px] font-bold text-gray-200 uppercase tracking-widest bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/5">
-              {type === 'gran_pool' || title.includes('El Gran Pool') ? '👑 GRAN POOL (TOP 32)' : type === 'torneo' ? '⚔️ TORNEO' : type === 'liga' ? '🏆 LIGA' : '💎 ESPECIAL'}
-            </span>
+
+            {event.min_elo > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/50 text-slate-200 border border-white/10">
+                <Shield className="w-3 h-3 text-casino-gold" />
+                {event.min_elo}+ ELO
+              </span>
+            )}
           </div>
+
+          {isEnrolled && event.status === 'upcoming' && (
+            <span
+              className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider border ${
+                isCheckedIn || isSitAndGo
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/35'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-400/35'
+              }`}
+            >
+              {isSitAndGo ? '✓ Inscrito' : isCheckedIn ? '✓ Check-in Listo' : '⏳ Inscrito'}
+            </span>
+          )}
         </div>
 
         <div>
-          <h3 className="text-xl md:text-2xl font-black text-white mb-1 group-hover:text-casino-gold transition-colors truncate">{title}</h3>
-          <p className="text-sm text-gray-300 font-medium mb-3">
-            {status === 'upcoming' ? `Inicia: ${formatDate(start_date)}` : 
-             status === 'live' ? `Termina: ${formatDate(end_date)}` : 
-             `Finalizó: ${formatDate(end_date)}`}
+          {event.is_sponsored && event.sponsor_name && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-casino-gold block mb-0.5">
+              ★ Patrocina: {event.sponsor_name}
+            </span>
+          )}
+          <h3 className="text-lg sm:text-xl font-black text-white group-hover:text-casino-gold transition-colors line-clamp-1">
+            {event.title}
+          </h3>
+          <p className="text-xs text-slate-300 font-medium mt-0.5">
+            {event.status === 'upcoming'
+              ? isSitAndGo
+                ? '⚡ Inicia al instante al llenarse la mesa'
+                : `📅 Inicia: ${formatDate(event.start_date)}`
+              : event.status === 'live'
+              ? '🔴 Llaves eliminatorias en juego'
+              : `🏆 Finalizó: ${formatDate(event.end_date)}`}
           </p>
-          
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-900/40 to-black/50 w-fit px-3 py-2 rounded-xl border border-yellow-500/20">
-                <span className="text-xs">🏆</span>
-                <span className="text-xs font-bold text-casino-gold">{prize_pool}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[9px] font-mono text-gray-200 bg-black/30 px-2.5 py-0.5 rounded-md border border-white/5 w-fit">
-                <span>👥 {participants_count}/{max_participants}</span>
-              </div>
+        </div>
+
+        {/* Bloque de Pozo y Desglose */}
+        <div className="rounded-xl bg-black/45 border border-casino-gold/20 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">
+              Pozo Acumulado
+            </span>
+            <span className="text-sm font-black font-mono text-casino-gold flex items-center gap-1">
+              <Coins className="w-3.5 h-3.5" />
+              {potCoins > 0 ? `${potCoins.toLocaleString('es-ES')} 🪙` : event.prize_pool}
+            </span>
+          </div>
+
+          {potCoins > 0 && (
+            <div className="flex items-center justify-between text-[11px] text-slate-200 pt-1 border-t border-white/10">
+              <span>🥇 1.º: {firstPrize.toLocaleString('es-ES')} 🪙</span>
+              {secondPrize > 0 && <span>🥈 2.º: {secondPrize.toLocaleString('es-ES')} 🪙</span>}
+              <span className="text-emerald-300 font-bold">+{event.reward_xp_winner || 300} XP</span>
             </div>
-            <div className="flex gap-2">
-              {(status === 'upcoming' || (status === 'live' && type !== 'torneo')) && (
-                <div className="flex flex-col items-end gap-1">
-                  {entry_fee > 0 && (
-                    <span className="text-[9px] font-black text-yellow-400 bg-black/50 px-2 py-0.5 rounded uppercase tracking-widest border border-yellow-500/20">
-                      Entrada: 🪙 {entry_fee}
-                    </span>
-                  )}
-                  <button 
-                    onClick={(e) => onJoinEvent(id, title, e)}
-                    disabled={isLoading}
-                    className={`text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition-colors border ${isEnrolled ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'text-black bg-casino-gold hover:bg-yellow-400 border-casino-gold'}`}
-                  >
-                    {isLoading ? '...' : isEnrolled ? 'Inscrito' : 'Entrar'}
-                  </button>
-                </div>
+          )}
+
+          {event.reward_store_item_id && (
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-purple-200 pt-0.5">
+              <Sparkles className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+              <span>Incluye Cosmético Exclusivo para el Campeón</span>
+            </div>
+          )}
+        </div>
+
+        {/* Barra de cupos */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-300 font-semibold">
+              Jugadores ({currentPlayers}/{maxPlayers})
+            </span>
+            <span className="font-bold text-slate-200">
+              Entrada:{' '}
+              {event.entry_fee > 0 ? (
+                <span className="text-casino-gold">🪙 {event.entry_fee.toLocaleString('es-ES')}</span>
+              ) : (
+                <span className="text-emerald-300">GRATIS</span>
               )}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewRules(rules, title);
-                }}
-                className="text-[10px] uppercase font-bold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors border border-white/5"
-              >
-                Reglas
-              </button>
-              {(status === 'live' || status === 'completed') && type === 'torneo' && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewBracket(id, title, max_participants, image_url, audio_url);
-                  }}
-                  className="text-[10px] uppercase font-bold text-casino-gold hover:text-yellow-300 bg-casino-gold/10 hover:bg-casino-gold/20 px-3 py-1.5 rounded-lg transition-colors border border-casino-gold/30"
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-black/60 border border-white/10 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-casino-gold to-yellow-400 transition-all duration-500"
+              style={{ width: `${fillPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Botonera inferior */}
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewRules(event.rules, event.title);
+          }}
+          className="text-[11px] uppercase font-bold text-slate-200 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl transition-colors border border-white/10"
+        >
+          Reglas
+        </button>
+
+        <div className="flex items-center gap-2 ml-auto">
+          {event.status === 'upcoming' && !isEnrolled && (
+            <button
+              type="button"
+              onClick={(e) => onJoinEvent(event, e)}
+              disabled={isLoading || currentPlayers >= maxPlayers}
+              className="text-[11px] uppercase font-black px-4 py-2 rounded-xl transition-colors bg-casino-gold hover:bg-yellow-400 text-black disabled:opacity-50"
+            >
+              {isLoading ? 'Procesando...' : currentPlayers >= maxPlayers ? 'Cupo Lleno' : 'Inscribirme'}
+            </button>
+          )}
+
+          {event.status === 'upcoming' && isEnrolled && (
+            <>
+              {event.check_in_enabled && !isCheckedIn && !isSitAndGo && (
+                <button
+                  type="button"
+                  onClick={(e) => onCheckInEvent(event, e)}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-1 text-[11px] uppercase font-black px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black transition-colors disabled:opacity-50"
                 >
-                  Llaves
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Check-in</span>
                 </button>
               )}
-            </div>
-          </div>
+
+              <button
+                type="button"
+                onClick={(e) => onLeaveEvent(event, e)}
+                disabled={isLoading}
+                title="Cancelar inscripción y recibir reembolso"
+                className="inline-flex items-center gap-1 text-[11px] uppercase font-bold px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Retirarme</span>
+              </button>
+            </>
+          )}
+
+          {(event.status === 'live' || event.status === 'completed') && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewBracket(event);
+              }}
+              className="text-[11px] uppercase font-black text-casino-gold hover:text-yellow-300 bg-casino-gold/15 hover:bg-casino-gold/25 px-4 py-2 rounded-xl transition-colors border border-casino-gold/35"
+            >
+              {event.status === 'completed' ? 'Ver Podio y Llave' : 'Ver Llave en Vivo'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -217,44 +342,51 @@ function EventCard({ id, title, type, status, prize_pool, start_date, end_date, 
 export function EventsPage() {
   const { user, profile } = useAuth();
   const { startUrlLoop, stopLoop } = useAudio();
-  const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
+  const [categoryTab, setCategoryTab] = useState<CategoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'torneo' | 'liga' | 'especial'>('all');
   const [events, setEvents] = useState<EventData[]>([]);
-  const [userEntries, setUserEntries] = useState<string[]>([]);
+  const [userEntries, setUserEntries] = useState<Record<string, UserEntryState>>({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [toastNotice, setToastNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const { isSupported, isSubscribed, subscribeToPush } = usePushNotifications();
   const [pushPromptModalOpen, setPushPromptModalOpen] = useState(false);
-  const pushPromptModalRef = useFocusTrap({ isOpen: pushPromptModalOpen, onClose: () => setPushPromptModalOpen(false) });
+  const pushPromptModalRef = useFocusTrap({
+    isOpen: pushPromptModalOpen,
+    onClose: () => setPushPromptModalOpen(false),
+  });
   const [pendingEnrollment, setPendingEnrollment] = useState<EventData | null>(null);
 
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
-  const rulesModalRef = useFocusTrap({ isOpen: rulesModalOpen, onClose: () => setRulesModalOpen(false) });
+  const rulesModalRef = useFocusTrap({
+    isOpen: rulesModalOpen,
+    onClose: () => setRulesModalOpen(false),
+  });
   const [selectedRules, setSelectedRules] = useState({ title: '', content: '' });
 
-  const [bracketModalOpen, setBracketModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState('');
-  const [selectedTournamentImage, setSelectedTournamentImage] = useState<string | undefined>('');
-  const [selectedTournamentMaxParticipants, setSelectedTournamentMaxParticipants] = useState(16);
-  const [selectedTournamentPrize, setSelectedTournamentPrize] = useState<string | undefined>(undefined);
   const [tournamentMatches, setTournamentMatches] = useState<TournamentMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [bracketChannel, setBracketChannel] = useState<any>(null);
   const [inviteCooldowns, setInviteCooldowns] = useState<Record<string, number>>({});
 
-  // Sponsored Tournament & Prize Claim state
+  // Sponsored Tournament & Legacy Prize Claim state (guarded by CASH_PRIZES_ENABLED)
   const [sponsoredModalOpen, setSponsoredModalOpen] = useState(false);
   const [selectedSponsoredEvent, setSelectedSponsoredEvent] = useState<EventData | null>(null);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
   const [activePrizeClaim, setActivePrizeClaim] = useState<PrizeClaim | null>(null);
   const [activeClaimSponsorName, setActiveClaimSponsorName] = useState<string>('Sponsor');
 
+  const showToast = useCallback((type: 'ok' | 'err', text: string) => {
+    setToastNotice({ type, text });
+    window.setTimeout(() => setToastNotice(null), 5000);
+  }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setInviteCooldowns(prev => {
+      setInviteCooldowns((prev) => {
         const next: Record<string, number> = {};
         let changed = false;
         const nowMs = Date.now();
@@ -285,47 +417,40 @@ export function EventsPage() {
     }
   }
 
-  const fetchBracketData = async (eventId: string) => {
+  const fetchBracketData = useCallback(async (eventId: string) => {
     const { data, error } = await supabase
       .from('tournament_matches')
       .select(`
         id, round_number, match_order, status, winner_id,
-        player1_id,
-        player2_id,
-        game_room_id,
-        best_of,
-        series_game,
-        series_id
+        player1_id, player2_id, game_room_id,
+        best_of, series_game, series_id,
+        walkover_reason, waiting_player_id, waiting_since
       `)
       .eq('event_id', eventId);
 
-    if (error) {
-      console.error('Error fetching matches:', error);
+    if (error || !data) {
+      if (error) logger.error('Error fetching matches:', error);
       return;
     }
-    if (!data) return;
 
-    const playerIds = Array.from(new Set(data.flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean)));
+    const playerIds = Array.from(
+      new Set(data.flatMap((m) => [m.player1_id, m.player2_id]).filter(Boolean))
+    );
 
-    let profiles: Record<string, any> = {};
+    const profiles: Record<string, any> = {};
     if (playerIds.length > 0) {
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, equipped_avatar')
         .in('id', playerIds);
 
-      if (profilesError) {
-        logger.error('Error fetching profiles:', profilesError);
-      }
-
-      if (profilesData) {
-        profilesData.forEach((p: any) => {
-          profiles[p.id] = p;
-        });
+      if (profilesError) logger.error('Error fetching profiles:', profilesError);
+      for (const p of profilesData || []) {
+        profiles[p.id] = p;
       }
     }
 
-    const mappedMatches: TournamentMatch[] = data.map(m => {
+    const mappedMatches: TournamentMatch[] = data.map((m) => {
       const p1 = m.player1_id ? profiles[m.player1_id] : null;
       const p2 = m.player2_id ? profiles[m.player2_id] : null;
 
@@ -333,8 +458,22 @@ export function EventsPage() {
         id: m.id,
         round: m.round_number,
         position: m.match_order,
-        player1: p1 ? { id: p1.id, name: p1.username || 'Desconocido', avatar: p1.equipped_avatar || p1.avatar_url, isWinner: m.winner_id === p1.id } : null,
-        player2: p2 ? { id: p2.id, name: p2.username || 'Desconocido', avatar: p2.equipped_avatar || p2.avatar_url, isWinner: m.winner_id === p2.id } : null,
+        player1: p1
+          ? {
+              id: p1.id,
+              name: p1.username || 'Jugador',
+              avatar: p1.equipped_avatar || p1.avatar_url,
+              isWinner: m.winner_id === p1.id,
+            }
+          : null,
+        player2: p2
+          ? {
+              id: p2.id,
+              name: p2.username || 'Jugador',
+              avatar: p2.equipped_avatar || p2.avatar_url,
+              isWinner: m.winner_id === p2.id,
+            }
+          : null,
         status: mapMatchStatus(m.status),
         game_room_id: m.game_room_id,
         best_of: m.best_of,
@@ -342,189 +481,94 @@ export function EventsPage() {
         series_id: m.series_id,
         walkover_reason: m.walkover_reason,
         waiting_player_id: m.waiting_player_id,
-        waiting_since: m.waiting_since
+        waiting_since: m.waiting_since,
       };
     });
     setTournamentMatches(mappedMatches);
-  };
+  }, []);
 
-  const [enrollmentModalOpen, setEnrollmentModalOpen] = useState(false);
-  const enrollmentModalRef = useFocusTrap({ isOpen: enrollmentModalOpen, onClose: () => setEnrollmentModalOpen(false) });
-  const [enrollmentStatus, setEnrollmentStatus] = useState<'success' | 'already_enrolled' | 'error'>('success');
-  const [enrollmentEventTitle, setEnrollmentEventTitle] = useState('');
-
-  const closeBracketModal = () => {
-    setBracketModalOpen(false);
+  const closeBracketModal = useCallback(() => {
     setSelectedTournament('');
     stopLoop('event-bracket-audio');
     if (bracketChannel) {
       supabase.removeChannel(bracketChannel);
       setBracketChannel(null);
     }
-  };
+  }, [bracketChannel, stopLoop]);
 
-  const handleInviteOpponent = async (opponentId: string, match: TournamentMatch) => {
-    if (!user) return;
-    const currentCooldown = inviteCooldowns[match.id];
-    if (currentCooldown && currentCooldown > Date.now()) {
-      return;
-    }
-
-    try {
-      const apiUrl = import.meta.env.VITE_SOCKET_URL || (
-        import.meta.env.PROD && typeof window !== 'undefined'
-          ? window.location.origin
-          : 'http://localhost:4000'
-      );
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+  const handleViewBracket = useCallback(
+    async (event: EventData) => {
+      if (bracketChannel) {
+        supabase.removeChannel(bracketChannel);
       }
-      const res = await fetch(`${apiUrl}/api/tournament/invite-opponent`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          opponentId,
-          roomId: match.game_room_id,
-          eventTitle: events.find(e => e.id === selectedTournament)?.title || 'Torneo',
-          senderName: profile?.username
-        })
-      });
-      if (res.ok) {
-        alert('🔔 ¡Aviso enviado a tu rival exitosamente!');
-        setInviteCooldowns(prev => ({
-          ...prev,
-          [match.id]: Date.now() + 60000
-        }));
-      } else {
-        alert('Error al enviar el aviso.');
+      setSelectedTournament(event.id);
+      setMatchesLoading(true);
+
+      if (event.audio_url) {
+        startUrlLoop('event-bracket-audio', event.audio_url);
       }
-    } catch (e) {
-      console.error(e);
-      alert('Error de red al enviar el aviso.');
-    }
-  };
 
-  const handleClaimWalkover = async (matchId: string) => {
-    if (!user) return;
-    try {
-      const apiUrl = import.meta.env.VITE_SOCKET_URL || (
-        import.meta.env.PROD && typeof window !== 'undefined'
-          ? window.location.origin
-          : 'http://localhost:4000'
-      );
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      await fetchBracketData(event.id);
+      setMatchesLoading(false);
 
-      const res = await fetch(`${apiUrl}/api/tournament/match/${matchId}/claim-walkover`, {
-        method: 'POST',
-        headers
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert('🏆 ¡Victoria por incomparecencia (Walkover) adjudicada! Has avanzado en el cuadro.');
-        if (selectedTournament) {
-          await fetchBracketData(selectedTournament);
-        }
-      } else {
-        alert(`No se pudo adjudicar walkover: ${data.error || 'Tiempo reglamentario no cumplido.'}`);
-      }
-    } catch (e) {
-      console.error('Error al reclamar walkover:', e);
-      alert('Error de conexión al reclamar walkover.');
-    }
-  };
-
-  const handleJoinMatch = (match: TournamentMatch) => {
-    if (!match.game_room_id) {
-      alert('La sala de juego aún no ha sido generada.');
-      return;
-    }
-    
-    closeBracketModal();
-
-    const isSpectator = !(user && (match.player1?.id === user.id || match.player2?.id === user.id));
-
-    window.dispatchEvent(new CustomEvent('join_game_from_invite', { 
-      detail: { roomId: match.game_room_id, isTournament: true, isSpectator } 
-    }));
-  };
-  const handleViewRules = (rules: string, title: string) => {
-    setSelectedRules({ title, content: rules });
-    setRulesModalOpen(true);
-  };
-
-  const handleViewBracket = async (eventId: string, title: string, maxParticipants: number, imageUrl?: string, audioUrl?: string) => {
-    setSelectedTournament(eventId);
-    setSelectedTournamentMaxParticipants(maxParticipants || 16);
-    setSelectedTournamentImage(imageUrl);
-    const event = events.find(e => e.id === eventId);
-    setSelectedTournamentPrize(event?.prize_pool);
-    setBracketModalOpen(true);
-    setMatchesLoading(true);
-
-    if (audioUrl) {
-      startUrlLoop('event-bracket-audio', audioUrl);
-    }
-
-    await fetchBracketData(eventId);
-    setMatchesLoading(false);
-
-    const channel = supabase
-      .channel(`bracket-${eventId}-${Date.now()}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'tournament_matches',
-        filter: `event_id=eq.${eventId}`
-      }, () => {
-        fetchBracketData(eventId);
-      })
-      .subscribe();
-
-    setBracketChannel(channel);
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchEventsAndEntries = async () => {
-      try {
-        const { data: eventsData, error: eventsError } = await supabase
-          .from('events')
-          .select('*')
-          .neq('status', 'draft')
-          .order('start_date', { ascending: true });
-          
-        if (!isMounted) return;
-          
-        if (eventsError) {
-          throw eventsError;
-        } else if (eventsData && eventsData.length > 0) {
-          setEvents(eventsData as EventData[]);
-        } else {
-          setEvents(MOCK_EVENTS);
-        }
-
-        if (user) {
-          const { data: entriesData, error: entriesError } = await supabase
-            .from('event_entries')
-            .select('event_id')
-            .eq('player_id', user.id);
-            
-          if (!isMounted) return;
-            
-          if (entriesError) {
-            logger.error("Error al cargar inscripciones:", entriesError);
-          } else if (entriesData) {
-            setUserEntries(entriesData.map(e => e.event_id));
+      const channel = supabase
+        .channel(`bracket-${event.id}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tournament_matches',
+            filter: `event_id=eq.${event.id}`,
+          },
+          () => {
+            fetchBracketData(event.id);
           }
+        )
+        .subscribe();
 
-          // Consultar si el usuario tiene un premio pendiente de reclamar
+      setBracketChannel(channel);
+    },
+    [bracketChannel, fetchBracketData, startUrlLoop]
+  );
+
+  const loadEventsAndEntries = useCallback(async () => {
+    try {
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .neq('status', 'draft')
+        .order('start_date', { ascending: true });
+
+      if (eventsError) throw eventsError;
+
+      const cleaned = ((eventsData || []) as EventData[]).filter((ev) => {
+        if (!CASH_PRIZES_ENABLED) {
+          if (ev.is_championship) return false;
+          if (ev.type !== 'torneo') return false;
+        }
+        return true;
+      });
+
+      setEvents(cleaned);
+
+      if (user?.id) {
+        const { data: entriesData, error: entriesError } = await supabase
+          .from('event_entries')
+          .select('event_id, checked_in')
+          .eq('player_id', user.id);
+
+        if (entriesError) {
+          logger.error('Error al cargar inscripciones:', entriesError);
+        } else {
+          const map: Record<string, UserEntryState> = {};
+          for (const entry of entriesData || []) {
+            map[entry.event_id] = { checked_in: Boolean(entry.checked_in) };
+          }
+          setUserEntries(map);
+        }
+
+        if (CASH_PRIZES_ENABLED) {
           try {
             const { data: claimsData } = await supabase
               .from('tournament_prize_claims')
@@ -534,7 +578,7 @@ export function EventsPage() {
               .order('created_at', { ascending: false })
               .limit(1);
 
-            if (isMounted && claimsData && claimsData.length > 0) {
+            if (claimsData && claimsData.length > 0) {
               const rawClaim = claimsData[0];
               setActivePrizeClaim({
                 id: rawClaim.id,
@@ -552,69 +596,173 @@ export function EventsPage() {
                 claimedAt: rawClaim.claimed_at,
                 paidAt: rawClaim.paid_at,
                 expiresAt: rawClaim.expires_at,
-                createdAt: rawClaim.created_at
+                createdAt: rawClaim.created_at,
               });
               if ((rawClaim.events as any)?.sponsor_name) {
                 setActiveClaimSponsorName((rawClaim.events as any).sponsor_name);
               }
             }
-          } catch (claimsErr) {
-            // Silence 403 permissions error for claims table
+          } catch {
+            // Silencioso
           }
         }
-      } catch (error: any) {
-        if (!isMounted) return;
-        const message = String(error?.message || '');
-        if (error?.name === 'TypeError' && message.includes('Failed to fetch')) {
-          setEvents(MOCK_EVENTS);
-          return;
-        }
-        logger.error('Error fetching events:', error);
-        setEvents(MOCK_EVENTS);
-      } finally {
-        if (isMounted) setLoading(false);
+      } else {
+        setUserEntries({});
+      }
+    } catch (err) {
+      logger.error('Error fetching events:', err);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadEventsAndEntries();
+  }, [loadEventsAndEntries]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadEventsAndEntries();
+      if (selectedTournament) fetchBracketData(selectedTournament);
+    };
+
+    const handleOpenBracketEvent = (e: Event) => {
+      const targetId = (e as CustomEvent)?.detail?.eventId;
+      if (!targetId) return;
+      const found = events.find((ev) => ev.id === targetId);
+      if (found) {
+        handleViewBracket(found);
+      } else {
+        supabase
+          .from('events')
+          .select('*')
+          .eq('id', targetId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) handleViewBracket(data as EventData);
+          });
       }
     };
 
-    fetchEventsAndEntries();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
+    window.addEventListener('tournament_Refresh', handleRefresh);
+    window.addEventListener('open_tournament_bracket', handleOpenBracketEvent);
 
-  const handleJoinEvent = async (eventId: string, title: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!user) {
-      alert('Debes iniciar sesión para unirte a un evento.');
+    let cleanupSocket: (() => void) | undefined;
+    socketService
+      .connect()
+      .then((socket) => {
+        socket.on('tournament_list_updated', handleRefresh);
+        socket.on('event_started', handleRefresh);
+        socket.on('event_completed', handleRefresh);
+        socket.on('tournament_started', handleRefresh);
+        socket.on('tournament_checkin_open', handleRefresh);
+        cleanupSocket = () => {
+          socket.off('tournament_list_updated', handleRefresh);
+          socket.off('event_started', handleRefresh);
+          socket.off('event_completed', handleRefresh);
+          socket.off('tournament_started', handleRefresh);
+          socket.off('tournament_checkin_open', handleRefresh);
+        };
+      })
+      .catch(() => {});
+
+    return () => {
+      window.removeEventListener('tournament_Refresh', handleRefresh);
+      window.removeEventListener('open_tournament_bracket', handleOpenBracketEvent);
+      cleanupSocket?.();
+    };
+  }, [events, fetchBracketData, handleViewBracket, loadEventsAndEntries, selectedTournament]);
+
+  const handleInviteOpponent = async (opponentId: string, match: TournamentMatch) => {
+    if (!user || !match.game_room_id) return;
+    const currentCooldown = inviteCooldowns[match.id];
+    if (currentCooldown && currentCooldown > Date.now()) return;
+
+    const res = await inviteTournamentOpponentApi({
+      opponentId,
+      roomId: match.game_room_id,
+      eventTitle: events.find((e) => e.id === selectedTournament)?.title || 'Torneo',
+      senderName: profile?.username,
+    });
+
+    if (res.success) {
+      showToast('ok', '🔔 Aviso enviado a tu rival exitosamente.');
+      setInviteCooldowns((prev) => ({
+        ...prev,
+        [match.id]: Date.now() + 60_000,
+      }));
+    } else {
+      showToast('err', res.error || 'No se pudo enviar el aviso.');
+    }
+  };
+
+  const handleClaimWalkover = async (matchId: string) => {
+    if (!user) return;
+    const res = await claimTournamentWalkoverApi(matchId);
+    if (res.success) {
+      showToast('ok', '🏆 ¡Victoria por Walkover adjudicada! Avanzaste a la siguiente ronda.');
+      if (selectedTournament) await fetchBracketData(selectedTournament);
+    } else {
+      showToast('err', res.error || 'Aún no se cumple el tiempo reglamentario.');
+    }
+  };
+
+  const handleJoinMatch = (match: TournamentMatch) => {
+    if (!match.game_room_id) {
+      showToast('err', 'La sala de juego aún no está disponible.');
       return;
     }
 
-    const eventObj = events.find(e => e.id === eventId);
-    if (!eventObj) return;
+    closeBracketModal();
+    const isSpectator = !(user && (match.player1?.id === user.id || match.player2?.id === user.id));
 
-    if (eventObj.type === 'gran_pool' || eventObj.title.includes('El Gran Pool')) {
-      const { data: part } = await supabase
-        .from('championship_participants')
-        .select('points')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    window.dispatchEvent(
+      new CustomEvent('join_game_from_invite', {
+        detail: { roomId: match.game_room_id, isTournament: true, isSpectator },
+      })
+    );
+  };
 
-      if (!part) {
-        alert('⚠️ Este torneo es exclusivo para los 32 jugadores clasificados en la Liga Championship.');
-        return;
-      }
+  const handleViewRules = (rules: string, title: string) => {
+    setSelectedRules({ title, content: rules });
+    setRulesModalOpen(true);
+  };
 
-      const { count } = await supabase
-        .from('championship_participants')
-        .select('id', { count: 'exact', head: true })
-        .gt('points', part.points || 0);
+  const confirmEnrollment = async (eventObj: EventData) => {
+    if (!user) return;
+    setActionLoading(eventObj.id);
+    const res = await joinTournamentEvent(eventObj.id);
+    setActionLoading(null);
 
-      const rank = count !== null ? count + 1 : 999;
-      if (rank > 32) {
-        alert(`⚠️ Tu posición actual en la Liga Championship es #${rank}. Este torneo está reservado exclusivamente para el Top 32.`);
-        return;
-      }
+    if (!res.success) {
+      showToast('err', res.error || 'No se pudo completar la inscripción.');
+      return;
+    }
+
+    await loadEventsAndEntries();
+
+    if (res.bracketStarted) {
+      showToast('ok', `⚡ ¡Mesa completa! Las llaves de "${eventObj.title}" han comenzado.`);
+      handleViewBracket({ ...eventObj, status: 'live' });
+    } else {
+      showToast('ok', `🎉 ¡Inscrito en "${eventObj.title}"! Tu lugar está asegurado.`);
+    }
+  };
+
+  const handleJoinEvent = async (eventObj: EventData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      showToast('err', 'Debes iniciar sesión para inscribirte en un torneo.');
+      return;
+    }
+
+    if ((eventObj.min_elo || 0) > (profile?.elo || 1000)) {
+      showToast(
+        'err',
+        `Este torneo requiere ${eventObj.min_elo} ELO mínimo (tu ELO actual: ${profile?.elo || 1000}).`
+      );
+      return;
     }
 
     if (eventObj.is_sponsored) {
@@ -623,14 +771,7 @@ export function EventsPage() {
       return;
     }
 
-    if (userEntries.includes(eventObj.id)) {
-      setEnrollmentEventTitle(eventObj.title);
-      setEnrollmentStatus('already_enrolled');
-      setEnrollmentModalOpen(true);
-      return;
-    }
-
-    if (eventObj.type === 'torneo' && isSupported && !isSubscribed) {
+    if (isSupported && !isSubscribed) {
       setPendingEnrollment(eventObj);
       setPushPromptModalOpen(true);
       return;
@@ -639,81 +780,113 @@ export function EventsPage() {
     await confirmEnrollment(eventObj);
   };
 
+  const handleLeaveEvent = async (eventObj: EventData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    setActionLoading(eventObj.id);
+    const res = await leaveTournamentEvent(eventObj.id);
+    setActionLoading(null);
+
+    if (res.success) {
+      const refundMsg =
+        (res.refunded_coins ?? 0) > 0
+          ? ` Se reembolsaron ${res.refunded_coins?.toLocaleString('es-ES')} monedas a tu saldo.`
+          : '';
+      showToast('ok', `Inscripción cancelada en "${eventObj.title}".${refundMsg}`);
+      loadEventsAndEntries();
+    } else {
+      showToast('err', res.error || 'No se pudo cancelar la inscripción.');
+    }
+  };
+
+  const handleCheckInEvent = async (eventObj: EventData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    setActionLoading(eventObj.id);
+    const res = await checkInTournamentEvent(eventObj.id);
+    setActionLoading(null);
+
+    if (res.success) {
+      showToast('ok', `✅ ¡Check-in confirmado para "${eventObj.title}"!`);
+      loadEventsAndEntries();
+    } else {
+      showToast('err', res.error || 'No se pudo confirmar el Check-in.');
+    }
+  };
+
   const handlePushChoice = async (accept: boolean) => {
     setPushPromptModalOpen(false);
     if (accept) {
       await subscribeToPush();
     }
     if (pendingEnrollment) {
-      await confirmEnrollment(pendingEnrollment);
+      const target = pendingEnrollment;
       setPendingEnrollment(null);
+      await confirmEnrollment(target);
     }
   };
 
-  const confirmEnrollment = async (eventObj: EventData) => {
-    if (!user) {
-      logger.error('Cannot enroll in event: User is not authenticated');
-      return;
-    }
-    const { id: eventId, title } = eventObj;
-    setEnrollmentEventTitle(title);
-    
-    if (userEntries.includes(eventId)) {
-      setEnrollmentStatus('already_enrolled');
-      setEnrollmentModalOpen(true);
-      return;
-    }
-    
-    setActionLoading(eventId);
-    
-    const { error } = await supabase.rpc('join_event', {
-      event_id_param: eventId,
-      player_id_param: user.id
-    });
-    
-    if (error) {
-      logger.error('join_event RPC error:', error);
-      setEnrollmentStatus('error');
-      setEnrollmentEventTitle(title + ' - ' + (error.message.includes('Saldo insuficiente') ? 'Saldo Insuficiente' : 'Error de inscripción'));
-      setEnrollmentModalOpen(true);
-    } else {
-      setUserEntries([...userEntries, eventId]);
-      setEvents(events.map(ev => ev.id === eventId ? { ...ev, participants_count: ev.participants_count + 1 } : ev));
-      setEnrollmentStatus('success');
-      setEnrollmentModalOpen(true);
-    }
-    setActionLoading(null);
-  };
+  const filteredEvents = events.filter((e) => {
+    const isSng = e.tournament_format === 'sit_and_go';
+    if (categoryTab === 'sit_and_go' && (!isSng || e.status === 'completed')) return false;
+    if (categoryTab === 'scheduled' && (isSng || e.status !== 'upcoming')) return false;
+    if (categoryTab === 'live' && e.status !== 'live') return false;
+    if (categoryTab === 'completed' && e.status !== 'completed') return false;
 
-  const filteredEvents = events.filter(e => {
-    const matchesStatus = filter === 'all' || e.status === filter;
-    const matchesType = typeFilter === 'all' || e.type === typeFilter;
-    const matchesSearch = searchQuery.trim() === '' || 
-      e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (e.rules && e.rules.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesStatus && matchesType && matchesSearch;
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const matchText =
+        e.title.toLowerCase().includes(q) ||
+        (e.description || '').toLowerCase().includes(q) ||
+        (e.rules || '').toLowerCase().includes(q);
+      if (!matchText) return false;
+    }
+    return true;
   });
-  
-  const featuredEvents = events.filter(e => e.status === 'live' || e.status === 'upcoming');
+
+  // Ordenar: En vivo primero -> Sit & Go con más llenado -> Programados próximos -> Finalizados
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    const weight = (ev: EventData) => {
+      if (ev.status === 'live') return 0;
+      if (ev.status === 'upcoming' && ev.tournament_format === 'sit_and_go') return 1;
+      if (ev.status === 'upcoming') return 2;
+      return 3;
+    };
+    const diff = weight(a) - weight(b);
+    if (diff !== 0) return diff;
+    if (a.status === 'upcoming' && a.tournament_format === 'sit_and_go') {
+      const ratioA = (a.participants_count || 0) / Math.max(1, a.max_participants || 8);
+      const ratioB = (b.participants_count || 0) / Math.max(1, b.max_participants || 8);
+      return ratioB - ratioA;
+    }
+    return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+  });
+
+  const featuredEvents = sortedEvents.filter((e) => e.status === 'live' || e.status === 'upcoming');
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (currentSlide >= featuredEvents.length) {
+      setCurrentSlide(0);
+    }
+  }, [currentSlide, featuredEvents.length]);
 
   useEffect(() => {
     if (featuredEvents.length <= 1) return;
     const timer = window.setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % featuredEvents.length);
-    }, 6000);
+      setCurrentSlide((prev) => (prev + 1) % featuredEvents.length);
+    }, 6500);
     return () => window.clearInterval(timer);
   }, [featuredEvents.length]);
 
   const featuredEvent = featuredEvents[currentSlide];
 
   useEffect(() => {
-    if (!featuredEvent) return;
+    if (!featuredEvent || featuredEvent.tournament_format === 'sit_and_go') return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [featuredEvent]);
-  
+
   const formatCountdown = (targetDate: string) => {
     const diffMs = Math.max(0, new Date(targetDate).getTime() - now);
     const totalSeconds = Math.floor(diffMs / 1000);
@@ -721,138 +894,209 @@ export function EventsPage() {
     const hours = Math.floor((totalSeconds % 86400) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    return `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}:${String(
+      minutes
+    ).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
   if (loading) {
     return (
-      <div className="w-full h-64 flex items-center justify-center text-gray-400 uppercase tracking-widest font-bold animate-pulse">
-        Cargando eventos...
+      <div className="w-full h-64 flex items-center justify-center text-slate-300 uppercase tracking-widest font-bold">
+        Cargando torneos...
       </div>
     );
   }
 
   if (selectedTournament) {
-    const eventObj = events.find(e => e.id === selectedTournament);
+    const eventObj = events.find((e) => e.id === selectedTournament);
     return (
-      <TournamentView
-        eventId={selectedTournament}
-        event={eventObj}
-        matches={tournamentMatches}
-        loading={matchesLoading}
-        currentUserId={user?.id}
-        isAdmin={profile?.role === 'admin' || !!profile?.is_admin}
-        inviteCooldowns={inviteCooldowns}
-        onJoinMatch={handleJoinMatch}
-        onInviteOpponent={handleInviteOpponent}
-        onClaimWalkover={handleClaimWalkover}
-        onClose={closeBracketModal}
-      />
+      <div className="space-y-4">
+        {toastNotice && (
+          <div
+            className={`px-4 py-3 rounded-xl border text-xs font-bold ${
+              toastNotice.type === 'ok'
+                ? 'bg-slate-900 border-emerald-400/40 text-emerald-300'
+                : 'bg-slate-900 border-rose-500/40 text-rose-300'
+            }`}
+          >
+            {toastNotice.text}
+          </div>
+        )}
+        <TournamentView
+          eventId={selectedTournament}
+          event={eventObj}
+          matches={tournamentMatches}
+          loading={matchesLoading}
+          currentUserId={user?.id}
+          isAdmin={profile?.role === 'admin' || Boolean(profile?.is_admin)}
+          inviteCooldowns={inviteCooldowns}
+          onJoinMatch={handleJoinMatch}
+          onInviteOpponent={handleInviteOpponent}
+          onClaimWalkover={handleClaimWalkover}
+          onClose={closeBracketModal}
+        />
+      </div>
     );
   }
 
+  const featuredPot = featuredEvent ? resolveEventCoinPot(featuredEvent) : 0;
+  const featuredEntry = featuredEvent ? userEntries[featuredEvent.id] : undefined;
+
   return (
-    <div className="w-full text-white animate-fade-in">
-      {/* Banner Alerta de Premio Ganado Reclamable */}
-      {activePrizeClaim && (
-        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 rounded-2xl p-4 mb-6 text-slate-950 flex items-center justify-between shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-950/20 rounded-xl flex items-center justify-center font-black text-xl">
-              🏆
-            </div>
-            <div>
-              <h4 className="font-black text-base">¡Tienes un premio de ${activePrizeClaim.amountUsd || activePrizeClaim.amount_usd} USD por reclamar!</h4>
-              <p className="text-xs font-semibold text-slate-900">Torneo Oficial {activeClaimSponsorName} • Reclámalo antes de que expire en 7 días.</p>
-            </div>
-          </div>
+    <div id="events-section" className="w-full text-white animate-fade-in space-y-6">
+      {toastNotice && (
+        <div
+          role="status"
+          className={`px-4 py-3 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 ${
+            toastNotice.type === 'ok'
+              ? 'bg-slate-900/95 border-emerald-400/40 text-emerald-300'
+              : 'bg-slate-900/95 border-rose-500/40 text-rose-300'
+          }`}
+        >
+          <span>{toastNotice.text}</span>
           <button
-            onClick={() => setClaimModalOpen(true)}
-            className="bg-slate-950 hover:bg-slate-900 text-amber-400 font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg"
+            type="button"
+            onClick={() => setToastNotice(null)}
+            className="text-slate-300 hover:text-white px-2"
+            aria-label="Cerrar aviso"
           >
-            Reclamar Mi Premio
+            ✕
           </button>
         </div>
       )}
 
-      {featuredEvent && (
-        <div className="relative w-full h-72 md:h-96 rounded-3xl overflow-hidden mb-8 border border-casino-gold/30 shadow-[0_0_30px_rgba(234,179,8,0.15)] group cursor-pointer">
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent z-10" />
-          <div 
-            className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-700"
-            style={{ backgroundImage: `url(${featuredEvent.image_url || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1600'})` }}
-          />
-          
-          <div className="relative z-20 h-full p-8 md:p-12 flex flex-col justify-center max-w-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="relative flex h-3 w-3">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${featuredEvent.status === 'live' ? 'bg-red-400' : 'bg-cyan-400'}`}></span>
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${featuredEvent.status === 'live' ? 'bg-red-500' : 'bg-cyan-500'}`}></span>
-              </span>
-              <span className={`${featuredEvent.status === 'live' ? 'text-red-400' : 'text-cyan-400'} font-bold tracking-widest text-sm`}>
-                {featuredEvent.status === 'live' ? 'EN VIVO AHORA' : 'PRÓXIMAMENTE'}
-              </span>
-              <span className="px-3 py-1 rounded-lg border border-white/20 bg-black/40 text-gray-100 text-xs md:text-sm font-bold font-mono tracking-wider">
-                {featuredEvent.status === 'live' ? 'TERMINA EN ' : 'INICIA EN '} {formatCountdown(featuredEvent.status === 'live' ? featuredEvent.end_date : featuredEvent.start_date)}
-              </span>
-            </div>
-            
-            <h2 className="text-4xl md:text-6xl font-black font-display text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-4 leading-none">
-              {featuredEvent.title}
-            </h2>
-            <p className="text-gray-300 text-sm md:text-base mb-8 max-w-md line-clamp-3">
-              {featuredEvent.description}
-            </p>
-            
-            <div className="flex gap-4">
-              {(featuredEvent.status === 'upcoming' || (featuredEvent.status === 'live' && featuredEvent.type !== 'torneo')) && (
-                <button 
-                  onClick={(e) => handleJoinEvent(featuredEvent.id, featuredEvent.title, e)}
-                  disabled={actionLoading === featuredEvent.id}
-                  className={`px-8 py-3 rounded-xl uppercase tracking-wider font-black transition-all transform hover:-translate-y-1 shadow-[0_0_20px_rgba(234,179,8,0.4)]
-                    ${userEntries.includes(featuredEvent.id) 
-                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 text-green-400 border border-green-500/30' 
-                      : 'bg-gradient-to-r from-casino-gold to-yellow-600 hover:from-yellow-400 hover:to-casino-gold text-black'
-                    }`}
-                >
-                  {actionLoading === featuredEvent.id ? 'Cargando...' : userEntries.includes(featuredEvent.id) ? 'Ya Estás Inscrito' : 'Entrar Ahora'}
-                </button>
-              )}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewRules(featuredEvent.rules, featuredEvent.title);
-                }}
-                className="glass-panel px-6 py-3 rounded-xl font-bold hover:bg-white/10 transition-colors"
-              >
-                Ver Reglas
-              </button>
-              {(featuredEvent.status === 'live' || featuredEvent.status === 'completed') && featuredEvent.type === 'torneo' && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewBracket(featuredEvent.id, featuredEvent.title, featuredEvent.max_participants, featuredEvent.image_url);
-                  }}
-                  className="glass-panel border-casino-gold/50 text-casino-gold px-6 py-3 rounded-xl font-bold hover:bg-casino-gold/10 transition-colors"
-                >
-                  Ver Llaves
-                </button>
-              )}
+      {CASH_PRIZES_ENABLED && activePrizeClaim && (
+        <div className="bg-slate-900 border border-casino-gold/40 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Trophy className="w-6 h-6 text-casino-gold shrink-0" />
+            <div>
+              <h4 className="font-black text-sm text-white">
+                ¡Tienes un premio de ${activePrizeClaim.amountUsd} USD pendiente de reclamo!
+              </h4>
+              <p className="text-xs text-slate-300">Torneo Oficial {activeClaimSponsorName}</p>
             </div>
           </div>
-          
-          {featuredEvents.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-30">
-              {featuredEvents.map((_, idx) => (
+          <button
+            type="button"
+            onClick={() => setClaimModalOpen(true)}
+            className="bg-casino-gold hover:bg-yellow-400 text-black font-black px-4 py-2 rounded-xl text-xs uppercase tracking-wider"
+          >
+            Reclamar
+          </button>
+        </div>
+      )}
+
+      {/* Hero Destacado */}
+      {featuredEvent && (
+        <div className="relative w-full rounded-3xl overflow-hidden border border-casino-gold/30 bg-slate-900/90 shadow-xl">
+          {featuredEvent.image_url && (
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-20 pointer-events-none"
+              style={{ backgroundImage: `url(${featuredEvent.image_url})` }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-900/60 pointer-events-none" />
+
+          <div className="relative z-10 p-6 sm:p-10 flex flex-col justify-between gap-5 max-w-2xl">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {featuredEvent.status === 'live' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                  <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
+                  EN VIVO AHORA
+                </span>
+              ) : featuredEvent.tournament_format === 'sit_and_go' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-casino-gold/15 text-casino-gold border border-casino-gold/35">
+                  <Zap className="w-3.5 h-3.5" />
+                  SIT &amp; GO RÁPIDO · {featuredEvent.participants_count}/{featuredEvent.max_participants} JUGADORES
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-400/35">
+                  <Calendar className="w-3.5 h-3.5" />
+                  INICIA EN {formatCountdown(featuredEvent.start_date)}
+                </span>
+              )}
+
+              <span className="px-3 py-1 rounded-full bg-black/50 border border-casino-gold/30 text-casino-gold text-xs font-black font-mono">
+                🪙 Pozo: {featuredPot > 0 ? featuredPot.toLocaleString('es-ES') : featuredEvent.prize_pool}
+              </span>
+            </div>
+
+            <div>
+              <h2 className="text-3xl sm:text-5xl font-black font-display text-white leading-tight">
+                {featuredEvent.title}
+              </h2>
+              <p className="text-slate-300 text-sm sm:text-base mt-2 line-clamp-2">
+                {featuredEvent.description ||
+                  'Compite en llaves de eliminación directa con premios escalonados automáticos, XP competitivo y trofeos de podio.'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {featuredEvent.status === 'upcoming' && !featuredEntry && (
                 <button
-                  key={idx}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentSlide(idx);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    idx === currentSlide 
-                      ? 'bg-casino-gold w-6' 
-                      : 'bg-white/30 hover:bg-white/50'
+                  type="button"
+                  onClick={(e) => handleJoinEvent(featuredEvent, e)}
+                  disabled={actionLoading === featuredEvent.id}
+                  className="px-6 py-3 rounded-xl uppercase tracking-wider text-xs sm:text-sm font-black bg-casino-gold hover:bg-yellow-400 text-black transition-colors disabled:opacity-50"
+                >
+                  {actionLoading === featuredEvent.id
+                    ? 'Procesando...'
+                    : featuredEvent.entry_fee > 0
+                    ? `Inscribirme (🪙 ${featuredEvent.entry_fee.toLocaleString('es-ES')})`
+                    : 'Inscribirme Gratis'}
+                </button>
+              )}
+
+              {featuredEvent.status === 'upcoming' && featuredEntry && (
+                <>
+                  {featuredEvent.check_in_enabled &&
+                    !featuredEntry.checked_in &&
+                    featuredEvent.tournament_format !== 'sit_and_go' && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleCheckInEvent(featuredEvent, e)}
+                        disabled={actionLoading === featuredEvent.id}
+                        className="px-6 py-3 rounded-xl uppercase tracking-wider text-xs sm:text-sm font-black bg-amber-400 hover:bg-amber-300 text-black transition-colors"
+                      >
+                        ✅ Confirmar Check-in
+                      </button>
+                    )}
+                  <span className="px-4 py-3 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/35">
+                    ✓ Ya Estás Inscrito
+                  </span>
+                </>
+              )}
+
+              {(featuredEvent.status === 'live' || featuredEvent.status === 'completed') && (
+                <button
+                  type="button"
+                  onClick={() => handleViewBracket(featuredEvent)}
+                  className="px-6 py-3 rounded-xl uppercase tracking-wider text-xs sm:text-sm font-black bg-casino-gold hover:bg-yellow-400 text-black transition-colors"
+                >
+                  Ver Llaves en Vivo
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleViewRules(featuredEvent.rules, featuredEvent.title)}
+                className="px-5 py-3 rounded-xl text-xs sm:text-sm font-bold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-colors"
+              >
+                Reglas
+              </button>
+            </div>
+          </div>
+
+          {featuredEvents.length > 1 && (
+            <div className="px-6 pb-4 flex gap-2 relative z-10">
+              {featuredEvents.map((ev, idx) => (
+                <button
+                  type="button"
+                  key={ev.id}
+                  aria-label={`Ver destacado ${idx + 1}`}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-2 rounded-full transition-all ${
+                    idx === currentSlide ? 'bg-casino-gold w-7' : 'bg-white/30 hover:bg-white/50 w-2'
                   }`}
                 />
               ))}
@@ -861,135 +1105,146 @@ export function EventsPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-          <h3 className="text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
-            Cartelera de Eventos
-          </h3>
-          <span className="text-xs text-gray-200 font-bold bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
-            {filteredEvents.length} {filteredEvents.length === 1 ? 'evento disponible' : 'eventos disponibles'}
+      {/* Encabezado y Pestañas de Formato */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h3 className="text-2xl font-black uppercase tracking-wider text-white">
+              Arena de Torneos
+            </h3>
+            <p className="text-xs text-slate-300">
+              Pozos dinámicos acumulables · Reparto Top 2 / Top 4 / Top 8 + XP + Cosméticos Exclusivos
+            </p>
+          </div>
+          <span className="text-xs text-slate-200 font-bold bg-slate-900 px-3 py-1.5 rounded-full border border-white/10">
+            {sortedEvents.length} {sortedEvents.length === 1 ? 'torneo' : 'torneos'}
           </span>
         </div>
-        
-        {/* Search and Filters Bar */}
-        <div className="flex flex-col md:flex-row gap-3 p-3 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/[0.04] shadow-inner w-full">
-          {/* Text Search Input */}
-          <div className="relative flex-1">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-xs text-gray-500">
-              🔍
-            </span>
+
+        <div className="flex flex-col lg:flex-row gap-3 p-3 bg-slate-900/80 rounded-2xl border border-white/10">
+          {/* Pestañas de formato */}
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: 'all', label: 'Todos' },
+                { key: 'sit_and_go', label: '⚡ Sit & Go Rápidos' },
+                { key: 'scheduled', label: '📅 Programados' },
+                { key: 'live', label: '🔴 En Curso' },
+                { key: 'completed', label: '🏆 Finalizados' },
+              ] as Array<{ key: CategoryTab; label: string }>
+            ).map((tab) => (
+              <button
+                type="button"
+                key={tab.key}
+                onClick={() => setCategoryTab(tab.key)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors ${
+                  categoryTab === tab.key
+                    ? 'bg-casino-gold text-black'
+                    : 'bg-black/40 text-slate-200 hover:bg-white/10 hover:text-white border border-white/5'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Buscador */}
+          <div className="relative flex-1 min-w-[200px]">
             <input
               id="events-search-input"
-              aria-label="Buscar eventos por título, reglas o descripción"
+              aria-label="Buscar torneos por nombre o reglas"
               type="text"
-              placeholder="Buscar por título, reglas o descripción..."
+              placeholder="Buscar torneo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/40 transition-all font-medium"
+              className="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/60"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
                 aria-label="Limpiar búsqueda"
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-300 hover:text-white focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none rounded"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-slate-300 hover:text-white"
               >
                 ✕
               </button>
             )}
           </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Type Selector Dropdown */}
-            <select
-              id="events-type-filter"
-              aria-label="Filtrar eventos por tipo"
-              value={typeFilter}
-              onChange={(e: any) => setTypeFilter(e.target.value)}
-              className="bg-black/45 border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-gray-300 font-black uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none focus:border-casino-gold/40 cursor-pointer min-w-[130px] h-[36px]"
-            >
-              <option value="all">Todos los Tipos</option>
-              <option value="torneo">⚔️ Torneos</option>
-              <option value="liga">🏆 Ligas</option>
-              <option value="especial">💎 Especiales</option>
-            </select>
-
-            {/* Status Tabs Selector */}
-            <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5 h-[36px]">
-              <button 
-                onClick={() => setFilter('all')}
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white'}`}
-              >
-                Todos
-              </button>
-              <button 
-                onClick={() => setFilter('live')}
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'live' ? 'bg-red-500/25 text-red-400 border border-red-500/30' : 'text-gray-300 hover:text-white'}`}
-              >
-                En Vivo
-              </button>
-              <button 
-                onClick={() => setFilter('upcoming')}
-                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors ${filter === 'upcoming' ? 'bg-cyan-500/25 text-cyan-400 border border-cyan-500/30' : 'text-gray-300 hover:text-white'}`}
-              >
-                Próximos
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredEvents.map((event, i) => (
-          <EventCard 
-            key={i} 
-            {...event} 
-            onViewRules={handleViewRules} 
-            onViewBracket={handleViewBracket} 
-            onJoinEvent={handleJoinEvent}
-            isEnrolled={userEntries.includes(event.id)}
-            isLoading={actionLoading === event.id}
-          />
-        ))}
-      </div>
-      
-      {filteredEvents.length === 0 && (
-        <div className="text-center py-20 text-gray-500 font-bold uppercase tracking-widest">
-          No hay eventos en esta categoría
+      {/* Grilla de Torneos */}
+      {sortedEvents.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {sortedEvents.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              entryState={userEntries[event.id]}
+              isLoading={actionLoading === event.id}
+              onViewRules={handleViewRules}
+              onViewBracket={handleViewBracket}
+              onJoinEvent={handleJoinEvent}
+              onLeaveEvent={handleLeaveEvent}
+              onCheckInEvent={handleCheckInEvent}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-white/10 bg-slate-900/65 py-16 px-6 text-center space-y-2">
+          <Trophy className="w-10 h-10 text-casino-gold mx-auto opacity-80" />
+          <h4 className="text-base font-black uppercase tracking-wider text-white">
+            No hay torneos en esta categoría
+          </h4>
+          <p className="text-xs text-slate-300 max-w-md mx-auto">
+            Pronto se abrirán nuevas mesas Sit &amp; Go y torneos programados con pozos garantizados.
+          </p>
         </div>
       )}
 
+      {/* Modal Reglas */}
       {rulesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setRulesModalOpen(false)}>
-          <div 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setRulesModalOpen(false)}
+        >
+          <div
             ref={rulesModalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="rules-modal-title"
-            className="glass-panel-strong w-full max-w-lg rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[80vh]" 
-            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 w-full max-w-lg rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center shrink-0">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center shrink-0">
               <div>
-                <h3 className="text-xs font-bold text-casino-gold uppercase tracking-widest mb-1">Reglas del Evento</h3>
-                <h2 id="rules-modal-title" className="text-2xl font-black text-white leading-tight">{selectedRules.title}</h2>
+                <h3 className="text-xs font-bold text-casino-gold uppercase tracking-widest mb-1">
+                  Reglas Oficiales
+                </h3>
+                <h2 id="rules-modal-title" className="text-xl font-black text-white leading-tight">
+                  {selectedRules.title}
+                </h2>
               </div>
-              <button 
+              <button
+                type="button"
                 onClick={() => setRulesModalOpen(false)}
-                aria-label="Cerrar reglas del evento"
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+                aria-label="Cerrar reglas del torneo"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
               >
                 ✕
               </button>
             </div>
-            
-            <div className="p-6 overflow-y-auto text-gray-300 whitespace-pre-wrap font-medium leading-relaxed">
-              {selectedRules.content || 'No hay reglas especificadas para este evento.'}
+
+            <div className="p-6 overflow-y-auto text-slate-200 whitespace-pre-wrap text-sm leading-relaxed">
+              {selectedRules.content ||
+                '• Eliminación directa 1v1.\n• Tolerancia máxima de espera en sala: 3 minutos (Walkover automático).\n• Los premios en monedas, XP y cosméticos se acreditan automáticamente al concluir la Gran Final.'}
             </div>
-            
-            <div className="p-6 border-t border-white/10 bg-slate-900/50 shrink-0">
-              <button 
+
+            <div className="p-5 border-t border-white/10 shrink-0">
+              <button
+                type="button"
                 onClick={() => setRulesModalOpen(false)}
-                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+                className="w-full bg-white/10 hover:bg-white/15 text-white font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-xs"
               >
                 Entendido
               </button>
@@ -998,108 +1253,55 @@ export function EventsPage() {
         </div>
       )}
 
-
-      {/* Enrollment Status Modal */}
-      {enrollmentModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setEnrollmentModalOpen(false)}>
-          <div 
-            ref={enrollmentModalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="enrollment-modal-title"
-            className="glass-panel-strong w-full max-w-sm rounded-3xl border shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col p-8 text-center" 
-            style={{ borderColor: enrollmentStatus === 'success' ? 'rgba(34,197,94,0.3)' : enrollmentStatus === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(234,179,8,0.3)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            
-            <div className="mb-6 flex justify-center">
-              {enrollmentStatus === 'success' && (
-                <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center border border-green-500/50 text-4xl shadow-[0_0_20px_rgba(34,197,94,0.4)]">
-                  🎉
-                </div>
-              )}
-              {enrollmentStatus === 'already_enrolled' && (
-                <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center border border-yellow-500/50 text-4xl shadow-[0_0_20px_rgba(234,179,8,0.4)]">
-                  ✅
-                </div>
-              )}
-              {enrollmentStatus === 'error' && (
-                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center border border-red-500/50 text-4xl shadow-[0_0_20px_rgba(239,68,68,0.4)]">
-                  ❌
-                </div>
-              )}
-            </div>
-
-            <h2 id="enrollment-modal-title" className="text-2xl font-black text-white mb-2">
-              {enrollmentStatus === 'success' ? '¡Inscripción Exitosa!' : 
-               enrollmentStatus === 'already_enrolled' ? '¡Ya Estás Inscrito!' : 
-               'Error de Inscripción'}
-            </h2>
-            
-            <p className="text-gray-300 font-medium mb-8">
-              {enrollmentStatus === 'success' ? `Te has inscrito correctamente en "${enrollmentEventTitle}". Prepárate para competir y mucha suerte.` : 
-               enrollmentStatus === 'already_enrolled' ? `Ya te encuentras registrado en el evento "${enrollmentEventTitle}". ¡Tu lugar está asegurado!` : 
-               `Ocurrió un error al intentar inscribirte en "${enrollmentEventTitle}". Es posible que el evento esté lleno.`}
-            </p>
-
-            <button 
-              onClick={() => setEnrollmentModalOpen(false)}
-              className={`w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none
-                ${enrollmentStatus === 'success' ? 'bg-green-500 text-black hover:bg-green-400' : 
-                  enrollmentStatus === 'already_enrolled' ? 'bg-casino-gold text-black hover:bg-yellow-400' : 
-                  'bg-red-500 text-white hover:bg-red-400'}`}
-            >
-              Aceptar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Push Prompt Modal */}
+      {/* Modal Push Notifications */}
       {pushPromptModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => handlePushChoice(false)}>
-          <div 
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => handlePushChoice(false)}
+        >
+          <div
             ref={pushPromptModalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="push-prompt-title"
-            className="glass-panel-strong w-full max-w-sm rounded-3xl border border-casino-gold/30 shadow-[0_0_50px_rgba(234,179,8,0.2)] overflow-hidden flex flex-col p-8 text-center" 
-            onClick={e => e.stopPropagation()}
+            className="bg-slate-900 w-full max-w-sm rounded-3xl border border-casino-gold/35 overflow-hidden flex flex-col p-7 text-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            
-            <div className="mb-6 flex justify-center">
-              <div className="w-20 h-20 bg-casino-gold/20 rounded-full flex items-center justify-center border border-casino-gold/50 text-4xl shadow-[0_0_20px_rgba(234,179,8,0.4)]">
+            <div className="mb-5 flex justify-center">
+              <div className="w-16 h-16 bg-casino-gold/15 rounded-2xl flex items-center justify-center border border-casino-gold/40 text-3xl">
                 🔔
               </div>
             </div>
 
-            <h2 id="push-prompt-title" className="text-2xl font-black text-white mb-2">
-              ¿Deseas activar las notificaciones?
+            <h2 id="push-prompt-title" className="text-xl font-black text-white mb-2">
+              ¿Activar avisos de partida?
             </h2>
-            
-            <p className="text-gray-300 font-medium mb-8 text-sm">
-              Para avisarte en el momento exacto en que comience el torneo y cuando sea tu turno de jugar.
+
+            <p className="text-slate-300 font-medium mb-6 text-xs leading-relaxed">
+              Te avisaremos en el instante exacto en que se abra el Check-in o comience tu llave para que nunca pierdas por Walkover.
             </p>
 
-            <div className="flex flex-col gap-3">
-              <button 
+            <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
                 onClick={() => handlePushChoice(true)}
-                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-casino-gold text-black hover:bg-yellow-400 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+                className="w-full font-black py-3 rounded-xl uppercase tracking-wider text-xs bg-casino-gold text-black hover:bg-yellow-400 transition-colors"
               >
-                Sí, Avísame
+                Sí, Avisarme
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={() => handlePushChoice(false)}
-                className="w-full font-bold py-3 rounded-xl transition-colors uppercase tracking-wider text-sm bg-white/5 text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-casino-gold/50 focus-visible:outline-none"
+                className="w-full font-bold py-3 rounded-xl uppercase tracking-wider text-xs bg-white/10 text-white hover:bg-white/15 transition-colors"
               >
-                No por ahora
+                Inscribirme sin avisos
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Torneo Semántico Patrocinado */}
+      {/* Modal de Torneo Patrocinado Unificado */}
       {selectedSponsoredEvent && (
         <SponsoredTournamentModal
           tournament={{
@@ -1110,32 +1312,33 @@ export function EventsPage() {
             startDate: selectedSponsoredEvent.start_date,
             endDate: selectedSponsoredEvent.end_date,
             isSponsored: true,
-            sponsorName: selectedSponsoredEvent.sponsor_name || 'Sponsor',
+            sponsorName: selectedSponsoredEvent.sponsor_name || 'Patrocinador',
             sponsorLogoUrl: selectedSponsoredEvent.sponsor_logo_url,
             sponsorBannerUrl: selectedSponsoredEvent.sponsor_banner_url,
             brandTheme: selectedSponsoredEvent.brand_theme,
-            maxParticipants: selectedSponsoredEvent.max_participants || 500,
+            maxParticipants: selectedSponsoredEvent.max_participants || 8,
             participantsCount: selectedSponsoredEvent.participants_count || 0,
-            entryFeeCoins: selectedSponsoredEvent.entry_fee || 5000,
-            cashPrizePool: selectedSponsoredEvent.cash_prize_pool || 150,
-            prizeDistribution: selectedSponsoredEvent.prize_distribution || [
-              { rank: 1, amountUsd: (selectedSponsoredEvent.cash_prize_pool || 150) * 0.6 },
-              { rank: 2, amountUsd: (selectedSponsoredEvent.cash_prize_pool || 150) * 0.3 },
-              { rank: 3, amountUsd: (selectedSponsoredEvent.cash_prize_pool || 150) * 0.1 }
-            ]
+            entryFeeCoins: selectedSponsoredEvent.entry_fee || 0,
+            cashPrizePool: selectedSponsoredEvent.cash_prize_pool || 0,
+            prizeDistribution: selectedSponsoredEvent.prize_distribution || [],
+            guaranteedPrizeCoins: selectedSponsoredEvent.guaranteed_prize_coins,
+            currentPrizeCoins: selectedSponsoredEvent.current_prize_coins,
+            entryPoolPercent: selectedSponsoredEvent.entry_pool_percent,
+            prizeTiers: selectedSponsoredEvent.prize_tiers,
+            rewardXpWinner: selectedSponsoredEvent.reward_xp_winner,
           }}
           isOpen={sponsoredModalOpen}
           userCoins={profile?.coins || 0}
           onClose={() => setSponsoredModalOpen(false)}
           onRegistered={() => {
             setSponsoredModalOpen(false);
-            setUserEntries([...userEntries, selectedSponsoredEvent.id]);
+            loadEventsAndEntries();
+            showToast('ok', `🎉 ¡Inscripción confirmada en "${selectedSponsoredEvent.title}"!`);
           }}
         />
       )}
 
-      {/* Modal de Reclamo de Premio Bancario */}
-      {activePrizeClaim && (
+      {CASH_PRIZES_ENABLED && activePrizeClaim && (
         <PrizeClaimModal
           claim={activePrizeClaim}
           sponsorName={activeClaimSponsorName}

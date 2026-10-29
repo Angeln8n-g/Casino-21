@@ -29,23 +29,27 @@ export function DroppableFormation({ formation, selected, onClick }: DroppableFo
     <div 
       ref={setNodeRef}
       className={`
-        p-4 rounded-2xl border-2 transition-all duration-300 cursor-pointer shadow-xl backdrop-blur-sm relative
-        ${selected ? 'border-yellow-400 bg-white/20 scale-105' : 'border-yellow-500/30 bg-black/20 hover:border-yellow-400/50 hover:bg-black/30'}
-        ${isOver ? 'ring-4 ring-green-400 scale-110 shadow-[0_0_20px_rgba(74,222,128,0.8)]' : ''}
+        px-3 py-2 md:px-4 md:py-3 rounded-2xl border-2 transition-all duration-300 cursor-pointer shadow-xl backdrop-blur-sm relative
+        ${selected ? 'border-yellow-400 bg-white/15 scale-[1.03]' : 'border-yellow-500/35 bg-black/25 hover:border-yellow-400/60 hover:bg-black/35'}
+        ${isOver ? 'ring-4 ring-green-400 scale-105 shadow-[0_10px_25px_rgba(74,222,128,0.45)]' : ''}
       `}
       onClick={onClick}
     >
       {formation.isGroup && (
-        <div className="absolute -top-3 -right-3 bg-gradient-to-r from-orange-500 to-orange-700 text-white text-[10px] md:text-xs px-2 py-0.5 rounded-full z-10 font-black shadow-xl transform rotate-12 border border-orange-300">
+        <div className="absolute -top-2.5 -right-2.5 bg-orange-600 text-white text-[9px] md:text-[11px] px-2 py-0.5 rounded-full z-20 font-black shadow-lg border border-orange-300">
           GRUPO
         </div>
       )}
-      <div className="text-sm font-bold text-yellow-400 mb-3 text-center drop-shadow">
+      <div className="text-xs md:text-sm font-bold text-amber-300 mb-1.5 md:mb-2 text-center drop-shadow">
         Valor: {formation.value}
       </div>
-      <div className="flex gap-2 relative">
+      <div className="flex items-center justify-center relative px-1">
         {formation.cards.map((card, i) => (
-          <div key={card.id} style={{ marginLeft: i > 0 ? '-2.5rem' : '0' }} className="hover:-translate-y-2 transition-transform shadow-lg">
+          <div
+            key={card.id}
+            style={{ zIndex: i + 1 }}
+            className={`${i > 0 ? '-ml-3.5 sm:-ml-4 md:-ml-5' : ''} hover:-translate-y-1.5 transition-transform shadow-lg`}
+          >
             <CardView card={card} />
           </div>
         ))}
