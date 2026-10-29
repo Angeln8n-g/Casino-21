@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { GameState } from '../../../domain/game-state';
 import { CelebrationConfetti } from '../CelebrationConfetti';
+import { TacticalCard3D } from '../card/TacticalCard3D';
 import { Share2, Home, RotateCcw, Clock, Flag, Info, CheckCircle2, Crown, X, Copy, Check, ExternalLink } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -191,21 +192,13 @@ export function MatchCompletedScreen({
               </div>
 
               {/* Carta Izquierda (A Picas) */}
-              <div className="absolute -left-6 sm:-left-20 top-2 sm:top-10 transform -rotate-[15deg] hover:scale-110 hover:-rotate-[5deg] transition-transform duration-300 shadow-2xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-float z-20 pointer-events-auto">
-                <div className="w-10 h-16 sm:w-20 sm:h-28 bg-white rounded flex flex-col justify-between p-0.5 sm:p-1.5 overflow-hidden border sm:border-2 border-slate-300">
-                  <div className="text-black font-black text-[8px] sm:text-xs leading-none">A<br/>♠</div>
-                  <div className="text-black text-sm sm:text-4xl self-center leading-none">♠️</div>
-                  <div className="text-black font-black text-[8px] sm:text-xs leading-none self-end rotate-180">A<br/>♠</div>
-                </div>
+              <div className="absolute -left-6 sm:-left-20 top-2 sm:top-10 transform -rotate-[15deg] hover:scale-110 hover:-rotate-[5deg] transition-transform duration-300 drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)] animate-float z-20 pointer-events-auto">
+                <TacticalCard3D rank="A" suit="spades" size="sm" isKey />
               </div>
 
               {/* Carta Derecha (A Diamantes) */}
-              <div className="absolute -right-6 sm:-right-20 bottom-2 sm:bottom-10 transform rotate-[15deg] hover:scale-110 hover:rotate-[5deg] transition-transform duration-300 shadow-2xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-float z-20 pointer-events-auto" style={{ animationDelay: '1s' }}>
-                <div className="w-10 h-16 sm:w-20 sm:h-28 bg-white rounded flex flex-col justify-between p-0.5 sm:p-1.5 overflow-hidden border sm:border-2 border-slate-300">
-                  <div className="text-red-600 font-black text-[8px] sm:text-xs leading-none">A<br/>♦</div>
-                  <div className="text-red-600 text-sm sm:text-4xl self-center leading-none">♦️</div>
-                  <div className="text-red-600 font-black text-[8px] sm:text-xs leading-none self-end rotate-180">A<br/>♦</div>
-                </div>
+              <div className="absolute -right-6 sm:-right-20 bottom-2 sm:bottom-10 transform rotate-[15deg] hover:scale-110 hover:rotate-[5deg] transition-transform duration-300 drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)] animate-float z-20 pointer-events-auto" style={{ animationDelay: '1s' }}>
+                <TacticalCard3D rank="A" suit="diamonds" size="sm" isKey />
               </div>
 
               {/* Avatares */}

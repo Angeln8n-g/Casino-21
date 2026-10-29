@@ -40,20 +40,18 @@ export interface GameTheme {
 
 const DEFAULT_THEME: GameTheme = {
   key: 'default',
-  name: 'Clásico',
-  description: 'El estilo original del juego, limpio y elegante.',
+  name: 'Arena Táctica',
+  description: 'Estética oficial K21: obsidiana 3D, oro campeón y cortes tácticos.',
   emoji: '🃏',
-  previewColor: '#ffffff',
+  previewColor: '#0c1220',
   cardTheme: {
-    background: 'linear-gradient(165deg, #ffffff 0%, #f8fafc 35%, #e2e8f0 100%)',
-    boxShadow:
-      '0 10px 20px -6px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.45) inset, inset 0 2px 6px rgba(255,255,255,0.9)',
-    boxShadowSelected:
-      '0 22px 40px -10px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.45) inset, inset 0 2px 6px rgba(255,255,255,0.9)',
-    border: '1px solid rgba(255,255,255,0.55)',
-    innerEdge: 'rgba(148,163,184,0.8)',
-    redSuitColor: '#dc2626',
-    blackSuitColor: '#111827',
+    background: 'linear-gradient(155deg, #131b2e 0%, #0d1322 55%, #070b14 100%)',
+    boxShadow: 'none',
+    boxShadowSelected: 'none',
+    border: 'none',
+    innerEdge: 'rgba(56, 189, 248, 0.25)',
+    redSuitColor: '#FF3366',
+    blackSuitColor: '#E2E8F0',
   },
   boardTheme: {
     background:

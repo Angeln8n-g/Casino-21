@@ -193,6 +193,176 @@
       0 0 25px rgba(251, 191, 36, 0.6);
   }
 
+  /* ══════════════════════════════════════════════
+     3D CARD SYSTEM — ARENA TÁCTICA ESPORTS
+     ══════════════════════════════════════════════ */
+  .k21-card-3d-root {
+    --card-tilt-x: 0deg;
+    --card-tilt-y: 0deg;
+    --card-light-x: 50%;
+    --card-light-y: 20%;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  /* Micro-weave carbon texture */
+  .k21-carbon-weave {
+    background-image: 
+      linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%), 
+      linear-gradient(-45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%), 
+      linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%), 
+      linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
+    background-size: 6px 6px;
+    background-position: 0 0, 0 3px, 3px -3px, -3px 0px;
+  }
+
+  /* 3D Physical Slab Edge (Multi-layer bevel, specular rim, extruded depth) */
+  .k21-card-slab-edge {
+    border-radius: inherit;
+    box-shadow:
+      /* Specular rim on top-left */
+      inset 0 1.5px 0 0.5px rgba(255, 255, 255, 0.28),
+      /* Deep rim on bottom-right */
+      inset 0 -1.5px 0 1px rgba(0, 0, 0, 0.75),
+      /* Bezel metallic border */
+      0 0 0 1px rgba(255, 255, 255, 0.12),
+      /* 3D Slab Thickness extrusion layers */
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      0 3px 6px rgba(0, 0, 0, 0.5),
+      0 8px 16px -2px rgba(0, 0, 0, 0.7),
+      0 16px 28px -6px rgba(0, 0, 0, 0.85);
+    transition: box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .k21-card-slab-back {
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1.5px 0 0.5px rgba(251, 191, 36, 0.4),
+      inset 0 -1.5px 0 1px rgba(0, 0, 0, 0.85),
+      0 0 0 1px rgba(251, 191, 36, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.6),
+      0 6px 12px rgba(0, 0, 0, 0.7),
+      0 16px 30px -4px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Dynamic Specular Glare Follower */
+  .k21-card-specular-glare {
+    background: radial-gradient(
+      circle at var(--card-light-x, 50%) var(--card-light-y, 20%),
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.08) 30%,
+      transparent 70%
+    );
+    opacity: 0.85;
+    mix-blend-mode: overlay;
+    transition: opacity 0.2s ease;
+  }
+
+  /* Holographic Shimmer Sweep */
+  .k21-card-holographic-sweep {
+    background: linear-gradient(
+      115deg,
+      transparent 20%,
+      rgba(251, 191, 36, 0.25) 45%,
+      rgba(56, 189, 248, 0.35) 50%,
+      rgba(255, 255, 255, 0.5) 55%,
+      rgba(244, 63, 94, 0.25) 60%,
+      transparent 80%
+    );
+    background-size: 250% 100%;
+    animation: cardHoloSweep 2.8s linear infinite;
+    mix-blend-mode: screen;
+  }
+
+  @keyframes cardHoloSweep {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* States */
+  .k21-card-idle {
+    transform: perspective(1000px) rotateX(var(--card-tilt-x, 0deg)) rotateY(var(--card-tilt-y, 0deg)) translateZ(0px);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .k21-card-idle:hover {
+      transform: perspective(1000px) rotateX(var(--card-tilt-x, 0deg)) rotateY(var(--card-tilt-y, 0deg)) translateY(-8px) translateZ(16px) scale(1.03);
+    }
+    .k21-card-idle:hover .k21-card-slab-edge {
+      box-shadow:
+        inset 0 1.5px 0 0.5px rgba(255, 255, 255, 0.4),
+        inset 0 -1.5px 0 1px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(56, 189, 248, 0.35),
+        0 0 15px rgba(56, 189, 248, 0.25),
+        0 6px 12px rgba(0, 0, 0, 0.6),
+        0 14px 24px -2px rgba(0, 0, 0, 0.75),
+        0 24px 38px -6px rgba(0, 0, 0, 0.9);
+    }
+  }
+
+  /* Active / Tap state for mobile */
+  .k21-card-idle:active {
+    transform: perspective(1000px) translateY(-3px) translateZ(8px) scale(0.98);
+  }
+
+  /* Selected state: Strong 3D elevation + golden esports beacon */
+  .k21-card-selected {
+    transform: perspective(1000px) translateY(-14px) translateZ(28px) scale(1.06) !important;
+    animation: k21CardPulse 2s ease-in-out infinite;
+  }
+
+  .k21-card-selected .k21-card-slab-edge {
+    box-shadow:
+      inset 0 2px 0 0.5px rgba(255, 255, 255, 0.7),
+      inset 0 -1.5px 0 1px rgba(0, 0, 0, 0.8),
+      0 0 0 1.5px rgba(251, 191, 36, 0.95),
+      0 0 22px rgba(251, 191, 36, 0.65),
+      0 0 45px rgba(251, 191, 36, 0.3),
+      0 12px 20px -2px rgba(0, 0, 0, 0.85),
+      0 28px 45px -8px rgba(0, 0, 0, 0.95);
+  }
+
+  /* Key state (Tactical highlight in tutorials / mechanics) */
+  .k21-card-key {
+    transform: perspective(1000px) translateY(-4px) translateZ(10px);
+  }
+  .k21-card-key .k21-card-slab-edge {
+    box-shadow:
+      inset 0 1.5px 0 0.5px rgba(255, 255, 255, 0.4),
+      0 0 0 1.5px rgba(251, 191, 36, 0.85),
+      0 0 18px rgba(251, 191, 36, 0.45),
+      0 8px 18px rgba(0, 0, 0, 0.75),
+      0 18px 32px -4px rgba(0, 0, 0, 0.85);
+  }
+
+  @keyframes k21CardPulse {
+    0%, 100% {
+      filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.4));
+    }
+    50% {
+      filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.75));
+    }
+  }
+
+  /* Reduced Motion Safety */
+  @media (prefers-reduced-motion: reduce) {
+    .k21-card-3d-root {
+      perspective: none !important;
+      transform: none !important;
+      transition: none !important;
+    }
+    .k21-card-idle:hover {
+      transform: none !important;
+    }
+    .k21-card-selected {
+      transform: translateY(-6px) !important;
+      animation: none !important;
+    }
+    .k21-card-holographic-sweep {
+      animation: none !important;
+    }
+  }
+
   /* ─── Achievement Pill ─── */
   .achievement-pill {
     @apply flex items-center gap-3 bg-casino-emerald/10 border border-casino-emerald/20 

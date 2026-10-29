@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Sparkles, Palette, CheckCircle, Layers, Zap, Crown, Compass } from 'lucide-react';
+import { TacticalCard3D } from '../../web/components/card/TacticalCard3D';
 
 interface PreviewTheme {
   key: string;
@@ -259,21 +260,19 @@ export default function ThemesPreview() {
                     transition={{ duration: shouldReduceMotion ? 0.15 : 0.5, ease: 'easeOut' }}
                     style={{
                       transform: shouldReduceMotion ? undefined : `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
-                      ...activeTheme.cardStyle,
                     }}
-                    className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl flex flex-col justify-between p-4 relative shadow-2xl transition-shadow duration-300"
                   >
-                    <div className="flex justify-between items-start">
-                      <span className="text-lg font-black leading-none">A</span>
-                      <span className="text-lg leading-none">♠</span>
-                    </div>
-                    <div className="text-4xl sm:text-5xl self-center font-black">
-                      ♠
-                    </div>
-                    <div className="flex justify-between items-end rotate-180">
-                      <span className="text-lg font-black leading-none">A</span>
-                      <span className="text-lg leading-none">♠</span>
-                    </div>
+                    <TacticalCard3D
+                      rank="A"
+                      suit="spades"
+                      size="md"
+                      isKey
+                      customStyle={{
+                        cardBg: (activeTheme.cardStyle as any).background,
+                        cardBorder: (activeTheme.cardStyle as any).borderColor || (activeTheme.cardStyle as any).border,
+                        blackSuitColor: (activeTheme.cardStyle as any).color,
+                      }}
+                    />
                   </motion.div>
                 </AnimatePresence>
 
@@ -287,15 +286,12 @@ export default function ThemesPreview() {
                     transition={{ duration: shouldReduceMotion ? 0.15 : 0.5, ease: 'easeOut', delay: shouldReduceMotion ? 0 : 0.08 }}
                     style={{
                       transform: shouldReduceMotion ? undefined : `perspective(1000px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
-                      ...activeTheme.cardBackStyle,
                     }}
-                    className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl relative shadow-2xl flex flex-col justify-between p-3"
                   >
-                    <div className="border border-white/10 rounded-xl flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-black/20">
-                      <div className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center">
-                        <Sparkles size={16} className="text-white/40 animate-pulse" />
-                      </div>
-                    </div>
+                    <TacticalCard3D
+                      isFaceDown
+                      size="md"
+                    />
                   </motion.div>
                 </AnimatePresence>
               </div>
