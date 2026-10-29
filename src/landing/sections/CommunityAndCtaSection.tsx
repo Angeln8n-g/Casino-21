@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import type { TestimonialEntry } from '../hooks/useLandingData';
-import { Globe, Download, Smartphone, Play, Star, MessageSquare, Youtube, Instagram, ShieldCheck } from 'lucide-react';
+import { Globe, Smartphone, Play, Star, MessageSquare, Youtube, Instagram, ShieldCheck } from 'lucide-react';
 
 interface Props {
   testimonials: TestimonialEntry[];
@@ -10,18 +10,18 @@ function CommunityAndCtaSection({ testimonials }: Props) {
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 relative bg-[#050811]">
       <div className="max-w-7xl mx-auto space-y-20">
-        {/* Play Anywhere: Web, Android APK & PWA */}
+        {/* Play Anywhere: Web & PWA */}
         <div>
           <div className="text-left max-w-3xl mb-12">
             <h2 className="text-3xl sm:text-5xl font-black font-['Russo_One'] text-white tracking-tight">
               Juega donde quieras
             </h2>
             <p className="mt-3 text-base sm:text-lg text-gray-300 font-['Chakra_Petch'] leading-relaxed">
-              KASINO21 está optimizado para funcionar con latencia ultrabaja en cualquier dispositivo con navegador o mediante la app oficial Android.
+              KASINO21 está optimizado para funcionar con latencia ultrabaja en cualquier dispositivo directamente desde tu navegador web o instalable como PWA.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
             {/* Web Browser */}
             <div className="p-7 rounded-3xl bg-[#081020] border border-white/10 hover:border-amber-400/40 transition-colors space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
@@ -46,47 +46,27 @@ function CommunityAndCtaSection({ testimonials }: Props) {
               </div>
             </div>
 
-            {/* Android APK */}
-            <div className="p-7 rounded-3xl bg-[#081020] border border-cyan-500/30 hover:border-cyan-400/60 transition-colors space-y-4 flex flex-col justify-between shadow-lg">
-              <div className="space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                  <Download size={24} />
-                </div>
-                <h3 className="text-xl font-black font-['Russo_One'] text-white">
-                  App Oficial Android (APK)
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-300 font-['Chakra_Petch'] leading-relaxed">
-                  Descarga el instalador APK directo para tu teléfono o tablet Android. Rendimiento a 60 FPS, soporte táctil nativo y notificaciones de torneos.
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-white/[0.06]">
-                <a
-                  href="/casino21-mobile.apk"
-                  download
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#050811] font-['Russo_One'] text-xs font-black tracking-wide transition-all"
-                >
-                  <Download size={14} /> DESCARGAR APK OFICIAL
-                </a>
-              </div>
-            </div>
-
             {/* Progressive Web App */}
-            <div className="p-7 rounded-3xl bg-[#081020] border border-white/10 hover:border-emerald-400/40 transition-colors space-y-4 flex flex-col justify-between">
+            <div className="p-7 rounded-3xl bg-[#081020] border border-emerald-500/30 hover:border-emerald-400/60 transition-colors space-y-4 flex flex-col justify-between shadow-lg">
               <div className="space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                   <Smartphone size={24} />
                 </div>
                 <h3 className="text-xl font-black font-['Russo_One'] text-white">
-                  Instalable como PWA
+                  Web App Progresiva (PWA)
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-300 font-['Chakra_Petch'] leading-relaxed">
-                  En iPhone, iPad o Android pulsa "Compartir → Agregar a pantalla de inicio" para disfrutar de una experiencia idéntica a una aplicación nativa.
+                  En iPhone, iPad o Android pulsa "Compartir → Agregar a pantalla de inicio" para disfrutar de una experiencia fluida a pantalla completa idéntica a una aplicación instalada.
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-white/[0.06] text-center text-xs font-['Chakra_Petch'] text-emerald-400 font-bold">
-                Compatible con iOS y Android
+              <div className="pt-4 border-t border-white/[0.06]">
+                <a
+                  href="/login"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-[#050811] font-['Russo_One'] text-xs font-black tracking-wide transition-all"
+                >
+                  <Play size={14} className="fill-current" /> ABRIR EN MÓVIL / PWA
+                </a>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Play, Sparkles, Download, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { Play, Sparkles, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import LandingCard from '../components/LandingCard';
 
 interface Props {
@@ -51,16 +51,6 @@ function ArenaHero({ onExploreMechanics }: Props) {
             >
               <span>Ver Cómo se Juega</span>
               <ArrowRight size={16} aria-hidden="true" />
-            </a>
-
-            <a
-              href="/casino21-mobile.apk"
-              download
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-4 rounded-xl bg-[#0a1222] hover:bg-[#0f1b31] border border-cyan-500/30 text-cyan-300 font-['Chakra_Petch'] font-bold text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-              title="Descarga directa APK para dispositivos Android"
-            >
-              <Download size={16} aria-hidden="true" />
-              <span>APK Android</span>
             </a>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Play, Download, ShieldCheck } from 'lucide-react';
+import { Play, ShieldCheck } from 'lucide-react';
 
 interface Props {
   onlineCount?: number;
@@ -25,17 +25,8 @@ function MobilePlayDock({ onlineCount = 28 }: Props) {
 
       <div className="flex items-center gap-2 flex-shrink-0">
         <a
-          href="/casino21-mobile.apk"
-          download
-          aria-label="Descargar aplicación Android APK"
-          className="p-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-gray-300 hover:text-white transition-colors"
-        >
-          <Download size={16} aria-hidden="true" />
-        </a>
-
-        <a
           href="/login"
-          className="bg-gradient-to-r from-amber-400 to-yellow-500 text-[#050811] font-black text-xs px-4 py-2.5 rounded-xl font-['Russo_One'] tracking-wide flex items-center gap-1.5 shadow-md active:scale-95 transition-transform"
+          className="bg-gradient-to-r from-amber-400 to-yellow-500 text-[#050811] font-black text-xs px-5 py-2.5 rounded-xl font-['Russo_One'] tracking-wide flex items-center gap-1.5 shadow-md active:scale-95 transition-transform"
         >
           <Play size={14} className="fill-current" aria-hidden="true" /> JUGAR GRATIS
         </a>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Menu, X, Play, Download, Sparkles, BookOpen } from 'lucide-react';
+import { Menu, X, Play, Sparkles, BookOpen } from 'lucide-react';
 import { useFocusTrap } from '../../web/hooks/useFocusTrap';
 import brand21Icon from '../../Public/brand21Icon-164.webp';
 
@@ -90,16 +90,6 @@ function ArenaNavbar({ scrollContainerRef, onlineCount = 28 }: Props) {
         {/* Action CTAs */}
         <div className="flex items-center gap-2 sm:gap-3">
           <a
-            href="/casino21-mobile.apk"
-            download
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-gray-200 hover:text-white text-xs font-['Chakra_Petch'] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            title="Descargar versión nativa para Android"
-          >
-            <Download size={14} aria-hidden="true" />
-            <span>APK Android</span>
-          </a>
-
-          <a
             href="/login"
             className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-[#050811] px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-['Russo_One'] text-xs sm:text-sm font-black tracking-wide shadow-[0_2px_15px_rgba(251,191,36,0.3)] hover:shadow-[0_4px_22px_rgba(251,191,36,0.45)] transition-all transform hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
           >
@@ -148,14 +138,6 @@ function ArenaNavbar({ scrollContainerRef, onlineCount = 28 }: Props) {
           </div>
 
           <div className="pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
-            <a
-              href="/casino21-mobile.apk"
-              download
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-gray-200 font-['Chakra_Petch'] font-bold text-sm"
-            >
-              <Download size={16} /> Descargar APK Android Oficial
-            </a>
             <a
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
