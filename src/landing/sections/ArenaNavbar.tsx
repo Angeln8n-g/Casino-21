@@ -1,6 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import { Menu, X, Play, Download, Sparkles, BookOpen } from 'lucide-react';
 import { useFocusTrap } from '../../web/hooks/useFocusTrap';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 interface Props {
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
@@ -55,13 +56,11 @@ function ArenaNavbar({ scrollContainerRef, onlineCount = 28 }: Props) {
             className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-lg p-1"
           >
             <img
-              src="/brand21Icon.webp"
+              src={brand21Icon}
               alt="Logo de Kasino21"
               className="w-8 h-8 sm:w-9 sm:h-9 object-contain drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]"
-              onError={(e) => {
-                // Fallback to png if webp fails
-                e.currentTarget.src = '/brand21Icon.png';
-              }}
+              width={36}
+              height={36}
             />
             <span className="font-['Russo_One'] text-xl sm:text-2xl text-white tracking-wider">
               KASINO<span className="text-amber-400">21</span>

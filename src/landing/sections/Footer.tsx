@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { Youtube, Instagram, ShieldCheck, Building2 } from 'lucide-react';
+import brand21Icon from '../../Public/brand21Icon-164.webp';
 
 interface Props {
   onOpenSponsorModal?: () => void;
@@ -32,12 +33,11 @@ function Footer({ onOpenSponsorModal }: Props) {
         <div className="flex flex-col items-center text-center space-y-2">
           <a href="/" className="flex items-center gap-2.5">
             <img
-              src="/brand21Icon.webp"
+              src={brand21Icon}
               alt="Kasino21 Logo"
               className="w-8 h-8 object-contain"
-              onError={(e) => {
-                e.currentTarget.src = '/brand21Icon.png';
-              }}
+              width={32}
+              height={32}
             />
             <span className="font-['Russo_One'] text-2xl text-white tracking-wider">
               KASINO<span className="text-amber-400">21</span>
