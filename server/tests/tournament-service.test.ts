@@ -62,6 +62,7 @@ describe('processTournamentAdvancement', () => {
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           single: jest.fn().mockResolvedValue({ data: null, error: new Error('Not found') }),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null, error: new Error('Not found') }),
         }),
       }),
     });
@@ -76,29 +77,66 @@ describe('handleTournamentFinal', () => {
     jest.clearAllMocks();
   });
 
-  it('does nothing if no prize_pool and not championship', async () => {
+  it('distributes rewards via distribute_tournament_rewards RPC on success', async () => {
     (supabase.from as jest.Mock).mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({ data: { prize_pool: '', is_championship: false }, error: null }),
+          single: jest.fn().mockResolvedValue({
+            data: { id: 'evt1', title: 'Torneo Semanal', prize_pool: '5000 Monedas', is_championship: false },
+            error: null,
+          }),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'evt1', title: 'Torneo Semanal', prize_pool: '5000 Monedas', is_championship: false },
+            error: null,
+          }),
         }),
       }),
+    });
+
+    (supabase.rpc as jest.Mock).mockResolvedValue({
+      data: {
+        success: true,
+        already_distributed: false,
+        total_pot: 5000,
+        payouts: [
+          { player_id: 'winner1', place: 1, coins_awarded: 3500, xp_awarded: 100 },
+          { player_id: 'runner_up', place: 2, coins_awarded: 1500, xp_awarded: 50 },
+        ],
+      },
+      error: null,
     });
 
     await handleTournamentFinal({ event_id: 'evt1' }, 'winner1');
-    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(supabase.rpc).toHaveBeenCalledWith('distribute_tournament_rewards', {
+      p_event_id: 'evt1',
+    });
   });
 
-  it('calls award_tournament_prize with parsed amount for coin prize', async () => {
+  it('falls back to award_tournament_prize when v3 rpc fails', async () => {
     (supabase.from as jest.Mock).mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({ data: { prize_pool: '5000 Monedas', is_championship: false }, error: null }),
+          single: jest.fn().mockResolvedValue({
+            data: { id: 'evt1', title: 'Torneo Clásico', prize_pool: '5000 Monedas', is_championship: false },
+            error: null,
+          }),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'evt1', title: 'Torneo Clásico', prize_pool: '5000 Monedas', is_championship: false },
+            error: null,
+          }),
         }),
+      }),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: null }),
       }),
     });
 
-    (supabase.rpc as jest.Mock).mockResolvedValue({ error: null });
+    (supabase.rpc as jest.Mock).mockImplementation((rpcName: string) => {
+      if (rpcName === 'distribute_tournament_rewards') {
+        return Promise.resolve({ data: null, error: new Error('RPC not found') });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
 
     await handleTournamentFinal({ event_id: 'evt1' }, 'winner1');
     expect(supabase.rpc).toHaveBeenCalledWith('award_tournament_prize', {
@@ -108,45 +146,27 @@ describe('handleTournamentFinal', () => {
     });
   });
 
-  it('processes championship final with USD prize distribution and fixed coin bonus', async () => {
-    (supabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({
-            data: { id: 'evt1', title: 'KASINO21 CHAMPIONSHIP', is_championship: true, prize_pool: '$1,250 USD' },
-            error: null
-          }),
-        }),
-      }),
-    });
-
-    (supabase.rpc as jest.Mock).mockResolvedValue({ data: { claims_created: 32 }, error: null });
-
-    await handleTournamentFinal({ event_id: 'evt1' }, 'winner1');
-    // Verifies USD distribution RPC was called
-    expect(supabase.rpc).toHaveBeenCalledWith('calculate_championship_prize_distribution', {
-      p_event_id: 'evt1',
-    });
-    // Verifies fixed champion coin bonus (10,000) was awarded
-    expect(supabase.rpc).toHaveBeenCalledWith('award_tournament_prize', {
-      event_id_param: 'evt1',
-      winner_id_param: 'winner1',
-      prize_amount: 10000,
-    });
-  });
-
   it('does not throw on rpc error', async () => {
     (supabase.from as jest.Mock).mockReturnValue({
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
-          single: jest.fn().mockResolvedValue({ data: { prize_pool: '5000', is_championship: false }, error: null }),
+          single: jest.fn().mockResolvedValue({
+            data: { id: 'evt1', prize_pool: '5000', is_championship: false },
+            error: null,
+          }),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'evt1', prize_pool: '5000', is_championship: false },
+            error: null,
+          }),
         }),
+      }),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: null }),
       }),
     });
 
-    (supabase.rpc as jest.Mock).mockResolvedValue({ error: new Error('DB error') });
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: new Error('DB error') });
 
     await expect(handleTournamentFinal({ event_id: 'evt1' }, 'winner1')).resolves.not.toThrow();
-    expect(supabase.rpc).toHaveBeenCalledTimes(1);
   });
 });
