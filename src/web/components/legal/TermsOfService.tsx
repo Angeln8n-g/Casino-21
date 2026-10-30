@@ -196,7 +196,7 @@ export function TermsOfService() {
             por violaciones de estos Términos o por cualquier otro motivo a nuestra entera discreción.
           </p>
           <p className="mt-3">
-            Puedes eliminar tu cuenta en cualquier momento contactándonos. Tras la eliminación de la cuenta, tus datos
+            Puedes darte de baja y eliminar tu cuenta en cualquier momento directamente desde tu perfil de usuario en el juego (haciendo clic en tu avatar y pulsando "Darse de baja") o contactándonos. Tras la eliminación de la cuenta, tus datos
             personales se gestionarán según nuestra <a href="/privacy" className="text-casino-gold hover:underline">Política de Privacidad</a>.
           </p>
         </ToSSection>

@@ -52,7 +52,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http:
   .filter(Boolean);
 
 app.use(express.json()); // Habilitar parsing de JSON
-app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST"] }));
+app.use(cors({ origin: allowedOrigins, methods: ["GET", "POST", "DELETE", "OPTIONS"] }));
 app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -65,6 +65,31 @@ if (EXPOSE_RULES_VERSION) {
     res.json({ rulesVersion: RULES_VERSION });
   });
 }
+
+// Endpoint para darse de baja / eliminar cuenta definitivamente (GDPR)
+app.post('/api/user/delete-account', requireAuth, async (req, res) => {
+  const userId = (req as any).user.id;
+  try {
+    const { error: rpcError } = await supabase.rpc('delete_user_account');
+    if (rpcError) {
+      // Fallback: desvincular partidas y eliminación admin directa
+      await supabase.from('tournament_matches').update({ player1_id: null }).eq('player1_id', userId);
+      await supabase.from('tournament_matches').update({ player2_id: null }).eq('player2_id', userId);
+      await supabase.from('tournament_matches').update({ winner_id: null }).eq('winner_id', userId);
+      await supabase.from('tournament_matches').update({ waiting_player_id: null }).eq('waiting_player_id', userId);
+      await supabase.from('match_history').update({ winner_id: null }).eq('winner_id', userId);
+      await supabase.from('matches').delete().or(`player1_id.eq.${userId},player2_id.eq.${userId}`);
+      await supabase.from('profiles').delete().eq('id', userId);
+      const { error: adminError } = await supabase.auth.admin.deleteUser(userId);
+      if (adminError) {
+        return res.status(500).json({ error: adminError.message });
+      }
+    }
+    return res.json({ success: true, message: 'Cuenta dada de baja exitosamente' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Error al procesar la baja de usuario' });
+  }
+});
 
 // Endpoint REST para responder desafíos (usado principalmente por el Service Worker y/o fallback cliente)
 app.post('/api/challenge/respond', requireAuth, async (req, res) => {

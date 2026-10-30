@@ -4,7 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { getDivisionFromElo, calculateLevelFromXp, xpForLevel } from './ProfileHeader';
 import { AvatarGallery } from './AvatarGallery';
-import { Edit2, Check, X, Coins, Trophy, Award, TrendingUp, Sparkles, LogOut } from 'lucide-react';
+import { DeleteAccountModal } from './DeleteAccountModal';
+import { Edit2, Check, X, Coins, Trophy, Award, TrendingUp, Sparkles, LogOut, UserX } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
@@ -39,6 +40,9 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
 
   // Avatar Gallery Trigger
   const [showAvatarGallery, setShowAvatarGallery] = useState(false);
+
+  // Delete Account (Unsubscribe) Modal Trigger
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Championship Stats
   const [championshipData, setChampionshipData] = useState<{
@@ -509,21 +513,40 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
           </div>
         </div>
 
-        {/* Footer Actions (Sign Out) */}
-        <div className="p-4 border-t border-[#2A2722] bg-[#0F0E0C]/40 flex gap-2 justify-center shrink-0">
+        {/* Footer Actions (Sign Out & Delete Account) */}
+        <div className="p-4 border-t border-[#2A2722] bg-[#0F0E0C]/40 flex flex-col sm:flex-row gap-2 justify-center shrink-0">
           <button
             onClick={() => {
               triggerHaptic('success');
               signOut();
               onClose();
             }}
-            className="w-full py-2.5 rounded-2xl bg-red-950/20 border border-red-500/20 text-red-400 hover:text-white hover:bg-red-500/30 transition-all font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white hover:bg-white/[0.08] transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2"
           >
             <LogOut className="w-3.5 h-3.5" />
             Cerrar Sesión
           </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('card_tap');
+              setShowDeleteModal(true);
+            }}
+            className="py-2.5 px-4 rounded-xl bg-rose-950/25 border border-rose-500/25 text-rose-400 hover:text-white hover:bg-rose-500/30 transition-all font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
+            title="Darse de baja y eliminar cuenta"
+          >
+            <UserX className="w-3.5 h-3.5" />
+            Darse de baja
+          </button>
         </div>
       </div>
+
+      {/* Inner Delete Account Confirmation Modal */}
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        username={profile?.username}
+      />
 
       {/* Inner Avatar Gallery Modal */}
       {showAvatarGallery && (
