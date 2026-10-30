@@ -74,19 +74,19 @@ function Footer({ onOpenSponsorModal }: Props) {
         {/* Social Networks Row */}
         <div className="flex items-center gap-4">
           <a
-            href="https://www.youtube.com/@kasino21"
+            href="https://www.youtube.com/@kasino21-game"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Canal oficial de YouTube de Kasino21"
+            aria-label="Canal oficial de YouTube de Kasino21 (@kasino21-game)"
             className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-gray-300 hover:text-rose-400 hover:border-rose-400/40 transition-all"
           >
             <Youtube size={18} />
           </a>
           <a
-            href="https://www.instagram.com/kasino21.oficial"
+            href="https://www.instagram.com/kasino21.game"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Perfil oficial de Instagram de Kasino21"
+            aria-label="Perfil oficial de Instagram de Kasino21 (kasino21.game)"
             className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-gray-300 hover:text-pink-400 hover:border-pink-400/40 transition-all"
           >
             <Instagram size={18} />

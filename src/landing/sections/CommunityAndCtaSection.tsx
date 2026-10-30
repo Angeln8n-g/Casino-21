@@ -122,20 +122,20 @@ function CommunityAndCtaSection({ testimonials }: Props) {
 
             <div className="flex items-center gap-4 text-xs font-bold">
               <a
-                href="https://www.youtube.com/@kasino21"
+                href="https://www.youtube.com/@kasino21-game"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-gray-300 hover:text-rose-400 transition-colors"
               >
-                <Youtube size={16} /> YouTube @kasino21
+                <Youtube size={16} /> YouTube @kasino21-game
               </a>
               <a
-                href="https://www.instagram.com/kasino21.oficial"
+                href="https://www.instagram.com/kasino21.game"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-gray-300 hover:text-pink-400 transition-colors"
               >
-                <Instagram size={16} /> Instagram @kasino21.oficial
+                <Instagram size={16} /> Instagram @kasino21.game
               </a>
             </div>
           </div>
