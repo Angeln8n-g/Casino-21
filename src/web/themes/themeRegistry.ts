@@ -7,6 +7,66 @@
 
 import { supabase } from '../services/supabase';
 
+export type ThemeFontKey = 'russo' | 'chakra' | 'cinzel' | 'orbitron';
+
+export interface ThemeFontOption {
+  key: ThemeFontKey;
+  name: string;
+  fontFamily: string;
+  className: string;
+  category: 'esports' | 'cyber' | 'classic' | 'future';
+  sampleText: string;
+  description: string;
+}
+
+export const THEME_FONTS: Record<ThemeFontKey, ThemeFontOption> = {
+  russo: {
+    key: 'russo',
+    name: 'Russo One',
+    fontFamily: "'Russo One', sans-serif",
+    className: "font-['Russo_One']",
+    category: 'esports',
+    sampleText: 'A K Q 10 21',
+    description: 'Angulosa, pesada y contundente; la estética oficial de esports de K21.',
+  },
+  chakra: {
+    key: 'chakra',
+    name: 'Chakra Petch',
+    fontFamily: "'Chakra Petch', sans-serif",
+    className: "font-['Chakra_Petch']",
+    category: 'cyber',
+    sampleText: 'A K Q 10 21',
+    description: 'Geométrica, militar y de alta precisión táctica.',
+  },
+  cinzel: {
+    key: 'cinzel',
+    name: 'Cinzel',
+    fontFamily: "'Cinzel', serif",
+    className: "font-['Cinzel']",
+    category: 'classic',
+    sampleText: 'A K Q 10 21',
+    description: 'Serif romana inspirada en barajas clásicas reales y casinos de lujo.',
+  },
+  orbitron: {
+    key: 'orbitron',
+    name: 'Orbitron',
+    fontFamily: "'Orbitron', sans-serif",
+    className: "font-['Orbitron']",
+    category: 'future',
+    sampleText: 'A K Q 10 21',
+    description: 'Sci-fi, pulida y futurista; ideal para tapetes neón y cyber-decks.',
+  },
+};
+
+export const ALL_THEME_FONTS: ThemeFontOption[] = Object.values(THEME_FONTS);
+
+export function getThemeFont(fontKey?: string | null): ThemeFontOption {
+  if (fontKey && fontKey in THEME_FONTS) {
+    return THEME_FONTS[fontKey as ThemeFontKey];
+  }
+  return THEME_FONTS.russo;
+}
+
 export interface CardTheme {
   background: string;
   boxShadow: string;
@@ -15,6 +75,7 @@ export interface CardTheme {
   innerEdge: string;
   redSuitColor: string;
   blackSuitColor: string;
+  fontKey?: ThemeFontKey;
   extraClass?: string;
 }
 
@@ -52,6 +113,7 @@ const DEFAULT_THEME: GameTheme = {
     innerEdge: 'rgba(56, 189, 248, 0.25)',
     redSuitColor: '#FF3366',
     blackSuitColor: '#E2E8F0',
+    fontKey: 'russo',
   },
   boardTheme: {
     background:
@@ -73,13 +135,27 @@ export async function loadThemes(): Promise<void> {
   if (error) return;
   themeCache = {};
   for (const row of data) {
+    const cardTheme = (row.card_theme || {}) as CardTheme;
+    // Infer fontKey if missing from legacy records
+    if (!cardTheme.fontKey) {
+      if (cardTheme.extraClass?.includes('font-serif') || row.key === 'Vaul') {
+        cardTheme.fontKey = 'cinzel';
+      } else if (cardTheme.extraClass?.includes('font-mono') || row.key === 'neon-dealer') {
+        cardTheme.fontKey = 'orbitron';
+      } else if (row.key === 'bento-casino') {
+        cardTheme.fontKey = 'chakra';
+      } else {
+        cardTheme.fontKey = 'russo';
+      }
+    }
+
     themeCache[row.key] = {
       key: row.key,
       name: row.name,
       description: row.description,
       emoji: row.emoji,
       previewColor: row.preview_color,
-      cardTheme: row.card_theme as CardTheme,
+      cardTheme,
       boardTheme: row.board_theme as BoardTheme,
     };
   }

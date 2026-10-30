@@ -23,6 +23,10 @@ module.exports = {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
         display: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', '"SF Mono"', 'Menlo', 'Consolas', 'monospace'],
+        russo: ['"Russo One"', 'sans-serif'],
+        chakra: ['"Chakra Petch"', 'sans-serif'],
+        cinzel: ['"Cinzel"', 'serif'],
+        orbitron: ['"Orbitron"', 'sans-serif'],
       },
       boxShadow: {
         'gold': '0 0 30px rgba(251, 191, 36, 0.15), 0 0 60px rgba(251, 191, 36, 0.05)',

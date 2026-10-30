@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { invalidateCache, loadThemes } from '../themes/themeRegistry';
+import { invalidateCache, loadThemes, ALL_THEME_FONTS, ThemeFontKey, getThemeFont } from '../themes/themeRegistry';
 
 interface StoreItem {
   id: string;
@@ -43,6 +43,7 @@ interface ThemeForm {
     innerEdge: string;
     redSuitColor: string;
     blackSuitColor: string;
+    fontKey?: ThemeFontKey;
     extraClass: string;
   };
   boardTheme: {
@@ -668,6 +669,7 @@ export function StoreAdmin() {
                         innerEdge: 'rgba(148,163,184,0.8)',
                         redSuitColor: '#dc2626',
                         blackSuitColor: '#111827',
+                        fontKey: 'russo',
                         extraClass: '',
                       },
                       boardTheme: {
@@ -763,6 +765,44 @@ export function StoreAdmin() {
                           </div>
                         </div>
                       ))}
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">
+                          Tipografía del Tema (4 Fuentes Elegibles)
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {ALL_THEME_FONTS.map(font => {
+                            const isSelected = (themeForm.cardTheme.fontKey || 'russo') === font.key;
+                            return (
+                              <button
+                                key={font.key}
+                                type="button"
+                                onClick={() => setThemeForm({
+                                  ...themeForm,
+                                  cardTheme: { ...themeForm.cardTheme, fontKey: font.key }
+                                })}
+                                className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between h-24 cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#7C3AED]/30 border-[#A78BFA] shadow-[0_0_12px_rgba(167,139,250,0.35)]'
+                                    : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-black/60'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-xs font-bold text-white truncate">{font.name}</span>
+                                  {isSelected && <span className="text-[10px] text-[#A78BFA] font-black">✓</span>}
+                                </div>
+                                <div
+                                  className="text-base text-amber-400 font-bold my-1 tracking-wider"
+                                  style={{ fontFamily: font.fontFamily }}
+                                >
+                                  A K Q 10
+                                </div>
+                                <span className="text-[9px] text-gray-400 truncate">{font.category}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <div>
                         <label htmlFor="card-theme-extra-class" className="block text-[10px] font-bold text-gray-500 uppercase mb-1">extraClass</label>
                         <input id="card-theme-extra-class" aria-label="Clases adicionales para Card Theme" type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 focus-visible:outline-none focus:border-[#7C3AED] transition-all" value={themeForm.cardTheme.extraClass} onChange={e => setThemeForm({...themeForm, cardTheme: {...themeForm.cardTheme, extraClass: e.target.value}})} />
@@ -859,14 +899,25 @@ export function StoreAdmin() {
                       >
                         <div className="transform scale-75">
                           <div
-                            className="w-20 h-28 rounded-xl flex items-center justify-center font-bold flex-col"
+                            className="w-20 h-28 rounded-xl flex items-center justify-center font-bold flex-col shadow-lg"
                             style={{
                               background: themeForm.cardTheme.background,
                               boxShadow: themeForm.cardTheme.boxShadow,
                               border: themeForm.cardTheme.border,
                             }}
                           >
-                            <span className="text-xs" style={{ color: themeForm.cardTheme.redSuitColor }}>♥ A</span>
+                            <span
+                              className="text-sm font-black"
+                              style={{
+                                color: themeForm.cardTheme.redSuitColor,
+                                fontFamily: getThemeFont(themeForm.cardTheme.fontKey).fontFamily,
+                              }}
+                            >
+                              ♥ A
+                            </span>
+                            <span className="text-[9px] text-gray-400 mt-1 font-mono">
+                              {getThemeFont(themeForm.cardTheme.fontKey).name}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -962,7 +1013,17 @@ export function StoreAdmin() {
                                       emoji: theme.emoji,
                                       previewColor: theme.preview_color,
                                       price: theme.price,
-                                      cardTheme: theme.card_theme as ThemeForm['cardTheme'],
+                                      cardTheme: {
+                                        background: ((theme.card_theme as any)?.background as string) || '',
+                                        boxShadow: ((theme.card_theme as any)?.boxShadow as string) || '',
+                                        boxShadowSelected: ((theme.card_theme as any)?.boxShadowSelected as string) || '',
+                                        border: ((theme.card_theme as any)?.border as string) || '',
+                                        innerEdge: ((theme.card_theme as any)?.innerEdge as string) || '',
+                                        redSuitColor: ((theme.card_theme as any)?.redSuitColor as string) || '#dc2626',
+                                        blackSuitColor: ((theme.card_theme as any)?.blackSuitColor as string) || '#111827',
+                                        fontKey: (((theme.card_theme as any)?.fontKey as ThemeFontKey)) || 'russo',
+                                        extraClass: ((theme.card_theme as any)?.extraClass as string) || '',
+                                      },
                                       boardTheme: {
                                         background: (bt.background as string) || '',
                                         backgroundImage: (bt.backgroundImage as string) || '',

@@ -1,4 +1,5 @@
 // ─── Arena Catalog: Personajes, Temas y Mecánicas Tácticas de KASINO21 ──────────────
+import { ThemeFontKey } from '../../web/themes/themeRegistry';
 
 export interface CharacterItem {
   id: string;
@@ -26,6 +27,7 @@ export interface ArenaTheme {
   cardBorder: string;
   redSuitColor: string;
   blackSuitColor: string;
+  fontKey?: ThemeFontKey;
 }
 
 export interface TacticalSceneCard {
@@ -161,6 +163,7 @@ export const ARENA_THEMES: ArenaTheme[] = [
     cardBorder: 'rgba(255, 255, 255, 0.8)',
     redSuitColor: '#dc2626',
     blackSuitColor: '#0f172a',
+    fontKey: 'russo',
   },
   {
     key: 'neon-dealer',
@@ -175,6 +178,7 @@ export const ARENA_THEMES: ArenaTheme[] = [
     cardBorder: 'rgba(56, 189, 248, 0.6)',
     redSuitColor: '#f43f5e',
     blackSuitColor: '#38bdf8',
+    fontKey: 'orbitron',
   },
   {
     key: 'gold-rush',
@@ -189,6 +193,7 @@ export const ARENA_THEMES: ArenaTheme[] = [
     cardBorder: 'rgba(251, 191, 36, 0.7)',
     redSuitColor: '#f59e0b',
     blackSuitColor: '#fef08a',
+    fontKey: 'orbitron',
   },
   {
     key: 'vault-noir',
@@ -203,6 +208,7 @@ export const ARENA_THEMES: ArenaTheme[] = [
     cardBorder: 'rgba(202, 138, 4, 0.5)',
     redSuitColor: '#991b1b',
     blackSuitColor: '#1c1917',
+    fontKey: 'cinzel',
   },
   {
     key: 'tactile-vegas',
@@ -217,6 +223,7 @@ export const ARENA_THEMES: ArenaTheme[] = [
     cardBorder: 'rgba(244, 114, 182, 0.6)',
     redSuitColor: '#db2777',
     blackSuitColor: '#4c0519',
+    fontKey: 'russo',
   },
   {
     key: 'bento-casino',
@@ -231,6 +238,7 @@ export const ARENA_THEMES: ArenaTheme[] = [
     cardBorder: 'rgba(203, 213, 225, 0.8)',
     redSuitColor: '#ef4444',
     blackSuitColor: '#0f172a',
+    fontKey: 'chakra',
   },
 ];
 

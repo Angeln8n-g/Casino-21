@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Card } from '../../domain/card';
-import { CardTheme } from '../themes/themeRegistry';
+import { CardTheme, ThemeFontKey } from '../themes/themeRegistry';
 import { TacticalCard3D, CardSize } from './card/TacticalCard3D';
 import { CardSuit } from './card/TacticalSuitIcon';
 
@@ -12,6 +12,7 @@ export interface CardViewProps extends React.HTMLAttributes<HTMLDivElement> {
   style?: React.CSSProperties;
   className?: string;
   theme?: CardTheme;
+  fontKey?: ThemeFontKey;
   size?: CardSize;
   isKey?: boolean;
   annotation?: string;
@@ -28,6 +29,7 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
       style,
       className = '',
       theme,
+      fontKey,
       size = 'responsive',
       isKey,
       annotation,
@@ -48,6 +50,7 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(
         style={style}
         className={className}
         theme={theme}
+        fontKey={fontKey}
         size={size}
         isKey={isKey}
         annotation={annotation}

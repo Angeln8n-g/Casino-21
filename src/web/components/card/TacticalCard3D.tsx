@@ -1,6 +1,6 @@
 import React, { forwardRef, useRef, useImperativeHandle, useCallback } from 'react';
 import { TacticalSuitIcon, CardSuit } from './TacticalSuitIcon';
-import { CardTheme } from '../../themes/themeRegistry';
+import { CardTheme, getThemeFont, ThemeFontKey } from '../../themes/themeRegistry';
 import { triggerHaptic } from '../../utils/haptics';
 
 export type CardSize = 'responsive' | 'xs' | 'sm' | 'md' | 'lg';
@@ -16,11 +16,13 @@ export interface TacticalCard3DProps extends React.HTMLAttributes<HTMLDivElement
   annotation?: string;
   size?: CardSize;
   theme?: CardTheme;
+  fontKey?: ThemeFontKey;
   customStyle?: {
     cardBg?: string;
     cardBorder?: string;
     redSuitColor?: string;
     blackSuitColor?: string;
+    fontKey?: ThemeFontKey;
   };
   enableTilt?: boolean;
   onClick?: () => void;
@@ -64,6 +66,8 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
 
     const isRed = suit === 'hearts' || suit === 'diamonds';
     const activeTheme = theme ?? DEFAULT_ESPORTS_THEME;
+    const effectiveFontKey = customStyle?.fontKey || activeTheme.fontKey;
+    const fontOption = getThemeFont(effectiveFontKey);
 
     const suitColor = isRed
       ? customStyle?.redSuitColor || activeTheme.redSuitColor
@@ -125,6 +129,21 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
       md: 'w-20 h-28 sm:w-24 sm:h-36 text-sm rounded-xl p-2 sm:p-2.5',
       lg: 'w-28 h-40 sm:w-32 sm:h-48 text-base rounded-2xl p-3 sm:p-3.5',
     }[size];
+
+    // Symmetrical corner position classes
+    const cornerTopLeftClass =
+      size === 'xs'
+        ? 'top-1 left-1'
+        : size === 'sm'
+        ? 'top-1.5 left-1.5'
+        : 'top-1.5 left-1.5 sm:top-2 sm:left-2';
+
+    const cornerBottomRightClass =
+      size === 'xs'
+        ? 'bottom-1 right-1'
+        : size === 'sm'
+        ? 'bottom-1.5 right-1.5'
+        : 'bottom-1.5 right-1.5 sm:bottom-2 sm:right-2';
 
     // Background calculation
     const cardBg = customStyle?.cardBg || activeTheme.background;
@@ -215,7 +234,7 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
 
         {/* ── Main Face Plate (Material Texture, Rim, Recessed Chamber) ── */}
         <div
-          className="k21-card-faceplate absolute inset-[1.5px] rounded-[inherit] overflow-hidden flex flex-col justify-between p-1.5 sm:p-2"
+          className="k21-card-faceplate absolute inset-[1.5px] rounded-[inherit] overflow-hidden flex items-center justify-center"
           style={{
             background: disabled ? '#1e293b' : cardBg,
             boxShadow: 'inset 0 1px 1px 0 rgba(255,255,255,0.15), inset 0 -1px 2px 0 rgba(0,0,0,0.6)',
@@ -248,12 +267,15 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
             </div>
           )}
 
-          {/* ── TOP-LEFT INDEX (Rank + Tactical Suit) ── */}
+          {/* ── TOP-LEFT CORNER (Rank + Tactical Suit) ── */}
           <div
-            className="flex flex-col items-start leading-none relative z-10 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+            className={`absolute ${cornerTopLeftClass} flex flex-col items-center leading-none z-10 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] pointer-events-none`}
             style={{ color: suitColor }}
           >
-            <span className="font-['Russo_One'] tracking-tight text-[11px] sm:text-xs md:text-sm">
+            <span
+              className="tracking-tight text-[11px] sm:text-xs md:text-sm font-black"
+              style={{ fontFamily: fontOption.fontFamily }}
+            >
               {rank}
             </span>
             <div className="mt-0.5 flex items-center justify-center">
@@ -262,7 +284,7 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
           </div>
 
           {/* ── CENTER EMBOSSED 3D PIECE ── */}
-          <div className="self-center flex-grow flex flex-col items-center justify-center relative z-10 w-full my-auto pointer-events-none">
+          <div className="flex flex-col items-center justify-center relative z-10 w-full h-full my-auto pointer-events-none">
             {/* Ambient Backlight Aura for the Suit */}
             <div
               className="absolute w-8 h-8 sm:w-14 sm:h-14 rounded-full blur-md opacity-35"
@@ -314,12 +336,19 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
             )}
           </div>
 
-          {/* ── BOTTOM-RIGHT INDEX (Inverted Rank + Tactical Suit) ── */}
+          {/* ── BOTTOM-RIGHT CORNER (Rotated 180deg: Suit + Rank) ── */}
           <div
-            className="flex flex-col items-end leading-none relative z-10 font-bold rotate-180 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-            style={{ color: suitColor }}
+            className={`absolute ${cornerBottomRightClass} flex flex-col items-center leading-none z-10 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] pointer-events-none rotate-180`}
+            style={{
+              color: suitColor,
+              transform: 'rotate(180deg)',
+              transformOrigin: 'center',
+            }}
           >
-            <span className="font-['Russo_One'] tracking-tight text-[11px] sm:text-xs md:text-sm">
+            <span
+              className="tracking-tight text-[11px] sm:text-xs md:text-sm font-black"
+              style={{ fontFamily: fontOption.fontFamily }}
+            >
               {rank}
             </span>
             <div className="mt-0.5 flex items-center justify-center">

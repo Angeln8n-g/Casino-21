@@ -3,7 +3,8 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
 import { CardView } from './CardView';
-import { getTheme, getAllThemes } from '../themes/themeRegistry';
+import { getTheme, getAllThemes, ALL_THEME_FONTS, ThemeFontKey } from '../themes/themeRegistry';
+import { getStoredFontPreference, setStoredFontPreference } from '../hooks/useGameTheme';
 import { createCard } from '../../domain/card';
 import { triggerHaptic } from '../utils/haptics';
 import { safeStorage } from '../utils/safeStorage';
@@ -22,8 +23,15 @@ interface StoreItem {
 
 const PREVIEW_CARD = createCard('hearts', 'A');
 
-function ThemeCardPreview({ themeKey }: { themeKey: string }) {
+function ThemeCardPreview({
+  themeKey,
+  fontOverride,
+}: {
+  themeKey: string;
+  fontOverride?: ThemeFontKey | null;
+}) {
   const theme = getTheme(themeKey);
+  const cardTheme = fontOverride ? { ...theme.cardTheme, fontKey: fontOverride } : theme.cardTheme;
   return (
     <div
       className="relative flex items-center justify-center w-full h-full overflow-hidden rounded-xl"
@@ -40,7 +48,7 @@ function ThemeCardPreview({ themeKey }: { themeKey: string }) {
         style={{ border: `1px solid ${theme.boardTheme.innerRingColor}` }}
       />
       <div className="relative z-10 transform scale-90 drop-shadow-2xl">
-        <CardView card={PREVIEW_CARD} theme={theme.cardTheme} />
+        <CardView card={PREVIEW_CARD} theme={cardTheme} fontKey={cardTheme.fontKey} />
       </div>
     </div>
   );
@@ -96,6 +104,17 @@ export function Store() {
   const [adViewsCount, setAdViewsCount] = useState<number>(0);
   const [showLimitReachedAnimation, setShowLimitReachedAnimation] = useState<boolean>(false);
   const [isAdChecking, setIsAdChecking] = useState<boolean>(false);
+
+  // Player Font Preference
+  const [preferredFont, setPreferredFont] = useState<ThemeFontKey | null>(getStoredFontPreference);
+
+  useEffect(() => {
+    const handler = () => {
+      setPreferredFont(getStoredFontPreference());
+    };
+    window.addEventListener('font_preference_updated', handler);
+    return () => window.removeEventListener('font_preference_updated', handler);
+  }, []);
 
   const loadAdCountFromLocalStorage = () => {
     if (!user) return;
@@ -492,6 +511,58 @@ export function Store() {
           </div>
         </div>
 
+        {/* Theme Font Selector Toolbar */}
+        {activeCategory === 'theme' && (
+          <div className="mb-6 p-4 rounded-2xl bg-[#1A1815] border border-[#2A2722] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-wider font-bold text-[#FACC15] flex items-center gap-1.5">
+                <span>🔤</span> Personalizar Tipografía de Cartas
+              </div>
+              <p className="text-xs text-[#A1A1AA] mt-0.5">
+                Selecciona la fuente de los números y letras de tus cartas para todas tus partidas.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setStoredFontPreference(null);
+                  triggerHaptic('light');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                  preferredFont === null
+                    ? 'bg-[#FACC15] text-[#11100E] border-[#FACC15] shadow-md'
+                    : 'bg-[#2A2722] text-[#A1A1AA] border-[#3A362F] hover:text-white'
+                }`}
+              >
+                Por defecto del tema
+              </button>
+              {ALL_THEME_FONTS.map(f => {
+                const isActive = preferredFont === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => {
+                      setStoredFontPreference(f.key);
+                      triggerHaptic('light');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                      isActive
+                        ? 'bg-[#FACC15] text-[#11100E] border-[#FACC15] shadow-md'
+                        : 'bg-[#2A2722] text-[#A1A1AA] border-[#3A362F] hover:text-white'
+                    }`}
+                    style={{ fontFamily: f.fontFamily }}
+                    title={f.description}
+                  >
+                    {f.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Main Grid / Masonry Layout */}
         <div className={viewMode === 'gallery' ? 'masonry-grid' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}>
           {loading ? (
@@ -542,7 +613,7 @@ export function Store() {
 
                     {item.item_type === 'theme' && item.theme_key ? (
                       <div className="w-full h-full absolute inset-0 opacity-90 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-700">
-                        <ThemeCardPreview themeKey={item.theme_key} />
+                        <ThemeCardPreview themeKey={item.theme_key} fontOverride={preferredFont} />
                       </div>
                     ) : item.image_url ? (
                       <img 

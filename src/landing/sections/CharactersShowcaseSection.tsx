@@ -1,11 +1,15 @@
 import React, { useState, memo } from 'react';
 import { CHARACTERS_CATALOG, ARENA_THEMES, CharacterItem, ArenaTheme } from '../data/arenaCatalog';
+import { ALL_THEME_FONTS, ThemeFontKey } from '../../web/themes/themeRegistry';
 import LandingCard from '../components/LandingCard';
-import { Sparkles, Palette, Shield, Quote, Smile } from 'lucide-react';
+import { Sparkles, Palette, Shield, Quote, Smile, Type } from 'lucide-react';
 
 function CharactersShowcaseSection() {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterItem>(CHARACTERS_CATALOG[0]);
   const [selectedTheme, setSelectedTheme] = useState<ArenaTheme>(ARENA_THEMES[0]);
+  const [previewFont, setPreviewFont] = useState<ThemeFontKey | null>(null);
+
+  const activeFont = previewFont || selectedTheme.fontKey || 'russo';
 
   return (
     <section id="personajes" className="py-24 px-4 sm:px-6 lg:px-8 relative bg-[#050811]">
@@ -177,12 +181,51 @@ function CharactersShowcaseSection() {
                 boxShadow: `0 15px 40px ${selectedTheme.glowColor}`,
               }}
             >
-              <div className="flex items-center justify-between text-xs font-['Chakra_Petch'] font-bold text-gray-300 mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-['Chakra_Petch'] font-bold text-gray-300 mb-4">
                 <span className="flex items-center gap-2">
                   <Palette size={15} style={{ color: selectedTheme.borderColor }} />
                   <span>Vista Previa: Tema {selectedTheme.name}</span>
                 </span>
                 <span className="text-[11px] text-gray-400">{selectedTheme.description}</span>
+              </div>
+
+              {/* Typography Switcher Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4 p-2 rounded-xl bg-black/40 border border-white/10 backdrop-blur-sm">
+                <span className="flex items-center gap-1.5 text-[11px] font-['Chakra_Petch'] font-semibold text-gray-300">
+                  <Type size={13} className="text-amber-400" />
+                  <span>Tipografía de Cartas:</span>
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFont(null)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                      previewFont === null
+                        ? 'bg-amber-400 text-black border-amber-400 shadow-sm'
+                        : 'bg-white/5 text-gray-300 border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    Auto ({selectedTheme.fontKey || 'russo'})
+                  </button>
+                  {ALL_THEME_FONTS.map(f => {
+                    const isSelected = previewFont === f.key;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setPreviewFont(f.key)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                          isSelected
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-sm'
+                            : 'bg-white/5 text-gray-300 border-white/10 hover:border-white/30'
+                        }`}
+                        style={{ fontFamily: f.fontFamily }}
+                      >
+                        {f.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Sample Card Pair on the Themed Surface */}
@@ -192,6 +235,7 @@ function CharactersShowcaseSection() {
                   suit="spades"
                   annotation="As de Picas"
                   size="lg"
+                  fontKey={activeFont}
                   customStyle={{
                     cardBg: selectedTheme.cardBg,
                     cardBorder: selectedTheme.cardBorder,
@@ -206,6 +250,7 @@ function CharactersShowcaseSection() {
                   annotation="La Buena +2"
                   size="lg"
                   isKey
+                  fontKey={activeFont}
                   customStyle={{
                     cardBg: selectedTheme.cardBg,
                     cardBorder: selectedTheme.cardBorder,
