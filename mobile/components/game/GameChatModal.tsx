@@ -29,7 +29,7 @@ export function GameChatModal({ visible, messages, onSendMessage, onClose }: Gam
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent={true}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 bg-black/80 justify-end"

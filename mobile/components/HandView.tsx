@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text } from 'react-native';
 import { Player } from 'domain/player';
 import { Card } from 'domain/card';
 import { DraggableCard } from './DraggableCard';
@@ -12,6 +12,7 @@ interface HandViewProps {
   theme?: CardTheme;
   fontKey?: ThemeFontKey;
   onSelectCard: (cardId: string) => void;
+  onDropOnBoard?: (card: Card) => void;
   onDropOnFormation: (formationIndex: number, cardId: string) => void;
 }
 
@@ -22,6 +23,7 @@ export function HandView({
   theme,
   fontKey,
   onSelectCard,
+  onDropOnBoard,
   onDropOnFormation,
 }: HandViewProps) {
   const virados = localPlayer?.virados || 0;
@@ -32,16 +34,16 @@ export function HandView({
       style={{
         backgroundColor: 'rgba(15, 23, 42, 0.95)',
         borderRadius: 24,
-        padding: 12,
+        padding: 10,
         borderWidth: 1.5,
-        borderColor: isCurrentTurn ? 'rgba(251, 191, 36, 0.6)' : '#1e293b',
+        borderColor: isCurrentTurn ? 'rgba(251, 191, 36, 0.7)' : '#1e293b',
         zIndex: 9999,
         elevation: 9999,
         overflow: 'visible',
       }}
     >
       {/* Banner Superior de Tu Zona */}
-      <View className="flex-row justify-between items-center mb-2 px-1">
+      <View className="flex-row justify-between items-center mb-1.5 px-1">
         <View className="flex-row items-center">
           <Text className="text-white font-bold text-sm mr-2">{localPlayer?.name || 'Tú'}</Text>
           <View
@@ -60,30 +62,43 @@ export function HandView({
         </View>
       </View>
 
-      {/* Cartas de la Mano del Jugador */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ overflow: 'visible' }}
-        contentContainerStyle={{ overflow: 'visible', paddingVertical: 4 }}
+      {/* Cartas de la Mano del Jugador (Centradas y con soporte de Arrastre Libre) */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingVertical: 2,
+          overflow: 'visible',
+        }}
       >
         {hand.length === 0 ? (
           <Text className="text-slate-500 text-xs italic py-4">No tienes cartas en tu mano</Text>
         ) : (
           hand.map((card: Card) => (
-            <View key={card.id} style={{ marginRight: 10, overflow: 'visible', zIndex: 9999, elevation: 9999 }}>
+            <View
+              key={card.id}
+              style={{
+                marginHorizontal: 5,
+                overflow: 'visible',
+                zIndex: selectedCardId === card.id ? 99999 : 9999,
+                elevation: selectedCardId === card.id ? 99999 : 9999,
+              }}
+            >
               <DraggableCard
                 card={card}
                 selected={selectedCardId === card.id}
                 theme={theme}
                 fontKey={fontKey}
+                variant="light"
                 onPress={() => onSelectCard(card.id)}
+                onDropOnBoard={onDropOnBoard}
                 onDropOnFormation={(formationIdx) => onDropOnFormation(formationIdx, card.id)}
               />
             </View>
           ))
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }

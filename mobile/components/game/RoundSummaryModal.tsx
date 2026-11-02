@@ -44,7 +44,7 @@ export function RoundSummaryModal({
   const entities = gameState.mode === '1v1' ? gameState.players : gameState.teams;
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent={true}>
       <View className="flex-1 bg-black/90 justify-center items-center p-4">
         <View className="bg-slate-900 border border-amber-500/40 rounded-3xl p-5 w-full max-h-[90%] shadow-2xl">
           {/* Header */}

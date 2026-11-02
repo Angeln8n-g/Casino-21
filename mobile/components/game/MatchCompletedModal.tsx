@@ -56,7 +56,7 @@ export function MatchCompletedModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent={true}>
       <View className="flex-1 bg-black/85 items-center justify-center p-5">
         <View className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm items-center shadow-2xl">
           {/* Insignia Victoria / Derrota */}

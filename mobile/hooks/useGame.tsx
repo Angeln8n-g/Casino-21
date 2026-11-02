@@ -25,6 +25,7 @@ export interface StatsData {
 }
 
 interface GameContextType {
+  roomId: string | null;
   gameState: GameState | null;
   setGameState: (state: GameState | null) => void;
   localPlayerId: string | null;
@@ -37,19 +38,20 @@ interface GameContextType {
   disconnectionMessage: string | null;
   chatMessages: ChatMessage[];
   sendMessage: (roomId: string, text: string) => void;
-  abandonMatch: (roomId: string) => void;
+  abandonMatch: (roomId?: string) => void;
   matchAbandonedData: { winnerId: string; coinsEarned: number; eloEarned: number } | null;
   statsData: StatsData | null;
   scoringTimeoutReady: string[];
-  claimRoundVictory: (roomId: string) => void;
+  claimRoundVictory: (roomId?: string) => void;
   rematchStatus: { acceptedPlayers: string[]; maxPlayers: number } | null;
-  requestRematch: (roomId: string) => void;
+  requestRematch: (roomId?: string) => void;
   resetMatch: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: ReactNode }) {
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [localPlayerId, setLocalPlayerIdState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +77,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     AsyncStorage.getItem('casino21_playerId').then((id) => {
       if (id && mounted) setLocalPlayerIdState(id);
+    });
+
+    AsyncStorage.getItem('casino21_roomId').then((rId) => {
+      if (rId && mounted) setRoomId(rId);
     });
 
     const bindSocketEvents = (socket: any) => {
@@ -120,6 +126,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.on('room_joined', ({ playerId, roomId }: { playerId: string; roomId?: string }) => {
         if (playerId) setLocalPlayerId(playerId);
         if (roomId) {
+          setRoomId(roomId);
           AsyncStorage.setItem('casino21_roomId', roomId).catch(() => {});
           appEvents.emit('room_joined_event');
         }
@@ -128,6 +135,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.on('room_created', ({ playerId, roomId }: { playerId: string; roomId?: string }) => {
         if (playerId) setLocalPlayerId(playerId);
         if (roomId) {
+          setRoomId(roomId);
           AsyncStorage.setItem('casino21_roomId', roomId).catch(() => {});
           appEvents.emit('room_joined_event');
         }
@@ -265,26 +273,35 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  const abandonMatch = useCallback((roomId: string) => {
+  const abandonMatch = useCallback((targetRoomId?: string) => {
     try {
-      const socket = socketService.getSocket();
-      socket.emit('abandon_match', { roomId });
+      const activeRoom = targetRoomId || roomId || socketService.currentRoomId;
+      if (activeRoom) {
+        const socket = socketService.getSocket();
+        socket.emit('abandon_match', { roomId: activeRoom });
+      }
     } catch {}
-  }, []);
+  }, [roomId]);
 
-  const claimRoundVictory = useCallback((roomId: string) => {
+  const claimRoundVictory = useCallback((targetRoomId?: string) => {
     try {
-      const socket = socketService.getSocket();
-      socket.emit('claim_round_victory', { roomId });
+      const activeRoom = targetRoomId || roomId || socketService.currentRoomId;
+      if (activeRoom) {
+        const socket = socketService.getSocket();
+        socket.emit('claim_round_victory', { roomId: activeRoom });
+      }
     } catch {}
-  }, []);
+  }, [roomId]);
 
-  const requestRematch = useCallback((roomId: string) => {
+  const requestRematch = useCallback((targetRoomId?: string) => {
     try {
-      const socket = socketService.getSocket();
-      socket.emit('request_rematch', { roomId });
+      const activeRoom = targetRoomId || roomId || socketService.currentRoomId;
+      if (activeRoom) {
+        const socket = socketService.getSocket();
+        socket.emit('request_rematch', { roomId: activeRoom });
+      }
     } catch {}
-  }, []);
+  }, [roomId]);
 
   const resetMatch = useCallback(() => {
     setGameState(null);
@@ -293,6 +310,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setRematchStatus(null);
     setChatMessages([]);
     setError(null);
+    setRoomId(null);
     AsyncStorage.removeItem('casino21_roomId').catch(() => {});
     appEvents.emit('room_left_event');
   }, []);
@@ -300,6 +318,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   return (
     <GameContext.Provider
       value={{
+        roomId,
         gameState,
         setGameState,
         localPlayerId,

@@ -14,6 +14,7 @@ export interface CardViewProps {
   theme?: CardTheme;
   fontKey?: ThemeFontKey;
   size?: CardSize;
+  variant?: 'light' | 'dark' | 'auto';
   isKey?: boolean;
   annotation?: string;
   isFaceDown?: boolean;
@@ -28,6 +29,7 @@ export function CardView({
   theme,
   fontKey,
   size = 'responsive',
+  variant = 'auto',
   isKey,
   annotation,
   isFaceDown = false,
@@ -46,6 +48,7 @@ export function CardView({
       theme={theme}
       fontKey={fontKey}
       size={size}
+      variant={variant}
       isKey={isKey}
       annotation={annotation}
       isFaceDown={isHidden}

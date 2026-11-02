@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Alert, Pressable } from 'react-native';
+import { View, Text, Alert, Pressable, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
 import { useGameTheme } from '../hooks/useGameTheme';
+import { useGameMusic } from '../hooks/useGameMusic';
 import { MatchPointHUD } from '../components/MatchPointHUD';
 import { BoardView } from '../components/BoardView';
 import { ActionPanel, ActionPayload } from '../components/ActionPanel';
@@ -25,11 +27,13 @@ const getTotalVirados = (state: GameState) =>
 
 export default function GameScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { playSfx, muted, toggleMuted } = useAudio();
   const localTheme = useGameTheme();
 
   const {
+    roomId,
     gameState,
     localPlayerId,
     playCard,
@@ -49,6 +53,9 @@ export default function GameScreen() {
     requestRematch,
     resetMatch,
   } = useGame();
+
+  // Música reactiva de fondo en partida
+  useGameMusic(gameState);
 
   const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
   const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
@@ -90,7 +97,6 @@ export default function GameScreen() {
   // Si no hay partida activa, regresar a tabs
   useEffect(() => {
     if (!gameState && !matchAbandonedData) {
-      // Si la partida se cerró
       const timeout = setTimeout(() => {
         router.replace('/(tabs)');
       }, 500);
@@ -146,13 +152,14 @@ export default function GameScreen() {
     setSelectedFormationIds(new Set());
   };
 
-  const handlePlayAction = (actionPayload: ActionPayload) => {
-    if (!selectedHandCard || !localPlayer) return;
+  const handlePlayAction = (actionPayload: ActionPayload, cardToUse?: Card) => {
+    const card = cardToUse || selectedHandCard;
+    if (!card || !localPlayer) return;
 
     const fullAction: Action = {
       ...actionPayload,
       playerId: localPlayer.id,
-      cardId: selectedHandCard.id,
+      cardId: card.id,
     } as Action;
 
     playCard(fullAction);
@@ -160,11 +167,48 @@ export default function GameScreen() {
     playSfx('cardDeal');
   };
 
+  // Drag & Drop: Soltar carta arrastrada sobre el tablero
+  const handleDropOnBoard = (card: Card) => {
+    if (!localPlayer || !isCurrentTurn) return;
+
+    // Si ya hay cartas de mesa seleccionadas, llevar
+    if (selectedBoardCardIds.size > 0 || selectedFormationIds.size > 0) {
+      handlePlayAction(
+        {
+          type: 'llevar',
+          boardCardIds: Array.from(selectedBoardCardIds),
+          formationIds: Array.from(selectedFormationIds),
+        },
+        card
+      );
+      return;
+    }
+
+    // Por defecto, colocar carta en mesa
+    handlePlayAction({ type: 'colocar' }, card);
+  };
+
+  // Drag & Drop: Soltar carta sobre una formación
+  const handleDropOnFormation = (formationIndex: number, cardId: string) => {
+    if (!localPlayer || !gameState || !isCurrentTurn) return;
+    const formation = gameState.board.formations[formationIndex];
+    if (!formation) return;
+
+    const card = localPlayer.hand.find((c) => c.id === cardId);
+    if (!card) return;
+
+    handlePlayAction(
+      {
+        type: 'aumentarFormacion',
+        formationId: formation.id,
+      },
+      card
+    );
+  };
+
   const handleConfirmAbandon = () => {
     setShowAbandonConfirm(false);
-    if (gameState?.id) {
-      abandonMatch(gameState.id);
-    }
+    abandonMatch();
     resetMatch();
     router.replace('/(tabs)');
   };
@@ -177,11 +221,23 @@ export default function GameScreen() {
   const isScoringPhase = gameState?.phase === 'scoring';
   const isCompletedPhase = gameState?.phase === 'completed';
 
+  const androidStatusBar = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 32) : 0;
+  const safeTop = Math.max(insets.top, androidStatusBar, 36) + 6;
+
   return (
-    <View className="flex-1 bg-slate-950 px-3 pt-10 pb-3 justify-between">
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: '#020617',
+        paddingTop: safeTop,
+        paddingBottom: Math.max(insets.bottom, 8),
+        paddingHorizontal: 10,
+        justifyContent: 'space-between',
+      }}
+    >
       {/* Banner Notificación de Emote en Vivo */}
       {emoteNotification && (
-        <View className="absolute top-12 left-6 right-6 z-50 bg-slate-900/95 border border-amber-400 p-2.5 rounded-full items-center flex-row justify-center shadow-2xl">
+        <View className="absolute top-16 left-6 right-6 z-50 bg-slate-900/95 border border-amber-400 p-2.5 rounded-full items-center flex-row justify-center shadow-2xl">
           <Text className="text-white font-bold text-xs mr-2">{emoteNotification.senderName}:</Text>
           <Text className="text-xl">{emoteNotification.text}</Text>
         </View>
@@ -189,7 +245,7 @@ export default function GameScreen() {
 
       {/* Banner de Virado */}
       {viradoBanner && (
-        <View className="absolute top-24 left-10 right-10 z-50 bg-amber-500 p-3 rounded-2xl items-center shadow-2xl">
+        <View className="absolute top-28 left-10 right-10 z-50 bg-amber-500 p-3 rounded-2xl items-center shadow-2xl">
           <Text className="text-slate-950 font-black text-xl tracking-widest uppercase">
             ⚡ {viradoBanner} ⚡
           </Text>
@@ -241,21 +297,21 @@ export default function GameScreen() {
         handCard={selectedHandCard}
         selectedBoardCardIds={selectedBoardCardIds}
         selectedFormationIds={selectedFormationIds}
-        onPlayAction={handlePlayAction}
+        onPlayAction={(payload) => handlePlayAction(payload)}
         onClearSelection={handleClearSelection}
       />
 
       {/* 4. EmoteBar (Reacciones rápidas + Chat) */}
       <EmoteBar
         onSendEmote={(emoji) => {
-          if (gameState?.id) {
-            sendMessage(gameState.id, emoji);
+          if (roomId) {
+            sendMessage(roomId, emoji);
           }
         }}
         onOpenChat={() => setShowChatModal(true)}
       />
 
-      {/* 5. Zona Jugador (HandView) */}
+      {/* 5. Zona Jugador (HandView) con soporte Drag & Drop */}
       <HandView
         localPlayer={localPlayer}
         isCurrentTurn={isCurrentTurn}
@@ -263,9 +319,8 @@ export default function GameScreen() {
         theme={localTheme.cardTheme}
         fontKey={localTheme.cardTheme.fontKey}
         onSelectCard={handleSelectHandCard}
-        onDropOnFormation={(_, cardId) => {
-          setSelectedHandCardId(cardId);
-        }}
+        onDropOnBoard={handleDropOnBoard}
+        onDropOnFormation={handleDropOnFormation}
       />
 
       {/* Modales de Ciclo de Partida */}
@@ -276,7 +331,7 @@ export default function GameScreen() {
         scoringTimeoutReady={scoringTimeoutReady}
         onContinue={continueToNextRound}
         onClaimVictory={() => {
-          if (gameState?.id) claimRoundVictory(gameState.id);
+          claimRoundVictory();
         }}
       />
 
@@ -287,7 +342,7 @@ export default function GameScreen() {
         statsData={statsData}
         rematchStatus={rematchStatus}
         onRequestRematch={() => {
-          if (gameState?.id) requestRematch(gameState.id);
+          requestRematch();
         }}
         onBackToMenu={handleBackToLobby}
       />
@@ -309,7 +364,7 @@ export default function GameScreen() {
         visible={showChatModal}
         messages={chatMessages}
         onSendMessage={(text) => {
-          if (gameState?.id) sendMessage(gameState.id, text);
+          if (roomId) sendMessage(roomId, text);
         }}
         onClose={() => setShowChatModal(false)}
       />
