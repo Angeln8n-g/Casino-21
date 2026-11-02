@@ -1,145 +1,214 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, Alert, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { socketService } from '../services/socket';
+import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { useGameTheme } from '../hooks/useGameTheme';
 import { MatchPointHUD } from '../components/MatchPointHUD';
 import { BoardView } from '../components/BoardView';
+import { ActionPanel, ActionPayload } from '../components/ActionPanel';
 import { EmoteBar } from '../components/EmoteBar';
 import { HandView } from '../components/HandView';
-import { ActionPanel, ActionPayload } from '../components/ActionPanel';
+import { RoundSummaryModal } from '../components/game/RoundSummaryModal';
+import { MatchCompletedModal } from '../components/game/MatchCompletedModal';
+import { AbandonConfirmModal } from '../components/game/AbandonConfirmModal';
+import { MatchAbandonedModal } from '../components/game/MatchAbandonedModal';
+import { GameChatModal } from '../components/game/GameChatModal';
+import { Action } from 'application/action-validator';
 import { GameState } from 'domain/game-state';
 import { Card } from 'domain/card';
-import { Trophy, Frown, Home } from 'lucide-react-native';
+
+const getTotalVirados = (state: GameState) =>
+  (state.players || []).reduce((sum, p) => sum + (p.virados || 0), 0) +
+  (state.teams || []).reduce((sum, t) => sum + (t.virados || 0), 0);
 
 export default function GameScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { playSfx } = useAudio();
+  const { playSfx, muted, toggleMuted } = useAudio();
+  const localTheme = useGameTheme();
 
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  const {
+    gameState,
+    localPlayerId,
+    playCard,
+    error,
+    clearError,
+    continueToNextRound,
+    timeRemaining,
+    disconnectionMessage,
+    chatMessages,
+    sendMessage,
+    abandonMatch,
+    matchAbandonedData,
+    statsData,
+    scoringTimeoutReady,
+    claimRoundVictory,
+    rematchStatus,
+    requestRematch,
+    resetMatch,
+  } = useGame();
+
+  const [selectedHandCardId, setSelectedHandCardId] = useState<string | null>(null);
   const [selectedBoardCardIds, setSelectedBoardCardIds] = useState<Set<string>>(new Set());
   const [selectedFormationIds, setSelectedFormationIds] = useState<Set<string>>(new Set());
 
-  const [timeRemaining, setTimeRemaining] = useState(30);
-  const [activeEmoteNotification, setActiveEmoteNotification] = useState<{ senderName: string; emoji: string } | null>(null);
+  // Modales
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [viradoBanner, setViradoBanner] = useState<string | null>(null);
+  const [emoteNotification, setEmoteNotification] = useState<{ senderName: string; text: string } | null>(null);
+
+  const prevViradosRef = useRef<number>(0);
+  const prevChatCountRef = useRef<number>(0);
+
+  // Detección de Virado y Emotes
+  useEffect(() => {
+    if (!gameState) return;
+    const currentVirados = getTotalVirados(gameState);
+    if (prevViradosRef.current > 0 && currentVirados > prevViradosRef.current) {
+      playSfx('virado');
+      setViradoBanner('¡VIRADO!');
+      setTimeout(() => setViradoBanner(null), 2500);
+    }
+    prevViradosRef.current = currentVirados;
+  }, [gameState, playSfx]);
 
   useEffect(() => {
-    let socket: any;
-
-    const initSocket = async () => {
-      try {
-        socket = await socketService.connect();
-        
-        socket.on('game_state_update', (state: GameState) => {
-          setGameState(state);
-          if (state.phase === 'completed') {
-            const isWinner = state.winnerId === user?.id;
-            playSfx(isWinner ? 'victory' : 'defeat');
-          }
-        });
-
-        socket.on('timer_update', ({ remaining }: { remaining: number }) => {
-          setTimeRemaining(Math.ceil(remaining / 1000));
-        });
-
-        socket.on('chat_message', (msg: { senderName: string; text: string }) => {
-          setActiveEmoteNotification({ senderName: msg.senderName, emoji: msg.text });
-          setTimeout(() => setActiveEmoteNotification(null), 3000);
-        });
-      } catch (err) {
-        console.error("Error conectando socket en GameScreen:", err);
+    if (chatMessages.length > prevChatCountRef.current) {
+      const latest = chatMessages[chatMessages.length - 1];
+      if (latest && latest.senderId !== localPlayerId) {
+        setEmoteNotification({ senderName: latest.senderName, text: latest.text });
+        playSfx('emoteIn');
+        setTimeout(() => setEmoteNotification(null), 3000);
       }
-    };
+    }
+    prevChatCountRef.current = chatMessages.length;
+  }, [chatMessages, localPlayerId, playSfx]);
 
-    initSocket();
+  // Si no hay partida activa, regresar a tabs
+  useEffect(() => {
+    if (!gameState && !matchAbandonedData) {
+      // Si la partida se cerró
+      const timeout = setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [gameState, matchAbandonedData, router]);
 
-    return () => {
-      if (socket) {
-        socket.off('game_state_update');
-        socket.off('timer_update');
-        socket.off('chat_message');
-      }
-    };
-  }, [user?.id]);
+  const currentUserId = user?.id || localPlayerId;
+  const localPlayer = gameState?.players.find((p) => p.id === currentUserId) || gameState?.players[0];
+  const opponent = gameState?.players.find((p) => p.id !== localPlayer?.id) || gameState?.players[1];
 
-  const handleSelectHandCard = (index: number) => {
-    if (selectedCardIndex === index) {
-      setSelectedCardIndex(null);
+  const isCurrentTurn = gameState
+    ? gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id
+    : false;
+
+  const selectedHandCard: Card | null =
+    localPlayer?.hand.find((c) => c.id === selectedHandCardId) || null;
+
+  const handleSelectHandCard = (cardId: string) => {
+    if (selectedHandCardId === cardId) {
+      setSelectedHandCardId(null);
     } else {
-      setSelectedCardIndex(index);
+      setSelectedHandCardId(cardId);
       playSfx('cardPlay');
     }
   };
 
   const handleToggleBoardCard = (cardId: string) => {
-    const nextSet = new Set(selectedBoardCardIds);
-    if (nextSet.has(cardId)) {
-      nextSet.delete(cardId);
+    const next = new Set(selectedBoardCardIds);
+    if (next.has(cardId)) {
+      next.delete(cardId);
     } else {
-      nextSet.add(cardId);
+      next.add(cardId);
     }
-    setSelectedBoardCardIds(nextSet);
+    setSelectedBoardCardIds(next);
     playSfx('cardPlay');
   };
 
   const handleToggleFormation = (formationId: string) => {
-    const nextSet = new Set(selectedFormationIds);
-    if (nextSet.has(formationId)) {
-      nextSet.delete(formationId);
+    const next = new Set(selectedFormationIds);
+    if (next.has(formationId)) {
+      next.delete(formationId);
     } else {
-      nextSet.add(formationId);
+      next.add(formationId);
     }
-    setSelectedFormationIds(nextSet);
+    setSelectedFormationIds(next);
     playSfx('cardPlay');
   };
 
   const handleClearSelection = () => {
-    setSelectedCardIndex(null);
+    setSelectedHandCardId(null);
     setSelectedBoardCardIds(new Set());
     setSelectedFormationIds(new Set());
   };
 
-  const localPlayer = gameState?.players.find(p => p.id === user?.id) || gameState?.players[0];
-  const opponent = gameState?.players.find(p => p.id !== user?.id) || gameState?.players[1];
-  
-  const isCurrentTurn = gameState ? gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id : true;
-  const isGameOver = gameState?.phase === 'completed';
-  const isWinner = gameState?.winnerId === localPlayer?.id;
-
-  const selectedHandCard: Card | null = selectedCardIndex !== null && localPlayer?.hand[selectedCardIndex]
-    ? localPlayer.hand[selectedCardIndex]
-    : null;
-
   const handlePlayAction = (actionPayload: ActionPayload) => {
     if (!selectedHandCard || !localPlayer) return;
 
-    try {
-      const socket = socketService.getSocket();
-      
-      const fullAction = {
-        ...actionPayload,
-        playerId: localPlayer.id,
-        cardId: selectedHandCard.id,
-      };
+    const fullAction: Action = {
+      ...actionPayload,
+      playerId: localPlayer.id,
+      cardId: selectedHandCard.id,
+    } as Action;
 
-      socket.emit('play_card', fullAction);
-      handleClearSelection();
-      playSfx('cardDeal');
-    } catch (e) {
-      Alert.alert('Error', 'No se pudo enviar la jugada al servidor.');
-    }
+    playCard(fullAction);
+    handleClearSelection();
+    playSfx('cardDeal');
   };
 
+  const handleConfirmAbandon = () => {
+    setShowAbandonConfirm(false);
+    if (gameState?.id) {
+      abandonMatch(gameState.id);
+    }
+    resetMatch();
+    router.replace('/(tabs)');
+  };
+
+  const handleBackToLobby = () => {
+    resetMatch();
+    router.replace('/(tabs)');
+  };
+
+  const isScoringPhase = gameState?.phase === 'scoring';
+  const isCompletedPhase = gameState?.phase === 'completed';
+
   return (
-    <View className="flex-1 bg-slate-950 px-3 pt-10 pb-4 justify-between">
-      {/* Notificación Flotante de Emotes */}
-      {activeEmoteNotification && (
-        <View className="absolute top-12 left-6 right-6 z-50 bg-slate-900/95 border border-amber-400/60 p-2.5 rounded-full items-center flex-row justify-center shadow-2xl">
-          <Text className="text-white font-bold text-xs mr-2">{activeEmoteNotification.senderName}:</Text>
-          <Text className="text-xl">{activeEmoteNotification.emoji}</Text>
+    <View className="flex-1 bg-slate-950 px-3 pt-10 pb-3 justify-between">
+      {/* Banner Notificación de Emote en Vivo */}
+      {emoteNotification && (
+        <View className="absolute top-12 left-6 right-6 z-50 bg-slate-900/95 border border-amber-400 p-2.5 rounded-full items-center flex-row justify-center shadow-2xl">
+          <Text className="text-white font-bold text-xs mr-2">{emoteNotification.senderName}:</Text>
+          <Text className="text-xl">{emoteNotification.text}</Text>
+        </View>
+      )}
+
+      {/* Banner de Virado */}
+      {viradoBanner && (
+        <View className="absolute top-24 left-10 right-10 z-50 bg-amber-500 p-3 rounded-2xl items-center shadow-2xl">
+          <Text className="text-slate-950 font-black text-xl tracking-widest uppercase">
+            ⚡ {viradoBanner} ⚡
+          </Text>
+        </View>
+      )}
+
+      {/* Banner de Error o Desconexión */}
+      {error && (
+        <View className="bg-red-500/20 border border-red-500/50 p-2 rounded-xl mb-1 flex-row justify-between items-center">
+          <Text className="text-red-400 text-xs font-bold flex-1">{error}</Text>
+          <Pressable onPress={clearError} className="p-1">
+            <Text className="text-red-400 font-bold text-xs">✕</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {disconnectionMessage && (
+        <View className="bg-amber-500/20 border border-amber-500/50 p-2 rounded-xl mb-1">
+          <Text className="text-amber-400 text-xs font-bold text-center">{disconnectionMessage}</Text>
         </View>
       )}
 
@@ -148,22 +217,27 @@ export default function GameScreen() {
         localPlayer={localPlayer}
         opponent={opponent}
         isCurrentTurn={isCurrentTurn}
-        timeRemaining={timeRemaining}
-        roundCount={gameState?.roundCount || 0}
-        onLeaveMatch={() => router.back()}
+        timeRemaining={Math.ceil(timeRemaining / 1000)}
+        roundCount={gameState?.roundCount || 1}
+        mode={gameState?.mode || '1v1'}
+        muted={muted}
+        onToggleSound={toggleMuted}
+        onLeaveMatch={() => setShowAbandonConfirm(true)}
       />
 
-      {/* 2. Zona Central: Tapete con Cartas Sueltas & Formaciones (BoardView) */}
+      {/* 2. Zona Central: Tablero y Formaciones (BoardView) */}
       <BoardView
         board={gameState?.board}
         selectedBoardCardIds={selectedBoardCardIds}
         selectedFormationIds={selectedFormationIds}
+        theme={localTheme.cardTheme}
         onToggleBoardCard={handleToggleBoardCard}
         onToggleFormation={handleToggleFormation}
       />
 
-      {/* 3. ActionPanel (Botones dinámicos Formar, Llevar, Agrupar, Aumentar, Cantar As, Colocar) */}
+      {/* 3. ActionPanel (Botones de jugadas) */}
       <ActionPanel
+        gameState={gameState}
         handCard={selectedHandCard}
         selectedBoardCardIds={selectedBoardCardIds}
         selectedFormationIds={selectedFormationIds}
@@ -171,58 +245,74 @@ export default function GameScreen() {
         onClearSelection={handleClearSelection}
       />
 
-      {/* 4. EmoteBar (Reacciones Rápidas) */}
+      {/* 4. EmoteBar (Reacciones rápidas + Chat) */}
       <EmoteBar
         onSendEmote={(emoji) => {
-          try {
-            const socket = socketService.getSocket();
-            socket.emit('send_chat_message', { roomId: gameState?.id || '', text: emoji });
-          } catch (e) {}
+          if (gameState?.id) {
+            sendMessage(gameState.id, emoji);
+          }
         }}
+        onOpenChat={() => setShowChatModal(true)}
       />
 
       {/* 5. Zona Jugador (HandView) */}
       <HandView
         localPlayer={localPlayer}
         isCurrentTurn={isCurrentTurn}
-        selectedCardIndex={selectedCardIndex}
+        selectedCardId={selectedHandCardId}
+        theme={localTheme.cardTheme}
+        fontKey={localTheme.cardTheme.fontKey}
         onSelectCard={handleSelectHandCard}
-        onDropOnFormation={(_, cardIdx) => {
-          setSelectedCardIndex(cardIdx);
+        onDropOnFormation={(_, cardId) => {
+          setSelectedHandCardId(cardId);
         }}
       />
 
-      {/* Modal Fin de Partida (Victoria / Derrota) */}
-      <Modal visible={isGameOver} transparent animationType="slide">
-        <View className="flex-1 bg-black/80 items-center justify-center p-6">
-          <View className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full items-center">
-            {isWinner ? (
-              <View className="bg-amber-500/20 p-4 rounded-full mb-3 border border-amber-500/40">
-                <Trophy color="#fbbf24" size={48} />
-              </View>
-            ) : (
-              <View className="bg-red-500/20 p-4 rounded-full mb-3 border border-red-500/40">
-                <Frown color="#ef4444" size={48} />
-              </View>
-            )}
+      {/* Modales de Ciclo de Partida */}
+      <RoundSummaryModal
+        visible={isScoringPhase}
+        gameState={gameState}
+        localPlayerId={localPlayer?.id || null}
+        scoringTimeoutReady={scoringTimeoutReady}
+        onContinue={continueToNextRound}
+        onClaimVictory={() => {
+          if (gameState?.id) claimRoundVictory(gameState.id);
+        }}
+      />
 
-            <Text className="text-white font-bold text-2xl mb-1">
-              {isWinner ? '¡VICTORIA!' : 'DERROTA'}
-            </Text>
-            <Text className="text-slate-400 text-sm mb-6 text-center">
-              {isWinner ? 'Has ganado la partida K21' : 'Buen intento, sigue practicando'}
-            </Text>
+      <MatchCompletedModal
+        visible={isCompletedPhase}
+        gameState={gameState}
+        localPlayerId={localPlayer?.id || null}
+        statsData={statsData}
+        rematchStatus={rematchStatus}
+        onRequestRematch={() => {
+          if (gameState?.id) requestRematch(gameState.id);
+        }}
+        onBackToMenu={handleBackToLobby}
+      />
 
-            <Pressable
-              onPress={() => router.replace('/(tabs)')}
-              className="bg-amber-500 active:bg-amber-600 px-6 py-3 rounded-xl flex-row items-center w-full justify-center"
-            >
-              <Home color="#020617" size={20} className="mr-2" />
-              <Text className="text-slate-950 font-bold text-base">Volver al Lobby</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      <AbandonConfirmModal
+        visible={showAbandonConfirm}
+        onConfirm={handleConfirmAbandon}
+        onCancel={() => setShowAbandonConfirm(false)}
+      />
+
+      <MatchAbandonedModal
+        visible={matchAbandonedData !== null}
+        data={matchAbandonedData}
+        localPlayerId={localPlayer?.id || null}
+        onBackToMenu={handleBackToLobby}
+      />
+
+      <GameChatModal
+        visible={showChatModal}
+        messages={chatMessages}
+        onSendMessage={(text) => {
+          if (gameState?.id) sendMessage(gameState.id, text);
+        }}
+        onClose={() => setShowChatModal(false)}
+      />
     </View>
   );
 }

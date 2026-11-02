@@ -1,20 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { useAudio } from '../../hooks/useAudio';
+import { useGame } from '../../hooks/useGame';
 import { socketService } from '../../services/socket';
 import { CreateRoomModal } from '../../components/CreateRoomModal';
 import { WaitingRoomModal } from '../../components/WaitingRoomModal';
-import { Bot, Swords, Users, PlusCircle, LogIn, Trophy } from 'lucide-react-native';
+import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
-  
+  const { playSfx } = useAudio();
+  const { gameState } = useGame();
+
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('expert');
   const [roomIdInput, setRoomIdInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  // Matchmaking
+  const [isMatchmaking, setIsMatchmaking] = useState(false);
+  const [matchmakingSeconds, setMatchmakingSeconds] = useState(0);
 
   // Modales de Salas Privadas
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,10 +31,36 @@ export default function HomeScreen() {
   const [roomMode, setRoomMode] = useState<'1v1' | '2v2'>('1v1');
   const [roomBetAmount, setRoomBetAmount] = useState<number>(0);
   const [playersInRoomData, setPlayersInRoomData] = useState<Array<{ name: string; id?: string; avatar?: string | null; team?: 1 | 2 }>>([]);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const playerName = profile?.username || 'Jugador K21';
+  const hasRequestedStateRef = useRef(false);
 
-  // Suscripción a eventos de socket para navegación y estado de salas
+  // Navegar a /game si hay partida activa
+  useEffect(() => {
+    if (gameState && (gameState.phase as any) !== 'setup') {
+      setShowWaitingModal(false);
+      setShowCreateModal(false);
+      setIsMatchmaking(false);
+      setLoading(false);
+      setLoadingAction(null);
+      router.push('/game');
+    }
+  }, [gameState, router]);
+
+  // Temporizador de Matchmaking
+  useEffect(() => {
+    if (!isMatchmaking) {
+      setMatchmakingSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setMatchmakingSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isMatchmaking]);
+
+  // Suscripción a eventos de socket para el Lobby
   useEffect(() => {
     let socket: any;
 
@@ -34,7 +68,6 @@ export default function HomeScreen() {
       try {
         socket = await socketService.connect();
 
-        // 1. Al crear la sala
         socket.on('room_created', ({ roomId, mode, betAmount }: any) => {
           setLoading(false);
           setLoadingAction(null);
@@ -45,7 +78,6 @@ export default function HomeScreen() {
           setShowWaitingModal(true);
         });
 
-        // 2. Al unirse a la sala
         socket.on('room_joined', ({ roomId, mode, betAmount }: any) => {
           setLoading(false);
           setLoadingAction(null);
@@ -55,34 +87,34 @@ export default function HomeScreen() {
           setShowWaitingModal(true);
         });
 
-        // 3. Cuando se une otro jugador
         socket.on('player_joined', ({ playersData }: any) => {
           if (playersData && Array.isArray(playersData)) {
             setPlayersInRoomData(playersData);
+            playSfx('cardDeal');
           }
         });
 
-        // 4. Cuando la partida inicia
-        socket.on('game_state_update', () => {
-          setShowWaitingModal(false);
-          setShowCreateModal(false);
-          router.push('/game');
+        socket.on('match_found', ({ roomId }: any) => {
+          setIsMatchmaking(false);
+          playSfx('matchFound');
         });
 
         socket.on('room_closed', () => {
           setShowWaitingModal(false);
           setCurrentRoomId(null);
           setPlayersInRoomData([]);
+          setCountdown(null);
           Alert.alert('Sala cerrada', 'La sala ha sido cerrada.');
         });
 
         socket.on('error', (msg: string) => {
           setLoading(false);
           setLoadingAction(null);
-          Alert.alert('Error', msg || 'Ocurrió un error en la sala');
+          setIsMatchmaking(false);
+          Alert.alert('Aviso', msg || 'Ocurrió un error en la sala');
         });
       } catch (err) {
-        console.error('Error conectando socket en lobby:', err);
+        console.warn('Error conectando socket en lobby:', err);
       }
     };
 
@@ -93,12 +125,48 @@ export default function HomeScreen() {
         socket.off('room_created');
         socket.off('room_joined');
         socket.off('player_joined');
-        socket.off('game_state_update');
+        socket.off('match_found');
         socket.off('room_closed');
         socket.off('error');
       }
     };
-  }, [playerName, profile?.avatar_url]);
+  }, [playerName, profile?.avatar_url, playSfx]);
+
+  // Cuenta regresiva 3..2..1 cuando la sala privada se llena
+  useEffect(() => {
+    if (!showWaitingModal || gameState || !currentRoomId) return;
+
+    const expectedPlayers = roomMode === '1v1' ? 2 : 4;
+    if (playersInRoomData.length !== expectedPlayers) {
+      setCountdown(null);
+      hasRequestedStateRef.current = false;
+      return;
+    }
+
+    if (hasRequestedStateRef.current) return;
+
+    if (countdown === null) {
+      setCountdown(3);
+      playSfx('turnChange');
+      return;
+    }
+
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown((c) => (c !== null ? c - 1 : null));
+        playSfx('turnChange');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    if (countdown === 0) {
+      hasRequestedStateRef.current = true;
+      try {
+        const socket = socketService.getSocket();
+        socket.emit('request_game_state', { roomId: currentRoomId });
+      } catch {}
+    }
+  }, [showWaitingModal, gameState, currentRoomId, roomMode, playersInRoomData.length, countdown, playSfx]);
 
   // 1. Jugar vs Bot
   const handlePlayVsBot = async () => {
@@ -125,11 +193,22 @@ export default function HomeScreen() {
         elo: profile?.elo || 1000,
         mode: '1v1',
       });
+      setIsMatchmaking(true);
+      setLoading(false);
+      setLoadingAction(null);
     } catch (err) {
       setLoading(false);
       setLoadingAction(null);
       Alert.alert('Error', 'No se pudo buscar partida multijugador.');
     }
+  };
+
+  const handleCancelMatchmaking = async () => {
+    try {
+      const socket = socketService.getSocket();
+      socket.emit('leave_matchmaking');
+    } catch {}
+    setIsMatchmaking(false);
   };
 
   // 3. Confirmar Creación de Sala Privada
@@ -147,16 +226,17 @@ export default function HomeScreen() {
     }
   };
 
-  // 4. Cancelar y Salir de Sala
+  // 4. Cancelar Sala Privada
   const handleCancelRoom = async () => {
     try {
       if (currentRoomId) {
         const socket = socketService.getSocket();
         socket.emit('cancel_room', { roomId: currentRoomId });
       }
-    } catch (e) {}
+    } catch {}
     setShowWaitingModal(false);
     setCurrentRoomId(null);
+    setCountdown(null);
   };
 
   // 5. Unirse por Código
@@ -212,9 +292,7 @@ export default function HomeScreen() {
               key={diff}
               onPress={() => setDifficulty(diff)}
               className={`flex-1 py-2 rounded-xl mr-1.5 items-center border ${
-                difficulty === diff
-                  ? 'bg-cyan-500 border-cyan-400'
-                  : 'bg-slate-800 border-slate-700'
+                difficulty === diff ? 'bg-cyan-500 border-cyan-400' : 'bg-slate-800 border-slate-700'
               }`}
             >
               <Text
@@ -262,20 +340,35 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <Pressable
-          disabled={loading}
-          onPress={handleJoinMatchmaking}
-          className="bg-amber-500 active:bg-amber-600 p-3.5 rounded-2xl items-center flex-row justify-center"
-        >
-          {loading && loadingAction === 'matchmaking' ? (
-            <ActivityIndicator size="small" color="#020617" />
-          ) : (
-            <>
-              <Swords color="#020617" size={20} className="mr-2" />
-              <Text className="text-slate-950 font-bold text-base">BUSCAR JUGADOR (1v1)</Text>
-            </>
-          )}
-        </Pressable>
+        {isMatchmaking ? (
+          <View className="bg-slate-950 p-4 rounded-2xl border border-amber-500/40 items-center">
+            <ActivityIndicator size="small" color="#fbbf24" className="mb-2" />
+            <Text className="text-white font-bold text-sm mb-1">Buscando oponente competitivo...</Text>
+            <Text className="text-amber-400 font-mono text-xs mb-3">{matchmakingSeconds}s transcurridos</Text>
+            <Pressable
+              onPress={handleCancelMatchmaking}
+              className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl flex-row items-center"
+            >
+              <XCircle color="#ef4444" size={16} className="mr-1.5" />
+              <Text className="text-red-400 font-bold text-xs uppercase">Cancelar Búsqueda</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            disabled={loading}
+            onPress={handleJoinMatchmaking}
+            className="bg-amber-500 active:bg-amber-600 p-3.5 rounded-2xl items-center flex-row justify-center"
+          >
+            {loading && loadingAction === 'matchmaking' ? (
+              <ActivityIndicator size="small" color="#020617" />
+            ) : (
+              <>
+                <Swords color="#020617" size={20} className="mr-2" />
+                <Text className="text-slate-950 font-bold text-base">BUSCAR JUGADOR (1v1)</Text>
+              </>
+            )}
+          </Pressable>
+        )}
       </View>
 
       {/* SALAS PRIVADAS */}
@@ -347,7 +440,7 @@ export default function HomeScreen() {
           try {
             const socket = socketService.getSocket();
             socket.emit('switch_team', { roomId: currentRoomId, team });
-          } catch (e) {}
+          } catch {}
         }}
       />
     </ScrollView>

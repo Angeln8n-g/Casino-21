@@ -1,6 +1,8 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "skipLibCheck": true,
+    "ignoreDeprecations": "5.0",
     "strict": true,
     "baseUrl": ".",
     "paths": {

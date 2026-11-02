@@ -1,5 +1,4 @@
 import React from 'react';
-import { View, Platform } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -9,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CardView } from './CardView';
 import { Card } from 'domain/card';
+import { CardTheme, ThemeFontKey } from '../themes/themeRegistry';
 
 interface DraggableCardProps {
   card: Card;
@@ -16,6 +16,8 @@ interface DraggableCardProps {
   onPress?: () => void;
   onDropOnFormation?: (formationIndex: number) => void;
   disabled?: boolean;
+  theme?: CardTheme;
+  fontKey?: ThemeFontKey;
 }
 
 export function DraggableCard({
@@ -24,6 +26,8 @@ export function DraggableCard({
   onPress,
   onDropOnFormation,
   disabled,
+  theme,
+  fontKey,
 }: DraggableCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -64,7 +68,7 @@ export function DraggableCard({
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },
-      { scale: isDragging.value ? 1.18 : 1 },
+      { scale: isDragging.value ? 1.15 : 1 },
     ],
     zIndex: isDragging.value ? 99999 : 1,
     elevation: isDragging.value ? 99999 : 1,
@@ -73,7 +77,14 @@ export function DraggableCard({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={[animatedStyle, { overflow: 'visible' }]}>
-        <CardView card={card} selected={selected} onPress={onPress} disabled={disabled} />
+        <CardView
+          card={card}
+          selected={selected}
+          onPress={onPress}
+          disabled={disabled}
+          theme={theme}
+          fontKey={fontKey}
+        />
       </Animated.View>
     </GestureDetector>
   );

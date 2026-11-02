@@ -1,6 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { GameState } from 'domain/game-state';
 import { Card } from 'domain/card';
+import { DefaultActionValidator, Action } from 'application/action-validator';
+import { triggerHaptic } from '../utils/haptics';
 
 export type ActionPayload =
   | { type: 'llevar'; boardCardIds: string[]; formationIds: string[] }
@@ -11,6 +14,7 @@ export type ActionPayload =
   | { type: 'colocar' };
 
 interface ActionPanelProps {
+  gameState: GameState | null;
   handCard: Card | null;
   selectedBoardCardIds: Set<string>;
   selectedFormationIds: Set<string>;
@@ -19,6 +23,7 @@ interface ActionPanelProps {
 }
 
 export function ActionPanel({
+  gameState,
   handCard,
   selectedBoardCardIds,
   selectedFormationIds,
@@ -27,9 +32,9 @@ export function ActionPanel({
 }: ActionPanelProps) {
   if (!handCard) {
     return (
-      <View style={{ padding: 10, backgroundColor: 'rgba(15, 23, 42, 0.8)', borderRadius: 16, borderBottomWidth: 1, borderColor: '#1e293b', marginVertical: 6, alignItems: 'center' }}>
-        <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '500', textAlign: 'center' }}>
-          Selecciona una carta de tu mano para ver las acciones disponibles.
+      <View className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 my-1 items-center">
+        <Text className="text-slate-400 text-xs font-semibold text-center">
+          Selecciona una carta de tu mano para ver las jugadas disponibles.
         </Text>
       </View>
     );
@@ -39,117 +44,159 @@ export function ActionPanel({
   const hasBoardCardsSelected = selectedBoardCardIds.size > 0;
   const hasFormationsSelected = selectedFormationIds.size > 0;
 
+  const handleLlevar = () => {
+    triggerHaptic('card_tap');
+    let currentFormationIds = Array.from(selectedFormationIds);
+
+    if (gameState) {
+      const player = gameState.players[gameState.currentTurnPlayerIndex];
+      if (player) {
+        const targetValues = handCard.rank === 'A' ? [1, 14] : [handCard.value];
+        const myPendingFormations = gameState.board.formations.filter(
+          (f) => f.createdBy === player.id && targetValues.includes(f.value)
+        );
+
+        for (const form of myPendingFormations) {
+          if (!currentFormationIds.includes(form.id)) {
+            currentFormationIds.push(form.id);
+          }
+        }
+      }
+    }
+
+    onPlayAction({
+      type: 'llevar',
+      boardCardIds: Array.from(selectedBoardCardIds),
+      formationIds: currentFormationIds,
+    });
+  };
+
+  const handleColocar = () => {
+    triggerHaptic('card_tap');
+    onPlayAction({ type: 'colocar' });
+  };
+
+  const handleCantar = () => {
+    triggerHaptic('card_tap');
+    onPlayAction({ type: 'cantar' });
+  };
+
+  const handleFormar = () => {
+    triggerHaptic('card_tap');
+    onPlayAction({
+      type: 'formar',
+      boardCardIds: Array.from(selectedBoardCardIds),
+    });
+  };
+
+  const handleAgrupar = () => {
+    triggerHaptic('card_tap');
+    if (selectedFormationIds.size === 1) {
+      const formId = Array.from(selectedFormationIds)[0];
+      onPlayAction({ type: 'formarPar', formationId: formId });
+    } else {
+      onPlayAction({
+        type: 'formarPar',
+        boardCardIds: Array.from(selectedBoardCardIds),
+      });
+    }
+  };
+
+  const handleAumentar = () => {
+    triggerHaptic('card_tap');
+    const formId = Array.from(selectedFormationIds)[0];
+    if (formId) {
+      onPlayAction({
+        type: 'aumentarFormacion',
+        formationId: formId,
+      });
+    }
+  };
+
   return (
-    <View style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', padding: 12, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.4)', marginVertical: 6 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
-        <Text style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+    <View className="bg-slate-900/95 p-3 rounded-2xl border border-amber-500/40 my-1">
+      <View className="flex-row justify-between items-center mb-2 px-1">
+        <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
           Acciones Disponibles
         </Text>
-        <TouchableOpacity onPress={onClearSelection} activeOpacity={0.7} style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: '#1e293b', borderRadius: 8 }}>
-          <Text style={{ color: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}>Limpiar</Text>
-        </TouchableOpacity>
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light');
+            onClearSelection();
+          }}
+          className="bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700"
+        >
+          <Text className="text-slate-400 text-[10px] font-bold">Limpiar</Text>
+        </Pressable>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
-        {/* 1. Si no hay nada seleccionado en el tablero: COLOCAR SUELTA y CANTAR AS (si es As) */}
+      <View className="flex-row flex-wrap justify-center gap-2">
+        {/* 1. Sin nada seleccionado en tapete: Colocar Suelta y Cantar As */}
         {!hasBoardCardsSelected && !hasFormationsSelected && (
           <>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => onPlayAction({ type: 'colocar' })}
-              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#2563eb', borderRadius: 12, alignItems: 'center', minWidth: 110 }}
+            <Pressable
+              onPress={handleColocar}
+              className="flex-1 py-2.5 px-3 bg-blue-600 active:bg-blue-700 rounded-xl items-center min-w-[110px]"
             >
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Colocar Suelta</Text>
-            </TouchableOpacity>
+              <Text className="text-white font-bold text-xs uppercase">Colocar Suelta</Text>
+            </Pressable>
 
             {isAce && (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => onPlayAction({ type: 'cantar' })}
-                style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#9333ea', borderRadius: 12, alignItems: 'center', minWidth: 110 }}
+              <Pressable
+                onPress={handleCantar}
+                className="flex-1 py-2.5 px-3 bg-purple-600 active:bg-purple-700 rounded-xl items-center min-w-[110px]"
               >
-                <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Cantar As</Text>
-              </TouchableOpacity>
+                <Text className="text-white font-bold text-xs uppercase">Cantar As</Text>
+              </Pressable>
             )}
           </>
         )}
 
-        {/* 2. Si hay cartas o formaciones seleccionadas: LLEVAR (Capturar) */}
+        {/* 2. Con cartas o formaciones seleccionadas: Llevar (Capturar) */}
         {(hasBoardCardsSelected || hasFormationsSelected) && (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() =>
-              onPlayAction({
-                type: 'llevar',
-                boardCardIds: Array.from(selectedBoardCardIds),
-                formationIds: Array.from(selectedFormationIds),
-              })
-            }
-            style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#059669', borderRadius: 12, alignItems: 'center', minWidth: 120 }}
+          <Pressable
+            onPress={handleLlevar}
+            className="flex-1 py-2.5 px-3 bg-emerald-600 active:bg-emerald-700 rounded-xl items-center min-w-[120px]"
           >
-            <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>LLEVAR (Capturar)</Text>
-          </TouchableOpacity>
+            <Text className="text-white font-bold text-xs uppercase">Llevar (Capturar)</Text>
+          </Pressable>
         )}
 
-        {/* 3. Si hay cartas sueltas seleccionadas: FORMAR y AGRUPAR */}
+        {/* 3. Con cartas sueltas seleccionadas: Formar y Agrupar */}
         {hasBoardCardsSelected && !hasFormationsSelected && (
           <>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                onPlayAction({
-                  type: 'formar',
-                  boardCardIds: Array.from(selectedBoardCardIds),
-                })
-              }
-              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#f59e0b', borderRadius: 12, alignItems: 'center', minWidth: 100 }}
+            <Pressable
+              onPress={handleFormar}
+              className="flex-1 py-2.5 px-3 bg-amber-500 active:bg-amber-600 rounded-xl items-center min-w-[90px]"
             >
-              <Text style={{ color: '#020617', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Formar</Text>
-            </TouchableOpacity>
+              <Text className="text-slate-950 font-bold text-xs uppercase">Formar</Text>
+            </Pressable>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                onPlayAction({
-                  type: 'formarPar',
-                  boardCardIds: Array.from(selectedBoardCardIds),
-                })
-              }
-              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#ea580c', borderRadius: 12, alignItems: 'center', minWidth: 100 }}
+            <Pressable
+              onPress={handleAgrupar}
+              className="flex-1 py-2.5 px-3 bg-orange-600 active:bg-orange-700 rounded-xl items-center min-w-[90px]"
             >
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Agrupar</Text>
-            </TouchableOpacity>
+              <Text className="text-white font-bold text-xs uppercase">Agrupar</Text>
+            </Pressable>
           </>
         )}
 
-        {/* 4. Si hay una formación seleccionada: AUMENTAR y PARES */}
+        {/* 4. Con una formación seleccionada: Aumentar y Pares */}
         {hasFormationsSelected && selectedFormationIds.size === 1 && (
           <>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                onPlayAction({
-                  type: 'aumentarFormacion',
-                  formationId: Array.from(selectedFormationIds)[0],
-                })
-              }
-              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#9333ea', borderRadius: 12, alignItems: 'center', minWidth: 120 }}
+            <Pressable
+              onPress={handleAumentar}
+              className="flex-1 py-2.5 px-3 bg-purple-600 active:bg-purple-700 rounded-xl items-center min-w-[110px]"
             >
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Aumentar Formación</Text>
-            </TouchableOpacity>
+              <Text className="text-white font-bold text-xs uppercase">Aumentar</Text>
+            </Pressable>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                onPlayAction({
-                  type: 'formarPar',
-                  formationId: Array.from(selectedFormationIds)[0],
-                })
-              }
-              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#ea580c', borderRadius: 12, alignItems: 'center', minWidth: 100 }}
+            <Pressable
+              onPress={handleAgrupar}
+              className="flex-1 py-2.5 px-3 bg-orange-600 active:bg-orange-700 rounded-xl items-center min-w-[90px]"
             >
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Pares</Text>
-            </TouchableOpacity>
+              <Text className="text-white font-bold text-xs uppercase">Pares</Text>
+            </Pressable>
           </>
         )}
       </View>
