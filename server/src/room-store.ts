@@ -3,7 +3,7 @@ import { DefaultGameEngine } from './application/game-engine';
 import type { GameState } from './domain/game-state';
 import type { BotDifficulty } from './bot/bot-player';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const REDIS_URL = (process.env.REDIS_URL && process.env.REDIS_URL.trim() !== '') ? process.env.REDIS_URL.trim() : null;
 const ROOM_KEY_PREFIX = 'cs21:room:';
 const INVALIDATE_CHANNEL = 'cs21:room-invalidate';
 
@@ -132,32 +132,81 @@ function serializableToRoom(data: SerializableRoom): Room {
 
 export class RoomStore {
   private cache: Map<string, Room> = new Map();
-  private redis: Redis;
-  private subscriber: Redis;
+  private redis: Redis | null = null;
+  private subscriber: Redis | null = null;
   private instanceId: string;
+  private isRedisReady: boolean = false;
 
   constructor() {
     this.instanceId = `i_${process.pid}_${Math.random().toString(36).substring(2, 6)}`;
-    this.redis = new Redis(REDIS_URL);
-    this.subscriber = new Redis(REDIS_URL);
 
-    this.subscriber.subscribe(INVALIDATE_CHANNEL, (err) => {
-      if (err) console.error('[RoomStore] Error subscribing to invalidation channel:', err);
-    });
+    if (REDIS_URL) {
+      try {
+        const client = new Redis(REDIS_URL, {
+          maxRetriesPerRequest: 1,
+          retryStrategy: (times) => {
+            if (times > 3) return null;
+            return Math.min(times * 300, 2000);
+          },
+          lazyConnect: true,
+          enableOfflineQueue: false,
+        });
 
-    this.subscriber.on('message', (channel, message) => {
-      if (channel === INVALIDATE_CHANNEL) {
-        try {
-          const { roomId, source } = JSON.parse(message);
-          if (source !== this.instanceId) {
-            const deleted = this.cache.delete(roomId);
-            if (deleted) {
-              console.log(`[RoomStore] Cache invalidated for room ${roomId} (remote change)`);
+        const sub = new Redis(REDIS_URL, {
+          maxRetriesPerRequest: 1,
+          retryStrategy: (times) => {
+            if (times > 3) return null;
+            return Math.min(times * 300, 2000);
+          },
+          lazyConnect: true,
+          enableOfflineQueue: false,
+        });
+
+        client.on('error', () => {
+          this.isRedisReady = false;
+        });
+
+        client.on('connect', () => {
+          this.isRedisReady = true;
+          console.log('[RoomStore] Conectado a Redis');
+        });
+
+        sub.on('error', () => {});
+
+        this.redis = client;
+        this.subscriber = sub;
+
+        client.connect().catch((err: any) => {
+          console.warn('[RoomStore] Redis no disponible, operando en memoria:', err.message);
+        });
+
+        sub.connect().then(() => {
+          sub.subscribe(INVALIDATE_CHANNEL, (err) => {
+            if (err) console.error('[RoomStore] Error subscribing to invalidation channel:', err);
+          });
+
+          sub.on('message', (channel, message) => {
+            if (channel === INVALIDATE_CHANNEL) {
+              try {
+                const { roomId, source } = JSON.parse(message);
+                if (source !== this.instanceId) {
+                  const deleted = this.cache.delete(roomId);
+                  if (deleted) {
+                    console.log(`[RoomStore] Cache invalidated for room ${roomId} (remote change)`);
+                  }
+                }
+              } catch {}
             }
-          }
-        } catch {}
+          });
+        }).catch(() => {});
+      } catch (err: any) {
+        console.warn('[RoomStore] Error inicializando Redis, operando en memoria:', err.message);
+        this.redis = null;
+        this.subscriber = null;
       }
-    });
+    } else {
+      console.log('[RoomStore] Modo en memoria activo (REDIS_URL no definido)');
+    }
   }
 
   getInstanceId(): string {
@@ -168,11 +217,13 @@ export class RoomStore {
     const cached = this.cache.get(roomId);
     if (cached) return cached;
 
-    const key = ROOM_KEY_PREFIX + roomId;
-    const raw = await this.redis.get(key);
-    if (!raw) return undefined;
+    if (!this.redis || !this.isRedisReady) return undefined;
 
     try {
+      const key = ROOM_KEY_PREFIX + roomId;
+      const raw = await this.redis.get(key);
+      if (!raw) return undefined;
+
       const data: SerializableRoom = JSON.parse(raw);
       const room = serializableToRoom(data);
       this.cache.set(roomId, room);
@@ -186,26 +237,38 @@ export class RoomStore {
   async set(roomId: string, room: Room): Promise<void> {
     this.cache.set(roomId, room);
 
-    const serializable = roomToSerializable(room);
-    const key = ROOM_KEY_PREFIX + roomId;
-    await this.redis.set(key, JSON.stringify(serializable));
+    if (!this.redis || !this.isRedisReady) return;
 
-    await this.redis.publish(INVALIDATE_CHANNEL, JSON.stringify({
-      roomId,
-      source: this.instanceId,
-    }));
+    try {
+      const serializable = roomToSerializable(room);
+      const key = ROOM_KEY_PREFIX + roomId;
+      await this.redis.set(key, JSON.stringify(serializable));
+
+      await this.redis.publish(INVALIDATE_CHANNEL, JSON.stringify({
+        roomId,
+        source: this.instanceId,
+      }));
+    } catch (err: any) {
+      console.warn(`[RoomStore] Error guardando sala ${roomId} en Redis:`, err.message);
+    }
   }
 
   async delete(roomId: string): Promise<void> {
     this.cache.delete(roomId);
 
-    const key = ROOM_KEY_PREFIX + roomId;
-    await this.redis.del(key);
+    if (!this.redis || !this.isRedisReady) return;
 
-    await this.redis.publish(INVALIDATE_CHANNEL, JSON.stringify({
-      roomId,
-      source: this.instanceId,
-    }));
+    try {
+      const key = ROOM_KEY_PREFIX + roomId;
+      await this.redis.del(key);
+
+      await this.redis.publish(INVALIDATE_CHANNEL, JSON.stringify({
+        roomId,
+        source: this.instanceId,
+      }));
+    } catch (err: any) {
+      console.warn(`[RoomStore] Error eliminando sala ${roomId} en Redis:`, err.message);
+    }
   }
 
   getLocalEntries(): Map<string, Room> {
@@ -221,6 +284,9 @@ export class RoomStore {
   }
 
   async getGlobalRoomCount(): Promise<number> {
+    if (!this.redis || !this.isRedisReady) {
+      return this.cache.size;
+    }
     try {
       const keys = await this.redis.keys(ROOM_KEY_PREFIX + '*');
       return keys.length;
@@ -230,8 +296,14 @@ export class RoomStore {
   }
 
   async destroy(): Promise<void> {
-    await this.subscriber.unsubscribe(INVALIDATE_CHANNEL);
-    this.subscriber.disconnect();
-    this.redis.disconnect();
+    try {
+      if (this.subscriber) {
+        await this.subscriber.unsubscribe(INVALIDATE_CHANNEL).catch(() => {});
+        this.subscriber.disconnect();
+      }
+      if (this.redis) {
+        this.redis.disconnect();
+      }
+    } catch {}
   }
 }

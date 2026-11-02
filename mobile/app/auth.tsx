@@ -12,6 +12,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleAuth = async () => {
     if (!email.trim()) {

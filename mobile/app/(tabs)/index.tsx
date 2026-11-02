@@ -11,7 +11,7 @@ import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle } from 'lucide-r
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { playSfx } = useAudio();
   const { gameState } = useGame();
 
@@ -62,6 +62,7 @@ export default function HomeScreen() {
 
   // Suscripción a eventos de socket para el Lobby
   useEffect(() => {
+    if (!user) return;
     let socket: any;
 
     const setupSocket = async () => {
@@ -130,7 +131,7 @@ export default function HomeScreen() {
         socket.off('error');
       }
     };
-  }, [playerName, profile?.avatar_url, playSfx]);
+  }, [user, playerName, profile?.avatar_url, playSfx]);
 
   // Cuenta regresiva 3..2..1 cuando la sala privada se llena
   useEffect(() => {

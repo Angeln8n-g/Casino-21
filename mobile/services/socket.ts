@@ -24,7 +24,7 @@ class MobileSocketService {
     const token = data.session?.access_token;
 
     if (!token) {
-      console.error("No se encontró token JWT en Mobile.");
+      console.warn("No se encontró token JWT en Mobile. Inicia sesión para conectar el socket.");
       throw new Error("No autenticado");
     }
 

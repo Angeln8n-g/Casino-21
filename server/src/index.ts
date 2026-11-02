@@ -521,13 +521,15 @@ const httpServer = createServer(app);
 
 let io: Server;
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const REDIS_URL = (process.env.REDIS_URL && process.env.REDIS_URL.trim() !== '') ? process.env.REDIS_URL.trim() : null;
 
-if (process.env.USE_REDIS_ADAPTER === 'true') {
+if (process.env.USE_REDIS_ADAPTER === 'true' && REDIS_URL) {
   const { createAdapter } = require('@socket.io/redis-adapter');
   const { Redis } = require('ioredis');
-  const pubClient = new Redis(REDIS_URL);
+  const pubClient = new Redis(REDIS_URL, { maxRetriesPerRequest: 1, lazyConnect: true, enableOfflineQueue: false });
+  pubClient.on('error', (err: any) => console.warn('[Socket.io Redis Pub]', err.message));
   const subClient = pubClient.duplicate();
+  subClient.on('error', (err: any) => console.warn('[Socket.io Redis Sub]', err.message));
   io = new Server(httpServer, {
     cors: { origin: allowedOrigins, methods: ["GET", "POST"] },
     adapter: createAdapter(pubClient, subClient),
@@ -596,21 +598,51 @@ const scoringTimers = new Map<string, NodeJS.Timeout>();
 const rematchRequests = new Map<string, Set<string>>();
 const SCORING_TIMEOUT_MS = 60_000; // 1 minuto para que ambos presionen "continuar"
 
-const joinPub = new Redis(REDIS_URL);
-const joinSub = new Redis(REDIS_URL);
-joinSub.subscribe('cs21:join-room');
-joinSub.on('message', (channel, message) => {
-  if (channel === 'cs21:join-room') {
-    try {
-      const { socketId, roomId } = JSON.parse(message);
-      const socket = io.sockets.sockets.get(socketId);
-      if (socket) {
-        socket.join(roomId);
-        socketToRoomMap.set(socket.id, roomId);
-      }
-    } catch {}
+let joinPub: Redis | null = null;
+let joinSub: Redis | null = null;
+
+if (REDIS_URL) {
+  try {
+    joinPub = new Redis(REDIS_URL, { maxRetriesPerRequest: 1, lazyConnect: true, enableOfflineQueue: false });
+    joinPub.on('error', (err) => console.warn('[joinPub Redis Error]', err.message));
+
+    joinSub = new Redis(REDIS_URL, { maxRetriesPerRequest: 1, lazyConnect: true, enableOfflineQueue: false });
+    joinSub.on('error', (err) => console.warn('[joinSub Redis Error]', err.message));
+
+    joinSub.connect().then(() => {
+      joinSub?.subscribe('cs21:join-room', (err) => {
+        if (err) console.warn('[joinSub subscribe warning]', err.message);
+      });
+      joinSub?.on('message', (channel, message) => {
+        if (channel === 'cs21:join-room') {
+          try {
+            const { socketId, roomId } = JSON.parse(message);
+            const socket = io.sockets.sockets.get(socketId);
+            if (socket) {
+              socket.join(roomId);
+              socketToRoomMap.set(socket.id, roomId);
+            }
+          } catch {}
+        }
+      });
+    }).catch(() => {});
+
+    joinPub.connect().catch(() => {});
+  } catch (err: any) {
+    console.warn('[Redis joinPub/joinSub] No disponible:', err.message);
   }
-});
+}
+
+function joinSocketToRoom(socketId: string, roomId: string) {
+  const socket = io.sockets.sockets.get(socketId);
+  if (socket) {
+    socket.join(roomId);
+    socketToRoomMap.set(socket.id, roomId);
+  }
+  if (joinPub) {
+    joinPub.publish('cs21:join-room', JSON.stringify({ socketId, roomId })).catch(() => {});
+  }
+}
 
 const actionTimestamps = new Map<string, number>();
 const RATE_LIMIT_MS = 500;
@@ -769,8 +801,8 @@ setInterval(async () => {
 
           await persistRoom(roomId, room);
 
-          await joinPub.publish('cs21:join-room', JSON.stringify({ socketId: p1.socketId, roomId }));
-          await joinPub.publish('cs21:join-room', JSON.stringify({ socketId: p2.socketId, roomId }));
+          joinSocketToRoom(p1.socketId, roomId);
+          joinSocketToRoom(p2.socketId, roomId);
 
           console.log(`¡Matchmaking exitoso! ${p1.name} (${p1.elo}) vs ${p2.name} (${p2.elo}) -> Sala ${roomId}`);
 

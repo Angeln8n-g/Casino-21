@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useCallback, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GameState } from 'domain/game-state';
 import { Action } from 'application/action-validator';
+import { supabase } from '../services/supabase';
 import { socketService } from '../services/socket';
 import { appEvents } from '../utils/events';
 
@@ -185,22 +186,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const setupSocket = async () => {
       try {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session?.access_token) {
+          return;
+        }
         currentSocket = await socketService.connect();
         if (mounted && currentSocket) {
           bindSocketEvents(currentSocket);
         }
       } catch (err) {
         if (mounted) {
-          retryTimer = setTimeout(setupSocket, 1500);
+          retryTimer = setTimeout(setupSocket, 2000);
         }
       }
     };
 
     setupSocket();
 
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token && mounted && !currentSocket?.connected) {
+        setupSocket();
+      }
+    });
+
     return () => {
       mounted = false;
       if (retryTimer) clearTimeout(retryTimer);
+      authListener.subscription.unsubscribe();
       if (currentSocket) {
         currentSocket.off('action_error');
         currentSocket.off('timer_update');

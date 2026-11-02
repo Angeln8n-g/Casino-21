@@ -1,8 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Modal,
+  ScrollView,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { appEvents } from '../../utils/events';
+import { triggerHaptic } from '../../utils/haptics';
 import {
   calculateDynamicPot,
   buildPrizeDisplayGroups,
@@ -15,7 +27,20 @@ import {
   leaveTournamentEvent,
   checkInTournamentEvent,
 } from '../../services/tournamentApi';
-import { Trophy, Calendar, Users, CheckCircle2, ShieldAlert, LogOut, Check } from 'lucide-react-native';
+import { TournamentBracketView } from '../../components/tournament/TournamentBracketView';
+import {
+  Trophy,
+  Calendar,
+  Users,
+  CheckCircle2,
+  ShieldAlert,
+  LogOut,
+  Check,
+  Swords,
+  BookOpen,
+  X,
+  Coins,
+} from 'lucide-react-native';
 
 export interface EventItem {
   id: string;
@@ -60,6 +85,7 @@ function resolveEventCoinPot(ev: EventItem): number {
 }
 
 export default function EventsScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [enrolledMap, setEnrolledMap] = useState<Record<string, UserEntryState>>({});
@@ -67,6 +93,10 @@ export default function EventsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming' | 'completed'>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Modales de Llaves y Reglas
+  const [selectedBracketEvent, setSelectedBracketEvent] = useState<EventItem | null>(null);
+  const [selectedRulesEvent, setSelectedRulesEvent] = useState<EventItem | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -80,6 +110,8 @@ export default function EventsScreen() {
         console.error('Error al cargar eventos:', error);
       } else if (data) {
         setEvents(data as EventItem[]);
+        // Regla 5.3: Console log demostrando datos reales de API
+        console.log('Tournament events from API:', data);
       }
 
       if (user?.id) {
@@ -267,7 +299,10 @@ export default function EventsScreen() {
           return (
             <Pressable
               key={tab}
-              onPress={() => setFilter(tab)}
+              onPress={() => {
+                triggerHaptic('light');
+                setFilter(tab);
+              }}
               className={`px-3.5 py-1.5 rounded-xl border ${
                 isActive ? 'bg-amber-500/20 border-amber-500/50' : 'bg-slate-900/60 border-slate-800'
               }`}
@@ -388,9 +423,37 @@ export default function EventsScreen() {
                   )}
                 </View>
 
+                {/* Botón Ver Cuadro / Llaves */}
+                {(isLive || isCompleted) && (
+                  <Pressable
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setSelectedBracketEvent(item);
+                    }}
+                    className="mt-3 bg-amber-500/10 border border-amber-500/40 p-2.5 rounded-2xl items-center flex-row justify-center gap-1.5 active:bg-amber-500/20"
+                  >
+                    <Swords color="#fbbf24" size={15} />
+                    <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
+                      Ver Cuadro Eliminatorio (Llaves en Vivo)
+                    </Text>
+                  </Pressable>
+                )}
+
+                {/* Botón Ver Reglas */}
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('light');
+                    setSelectedRulesEvent(item);
+                  }}
+                  className="mt-2 py-1.5 items-center flex-row justify-center gap-1"
+                >
+                  <BookOpen color="#94a3b8" size={13} />
+                  <Text className="text-slate-400 font-semibold text-xs">Reglas y Premios</Text>
+                </Pressable>
+
                 {/* Acciones para Inscripción / Check-in / Retirada */}
                 {isUpcoming && (
-                  <View className="mt-3.5 flex-col gap-2">
+                  <View className="mt-2 flex-col gap-2">
                     {isEnrolled ? (
                       <View className="flex-row gap-2">
                         {isCheckInAvailable ? (
@@ -441,7 +504,7 @@ export default function EventsScreen() {
                 )}
 
                 {isLive && isEnrolled && (
-                  <View className="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-2xl items-center mt-3.5 flex-row justify-center gap-1.5">
+                  <View className="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-2xl items-center mt-2 flex-row justify-center gap-1.5">
                     <CheckCircle2 color="#34d399" size={16} />
                     <Text className="text-emerald-400 font-bold text-xs">Estás en competencia en este torneo</Text>
                   </View>
@@ -451,6 +514,83 @@ export default function EventsScreen() {
           }}
         />
       )}
+
+      {/* ── Modal de Llaves / Cuadro Eliminatorio ────────────── */}
+      <Modal
+        visible={Boolean(selectedBracketEvent)}
+        animationType="slide"
+        onRequestClose={() => setSelectedBracketEvent(null)}
+      >
+        {selectedBracketEvent && (
+          <TournamentBracketView
+            eventId={selectedBracketEvent.id}
+            eventTitle={selectedBracketEvent.title}
+            maxParticipants={selectedBracketEvent.max_participants}
+            onClose={() => setSelectedBracketEvent(null)}
+            onJoinMatchRoom={(roomId) => {
+              setSelectedBracketEvent(null);
+              router.push({
+                pathname: '/game',
+                params: { roomId },
+              });
+            }}
+          />
+        )}
+      </Modal>
+
+      {/* ── Modal de Reglas y Premios ───────────────────────── */}
+      <Modal
+        visible={Boolean(selectedRulesEvent)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedRulesEvent(null)}
+      >
+        <View className="flex-1 bg-black/80 justify-center items-center px-4">
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 w-full max-w-sm max-h-[80%]">
+            <View className="flex-row justify-between items-center pb-3 border-b border-slate-800 mb-3">
+              <Text className="text-white font-bold text-base" numberOfLines={1}>
+                {selectedRulesEvent?.title}
+              </Text>
+              <Pressable onPress={() => setSelectedRulesEvent(null)} className="p-1">
+                <X color="#94a3b8" size={18} />
+              </Pressable>
+            </View>
+
+            <ScrollView className="mb-4">
+              <Text className="text-amber-400 font-bold text-xs uppercase mb-2">Desglose de Premios</Text>
+              {selectedRulesEvent && (
+                <View className="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 mb-3">
+                  {buildPrizeDisplayGroups(
+                    resolveEventCoinPot(selectedRulesEvent),
+                    selectedRulesEvent.prize_tiers,
+                    selectedRulesEvent.max_participants
+                  ).map((grp, idx) => (
+                    <View key={idx} className="flex-row justify-between items-center py-1">
+                      <Text className="text-slate-300 text-xs font-semibold">{grp.title}:</Text>
+                      <Text className="text-amber-400 font-bold text-xs">
+                        🪙 {grp.coinsEach.toLocaleString()}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <Text className="text-amber-400 font-bold text-xs uppercase mb-1">Reglamento Oficial</Text>
+              <Text className="text-slate-300 text-xs leading-relaxed">
+                {selectedRulesEvent?.rules ||
+                  'Partidas al mejor de la serie indicada. El jugador dispone de 3 minutos de gracia para presentarse en sala antes de que el rival pueda reclamar Walkover reglamentario.'}
+              </Text>
+            </ScrollView>
+
+            <Pressable
+              onPress={() => setSelectedRulesEvent(null)}
+              className="bg-amber-500 p-3 rounded-2xl items-center active:bg-amber-600"
+            >
+              <Text className="text-slate-950 font-bold text-xs uppercase tracking-wider">Entendido</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
