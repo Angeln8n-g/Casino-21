@@ -10,10 +10,24 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
+import { socketService } from '../../services/socket';
 import { useAuth } from '../../hooks/useAuth';
 import { triggerHaptic } from '../../utils/haptics';
-import { Users, UserPlus, Search, Check, X, UserMinus, ShieldAlert, Clock } from 'lucide-react-native';
+import { PrivateChatModal, ChatFriend } from '../../components/chat/PrivateChatModal';
+import {
+  Users,
+  UserPlus,
+  Search,
+  Check,
+  X,
+  UserMinus,
+  Clock,
+  MessageSquare,
+  Swords,
+  ChevronRight,
+} from 'lucide-react-native';
 
 const ONLINE_WINDOW_MS = 45000;
 
@@ -64,16 +78,25 @@ function formatRelativeTime(isoString?: string | null): string {
 }
 
 export default function SocialScreen() {
-  const { user, presenceByUserId } = useAuth();
+  const router = useRouter();
+  const { user, profile, presenceByUserId } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<IncomingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search' | 'chat'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
+
+  // Chat Privado & Badges
+  const [activeChatFriend, setActiveChatFriend] = useState<ChatFriend | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
+  const [lastMessageMap, setLastMessageMap] = useState<
+    Record<string, { content: string; created_at: string; sender_id: string }>
+  >({});
 
   // ── Fetch Amigos Aceptados ─────────────────────────────────
   const fetchFriends = useCallback(async () => {
@@ -108,6 +131,8 @@ export default function SocialScreen() {
         .in('id', friendIds);
 
       if (!pErr && profiles) {
+        // Regla 5.3: Console log demostrando datos reales de API
+        console.log('Social friends from API:', profiles);
         setFriends(profiles as Friend[]);
       }
     } catch (e) {
@@ -158,6 +183,55 @@ export default function SocialScreen() {
     }
   }, [user]);
 
+  // ── Fetch Mensajes No Leídos y Últimos Mensajes ───────────
+  const fetchUnreadAndLastMessages = useCallback(async () => {
+    if (!user) return;
+    try {
+      // 1. Mensajes no leídos recibidos
+      const { data: unreadData } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+
+      if (unreadData) {
+        const counts: Record<string, number> = {};
+        unreadData.forEach((m) => {
+          counts[m.sender_id] = (counts[m.sender_id] || 0) + 1;
+        });
+        setFriendUnreadMap(counts);
+        setUnreadMessagesCount(unreadData.length);
+      }
+
+      // 2. Último mensaje con cada amigo
+      if (friends.length > 0) {
+        const map: Record<string, { content: string; created_at: string; sender_id: string }> = {};
+        for (const f of friends) {
+          const { data: lastMsg } = await supabase
+            .from('messages')
+            .select('content, created_at, sender_id, deleted_at')
+            .or(
+              `and(sender_id.eq.${user.id},receiver_id.eq.${f.id}),and(sender_id.eq.${f.id},receiver_id.eq.${user.id})`
+            )
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (lastMsg) {
+            map[f.id] = {
+              content: lastMsg.deleted_at ? 'Mensaje eliminado' : lastMsg.content,
+              created_at: lastMsg.created_at,
+              sender_id: lastMsg.sender_id,
+            };
+          }
+        }
+        setLastMessageMap(map);
+      }
+    } catch (e) {
+      console.error('Error fetching unread messages:', e);
+    }
+  }, [user, friends]);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     await Promise.all([fetchFriends(), fetchRequests()]);
@@ -169,9 +243,37 @@ export default function SocialScreen() {
     loadAll();
   }, [loadAll]);
 
+  useEffect(() => {
+    fetchUnreadAndLastMessages();
+
+    // Suscripción a nuevos mensajes para actualizar insignias
+    if (user?.id) {
+      const channel = supabase
+        .channel(`social_unread_${user.id}_${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          () => {
+            fetchUnreadAndLastMessages();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user?.id, fetchUnreadAndLastMessages]);
+
   const onRefresh = () => {
     setRefreshing(true);
     loadAll();
+    fetchUnreadAndLastMessages();
   };
 
   // ── Cálculo de estado online ──────────────────────────────
@@ -212,7 +314,6 @@ export default function SocialScreen() {
       });
 
       if (rpcErr) {
-        // Fallback directo a actualización de registro
         const { error: updateErr } = await supabase
           .from('friend_requests')
           .update({ status: 'accepted' })
@@ -226,7 +327,7 @@ export default function SocialScreen() {
 
       setPendingRequests((prev) => prev.filter((r) => r.requestId !== requestId));
       await fetchFriends();
-      Alert.alert('¡Amigo añadido!', 'Ahora pueden jugar partidas amistosas juntos.');
+      Alert.alert('¡Amigo añadido!', 'Ahora pueden jugar partidas y chatear.');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Error inesperado.');
     } finally {
@@ -286,6 +387,32 @@ export default function SocialScreen() {
         },
       ]
     );
+  };
+
+  // ── Desafiar a Partida Directa ──────────────────────────────
+  const handleChallengeFriend = async (friend: Friend) => {
+    if (!user) return;
+    try {
+      setActionBusyId(`challenge_${friend.id}`);
+      const socket = await socketService.connect();
+      const playerName = profile?.username || 'Jugador K21';
+
+      socket.emit('send_challenge', {
+        receiverId: friend.id,
+        playerName,
+        betAmount: 0,
+      });
+
+      triggerHaptic('light');
+      Alert.alert(
+        '⚔️ ¡Desafío Enviado!',
+        `Has invitado a ${friend.username} a una partida. Entrarán automáticamente al juego cuando acepte.`
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'No se pudo enviar el desafío.');
+    } finally {
+      setActionBusyId(null);
+    }
   };
 
   // ── Búsqueda de Jugadores ───────────────────────────────────
@@ -359,7 +486,6 @@ export default function SocialScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery, user]);
 
-  // ── Enviar Solicitud ───────────────────────────────────────
   const handleSendRequest = async (target: SearchItem) => {
     if (!user) return;
     triggerHaptic('light');
@@ -387,13 +513,24 @@ export default function SocialScreen() {
     }
   };
 
+  const openPrivateChat = (f: Friend) => {
+    triggerHaptic('light');
+    setActiveChatFriend({
+      id: f.id,
+      username: f.username,
+      elo: f.elo,
+      avatar_url: f.avatar_url,
+      isOnline: isFriendOnline(f),
+    });
+  };
+
   return (
     <View className="flex-1 bg-slate-950 px-4 pt-12">
       {/* Header */}
       <View className="flex-row justify-between items-center mb-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
         <View>
           <Text className="text-amber-400 font-bold text-2xl">SOCIAL</Text>
-          <Text className="text-slate-400 text-xs">Juega con amigos y expande tu círculo</Text>
+          <Text className="text-slate-400 text-xs">Juega con amigos y chatea en privado</Text>
         </View>
         <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30">
           <Users color="#fbbf24" size={24} />
@@ -421,13 +558,38 @@ export default function SocialScreen() {
         <Pressable
           onPress={() => {
             triggerHaptic('light');
+            setActiveTab('chat');
+          }}
+          className={`flex-1 py-2 rounded-xl items-center relative ${
+            activeTab === 'chat' ? 'bg-amber-500' : ''
+          }`}
+        >
+          <View className="flex-row items-center gap-1">
+            <Text
+              className={`font-bold text-xs uppercase tracking-wider ${
+                activeTab === 'chat' ? 'text-slate-950 font-black' : 'text-slate-400'
+              }`}
+            >
+              Chat
+            </Text>
+            {unreadMessagesCount > 0 && (
+              <View className="bg-red-500 px-1.5 py-0.2 rounded-full">
+                <Text className="text-white text-[9px] font-black">{unreadMessagesCount}</Text>
+              </View>
+            )}
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light');
             setActiveTab('requests');
           }}
           className={`flex-1 py-2 rounded-xl items-center relative ${
             activeTab === 'requests' ? 'bg-amber-500' : ''
           }`}
         >
-          <View className="flex-row items-center gap-1.5">
+          <View className="flex-row items-center gap-1">
             <Text
               className={`font-bold text-xs uppercase tracking-wider ${
                 activeTab === 'requests' ? 'text-slate-950 font-black' : 'text-slate-400'
@@ -436,8 +598,8 @@ export default function SocialScreen() {
               Solicitudes
             </Text>
             {pendingRequests.length > 0 && (
-              <View className="bg-red-500 px-1.5 py-0.5 rounded-full">
-                <Text className="text-white text-[10px] font-black">{pendingRequests.length}</Text>
+              <View className="bg-red-500 px-1.5 py-0.2 rounded-full">
+                <Text className="text-white text-[9px] font-black">{pendingRequests.length}</Text>
               </View>
             )}
           </View>
@@ -485,6 +647,7 @@ export default function SocialScreen() {
             const isOnline = isFriendOnline(item);
             const inRoom = Boolean(item.current_room_id);
             const isBusy = actionBusyId === item.id;
+            const unread = friendUnreadMap[item.id] || 0;
 
             return (
               <View className="bg-slate-900/90 p-4 rounded-2xl mb-3 border border-slate-800 flex-row items-center justify-between">
@@ -526,6 +689,29 @@ export default function SocialScreen() {
 
                 {/* Acciones para amigo */}
                 <View className="flex-row items-center gap-2">
+                  {/* Botón de Desafío */}
+                  <Pressable
+                    disabled={isBusy}
+                    onPress={() => handleChallengeFriend(item)}
+                    className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 active:bg-red-500/20"
+                  >
+                    <Swords color="#ef4444" size={16} />
+                  </Pressable>
+
+                  {/* Botón de Chat */}
+                  <Pressable
+                    onPress={() => openPrivateChat(item)}
+                    className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 active:bg-amber-500/20 relative"
+                  >
+                    <MessageSquare color="#fbbf24" size={16} />
+                    {unread > 0 && (
+                      <View className="absolute -top-1 -right-1 bg-red-600 rounded-full w-4 h-4 items-center justify-center">
+                        <Text className="text-white text-[9px] font-black">{unread}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+
+                  {/* Botón Eliminar */}
                   <Pressable
                     disabled={isBusy}
                     onPress={() => handleRemoveFriend(item)}
@@ -535,6 +721,81 @@ export default function SocialScreen() {
                   </Pressable>
                 </View>
               </View>
+            );
+          }}
+        />
+      ) : activeTab === 'chat' ? (
+        /* Pestaña de Chats Privados */
+        <FlatList
+          data={friends}
+          keyExtractor={(item) => item.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fbbf24" />}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          ListEmptyComponent={() => (
+            <View className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 items-center mt-6">
+              <MessageSquare color="#64748b" size={40} className="mb-2" />
+              <Text className="text-white font-bold text-base mb-1">Sin conversaciones activas</Text>
+              <Text className="text-slate-400 text-xs text-center">
+                Agrega amigos para comenzar a enviar mensajes privados.
+              </Text>
+            </View>
+          )}
+          renderItem={({ item }) => {
+            const isOnline = isFriendOnline(item);
+            const unread = friendUnreadMap[item.id] || 0;
+            const lastMsg = lastMessageMap[item.id];
+
+            return (
+              <Pressable
+                onPress={() => openPrivateChat(item)}
+                className="bg-slate-900/90 p-4 rounded-2xl mb-3 border border-slate-800 flex-row items-center justify-between active:bg-slate-800/80"
+              >
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className="relative mr-3">
+                    {item.avatar_url ? (
+                      <Image source={{ uri: item.avatar_url }} className="w-11 h-11 rounded-full" />
+                    ) : (
+                      <View className="w-11 h-11 rounded-full bg-slate-800 items-center justify-center border border-slate-700">
+                        <Text className="text-white">👤</Text>
+                      </View>
+                    )}
+                    <View
+                      className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${
+                        isOnline ? 'bg-emerald-500' : 'bg-slate-600'
+                      }`}
+                    />
+                  </View>
+
+                  <View className="flex-1">
+                    <View className="flex-row justify-between items-center mb-0.5">
+                      <Text className="text-white font-bold text-sm" numberOfLines={1}>
+                        {item.username}
+                      </Text>
+                      {lastMsg && (
+                        <Text className="text-slate-500 text-[10px]">
+                          {formatRelativeTime(lastMsg.created_at)}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      className={`text-xs ${
+                        unread > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'
+                      }`}
+                      numberOfLines={1}
+                    >
+                      {lastMsg ? lastMsg.content : 'Toca para iniciar una conversación'}
+                    </Text>
+                  </View>
+                </View>
+
+                {unread > 0 ? (
+                  <View className="bg-red-500 px-2 py-0.5 rounded-full ml-2">
+                    <Text className="text-white text-[10px] font-black">{unread}</Text>
+                  </View>
+                ) : (
+                  <ChevronRight color="#64748b" size={16} />
+                )}
+              </Pressable>
             );
           }}
         />
@@ -678,6 +939,16 @@ export default function SocialScreen() {
           />
         </View>
       )}
+
+      {/* ── Modal de Chat Privado 1a1 ───────────────────────── */}
+      <PrivateChatModal
+        friend={activeChatFriend}
+        isOpen={Boolean(activeChatFriend)}
+        onClose={() => {
+          setActiveChatFriend(null);
+          fetchUnreadAndLastMessages();
+        }}
+      />
     </View>
   );
 }

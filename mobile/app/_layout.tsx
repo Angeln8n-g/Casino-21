@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,12 +11,41 @@ import { Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { AuthProvider } from '../hooks/useAuth';
 import { AudioProvider } from '../hooks/useAudio';
 import { GameProvider } from '../hooks/useGame';
+import { useNotifications } from '../hooks/useNotifications';
+import { GameInvitationModal } from '../components/notifications/GameInvitationModal';
 import { loadThemes } from '../themes/themeRegistry';
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export { ErrorBoundary } from 'expo-router';
+
+function RootContent() {
+  const router = useRouter();
+  const { activeGameInvitation, setActiveGameInvitation, handleGameInvite } = useNotifications();
+
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="game" options={{ headerShown: false }} />
+      </Stack>
+
+      <GameInvitationModal
+        invite={activeGameInvitation}
+        onAccept={async (invitationId, roomId) => {
+          await handleGameInvite(invitationId, 'accepted', roomId);
+          router.push('/game');
+        }}
+        onReject={async (invitationId) => {
+          await handleGameInvite(invitationId, 'rejected');
+        }}
+        onClose={() => setActiveGameInvitation(null)}
+      />
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -50,11 +79,7 @@ export default function RootLayout() {
         <AuthProvider>
           <AudioProvider>
             <GameProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="auth" options={{ headerShown: false }} />
-                <Stack.Screen name="game" options={{ headerShown: false }} />
-              </Stack>
+              <RootContent />
             </GameProvider>
           </AudioProvider>
         </AuthProvider>

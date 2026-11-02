@@ -7,7 +7,11 @@ import { useGame } from '../../hooks/useGame';
 import { socketService } from '../../services/socket';
 import { CreateRoomModal } from '../../components/CreateRoomModal';
 import { WaitingRoomModal } from '../../components/WaitingRoomModal';
-import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle } from 'lucide-react-native';
+import { DailyQuestsView } from '../../components/lobby/DailyQuestsView';
+import { RecentAchievementsView } from '../../components/lobby/RecentAchievementsView';
+import { TournamentLobbyBannerView } from '../../components/lobby/TournamentLobbyBannerView';
+import { TopRankingsView } from '../../components/lobby/TopRankingsView';
+import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle, Coins } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -35,6 +39,17 @@ export default function HomeScreen() {
 
   const playerName = profile?.username || 'Jugador K21';
   const hasRequestedStateRef = useRef(false);
+
+  useEffect(() => {
+    if (profile) {
+      console.log('Lobby profile loaded from API:', {
+        id: profile.id,
+        username: profile.username,
+        elo: profile.elo,
+        coins: profile.coins,
+      });
+    }
+  }, [profile]);
 
   // Navegar a /game si hay partida activa
   useEffect(() => {
@@ -261,16 +276,70 @@ export default function HomeScreen() {
   return (
     <ScrollView className="flex-1 bg-slate-950 px-4 pt-12">
       {/* Header / Banner de Bienvenida */}
-      <View className="bg-slate-900/90 rounded-3xl p-6 mb-6 border border-slate-800 flex-row justify-between items-center">
-        <View>
-          <Text className="text-amber-400 font-bold text-3xl">KASINO 21</Text>
-          <Text className="text-slate-300 font-bold text-base mt-1">¡Hola, {playerName}!</Text>
-          <Text className="text-slate-500 text-xs mt-0.5">Elige un modo y comienza a jugar</Text>
+      <View className="bg-slate-900/90 rounded-3xl p-5 mb-5 border border-slate-800 flex-row justify-between items-center">
+        <View className="flex-1 mr-3">
+          <Text className="text-amber-400 font-bold text-2xl">KASINO 21</Text>
+          <Text className="text-slate-200 font-bold text-base mt-0.5" numberOfLines={1}>
+            ¡Hola, {playerName}!
+          </Text>
+          <View className="flex-row items-center mt-1">
+            <Coins color="#fbbf24" size={14} />
+            <Text className="text-amber-400 font-mono font-bold text-xs ml-1 mr-3">
+              {(profile?.coins || 0).toLocaleString()} 🪙
+            </Text>
+          </View>
         </View>
-        <View className="bg-amber-500/10 p-3.5 rounded-2xl border border-amber-500/30 items-center justify-center">
-          <Trophy color="#fbbf24" size={28} />
+
+        <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30 items-center justify-center">
+          <Trophy color="#fbbf24" size={24} />
           <Text className="text-amber-400 font-bold text-xs mt-1">{profile?.elo || 1000} ELO</Text>
         </View>
+      </View>
+
+      {/* BANNER DINÁMICO DE TORNEO / PARTIDO LISTO */}
+      <TournamentLobbyBannerView />
+
+      {/* MULTIJUGADOR RANKED 1v1 */}
+      <View className="bg-slate-900/80 rounded-3xl p-5 mb-5 border border-slate-800">
+        <View className="flex-row items-center mb-3">
+          <View className="bg-amber-500/10 p-2.5 rounded-xl mr-3 border border-amber-500/30">
+            <Swords color="#fbbf24" size={24} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-white font-bold text-lg">Buscar Partida 1v1 (Ranked)</Text>
+            <Text className="text-slate-400 text-xs">Matchmaking automático por nivel ELO</Text>
+          </View>
+        </View>
+
+        {isMatchmaking ? (
+          <View className="bg-slate-950 p-4 rounded-2xl border border-amber-500/40 items-center">
+            <ActivityIndicator size="small" color="#fbbf24" className="mb-2" />
+            <Text className="text-white font-bold text-sm mb-1">Buscando oponente competitivo...</Text>
+            <Text className="text-amber-400 font-mono text-xs mb-3">{matchmakingSeconds}s transcurridos</Text>
+            <Pressable
+              onPress={handleCancelMatchmaking}
+              className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl flex-row items-center"
+            >
+              <XCircle color="#ef4444" size={16} className="mr-1.5" />
+              <Text className="text-red-400 font-bold text-xs uppercase">Cancelar Búsqueda</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            disabled={loading}
+            onPress={handleJoinMatchmaking}
+            className="bg-amber-500 active:bg-amber-600 p-3.5 rounded-2xl items-center flex-row justify-center"
+          >
+            {loading && loadingAction === 'matchmaking' ? (
+              <ActivityIndicator size="small" color="#020617" />
+            ) : (
+              <>
+                <Swords color="#020617" size={20} className="mr-2" />
+                <Text className="text-slate-950 font-bold text-base">BUSCAR JUGADOR (1v1)</Text>
+              </>
+            )}
+          </Pressable>
+        )}
       </View>
 
       {/* JUGAR VS BOTS (IA) */}
@@ -329,51 +398,8 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* MULTIJUGADOR RANKED 1v1 */}
-      <View className="bg-slate-900/80 rounded-3xl p-5 mb-5 border border-slate-800">
-        <View className="flex-row items-center mb-3">
-          <View className="bg-amber-500/10 p-2.5 rounded-xl mr-3 border border-amber-500/30">
-            <Swords color="#fbbf24" size={24} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-white font-bold text-lg">Buscar Partida 1v1 (Ranked)</Text>
-            <Text className="text-slate-400 text-xs">Matchmaking automático por nivel ELO</Text>
-          </View>
-        </View>
-
-        {isMatchmaking ? (
-          <View className="bg-slate-950 p-4 rounded-2xl border border-amber-500/40 items-center">
-            <ActivityIndicator size="small" color="#fbbf24" className="mb-2" />
-            <Text className="text-white font-bold text-sm mb-1">Buscando oponente competitivo...</Text>
-            <Text className="text-amber-400 font-mono text-xs mb-3">{matchmakingSeconds}s transcurridos</Text>
-            <Pressable
-              onPress={handleCancelMatchmaking}
-              className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl flex-row items-center"
-            >
-              <XCircle color="#ef4444" size={16} className="mr-1.5" />
-              <Text className="text-red-400 font-bold text-xs uppercase">Cancelar Búsqueda</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable
-            disabled={loading}
-            onPress={handleJoinMatchmaking}
-            className="bg-amber-500 active:bg-amber-600 p-3.5 rounded-2xl items-center flex-row justify-center"
-          >
-            {loading && loadingAction === 'matchmaking' ? (
-              <ActivityIndicator size="small" color="#020617" />
-            ) : (
-              <>
-                <Swords color="#020617" size={20} className="mr-2" />
-                <Text className="text-slate-950 font-bold text-base">BUSCAR JUGADOR (1v1)</Text>
-              </>
-            )}
-          </Pressable>
-        )}
-      </View>
-
       {/* SALAS PRIVADAS */}
-      <View className="bg-slate-900/80 rounded-3xl p-5 mb-10 border border-slate-800">
+      <View className="bg-slate-900/80 rounded-3xl p-5 mb-5 border border-slate-800">
         <View className="flex-row items-center mb-4">
           <View className="bg-purple-500/10 p-2.5 rounded-xl mr-3 border border-purple-500/30">
             <Users color="#c084fc" size={24} />
@@ -420,6 +446,15 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* MISIONES DIARIAS REALES */}
+      <DailyQuestsView />
+
+      {/* LOGROS RECIENTES REALES */}
+      <RecentAchievementsView />
+
+      {/* RANKING TOP 5 GLOBAL REAL */}
+      <TopRankingsView />
 
       {/* Modal 1: Configuración de Sala Privada */}
       <CreateRoomModal
