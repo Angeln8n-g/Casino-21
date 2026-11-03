@@ -1,18 +1,50 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Pressable, Modal, FlatList, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  FlatList,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+  StyleSheet,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { ChatMessage } from '../../hooks/useGame';
 import { X, Send, MessageSquare } from 'lucide-react-native';
 
 interface GameChatModalProps {
   visible: boolean;
   messages: ChatMessage[];
+  localPlayerId?: string | null;
+  quickEmotes?: string[];
   onSendMessage: (text: string) => void;
   onClose: () => void;
 }
 
-const QUICK_EMOJIS = ['😀', '🔥', '👏', '💀', '🎉', '😎', '👍', '❌'];
+const DEFAULT_QUICK_EMOJIS = ['😀', '😮', '🔥', '👏', '💀', '🎉', '💩', '😎'];
 
-export function GameChatModal({ visible, messages, onSendMessage, onClose }: GameChatModalProps) {
+const isMediaUrl = (text: string): boolean => {
+  if (!text || typeof text !== 'string') return false;
+  const str = text.trim();
+  return (
+    str.startsWith('http://') ||
+    str.startsWith('https://') ||
+    str.includes('/storage/v1/object/public/') ||
+    /\.(gif|webp|png|jpg|jpeg)$/i.test(str)
+  );
+};
+
+export function GameChatModal({
+  visible,
+  messages,
+  localPlayerId,
+  quickEmotes,
+  onSendMessage,
+  onClose,
+}: GameChatModalProps) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
@@ -22,6 +54,11 @@ export function GameChatModal({ visible, messages, onSendMessage, onClose }: Gam
     }
   }, [visible, messages.length]);
 
+  if (!visible) return null;
+
+  const emotesToRender =
+    quickEmotes && quickEmotes.length > 0 ? quickEmotes.slice(0, 8) : DEFAULT_QUICK_EMOJIS;
+
   const handleSend = () => {
     if (!inputText.trim()) return;
     onSendMessage(inputText.trim());
@@ -29,79 +66,257 @@ export function GameChatModal({ visible, messages, onSendMessage, onClose }: Gam
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent={true}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-black/80 justify-end"
-      >
-        <View className="bg-slate-900 border-t border-slate-800 rounded-t-3xl max-h-[80%] p-4 pb-8">
-          {/* Header */}
-          <View className="flex-row justify-between items-center pb-3 border-b border-slate-800 mb-3">
-            <View className="flex-row items-center">
-              <MessageSquare color="#fbbf24" size={20} className="mr-2" />
-              <Text className="text-white font-bold text-base">Chat de la Partida</Text>
-            </View>
-            <Pressable onPress={onClose} className="p-1.5 bg-slate-800 rounded-full">
-              <X color="#94a3b8" size={18} />
-            </Pressable>
-          </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          width: windowWidth,
+          height: windowHeight,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          justifyContent: 'flex-end',
+          zIndex: 999999,
+          elevation: 999999,
+        },
+      ]}
+    >
+      <Pressable style={{ flex: 1 }} onPress={onClose} />
 
-          {/* Lista de Mensajes */}
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id || String(item.timestamp)}
-            className="flex-1 mb-3 max-h-72"
-            ListEmptyComponent={() => (
-              <View className="items-center justify-center py-10">
-                <Text className="text-slate-500 text-xs italic">Aún no hay mensajes. ¡Di hola!</Text>
-              </View>
-            )}
-            renderItem={({ item }) => (
-              <View className="mb-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-                <View className="flex-row justify-between items-center mb-0.5">
-                  <Text className="text-amber-400 font-bold text-[11px]">{item.senderName}</Text>
-                  <Text className="text-slate-500 text-[9px]">
-                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      <View
+        style={{
+          width: windowWidth,
+          maxHeight: windowHeight * 0.78,
+          backgroundColor: '#0f172a',
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(255, 255, 255, 0.15)',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          padding: 16,
+          paddingBottom: 28,
+        }}
+      >
+        {/* Header (idéntico a GameChat.tsx en Web) */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+            marginBottom: 12,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MessageSquare color="#fbbf24" size={18} />
+            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 15 }}>
+              Chat de Sala
+            </Text>
+          </View>
+          <Pressable
+            onPress={onClose}
+            style={{
+              padding: 6,
+              backgroundColor: '#1e293b',
+              borderRadius: 999,
+            }}
+          >
+            <X color="#cbd5e1" size={18} />
+          </Pressable>
+        </View>
+
+        {/* Lista de Mensajes */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item, idx) => item.id || `${item.timestamp}-${idx}`}
+          style={{ maxHeight: 280, marginBottom: 12 }}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          ListEmptyComponent={() => (
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 36 }}>
+              <Text style={{ color: '#64748b', fontSize: 12, textAlign: 'center' }}>
+                No hay mensajes de los jugadores aún.
+              </Text>
+            </View>
+          )}
+          renderItem={({ item }) => {
+            if (item.isSystem) {
+              return (
+                <View style={{ alignItems: 'center', marginVertical: 4 }}>
+                  <Text
+                    style={{
+                      color: '#64748b',
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {item.text}
                   </Text>
                 </View>
-                <Text className="text-slate-200 text-xs">{item.text}</Text>
-              </View>
-            )}
-          />
+              );
+            }
 
-          {/* Barra de Emojis Rápidos */}
-          <View className="flex-row justify-between mb-3 px-1">
-            {QUICK_EMOJIS.map((emoji) => (
-              <Pressable
-                key={emoji}
-                onPress={() => onSendMessage(emoji)}
-                className="w-9 h-9 bg-slate-800 border border-slate-700 rounded-xl items-center justify-center active:bg-amber-500/20"
+            const isMe = Boolean(localPlayerId && item.senderId === localPlayerId);
+            const media = isMediaUrl(item.text);
+
+            return (
+              <View
+                style={{
+                  marginBottom: 10,
+                  maxWidth: '86%',
+                  alignSelf: isMe ? 'flex-end' : 'flex-start',
+                  alignItems: isMe ? 'flex-end' : 'flex-start',
+                }}
               >
-                <Text className="text-base">{emoji}</Text>
-              </Pressable>
-            ))}
-          </View>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginBottom: 3,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: item.isSpectator ? '#60a5fa' : '#fbbf24',
+                      fontWeight: '700',
+                      fontSize: 10,
+                    }}
+                  >
+                    {item.senderName} {item.isSpectator ? '(Espectador)' : ''}
+                  </Text>
+                  <Text style={{ color: '#64748b', fontSize: 9 }}>
+                    {new Date(item.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </View>
 
-          {/* Input de Mensaje */}
-          <View className="flex-row items-center bg-slate-950 border border-slate-800 rounded-2xl px-3 py-1.5">
-            <TextInput
-              value={inputText}
-              onChangeText={setInputText}
-              onSubmitEditing={handleSend}
-              placeholder="Escribe un mensaje..."
-              placeholderTextColor="#64748b"
-              className="flex-1 text-white text-xs py-2 mr-2"
-            />
-            <Pressable
-              onPress={handleSend}
-              className="bg-amber-500 active:bg-amber-600 p-2 rounded-xl"
-            >
-              <Send color="#020617" size={16} />
-            </Pressable>
-          </View>
+                {media ? (
+                  <View
+                    style={{
+                      padding: 6,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.12)',
+                    }}
+                  >
+                    <Image
+                      source={{ uri: item.text }}
+                      style={{ width: 96, height: 96 }}
+                      contentFit="contain"
+                    />
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 14,
+                      borderTopRightRadius: isMe ? 4 : 14,
+                      borderTopLeftRadius: isMe ? 14 : 4,
+                      backgroundColor: isMe
+                        ? 'rgba(245, 158, 11, 0.22)'
+                        : 'rgba(255, 255, 255, 0.08)',
+                      borderWidth: 1,
+                      borderColor: isMe
+                        ? 'rgba(245, 158, 11, 0.38)'
+                        : 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <Text style={{ color: isMe ? '#ffffff' : '#e5e7eb', fontSize: 13 }}>
+                      {item.text}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          }}
+        />
+
+        {/* Barra de Emotes Rápidos */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 12,
+            paddingHorizontal: 2,
+          }}
+        >
+          {emotesToRender.map((emoji, idx) => {
+            const media = isMediaUrl(emoji);
+            return (
+              <Pressable
+                key={`${emoji}-${idx}`}
+                onPress={() => onSendMessage(emoji)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  backgroundColor: '#1e293b',
+                  borderWidth: 1,
+                  borderColor: '#334155',
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {media ? (
+                  <Image
+                    source={{ uri: emoji }}
+                    style={{ width: 24, height: 24 }}
+                    contentFit="contain"
+                  />
+                ) : (
+                  <Text style={{ fontSize: 16 }}>{emoji}</Text>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        {/* Input de Mensaje */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#020617',
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderRadius: 14,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+          }}
+        >
+          <TextInput
+            value={inputText}
+            onChangeText={setInputText}
+            onSubmitEditing={handleSend}
+            placeholder="Escribe un mensaje..."
+            placeholderTextColor="#64748b"
+            style={{
+              flex: 1,
+              color: '#ffffff',
+              fontSize: 13,
+              paddingVertical: 8,
+              marginRight: 8,
+            }}
+          />
+          <Pressable
+            disabled={!inputText.trim()}
+            onPress={handleSend}
+            style={{
+              backgroundColor: inputText.trim() ? '#f59e0b' : '#1e293b',
+              padding: 9,
+              borderRadius: 10,
+            }}
+          >
+            <Send color={inputText.trim() ? '#020617' : '#64748b'} size={15} />
+          </Pressable>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

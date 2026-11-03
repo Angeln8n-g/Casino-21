@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+  useRef,
+} from 'react';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -39,37 +47,113 @@ const AudioContext = createContext<AudioContextValue | undefined>(undefined);
 
 const AUDIO_SETTINGS_KEY = 'casino21_audio_settings';
 
-const AUDIO_SOURCES: Record<AudioCue, any> = {
-  cardDeal: require('../../src/Public/card_deal.mp3'),
-  cardPlay: require('../../src/Public/card_play.mp3'),
-  chipsClink: require('../../src/Public/clips_click.mp3'),
-  matchFound: require('../../src/Public/Steel_Over_Stone.mp3'),
-  virado: require('../../src/Public/virado.mp3'),
-  viradoOut: require('../../src/Public/Stomach Thumps.mp3'),
-  victory: require('../../src/Public/victory.mp3'),
-  defeat: require('../../src/Public/error_play.mp3'),
-  error: require('../../src/Public/error_play.mp3'),
-  alert: require('../../src/Public/Steel_Over_Stone.mp3'),
-  turnChange: require('../../src/Public/sfx-impact22.mp3'),
-  emoteIn: require('../../src/Public/Rake Swing Whoosh Close.mp3'),
-  emoteOut: require('../../src/Public/Sniffle.mp3'),
+interface CueConfig {
+  source: any;
+  baseVolume: number;
+  cooldownMs: number;
+  poolSize: number;
+}
+
+// Catálogo sincronizado con src/web/hooks/useAudio.tsx (mismos baseVolume y cooldownMs)
+const AUDIO_CATALOG: Record<AudioCue, CueConfig> = {
+  cardDeal: {
+    source: require('../../src/Public/card_deal.mp3'),
+    baseVolume: 0.7,
+    cooldownMs: 150,
+    poolSize: 2,
+  },
+  cardPlay: {
+    source: require('../../src/Public/card_play.mp3'),
+    baseVolume: 0.55,
+    cooldownMs: 60,
+    poolSize: 3,
+  },
+  chipsClink: {
+    source: require('../../src/Public/clips_click.mp3'),
+    baseVolume: 0.75,
+    cooldownMs: 110,
+    poolSize: 2,
+  },
+  matchFound: {
+    source: require('../../src/Public/Steel_Over_Stone.mp3'),
+    baseVolume: 0.5,
+    cooldownMs: 500,
+    poolSize: 1,
+  },
+  virado: {
+    source: require('../../src/Public/virado.mp3'),
+    baseVolume: 0.85,
+    cooldownMs: 800,
+    poolSize: 1,
+  },
+  viradoOut: {
+    source: require('../../src/Public/Stomach Thumps.mp3'),
+    baseVolume: 0.75,
+    cooldownMs: 800,
+    poolSize: 1,
+  },
+  victory: {
+    source: require('../../src/Public/victory.mp3'),
+    baseVolume: 0.85,
+    cooldownMs: 1200,
+    poolSize: 1,
+  },
+  defeat: {
+    source: require('../../src/Public/error_play.mp3'),
+    baseVolume: 0.6,
+    cooldownMs: 1000,
+    poolSize: 1,
+  },
+  error: {
+    source: require('../../src/Public/error_play.mp3'),
+    baseVolume: 0.45,
+    cooldownMs: 180,
+    poolSize: 2,
+  },
+  alert: {
+    source: require('../../src/Public/Steel_Over_Stone.mp3'),
+    baseVolume: 0.35,
+    cooldownMs: 400,
+    poolSize: 1,
+  },
+  turnChange: {
+    source: require('../../src/Public/sfx-impact22.mp3'),
+    baseVolume: 0.6,
+    cooldownMs: 450,
+    poolSize: 1,
+  },
+  emoteIn: {
+    source: require('../../src/Public/Rake Swing Whoosh Close.mp3'),
+    baseVolume: 0.8,
+    cooldownMs: 300,
+    poolSize: 1,
+  },
+  emoteOut: {
+    source: require('../../src/Public/Sniffle.mp3'),
+    baseVolume: 0.7,
+    cooldownMs: 300,
+    poolSize: 1,
+  },
 };
 
-const COOLDOWNS: Partial<Record<AudioCue, number>> = {
-  cardDeal: 100,
-  cardPlay: 50,
-  chipsClink: 80,
-  turnChange: 200,
-};
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+interface LoopEntry {
+  sound: Audio.Sound;
+  baseVolume: number;
+  volumeMultiplier: number;
+}
 
 export function AudioProvider({ children }: { children: ReactNode }) {
   const [muted, setMutedState] = useState(false);
-  const [volume, setVolumeState] = useState(0.8);
-  const loopsRef = useRef<Map<string, Audio.Sound>>(new Map());
-  const preloadedSoundsRef = useRef<Map<AudioCue, Audio.Sound>>(new Map());
+  const [volume, setVolumeState] = useState(0.75);
+  const loopsRef = useRef<Map<string, LoopEntry>>(new Map());
+  const soundPoolsRef = useRef<Map<AudioCue, Audio.Sound[]>>(new Map());
+  const poolIndexRef = useRef<Map<AudioCue, number>>(new Map());
   const lastPlayTimesRef = useRef<Map<AudioCue, number>>(new Map());
 
-  // Inicialización de modo de audio y precarga de SFX para latencia cero
+  // Inicialización de modo de audio y precarga paralela de todos los SFX
   useEffect(() => {
     let isMounted = true;
 
@@ -84,118 +168,156 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(res);
           if (typeof parsed.muted === 'boolean') setMutedState(parsed.muted);
-          if (typeof parsed.volume === 'number') setVolumeState(parsed.volume);
+          if (typeof parsed.volume === 'number') {
+            setVolumeState(clamp(parsed.volume, 0, 1));
+          }
         } catch {}
       }
     });
 
-    // Precargar sonidos críticos para dispararlos al instante sin I/O de disco
-    const criticalCues: AudioCue[] = [
-      'cardPlay',
-      'cardDeal',
-      'chipsClink',
-      'turnChange',
-      'virado',
-      'error',
-      'alert',
-      'matchFound',
-      'victory',
-    ];
-
     const preloadAll = async () => {
-      for (const cue of criticalCues) {
-        try {
-          const source = AUDIO_SOURCES[cue];
-          if (!source) continue;
-          const { sound } = await Audio.Sound.createAsync(source, {
-            shouldPlay: false,
-            volume: 0.8,
-          });
-          if (isMounted) {
-            preloadedSoundsRef.current.set(cue, sound);
-          } else {
-            sound.unloadAsync().catch(() => {});
+      const cues = Object.keys(AUDIO_CATALOG) as AudioCue[];
+      await Promise.all(
+        cues.map(async (cue) => {
+          const config = AUDIO_CATALOG[cue];
+          const instances: Audio.Sound[] = [];
+          for (let i = 0; i < config.poolSize; i++) {
+            try {
+              const { sound } = await Audio.Sound.createAsync(config.source, {
+                shouldPlay: false,
+                volume: config.baseVolume,
+              });
+              if (isMounted) {
+                instances.push(sound);
+              } else {
+                sound.unloadAsync().catch(() => {});
+              }
+            } catch {}
           }
-        } catch {}
-      }
+          if (isMounted && instances.length > 0) {
+            soundPoolsRef.current.set(cue, instances);
+            poolIndexRef.current.set(cue, 0);
+          }
+        })
+      );
     };
 
     preloadAll();
 
     return () => {
       isMounted = false;
-      loopsRef.current.forEach((sound) => {
-        sound.stopAsync().then(() => sound.unloadAsync()).catch(() => {});
+      loopsRef.current.forEach((entry) => {
+        entry.sound
+          .stopAsync()
+          .then(() => entry.sound.unloadAsync())
+          .catch(() => {});
       });
       loopsRef.current.clear();
 
-      preloadedSoundsRef.current.forEach((sound) => {
-        sound.unloadAsync().catch(() => {});
+      soundPoolsRef.current.forEach((pool) => {
+        pool.forEach((s) => s.unloadAsync().catch(() => {}));
       });
-      preloadedSoundsRef.current.clear();
+      soundPoolsRef.current.clear();
     };
   }, []);
 
+  // Sincronizar volumen y mute en todos los loops activos (idéntico a Web)
+  useEffect(() => {
+    loopsRef.current.forEach((entry) => {
+      const targetVol = muted
+        ? 0
+        : clamp(volume * entry.baseVolume * entry.volumeMultiplier, 0, 1);
+      entry.sound
+        .setStatusAsync({
+          volume: targetVol,
+          isMuted: muted,
+        })
+        .catch(() => {});
+    });
+  }, [muted, volume]);
+
   const saveSettings = (newMuted: boolean, newVolume: number) => {
-    AsyncStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify({ muted: newMuted, volume: newVolume })).catch(() => {});
+    AsyncStorage.setItem(
+      AUDIO_SETTINGS_KEY,
+      JSON.stringify({ muted: newMuted, volume: newVolume })
+    ).catch(() => {});
   };
 
-  const setMuted = (value: boolean) => {
-    setMutedState(value);
-    saveSettings(value, volume);
-  };
+  const setMuted = useCallback(
+    (value: boolean) => {
+      setMutedState(value);
+      saveSettings(value, volume);
+    },
+    [volume]
+  );
 
-  const toggleMuted = () => {
+  const toggleMuted = useCallback(() => {
     setMutedState((prev) => {
       const next = !prev;
       saveSettings(next, volume);
       return next;
     });
-  };
+  }, [volume]);
 
-  const setVolume = (value: number) => {
-    const clamped = Math.max(0, Math.min(1, value));
-    setVolumeState(clamped);
-    saveSettings(muted, clamped);
-  };
+  const setVolume = useCallback(
+    (value: number) => {
+      const clamped = clamp(value, 0, 1);
+      setVolumeState(clamped);
+      saveSettings(muted, clamped);
+    },
+    [muted]
+  );
 
   const playSfx = useCallback(
     async (cue: AudioCue, options?: PlaySfxOptions) => {
       if (muted) return;
+
+      const config = AUDIO_CATALOG[cue];
+      if (!config) return;
+
       const now = Date.now();
       const lastPlay = lastPlayTimesRef.current.get(cue) || 0;
-      const cooldown = COOLDOWNS[cue] || 0;
-      if (now - lastPlay < cooldown) return;
+      if (config.cooldownMs && now - lastPlay < config.cooldownMs) return;
       lastPlayTimesRef.current.set(cue, now);
 
-      const vol = Math.max(0, Math.min(1, volume * (options?.volumeMultiplier ?? 1)));
-      const rate = options?.playbackRate ?? 1.0;
+      const targetVol = clamp(
+        volume * config.baseVolume * (options?.volumeMultiplier ?? 1),
+        0,
+        1
+      );
+      const playRate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
 
-      // 1. Si está precargado, reproducir instantáneamente (0ms de latencia)
-      const preloaded = preloadedSoundsRef.current.get(cue);
-      if (preloaded) {
+      // 1. Reproducción instantánea sin filtro DSP de pitch-stretching (0ms buffer lag)
+      const pool = soundPoolsRef.current.get(cue);
+      if (pool && pool.length > 0) {
+        const idx = (poolIndexRef.current.get(cue) || 0) % pool.length;
+        poolIndexRef.current.set(cue, idx + 1);
+        const sound = pool[idx];
+
         try {
-          await preloaded.stopAsync().catch(() => {});
-          await preloaded.setPositionAsync(0);
-          await preloaded.setVolumeAsync(vol);
-          if (rate !== 1.0) await preloaded.setRateAsync(rate, true);
-          await preloaded.playAsync();
+          await sound.replayAsync({
+            positionMillis: 0,
+            volume: targetVol,
+            rate: playRate,
+            shouldCorrectPitch: false,
+            isMuted: false,
+            shouldPlay: true,
+          });
           return;
-        } catch {}
+        } catch {
+          // Si la instancia falló, continuar al fallback
+        }
       }
 
-      // 2. Fallback dinámico si no estuviera precargado
+      // 2. Fallback dinámico si aún no terminó de precargar al arranque
       try {
-        const source = AUDIO_SOURCES[cue];
-        if (!source) return;
-
         const { sound } = await Audio.Sound.createAsync(
-          source,
+          config.source,
           {
             shouldPlay: true,
-            volume: vol,
-            rate: rate,
-            shouldCorrectPitch: true,
+            volume: targetVol,
+            rate: playRate,
+            shouldCorrectPitch: false,
           },
           (status) => {
             if (status.isLoaded && status.didJustFinish) {
@@ -203,7 +325,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
             }
           }
         );
-      } catch (e) {}
+      } catch {}
     },
     [muted, volume]
   );
@@ -212,71 +334,93 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     async (url: string, options?: PlaySfxOptions) => {
       if (muted || !url) return;
       try {
-        const vol = Math.max(0, Math.min(1, volume * (options?.volumeMultiplier ?? 1)));
+        const vol = clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1);
+        const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
         const { sound } = await Audio.Sound.createAsync(
           { uri: url },
-          { shouldPlay: true, volume: vol },
+          { shouldPlay: true, volume: vol, rate, shouldCorrectPitch: true },
           (status) => {
             if (status.isLoaded && status.didJustFinish) {
               sound.unloadAsync().catch(() => {});
             }
           }
         );
-      } catch (e) {}
-    },
-    [muted, volume]
-  );
-
-  const startLoop = useCallback(
-    async (id: string, cue: AudioCue, options?: PlaySfxOptions) => {
-      if (muted) return;
-      try {
-        const existing = loopsRef.current.get(id);
-        if (existing) await existing.stopAsync().then(() => existing.unloadAsync()).catch(() => {});
-
-        const source = AUDIO_SOURCES[cue];
-        if (!source) return;
-
-        const vol = Math.max(0, Math.min(1, volume * (options?.volumeMultiplier ?? 1)));
-        const { sound } = await Audio.Sound.createAsync(source, {
-          shouldPlay: true,
-          isLooping: true,
-          volume: vol,
-        });
-        loopsRef.current.set(id, sound);
-      } catch (e) {}
-    },
-    [muted, volume]
-  );
-
-  const startUrlLoop = useCallback(
-    async (id: string, url: string, options?: PlaySfxOptions) => {
-      if (muted || !url) return;
-      try {
-        const existing = loopsRef.current.get(id);
-        if (existing) await existing.stopAsync().then(() => existing.unloadAsync()).catch(() => {});
-
-        const vol = Math.max(0, Math.min(1, volume * (options?.volumeMultiplier ?? 1)));
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: url },
-          { shouldPlay: true, isLooping: true, volume: vol }
-        );
-        loopsRef.current.set(id, sound);
-      } catch (e) {}
+      } catch {}
     },
     [muted, volume]
   );
 
   const stopLoop = useCallback(async (id: string) => {
+    const existing = loopsRef.current.get(id);
+    if (!existing) return;
+    loopsRef.current.delete(id);
     try {
-      const sound = loopsRef.current.get(id);
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        loopsRef.current.delete(id);
-      }
-    } catch (e) {}
+      await existing.sound.stopAsync();
+      await existing.sound.unloadAsync();
+    } catch {}
   }, []);
+
+  const startLoop = useCallback(
+    async (id: string, cue: AudioCue, options?: PlaySfxOptions) => {
+      await stopLoop(id);
+      const config = AUDIO_CATALOG[cue];
+      if (!config) return;
+
+      try {
+        const volMult = options?.volumeMultiplier ?? 1;
+        const targetVol = muted
+          ? 0
+          : clamp(volume * config.baseVolume * volMult, 0, 1);
+        const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
+
+        const { sound } = await Audio.Sound.createAsync(config.source, {
+          shouldPlay: true,
+          isLooping: true,
+          volume: targetVol,
+          isMuted: muted,
+          rate,
+          shouldCorrectPitch: true,
+        });
+        loopsRef.current.set(id, {
+          sound,
+          baseVolume: config.baseVolume,
+          volumeMultiplier: volMult,
+        });
+      } catch {}
+    },
+    [muted, stopLoop, volume]
+  );
+
+  const startUrlLoop = useCallback(
+    async (id: string, url: string, options?: PlaySfxOptions) => {
+      await stopLoop(id);
+      if (!url) return;
+
+      try {
+        const volMult = options?.volumeMultiplier ?? 1;
+        const targetVol = muted ? 0 : clamp(volume * volMult, 0, 1);
+        const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: url },
+          {
+            shouldPlay: true,
+            isLooping: true,
+            volume: targetVol,
+            isMuted: muted,
+            rate,
+            shouldCorrectPitch: true,
+          }
+        );
+        loopsRef.current.set(id, {
+          sound,
+          baseVolume: 1.0,
+          volumeMultiplier: volMult,
+        });
+      } catch {}
+    },
+    [muted, stopLoop, volume]
+  );
 
   return (
     <AudioContext.Provider

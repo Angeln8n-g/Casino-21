@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, Share, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  Share,
+  useWindowDimensions,
+  StyleSheet,
+} from 'react-native';
 import { GameState } from 'domain/game-state';
 import { StatsData } from '../../hooks/useGame';
 import { Trophy, Frown, Home, RotateCcw, Share2, Award, Coins, Zap } from 'lucide-react-native';
@@ -23,6 +30,7 @@ export function MatchCompletedModal({
   onRequestRematch,
   onBackToMenu,
 }: MatchCompletedModalProps) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [sharing, setSharing] = useState(false);
 
   if (!gameState || !visible) return null;
@@ -37,12 +45,16 @@ export function MatchCompletedModal({
   };
 
   const isLocalWinner = localPlayerId ? isPlayerWinner(localPlayerId) : false;
-  const hasRequestedRematch = localPlayerId ? rematchStatus?.acceptedPlayers.includes(localPlayerId) : false;
+  const hasRequestedRematch = localPlayerId
+    ? rematchStatus?.acceptedPlayers.includes(localPlayerId)
+    : false;
 
   const handleShareResult = async () => {
     try {
       setSharing(true);
-      const eloDiff = statsData?.eloChange ? `${statsData.eloChange > 0 ? '+' : ''}${statsData.eloChange} ELO` : '';
+      const eloDiff = statsData?.eloChange
+        ? `${statsData.eloChange > 0 ? '+' : ''}${statsData.eloChange} ELO`
+        : '';
       const text = `¡Acabo de jugar una partida en KASINO 21! Resultado: ${
         isLocalWinner ? '¡VICTORIA!' : 'Partida competitiva'
       } ${eloDiff}. ¡Ven a retarme!`;
@@ -55,110 +67,233 @@ export function MatchCompletedModal({
     }
   };
 
+  const cardWidth = Math.min(Math.max(windowWidth - 32, 280), 360);
+
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent={true}>
-      <View className="flex-1 bg-black/85 items-center justify-center p-5">
-        <View className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm items-center shadow-2xl">
-          {/* Insignia Victoria / Derrota */}
+    <View
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          width: windowWidth,
+          height: windowHeight,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+          zIndex: 999999,
+          elevation: 999999,
+        },
+      ]}
+    >
+      <View
+        style={{
+          width: cardWidth,
+          backgroundColor: '#0f172a',
+          borderWidth: 1.5,
+          borderColor: '#1e293b',
+          borderRadius: 24,
+          padding: 24,
+          alignItems: 'center',
+        }}
+      >
+        {/* Insignia Victoria / Derrota */}
+        <View
+          style={{
+            padding: 16,
+            borderRadius: 999,
+            marginBottom: 12,
+            borderWidth: 1,
+            backgroundColor: isLocalWinner
+              ? 'rgba(245, 158, 11, 0.2)'
+              : 'rgba(239, 68, 68, 0.2)',
+            borderColor: isLocalWinner
+              ? 'rgba(245, 158, 11, 0.5)'
+              : 'rgba(239, 68, 68, 0.5)',
+          }}
+        >
+          {isLocalWinner ? <Trophy color="#fbbf24" size={44} /> : <Frown color="#ef4444" size={44} />}
+        </View>
+
+        <Text
+          style={{
+            color: '#ffffff',
+            fontWeight: '900',
+            fontSize: 22,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+            marginBottom: 4,
+          }}
+        >
+          {isLocalWinner ? '¡VICTORIA!' : 'DERROTA'}
+        </Text>
+
+        <Text
+          style={{
+            color: '#94a3b8',
+            fontSize: 12,
+            textAlign: 'center',
+            marginBottom: 18,
+          }}
+        >
+          {isLocalWinner
+            ? '¡Excelente estrategia! Has superado la partida K21.'
+            : 'Buen intento. Sigue practicando tus combinaciones.'}
+        </Text>
+
+        {/* Panel de Recompensas de la Partida */}
+        {statsData && (
           <View
-            className={`p-4 rounded-full mb-3 border ${
-              isLocalWinner ? 'bg-amber-500/20 border-amber-500/50' : 'bg-red-500/20 border-red-500/50'
-            }`}
+            style={{
+              width: '100%',
+              backgroundColor: '#020617',
+              padding: 14,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: '#1e293b',
+              marginBottom: 18,
+              gap: 8,
+            }}
           >
-            {isLocalWinner ? <Trophy color="#fbbf24" size={44} /> : <Frown color="#ef4444" size={44} />}
-          </View>
-
-          <Text className="text-white font-bold text-2xl uppercase tracking-wider mb-1">
-            {isLocalWinner ? '¡VICTORIA!' : 'DERROTA'}
-          </Text>
-
-          <Text className="text-slate-400 text-xs text-center mb-5">
-            {isLocalWinner
-              ? '¡Excelente estrategia! Has superado la partida K21.'
-              : 'Buen intento. Sigue practicando tus combinaciones.'}
-          </Text>
-
-          {/* Panel de Recompensas de la Partida */}
-          {statsData && (
-            <View className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 w-full mb-5">
-              <View className="flex-row justify-between py-1.5 border-b border-slate-900">
-                <View className="flex-row items-center">
-                  <Award color="#fbbf24" size={15} className="mr-2" />
-                  <Text className="text-slate-300 text-xs font-bold">Variación ELO:</Text>
-                </View>
-                <Text
-                  className={`font-mono text-xs font-bold ${
-                    statsData.eloChange >= 0 ? 'text-emerald-400' : 'text-red-400'
-                  }`}
-                >
-                  {statsData.eloChange >= 0 ? `+${statsData.eloChange}` : statsData.eloChange}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Award color="#fbbf24" size={15} />
+                <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '700' }}>
+                  Variación ELO:
                 </Text>
               </View>
-
-              <View className="flex-row justify-between py-1.5 border-b border-slate-900">
-                <View className="flex-row items-center">
-                  <Coins color="#fbbf24" size={15} className="mr-2" />
-                  <Text className="text-slate-300 text-xs font-bold">Monedas Ganadas:</Text>
-                </View>
-                <Text className="text-amber-400 font-mono text-xs font-bold">+{statsData.coinsEarned}</Text>
-              </View>
-
-              <View className="flex-row justify-between py-1.5">
-                <View className="flex-row items-center">
-                  <Zap color="#38bdf8" size={15} className="mr-2" />
-                  <Text className="text-slate-300 text-xs font-bold">Experiencia (XP):</Text>
-                </View>
-                <Text className="text-cyan-400 font-mono text-xs font-bold">+{statsData.xpGained} XP</Text>
-              </View>
+              <Text
+                style={{
+                  fontWeight: '800',
+                  fontSize: 12,
+                  color: statsData.eloChange >= 0 ? '#34d399' : '#f87171',
+                }}
+              >
+                {statsData.eloChange >= 0 ? `+${statsData.eloChange}` : statsData.eloChange}
+              </Text>
             </View>
-          )}
 
-          {/* Botón Revancha */}
-          <Pressable
-            disabled={hasRequestedRematch}
-            onPress={onRequestRematch}
-            className={`w-full p-3.5 rounded-xl flex-row items-center justify-center mb-2.5 ${
-              hasRequestedRematch
-                ? 'bg-slate-800 border border-slate-700'
-                : 'bg-cyan-500 active:bg-cyan-600'
-            }`}
-          >
-            <RotateCcw color={hasRequestedRematch ? '#94a3b8' : '#020617'} size={18} className="mr-2" />
-            <Text
-              className={`font-bold text-sm uppercase tracking-wider ${
-                hasRequestedRematch ? 'text-slate-400' : 'text-slate-950'
-              }`}
-            >
-              {hasRequestedRematch
-                ? `Esperando al rival (${rematchStatus?.acceptedPlayers.length || 1}/${rematchStatus?.maxPlayers || 2})...`
-                : 'Pedir Revancha'}
-            </Text>
-          </Pressable>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Coins color="#fbbf24" size={15} />
+                <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '700' }}>
+                  Monedas Ganadas:
+                </Text>
+              </View>
+              <Text style={{ color: '#fbbf24', fontWeight: '800', fontSize: 12 }}>
+                +{statsData.coinsEarned}
+              </Text>
+            </View>
 
-          {/* Botón Compartir */}
-          <Pressable
-            disabled={sharing}
-            onPress={handleShareResult}
-            className="w-full p-3 bg-slate-800 active:bg-slate-700 rounded-xl border border-slate-700 flex-row items-center justify-center mb-2.5"
-          >
-            <Share2 color="#fbbf24" size={18} className="mr-2" />
-            <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
-              Compartir Resultado
-            </Text>
-          </Pressable>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Zap color="#38bdf8" size={15} />
+                <Text style={{ color: '#cbd5e1', fontSize: 12, fontWeight: '700' }}>
+                  Experiencia (XP):
+                </Text>
+              </View>
+              <Text style={{ color: '#22d3ee', fontWeight: '800', fontSize: 12 }}>
+                +{statsData.xpGained} XP
+              </Text>
+            </View>
+          </View>
+        )}
 
-          {/* Botón Volver al Lobby */}
-          <Pressable
-            onPress={onBackToMenu}
-            className="w-full p-3 bg-slate-950 active:bg-slate-900 rounded-xl border border-slate-800 flex-row items-center justify-center"
+        {/* Botón Revancha */}
+        <Pressable
+          disabled={hasRequestedRematch}
+          onPress={onRequestRematch}
+          style={{
+            width: '100%',
+            paddingVertical: 13,
+            borderRadius: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            marginBottom: 10,
+            backgroundColor: hasRequestedRematch ? '#1e293b' : '#06b6d4',
+            borderWidth: hasRequestedRematch ? 1 : 0,
+            borderColor: '#334155',
+          }}
+        >
+          <RotateCcw color={hasRequestedRematch ? '#94a3b8' : '#020617'} size={18} />
+          <Text
+            style={{
+              fontWeight: '800',
+              fontSize: 13,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+              color: hasRequestedRematch ? '#94a3b8' : '#020617',
+            }}
           >
-            <Home color="#94a3b8" size={18} className="mr-2" />
-            <Text className="text-slate-300 font-bold text-xs uppercase tracking-wider">
-              Volver al Lobby
-            </Text>
-          </Pressable>
-        </View>
+            {hasRequestedRematch
+              ? `Esperando al rival (${rematchStatus?.acceptedPlayers.length || 1}/${rematchStatus?.maxPlayers || 2})...`
+              : 'Pedir Revancha'}
+          </Text>
+        </Pressable>
+
+        {/* Botón Compartir */}
+        <Pressable
+          disabled={sharing}
+          onPress={handleShareResult}
+          style={{
+            width: '100%',
+            paddingVertical: 12,
+            backgroundColor: '#1e293b',
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: '#334155',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            marginBottom: 10,
+          }}
+        >
+          <Share2 color="#fbbf24" size={18} />
+          <Text
+            style={{
+              color: '#fbbf24',
+              fontWeight: '800',
+              fontSize: 12,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+          >
+            Compartir Resultado
+          </Text>
+        </Pressable>
+
+        {/* Botón Volver al Lobby */}
+        <Pressable
+          onPress={onBackToMenu}
+          style={{
+            width: '100%',
+            paddingVertical: 12,
+            backgroundColor: '#020617',
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: '#1e293b',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <Home color="#94a3b8" size={18} />
+          <Text
+            style={{
+              color: '#cbd5e1',
+              fontWeight: '800',
+              fontSize: 12,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+          >
+            Volver al Lobby
+          </Text>
+        </Pressable>
       </View>
-    </Modal>
+    </View>
   );
 }

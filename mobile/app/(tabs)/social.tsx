@@ -14,6 +14,8 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { socketService } from '../../services/socket';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../hooks/useNotifications';
+import { appEvents } from '../../utils/events';
 import { triggerHaptic } from '../../utils/haptics';
 import { PrivateChatModal, ChatFriend } from '../../components/chat/PrivateChatModal';
 import {
@@ -27,6 +29,7 @@ import {
   MessageSquare,
   Swords,
   ChevronRight,
+  Bell,
 } from 'lucide-react-native';
 
 const ONLINE_WINDOW_MS = 45000;
@@ -80,6 +83,8 @@ function formatRelativeTime(isoString?: string | null): string {
 export default function SocialScreen() {
   const router = useRouter();
   const { user, profile, presenceByUserId } = useAuth();
+  const { unreadCount, totalPending, setShowNotificationsModal } = useNotifications();
+  const totalBadgeCount = unreadCount + totalPending;
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<IncomingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,29 +251,93 @@ export default function SocialScreen() {
   useEffect(() => {
     fetchUnreadAndLastMessages();
 
-    // Suscripción a nuevos mensajes para actualizar insignias
-    if (user?.id) {
-      const channel = supabase
-        .channel(`social_unread_${user.id}_${Date.now()}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'messages',
-            filter: `receiver_id=eq.${user.id}`,
-          },
-          () => {
-            fetchUnreadAndLastMessages();
-          }
-        )
-        .subscribe();
+    if (!user?.id) return;
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user?.id, fetchUnreadAndLastMessages]);
+    // 1. Suscripción en tiempo real a mensajes privados
+    const msgChannel = supabase
+      .channel(`social_unread_${user.id}_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          fetchUnreadAndLastMessages();
+        }
+      )
+      .subscribe();
+
+    // 2. Suscripción en tiempo real a friend_requests (idéntico a SocialPanel.tsx en Web)
+    const frChannel = supabase
+      .channel(`social_fr_${user.id}_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friend_requests',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          fetchRequests();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'friend_requests',
+        },
+        (payload) => {
+          if (
+            payload.new.sender_id === user.id ||
+            payload.new.receiver_id === user.id
+          ) {
+            fetchFriends();
+            fetchRequests();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'friend_requests',
+        },
+        () => {
+          fetchFriends();
+          fetchRequests();
+        }
+      )
+      .subscribe();
+
+    // 3. Sincronización periódica ligera de respaldo cada 6s
+    const syncTimer = setInterval(() => {
+      fetchUnreadAndLastMessages();
+      fetchRequests();
+    }, 6000);
+
+    // 4. Escuchar evento de apertura de pestaña desde notificaciones / toasts
+    const handleOpenSocialTab = (payload?: { tab?: 'friends' | 'requests' | 'search' | 'chat' }) => {
+      const targetTab = payload?.tab || 'friends';
+      setActiveTab(targetTab);
+      fetchFriends();
+      fetchRequests();
+    };
+    appEvents.on('open_social_tab', handleOpenSocialTab);
+
+    return () => {
+      clearInterval(syncTimer);
+      appEvents.off('open_social_tab', handleOpenSocialTab);
+      supabase.removeChannel(msgChannel);
+      supabase.removeChannel(frChannel);
+    };
+  }, [user?.id, fetchUnreadAndLastMessages, fetchFriends, fetchRequests]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -519,8 +588,19 @@ export default function SocialScreen() {
       id: f.id,
       username: f.username,
       elo: f.elo,
-      avatar_url: f.avatar_url,
+      avatar_url: f.equipped_avatar || f.avatar_url,
       isOnline: isFriendOnline(f),
+    });
+  };
+
+  const openGlobalChat = () => {
+    triggerHaptic('light');
+    setActiveChatFriend({
+      id: 'GLOBAL',
+      username: 'Chat Global K21',
+      elo: 0,
+      avatar_url: null,
+      isOnline: true,
     });
   };
 
@@ -532,8 +612,24 @@ export default function SocialScreen() {
           <Text className="text-amber-400 font-bold text-2xl">SOCIAL</Text>
           <Text className="text-slate-400 text-xs">Juega con amigos y chatea en privado</Text>
         </View>
-        <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30">
-          <Users color="#fbbf24" size={24} />
+        <View className="flex-row items-center gap-2.5">
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light');
+              setShowNotificationsModal(true);
+            }}
+            className="bg-slate-800/90 p-3 rounded-2xl border border-slate-700 items-center justify-center relative active:bg-slate-800"
+          >
+            <Bell color={totalBadgeCount > 0 ? '#fbbf24' : '#94a3b8'} size={22} />
+            {totalBadgeCount > 0 && (
+              <View className="absolute -top-1.5 -right-1.5 bg-red-600 rounded-full min-w-[18px] h-4.5 px-1 items-center justify-center border border-slate-950">
+                <Text className="text-white text-[9px] font-black">{totalBadgeCount}</Text>
+              </View>
+            )}
+          </Pressable>
+          <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30">
+            <Users color="#fbbf24" size={24} />
+          </View>
         </View>
       </View>
 
@@ -725,18 +821,46 @@ export default function SocialScreen() {
           }}
         />
       ) : activeTab === 'chat' ? (
-        /* Pestaña de Chats Privados */
+        /* Pestaña de Chat Global + Chats Privados */
         <FlatList
           data={friends}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fbbf24" />}
           contentContainerStyle={{ paddingBottom: 100 }}
+          ListHeaderComponent={() => (
+            <Pressable
+              onPress={openGlobalChat}
+              className="bg-amber-500/10 p-4 rounded-2xl mb-3 border border-amber-500/40 flex-row items-center justify-between active:bg-amber-500/20"
+            >
+              <View className="flex-row items-center flex-1 mr-2">
+                <View className="relative mr-3">
+                  <View className="w-11 h-11 rounded-full bg-amber-500/20 items-center justify-center border border-amber-400/50">
+                    <Text className="text-base">🌐</Text>
+                  </View>
+                  <View className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 bg-emerald-500" />
+                </View>
+
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-1.5 mb-0.5">
+                    <Text className="text-amber-300 font-bold text-sm">Chat Global K21</Text>
+                    <View className="bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                      <Text className="text-emerald-400 text-[8px] font-black uppercase">En vivo</Text>
+                    </View>
+                  </View>
+                  <Text className="text-slate-300 text-xs" numberOfLines={1}>
+                    Sala pública de la comunidad • +2 XP por mensaje
+                  </Text>
+                </View>
+              </View>
+              <ChevronRight color="#fbbf24" size={18} />
+            </Pressable>
+          )}
           ListEmptyComponent={() => (
-            <View className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 items-center mt-6">
+            <View className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 items-center mt-2">
               <MessageSquare color="#64748b" size={40} className="mb-2" />
-              <Text className="text-white font-bold text-base mb-1">Sin conversaciones activas</Text>
+              <Text className="text-white font-bold text-base mb-1">Sin chats privados aún</Text>
               <Text className="text-slate-400 text-xs text-center">
-                Agrega amigos para comenzar a enviar mensajes privados.
+                Puedes conversar en el Chat Global arriba o agregar amigos para chatear en privado.
               </Text>
             </View>
           )}
@@ -744,6 +868,7 @@ export default function SocialScreen() {
             const isOnline = isFriendOnline(item);
             const unread = friendUnreadMap[item.id] || 0;
             const lastMsg = lastMessageMap[item.id];
+            const avatarUri = item.equipped_avatar || item.avatar_url;
 
             return (
               <Pressable
@@ -752,8 +877,8 @@ export default function SocialScreen() {
               >
                 <View className="flex-row items-center flex-1 mr-2">
                   <View className="relative mr-3">
-                    {item.avatar_url ? (
-                      <Image source={{ uri: item.avatar_url }} className="w-11 h-11 rounded-full" />
+                    {avatarUri ? (
+                      <Image source={{ uri: avatarUri }} className="w-11 h-11 rounded-full" />
                     ) : (
                       <View className="w-11 h-11 rounded-full bg-slate-800 items-center justify-center border border-slate-700">
                         <Text className="text-white">👤</Text>

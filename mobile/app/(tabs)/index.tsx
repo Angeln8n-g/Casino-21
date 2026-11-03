@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useAudio } from '../../hooks/useAudio';
 import { useGame } from '../../hooks/useGame';
+import { useNotifications } from '../../hooks/useNotifications';
 import { socketService } from '../../services/socket';
 import { CreateRoomModal } from '../../components/CreateRoomModal';
 import { WaitingRoomModal } from '../../components/WaitingRoomModal';
@@ -11,13 +12,15 @@ import { DailyQuestsView } from '../../components/lobby/DailyQuestsView';
 import { RecentAchievementsView } from '../../components/lobby/RecentAchievementsView';
 import { TournamentLobbyBannerView } from '../../components/lobby/TournamentLobbyBannerView';
 import { TopRankingsView } from '../../components/lobby/TopRankingsView';
-import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle, Coins } from 'lucide-react-native';
+import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle, Coins, Bell } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
   const { playSfx } = useAudio();
   const { gameState } = useGame();
+  const { unreadCount, totalPending, setShowNotificationsModal } = useNotifications();
+  const totalBadgeCount = unreadCount + totalPending;
 
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'expert'>('expert');
   const [roomIdInput, setRoomIdInput] = useState('');
@@ -290,9 +293,28 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30 items-center justify-center">
-          <Trophy color="#fbbf24" size={24} />
-          <Text className="text-amber-400 font-bold text-xs mt-1">{profile?.elo || 1000} ELO</Text>
+        <View className="flex-row items-center gap-2.5">
+          {/* Botón de Campana de Notificaciones */}
+          <Pressable
+            onPress={() => {
+              playSfx('cardPlay');
+              setShowNotificationsModal(true);
+            }}
+            className="bg-slate-800/90 p-3.5 rounded-2xl border border-slate-700 items-center justify-center relative active:bg-slate-800"
+          >
+            <Bell color={totalBadgeCount > 0 ? '#fbbf24' : '#94a3b8'} size={22} />
+            {totalBadgeCount > 0 && (
+              <View className="absolute -top-1.5 -right-1.5 bg-red-600 rounded-full min-w-[20px] h-5 px-1 items-center justify-center border-2 border-slate-950">
+                <Text className="text-white text-[10px] font-black">{totalBadgeCount}</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Insignia de ELO */}
+          <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30 items-center justify-center">
+            <Trophy color="#fbbf24" size={24} />
+            <Text className="text-amber-400 font-bold text-xs mt-1">{profile?.elo || 1000} ELO</Text>
+          </View>
         </View>
       </View>
 

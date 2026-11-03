@@ -9,27 +9,23 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Platform,
+  StatusBar as RNStatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useAudio } from '../../hooks/useAudio';
-import { triggerHaptic } from '../../utils/haptics';
-import { TacticalCard3D } from '../../components/card/TacticalCard3D';
+import { CardView } from '../../components/CardView';
+import { extractGradientColors } from '../../components/card/TacticalCard3D';
 import { getTheme, ALL_THEME_FONTS, ThemeFontKey } from '../../themes/themeRegistry';
 import { getStoredFontPreference, setStoredFontPreference } from '../../hooks/useGameTheme';
+import { createCard } from 'domain/card';
+import { triggerHaptic } from '../../utils/haptics';
 import { appEvents } from '../../utils/events';
-import {
-  ShoppingBag,
-  ShoppingCart,
-  Search,
-  Check,
-  Sparkles,
-  Trash2,
-  X,
-  Layers,
-  Type,
-} from 'lucide-react-native';
 
 interface StoreItem {
   id: string;
@@ -40,6 +36,8 @@ interface StoreItem {
   image_url: string | null;
   theme_key?: string | null;
 }
+
+const PREVIEW_CARD = createCard('hearts', 'A');
 
 export function resolveImageUrl(url: string | null): string | null {
   if (!url) return null;
@@ -54,58 +52,132 @@ export function resolveImageUrl(url: string | null): string | null {
   return `${baseUrl}/assets/store/${url}`;
 }
 
-const getRarity = (price: number) => {
-  if (price >= 2000)
-    return {
-      label: 'LEGENDARIO',
-      bg: 'bg-amber-500/20',
-      text: 'text-amber-400',
-      border: 'border-amber-500/40',
-    };
-  if (price >= 800)
-    return {
-      label: 'ÉPICO',
-      bg: 'bg-purple-500/20',
-      text: 'text-purple-400',
-      border: 'border-purple-500/40',
-    };
-  return {
-    label: 'RARO',
-    bg: 'bg-cyan-500/20',
-    text: 'text-cyan-400',
-    border: 'border-cyan-500/40',
-  };
-};
+function ThemeCardPreview({
+  themeKey,
+  fontOverride,
+}: {
+  themeKey: string;
+  fontOverride?: ThemeFontKey | null;
+}) {
+  const theme = getTheme(themeKey);
+  const cardTheme = fontOverride ? { ...theme.cardTheme, fontKey: fontOverride } : theme.cardTheme;
+  const boardColors = extractGradientColors(theme.boardTheme.background, [
+    '#0a3258',
+    '#07263f',
+    '#041a2e',
+  ]);
 
-export default function ShopScreen() {
+  return (
+    <View className="relative items-center justify-center w-full h-full overflow-hidden rounded-xl">
+      <LinearGradient
+        colors={boardColors}
+        start={{ x: 0.1, y: 0.1 }}
+        end={{ x: 0.9, y: 0.9 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 6,
+          left: 6,
+          right: 6,
+          bottom: 6,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: theme.boardTheme.innerRingColor || 'rgba(253, 224, 71, 0.35)',
+        }}
+      />
+      <View className="z-10">
+        <CardView
+          card={PREVIEW_CARD}
+          theme={cardTheme}
+          fontKey={cardTheme.fontKey}
+          size="sm"
+        />
+      </View>
+    </View>
+  );
+}
+
+const SkeletonStoreItem = () => (
+  <View className="flex-1 p-4 rounded-2xl border border-white/5 bg-[#18181B]/60 min-h-[240px] justify-between mb-3">
+    <View>
+      <View className="flex-row justify-between items-start mb-3">
+        <View className="h-4 w-14 bg-white/10 rounded" />
+        <View className="h-4 w-16 bg-white/10 rounded" />
+      </View>
+      <View className="h-28 w-full bg-white/5 rounded-xl mb-3" />
+      <View className="h-4 w-3/4 bg-white/10 rounded mb-1.5" />
+      <View className="h-3 w-1/2 bg-white/5 rounded mb-3" />
+    </View>
+    <View className="h-10 w-full bg-white/10 rounded-xl" />
+  </View>
+);
+
+export default function Store() {
+  const insets = useSafeAreaInsets();
   const { profile, user, refetchProfile } = useAuth();
   const { playSfx } = useAudio();
 
   const [items, setItems] = useState<StoreItem[]>([]);
   const [inventory, setInventory] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
-  // Navegación: Catálogo vs Mi Colección
+  // Navigation & Cart State (idéntico a Store.tsx Web)
   const [viewMode, setViewMode] = useState<'store' | 'gallery'>('store');
   const [activeCategory, setActiveCategory] = useState<
     'all' | 'avatar' | 'title' | 'board' | 'theme' | 'emotic'
   >('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Carrito de compras
   const [cart, setCart] = useState<StoreItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  // Equipamiento & Preferencias de Fuente
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Calculate Rarity dynamically based on price
+  const getRarity = (price: number) => {
+    if (price >= 2000)
+      return {
+        label: 'LEGENDARIO',
+        color: 'text-[#FACC15] border-[#FACC15]/50 bg-black/60',
+      };
+    if (price >= 800)
+      return {
+        label: 'EPICO',
+        color: 'text-[#C084FC] border-[#C084FC]/50 bg-black/60',
+      };
+    return {
+      label: 'RARO',
+      color: 'text-[#60A5FA] border-[#60A5FA]/50 bg-black/60',
+    };
+  };
+
+  // Purchase & Equip Flow
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [selectedEmoticItem, setSelectedEmoticItem] = useState<StoreItem | null>(null);
+  const [successItems, setSuccessItems] = useState<string[]>([]);
+
+  // Wallet animation state
+  const [prevCoins, setPrevCoins] = useState(profile?.coins || 0);
+  const [coinAnim, setCoinAnim] = useState(false);
+
+  // Ad Views Limit state
+  const [adViewsCount, setAdViewsCount] = useState<number>(0);
+  const [showLimitReachedAnimation, setShowLimitReachedAnimation] = useState<boolean>(false);
+  const [isAdChecking, setIsAdChecking] = useState<boolean>(false);
+
+  // Player Font Preference
   const [preferredFont, setPreferredFont] = useState<ThemeFontKey | null>(null);
 
-  // Cargar preferencia de fuente guardada
   useEffect(() => {
     getStoredFontPreference().then((f) => setPreferredFont(f));
-
     const handler = () => {
       getStoredFontPreference().then((f) => setPreferredFont(f));
     };
@@ -115,49 +187,160 @@ export default function ShopScreen() {
     };
   }, []);
 
-  // ── Fetch de ítems e inventario ────────────────────────────
-  const fetchStoreData = async () => {
+  const loadAdCountFromLocalStorage = async () => {
+    if (!user) return;
     try {
-      setLoading(true);
-
-      const { data: storeData, error: storeError } = await supabase
-        .from('store_items')
-        .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: false });
-
-      if (storeError) {
-        console.error('Error fetching store items:', storeError);
-      } else if (storeData) {
-        setItems(storeData as StoreItem[]);
-        // Cumplimiento Regla 5.3: Console log demostrando datos reales de API
-        console.log('Shop items from API:', storeData);
-      }
-
-      if (user?.id) {
-        const { data: invData, error: invError } = await supabase
-          .from('player_inventory')
-          .select('item_id')
-          .eq('player_id', user.id);
-
-        if (!invError && invData) {
-          setInventory(invData.map((inv: any) => inv.item_id));
+      const cached = await AsyncStorage.getItem(`ad_views_daily_${user.id}`);
+      if (cached) {
+        const { date, count } = JSON.parse(cached);
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (date === todayStr) {
+          setAdViewsCount(count);
+          return;
         }
       }
-    } catch (err) {
-      console.error('Failed to load shop data:', err);
+    } catch (e) {
+      console.error('Error reading storage for ads:', e);
+    }
+    setAdViewsCount(0);
+  };
+
+  const fetchAdCount = async () => {
+    if (!user) return;
+    setIsAdChecking(true);
+    try {
+      const { data, error } = await supabase.rpc('get_daily_rewarded_ad_count');
+      if (!error && typeof data === 'number') {
+        setAdViewsCount(data);
+        const todayStr = new Date().toISOString().split('T')[0];
+        await AsyncStorage.setItem(
+          `ad_views_daily_${user.id}`,
+          JSON.stringify({ date: todayStr, count: data })
+        );
+      } else {
+        await loadAdCountFromLocalStorage();
+      }
+    } catch (e) {
+      console.error('Error fetching ad count:', e);
+      await loadAdCountFromLocalStorage();
     } finally {
-      setLoading(false);
+      setIsAdChecking(false);
     }
   };
 
   useEffect(() => {
     fetchStoreData();
+    fetchAdCount();
   }, [user]);
 
-  // ── Carrito de compras ─────────────────────────────────────
-  const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + i.price, 0), [cart]);
-  const isInCart = (id: string) => cart.some((i) => i.id === id);
+  useEffect(() => {
+    if (profile?.coins !== prevCoins) {
+      setCoinAnim(true);
+      const timer = setTimeout(() => setCoinAnim(false), 500);
+      setPrevCoins(profile?.coins || 0);
+      return () => clearTimeout(timer);
+    }
+  }, [profile?.coins, prevCoins]);
+
+  const fetchStoreData = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data: storeData, error: storeError } = await supabase
+        .from('store_items')
+        .select('*')
+        .eq('is_active', true);
+
+      if (storeError) throw storeError;
+      setItems((storeData as StoreItem[]) || []);
+      console.log('Shop items from API:', storeData || []);
+
+      const { data: invData, error: invError } = await supabase
+        .from('player_inventory')
+        .select('item_id')
+        .eq('player_id', user.id);
+
+      if (invError) throw invError;
+      setInventory((invData || []).map((i: any) => i.item_id));
+    } catch (err) {
+      console.error('Error fetching store:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRewardedAd = async () => {
+    if (adViewsCount >= 3) {
+      setShowLimitReachedAnimation(true);
+      playSfx('victory');
+      return;
+    }
+    if (!user) return;
+    setIsAdChecking(true);
+    try {
+      const { data, error } = await supabase.rpc('claim_rewarded_ad_coins', {
+        p_reward_amount: 50,
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const nextCount = adViewsCount + 1;
+        setAdViewsCount(nextCount);
+        const todayStr = new Date().toISOString().split('T')[0];
+        await AsyncStorage.setItem(
+          `ad_views_daily_${user.id}`,
+          JSON.stringify({ date: todayStr, count: nextCount })
+        );
+
+        appEvents.emit('coins_updated');
+        if (refetchProfile) await refetchProfile();
+        playSfx('victory');
+        triggerHaptic('success');
+
+        if (nextCount >= 3) {
+          setShowLimitReachedAnimation(true);
+        } else {
+          Alert.alert('¡Recompensa obtenida!', 'Has recibido +50 🪙 por ver el anuncio.');
+        }
+      } else {
+        if (data?.error === 'DAILY_LIMIT_REACHED') {
+          setAdViewsCount(3);
+          const todayStr = new Date().toISOString().split('T')[0];
+          await AsyncStorage.setItem(
+            `ad_views_daily_${user.id}`,
+            JSON.stringify({ date: todayStr, count: 3 })
+          );
+          setShowLimitReachedAnimation(true);
+          playSfx('victory');
+          return;
+        }
+        const errMsg =
+          data?.error === 'ON_COOLDOWN'
+            ? 'Debes esperar un momento antes de ver otro anuncio y reclamar más monedas.'
+            : data?.error === 'DAILY_LIMIT_REACHED'
+            ? 'Ya has visto el límite máximo de 3 anuncios por hoy.'
+            : `Error al reclamar monedas: ${data?.error || 'Desconocido'}`;
+        Alert.alert('Aviso', errMsg);
+        playSfx('error');
+        triggerHaptic('error');
+      }
+    } catch (e) {
+      console.error('Error rewarding player:', e);
+      Alert.alert('Error', 'Error de conexión al reclamar tu recompensa.');
+      playSfx('error');
+      triggerHaptic('error');
+    } finally {
+      setIsAdChecking(false);
+    }
+  };
+
+  // Cart Functions
+  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+  const isInCart = (id: string) => cart.some((item) => item.id === id);
 
   const toggleCartItem = (item: StoreItem) => {
     if (isInCart(item.id)) {
@@ -169,13 +352,13 @@ export default function ShopScreen() {
         triggerHaptic('error');
         Alert.alert(
           'Monedas insuficientes',
-          `Te faltan ${(cartTotal + item.price - (profile?.coins || 0)).toLocaleString()} 🪙 para añadir este artículo al carrito.`
+          `Te faltan ${(cartTotal + item.price - (profile?.coins || 0)).toLocaleString()} 🪙`
         );
         return;
       }
       setCart((prev) => [...prev, item]);
       triggerHaptic('success');
-      playSfx('chipsClink', { volumeMultiplier: 0.6 });
+      playSfx('chipsClink', { volumeMultiplier: 0.5 });
     }
   };
 
@@ -184,11 +367,10 @@ export default function ShopScreen() {
     if ((profile.coins || 0) < cartTotal) {
       playSfx('error');
       triggerHaptic('error');
-      Alert.alert('Monedas insuficientes', 'No tienes saldo suficiente para pagar el total del carrito.');
       return;
     }
 
-    setIsCheckingOut(true);
+    setProcessingId('checkout');
     const newInventory = [...inventory];
     const successfulPurchases: string[] = [];
 
@@ -203,6 +385,7 @@ export default function ShopScreen() {
       setInventory(newInventory);
       setCart([]);
       setIsCartOpen(false);
+      setSuccessItems(successfulPurchases);
 
       playSfx('victory', { volumeMultiplier: 0.8 });
       triggerHaptic('success');
@@ -210,24 +393,47 @@ export default function ShopScreen() {
       appEvents.emit('profile_updated');
       if (refetchProfile) await refetchProfile();
 
-      Alert.alert(
-        '¡Compras completadas!',
-        `Has adquirido ${successfulPurchases.length} artículo(s). Ya están disponibles en tu Colección.`
-      );
+      setTimeout(() => setSuccessItems([]), 3000);
       setViewMode('gallery');
     } catch (err: any) {
       console.error('Error during checkout:', err);
       playSfx('error');
       triggerHaptic('error');
-      Alert.alert('Error en compra', err.message || 'Ocurrió un error al procesar el carrito.');
+      Alert.alert('Error', err.message || 'Ocurrió un error al procesar el carrito.');
+
       setInventory(newInventory);
       setCart((prev) => prev.filter((item) => !successfulPurchases.includes(item.id)));
     } finally {
-      setIsCheckingOut(false);
+      setProcessingId(null);
     }
   };
 
-  // ── Equipamiento de ítems ──────────────────────────────────
+  const handleEquip = async (item: StoreItem, slot?: number) => {
+    setProcessingId(item.id);
+    try {
+      const { error } = await supabase.rpc('equip_store_item', {
+        p_item_id: item.id,
+        p_slot: slot || 1,
+      });
+      if (error) throw error;
+
+      playSfx('cardPlay', { volumeMultiplier: 0.8, playbackRate: 1.08 });
+      triggerHaptic('success');
+      appEvents.emit('profile_updated');
+      if (refetchProfile) await refetchProfile();
+
+      setSuccessItems([item.id]);
+      setTimeout(() => setSuccessItems([]), 1500);
+    } catch (err: any) {
+      console.error('Error equipping item:', err);
+      playSfx('error');
+      triggerHaptic('error');
+      Alert.alert('Error', err.message || 'Error al equipar.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const isItemEquipped = (item: StoreItem): boolean => {
     switch (item.item_type) {
       case 'avatar':
@@ -239,74 +445,39 @@ export default function ShopScreen() {
       case 'theme':
         return profile?.equipped_theme === item.theme_key;
       case 'emotic':
-        return (profile?.equipped_emotics || []).includes(item.image_url || '');
+        return Boolean(item.image_url && profile?.equipped_emotics?.includes(item.image_url));
       default:
         return false;
     }
   };
 
-  const handleEquip = async (item: StoreItem, slot?: number) => {
-    setProcessingId(item.id);
-    try {
-      const { error } = await supabase.rpc('equip_store_item', {
-        p_item_id: item.id,
-        p_slot: slot || 1,
-      });
-
-      if (error) throw error;
-
-      playSfx('cardPlay', { volumeMultiplier: 0.8 });
-      triggerHaptic('success');
-      appEvents.emit('profile_updated');
-      if (refetchProfile) await refetchProfile();
-
-      if (item.item_type === 'emotic') {
-        setSelectedEmoticItem(null);
-      }
-      Alert.alert('¡Equipado!', `${item.name} ahora está activo.`);
-    } catch (err: any) {
-      console.error('Error equipping item:', err);
-      playSfx('error');
-      triggerHaptic('error');
-      Alert.alert('Error al equipar', err.message || 'No se pudo equipar el cosmético.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleFontChange = async (fontKey: ThemeFontKey | null) => {
-    triggerHaptic('light');
-    await setStoredFontPreference(fontKey);
-    setPreferredFont(fontKey);
-  };
-
-  const getItemEmoji = (type: string) => {
+  const getCategoryLabel = (type: string) => {
     switch (type) {
       case 'avatar':
-        return '👤';
+        return '👤 Avatar';
       case 'title':
-        return '🏷️';
+        return '🏷️ Título';
       case 'board':
-        return '🎲';
+        return '🎲 Tapete';
       case 'theme':
-        return '🎨';
+        return '🎨 Tema';
       case 'emotic':
-        return '😊';
+        return '😊 Emoticón';
       default:
-        return '🎁';
+        return 'Otro';
     }
   };
 
-  // ── Filtrado y búsqueda ────────────────────────────────────
+  // Apply filters and sorting based on view mode (idéntico a Store.tsx Web)
   const displayItems = useMemo(() => {
     let result = items.filter((item) => {
       const isOwned = inventory.includes(item.id);
       return viewMode === 'gallery' ? isOwned : !isOwned;
     });
 
-    if (activeCategory !== 'all') {
-      result = result.filter((item) => item.item_type === activeCategory);
-    }
+    result = result.filter(
+      (item) => activeCategory === 'all' || item.item_type === activeCategory
+    );
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -320,494 +491,556 @@ export default function ShopScreen() {
     return result.sort((a, b) => b.price - a.price);
   }, [items, activeCategory, searchQuery, viewMode, inventory]);
 
-  return (
-    <View className="flex-1 bg-slate-950 px-4 pt-12">
-      {/* ── Header con Saldo y Carrito ──────────────────────── */}
-      <View className="flex-row justify-between items-center mb-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
-        <View>
-          <Text className="text-amber-400 font-bold text-2xl tracking-wide">
-            {viewMode === 'store' ? 'TIENDA K21' : 'MI COLECCIÓN'}
-          </Text>
-          <Text className="text-slate-400 text-xs">
-            {viewMode === 'store' ? 'Cosméticos exclusivos y temas' : 'Tus artículos adquiridos'}
-          </Text>
+  const androidStatusBar = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 32) : 0;
+  const safeTop = Math.max(insets.top, androidStatusBar, 36) + 8;
+
+  const renderHeader = () => (
+    <View className="pt-2 pb-4">
+      {/* Top Bar: View Toggle and Search */}
+      <View className="flex-col gap-3 mb-4">
+        {/* View Mode Toggle */}
+        <View className="flex-row p-1 bg-[#1A1815] rounded-xl border border-[#2A2722]">
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light');
+              setViewMode('store');
+            }}
+            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
+              viewMode === 'store' ? 'bg-[#2A2722]' : ''
+            }`}
+          >
+            <Text
+              className={`font-bold text-sm ${
+                viewMode === 'store' ? 'text-white' : 'text-[#A1A1AA]'
+              }`}
+            >
+              Catalog
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light');
+              setViewMode('gallery');
+            }}
+            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
+              viewMode === 'gallery' ? 'bg-[#2A2722]' : ''
+            }`}
+          >
+            <Text
+              className={`font-bold text-sm ${
+                viewMode === 'gallery' ? 'text-white' : 'text-[#A1A1AA]'
+              }`}
+            >
+              Collection ({inventory.length})
+            </Text>
+          </Pressable>
         </View>
 
-        <View className="flex-row items-center gap-2">
-          {/* Carrito en modo catálogo */}
-          {viewMode === 'store' && (
-            <Pressable
-              onPress={() => {
-                triggerHaptic('light');
-                setIsCartOpen(true);
-              }}
-              className="relative p-2.5 rounded-full bg-slate-800 border border-slate-700 active:bg-slate-700"
-            >
-              <ShoppingCart color="#fbbf24" size={20} />
-              {cart.length > 0 && (
-                <View className="absolute -top-1 -right-1 bg-red-600 rounded-full w-5 h-5 items-center justify-center border border-slate-900">
-                  <Text className="text-white text-[10px] font-black">{cart.length}</Text>
-                </View>
-              )}
+        {/* Search */}
+        <View className="relative flex-row items-center bg-[#1A1815] border border-[#2A2722] rounded-xl px-4 py-3">
+          <Text className="mr-2.5 opacity-60 text-sm">🔍</Text>
+          <TextInput
+            placeholder={
+              viewMode === 'store'
+                ? 'Buscar cosméticos exclusivos...'
+                : 'Buscar en tu colección...'
+            }
+            placeholderTextColor="#71717A"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            className="flex-1 text-white text-sm p-0"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery('')} className="pl-2">
+              <Text className="text-[#A1A1AA] font-bold text-xs">✕</Text>
             </Pressable>
           )}
-
-          {/* Saldo de monedas */}
-          <View className="flex-row items-center bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30">
-            <Text className="text-amber-400 font-bold text-sm mr-1">🪙</Text>
-            <Text className="text-amber-400 font-bold text-sm">
-              {(profile?.coins ?? 0).toLocaleString()}
-            </Text>
-          </View>
         </View>
       </View>
 
-      {/* ── Selector Catálogo / Colección ───────────────────── */}
-      <View className="flex-row bg-slate-900 p-1 rounded-2xl border border-slate-800 mb-3">
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            setViewMode('store');
-          }}
-          className={`flex-1 py-2 rounded-xl items-center flex-row justify-center gap-1.5 ${
-            viewMode === 'store' ? 'bg-amber-500' : ''
-          }`}
-        >
-          <ShoppingBag color={viewMode === 'store' ? '#020617' : '#94a3b8'} size={15} />
-          <Text
-            className={`font-bold text-xs uppercase tracking-wider ${
-              viewMode === 'store' ? 'text-slate-950 font-black' : 'text-slate-400'
-            }`}
-          >
-            Catálogo
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            setViewMode('gallery');
-          }}
-          className={`flex-1 py-2 rounded-xl items-center flex-row justify-center gap-1.5 ${
-            viewMode === 'gallery' ? 'bg-amber-500' : ''
-          }`}
-        >
-          <Layers color={viewMode === 'gallery' ? '#020617' : '#94a3b8'} size={15} />
-          <Text
-            className={`font-bold text-xs uppercase tracking-wider ${
-              viewMode === 'gallery' ? 'text-slate-950 font-black' : 'text-slate-400'
-            }`}
-          >
-            Colección ({inventory.length})
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* ── Barra de Búsqueda ───────────────────────────────── */}
-      <View className="flex-row items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 mb-3">
-        <Search color="#94a3b8" size={16} className="mr-2" />
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder={viewMode === 'store' ? 'Buscar artículos en catálogo...' : 'Buscar en mi colección...'}
-          placeholderTextColor="#64748b"
-          className="flex-1 text-white text-xs"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {searchQuery.length > 0 && (
-          <Pressable onPress={() => setSearchQuery('')}>
-            <X color="#94a3b8" size={16} />
-          </Pressable>
-        )}
-      </View>
-
-      {/* ── Selector de Categorías ─────────────────────────── */}
-      <View className="mb-3">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-          {(
-            [
-              { key: 'all', label: 'Todos' },
-              { key: 'avatar', label: '👤 Avatares' },
-              { key: 'title', label: '🏷️ Títulos' },
-              { key: 'theme', label: '🎨 Temas' },
-              { key: 'board', label: '🎲 Tapetes' },
-              { key: 'emotic', label: '😊 Emoticones' },
-            ] as const
-          ).map((cat) => {
-            const isActive = activeCategory === cat.key;
-            return (
-              <Pressable
-                key={cat.key}
-                onPress={() => {
-                  triggerHaptic('light');
-                  setActiveCategory(cat.key);
-                }}
-                className={`px-3 py-1.5 rounded-xl mr-2 border ${
-                  isActive
-                    ? 'bg-amber-500 border-amber-400'
-                    : 'bg-slate-900 border-slate-800'
-                }`}
-              >
-                <Text
-                  className={`font-bold text-xs ${
-                    isActive ? 'text-slate-950' : 'text-slate-400'
-                  }`}
-                >
-                  {cat.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* ── Toolbar de Tipografía de Cartas (Activo con Tema) ── */}
-      {activeCategory === 'theme' && (
-        <View className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl mb-3">
-          <View className="flex-row items-center gap-1.5 mb-1.5">
-            <Type color="#fbbf24" size={15} />
-            <Text className="text-amber-400 font-bold text-xs">Tipografía Oficial de Cartas</Text>
-          </View>
-          <Text className="text-slate-400 text-[10px] mb-2">
-            Personaliza la fuente tipográfica de los números y letras de todas tus barajas:
-          </Text>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+      {/* Category Pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="mb-5"
+        contentContainerStyle={{ gap: 8, paddingRight: 12 }}
+      >
+        {(['all', 'avatar', 'title', 'board', 'theme', 'emotic'] as const).map((cat) => {
+          const isActive = activeCategory === cat;
+          return (
             <Pressable
-              onPress={() => handleFontChange(null)}
-              className={`px-2.5 py-1.5 rounded-lg border ${
-                preferredFont === null
-                  ? 'bg-amber-500 border-amber-400'
-                  : 'bg-slate-800 border-slate-700'
+              key={cat}
+              onPress={() => {
+                triggerHaptic('light');
+                setActiveCategory(cat);
+              }}
+              className={`px-4 py-2 rounded-full border ${
+                isActive
+                  ? 'bg-[#FDE68A] border-[#FDE68A]'
+                  : 'bg-transparent border-[#2A2722]'
               }`}
             >
               <Text
-                className={`text-[10px] font-bold ${
-                  preferredFont === null ? 'text-slate-950' : 'text-slate-300'
+                className={`text-xs font-bold ${
+                  isActive ? 'text-[#11100E]' : 'text-[#A1A1AA]'
                 }`}
               >
-                Por defecto
+                {cat === 'all' ? 'All items' : getCategoryLabel(cat)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Title & Wallet/Ad Row */}
+      <View className="flex-col gap-3 mb-4">
+        <View>
+          <Text className="text-2xl font-bold text-white tracking-tight">
+            {viewMode === 'store' ? 'Digital Assets' : 'My Collection'}
+          </Text>
+          <Text className="text-[#A1A1AA] mt-0.5 text-xs">
+            {viewMode === 'store'
+              ? 'Coleccionables de edición limitada'
+              : 'Tus artículos exclusivos'}
+          </Text>
+        </View>
+
+        <View className="flex-row flex-wrap items-center gap-2.5 w-full">
+          {/* View Sponsored Message Button */}
+          <Pressable
+            disabled={isAdChecking}
+            onPress={handleRewardedAd}
+            className={`rounded-full px-3.5 py-2.5 items-center justify-center border flex-1 ${
+              adViewsCount >= 3
+                ? 'bg-zinc-800/40 border-zinc-700/50'
+                : 'bg-[#3b82f6]/20 border-[#3b82f6]/50 active:bg-[#3b82f6]/30'
+            }`}
+          >
+            <Text
+              numberOfLines={1}
+              className={`text-xs font-bold ${
+                adViewsCount >= 3 ? 'text-[#A1A1AA]' : 'text-[#60a5fa]'
+              }`}
+            >
+              {adViewsCount >= 3
+                ? 'Anuncios Agotados (3/3)'
+                : `Ver Anuncio (${adViewsCount}/3, quedan ${3 - adViewsCount})`}
+            </Text>
+          </Pressable>
+
+          {/* Wallet */}
+          <View className="bg-[#1A1815] border border-[#FACC15]/30 rounded-full px-4 py-2.5 items-center justify-center shadow-xl">
+            <View className="flex-row items-center justify-center gap-1.5">
+              <Text className="text-xs">🪙</Text>
+              <Text
+                className={`text-xs font-bold ${
+                  coinAnim ? 'text-green-400' : 'text-[#FACC15]'
+                }`}
+              >
+                {(profile?.coins || 0).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Theme Font Selector Toolbar */}
+      {activeCategory === 'theme' && (
+        <View className="mb-4 p-4 rounded-2xl bg-[#1A1815] border border-[#2A2722]">
+          <View className="mb-3">
+            <View className="flex-row items-center gap-1.5">
+              <Text className="text-xs">🔤</Text>
+              <Text className="text-xs uppercase tracking-wider font-bold text-[#FACC15]">
+                Personalizar Tipografía de Cartas
+              </Text>
+            </View>
+            <Text className="text-xs text-[#A1A1AA] mt-0.5">
+              Selecciona la fuente de los números y letras de tus cartas para todas tus partidas.
+            </Text>
+          </View>
+
+          <View className="flex-row flex-wrap gap-2 items-center">
+            <Pressable
+              onPress={async () => {
+                await setStoredFontPreference(null);
+                setPreferredFont(null);
+                triggerHaptic('light');
+              }}
+              className={`px-3 py-1.5 rounded-lg border ${
+                preferredFont === null
+                  ? 'bg-[#FACC15] border-[#FACC15]'
+                  : 'bg-[#2A2722] border-[#3A362F]'
+              }`}
+            >
+              <Text
+                className={`text-xs font-bold ${
+                  preferredFont === null ? 'text-[#11100E]' : 'text-[#A1A1AA]'
+                }`}
+              >
+                Por defecto del tema
               </Text>
             </Pressable>
 
-            {ALL_THEME_FONTS.map((font) => {
-              const isSelected = preferredFont === font.key;
+            {ALL_THEME_FONTS.map((f) => {
+              const isActive = preferredFont === f.key;
               return (
                 <Pressable
-                  key={font.key}
-                  onPress={() => handleFontChange(font.key)}
-                  className={`px-2.5 py-1.5 rounded-lg border ${
-                    isSelected
-                      ? 'bg-amber-500 border-amber-400'
-                      : 'bg-slate-800 border-slate-700'
+                  key={f.key}
+                  onPress={async () => {
+                    await setStoredFontPreference(f.key);
+                    setPreferredFont(f.key);
+                    triggerHaptic('light');
+                  }}
+                  className={`px-3 py-1.5 rounded-lg border ${
+                    isActive
+                      ? 'bg-[#FACC15] border-[#FACC15]'
+                      : 'bg-[#2A2722] border-[#3A362F]'
                   }`}
                 >
                   <Text
-                    className={`text-[10px] font-bold ${
-                      isSelected ? 'text-slate-950' : 'text-slate-300'
+                    style={{ fontFamily: f.fontFamily }}
+                    className={`text-xs font-bold ${
+                      isActive ? 'text-[#11100E]' : 'text-[#A1A1AA]'
                     }`}
                   >
-                    {font.name}
+                    {f.name}
                   </Text>
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
       )}
+    </View>
+  );
 
-      {/* ── Lista de Artículos ──────────────────────────────── */}
+  return (
+    <View style={{ flex: 1, backgroundColor: '#11100E', paddingTop: safeTop }}>
       {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#fbbf24" />
-          <Text className="text-slate-400 mt-3 text-xs">Cargando catálogo oficial...</Text>
+        <View className="flex-1 px-4">
+          {renderHeader()}
+          <View className="flex-row gap-3">
+            <SkeletonStoreItem />
+            <SkeletonStoreItem />
+          </View>
+          <View className="flex-row gap-3">
+            <SkeletonStoreItem />
+            <SkeletonStoreItem />
+          </View>
         </View>
       ) : (
         <FlatList
           data={displayItems}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 110 }}
+          ListHeaderComponent={renderHeader}
           ListEmptyComponent={() => (
-            <View className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 items-center mt-6">
-              <ShoppingBag color="#64748b" size={38} className="mb-2" />
-              <Text className="text-white font-bold text-base mb-1">
-                {viewMode === 'store' ? 'No hay artículos disponibles' : 'Colección vacía'}
+            <View className="items-center justify-center py-20 px-6 bg-[#18181B]/50 rounded-3xl border border-white/5">
+              <Text className="text-5xl mb-4 opacity-40">
+                {viewMode === 'store' ? '💸' : '📦'}
               </Text>
-              <Text className="text-slate-400 text-xs text-center">
+              <Text className="text-xl font-bold text-white mb-2 text-center">
+                {viewMode === 'store' ? 'Tienda vacía' : 'Galería vacía'}
+              </Text>
+              <Text className="text-[#A1A1AA] text-xs text-center">
                 {viewMode === 'store'
-                  ? '¡Ya has adquirido todos los cosméticos de esta categoría!'
-                  : 'Aún no posees artículos en esta categoría. Puedes explorar el Catálogo para desbloquearlos.'}
+                  ? 'No hay artículos nuevos en esta categoría. ¡Ya compraste todo!'
+                  : 'Aún no posees artículos de esta categoría. Ve a comprar algunos.'}
               </Text>
             </View>
           )}
           renderItem={({ item }) => {
-            const isOwned = inventory.includes(item.id);
+            const rarity = getRarity(item.price);
+            const isSuccess = successItems.includes(item.id);
             const inCart = isInCart(item.id);
             const isEquipped = viewMode === 'gallery' && isItemEquipped(item);
-            const isTheme = item.item_type === 'theme';
-            const themeConfig = isTheme ? getTheme(item.theme_key) : null;
             const fullImageUrl = resolveImageUrl(item.image_url);
-            const rarity = getRarity(item.price);
-            const isBusy = processingId === item.id;
+            const hasImageError = failedImages[item.id];
 
             return (
               <View
-                className={`bg-slate-900/90 rounded-2xl p-4 mb-3 border ${
-                  isEquipped
-                    ? 'border-amber-400/80 bg-amber-950/20'
+                style={{ flex: 1, maxWidth: '48.5%', marginBottom: 12 }}
+                className={`bg-[#1A1815] rounded-2xl relative overflow-hidden border flex-col justify-between ${
+                  isSuccess
+                    ? 'border-green-500'
                     : inCart
-                    ? 'border-amber-500/60'
-                    : 'border-slate-800'
-                } flex-row items-center justify-between`}
+                    ? 'border-[#FACC15]'
+                    : isEquipped
+                    ? 'border-yellow-500/60'
+                    : 'border-[#2A2722]'
+                }`}
               >
-                {/* Visual / Preview */}
-                <View className="flex-row items-center flex-1 mr-3">
-                  {isTheme && themeConfig ? (
-                    <View className="mr-3">
-                      <TacticalCard3D
-                        rank="A"
-                        suit="hearts"
-                        theme={
-                          preferredFont
-                            ? { ...themeConfig.cardTheme, fontKey: preferredFont }
-                            : themeConfig.cardTheme
-                        }
-                        size="xs"
+                {/* Image/Preview Area */}
+                <View
+                  style={{ height: item.item_type === 'board' ? 110 : 145 }}
+                  className="relative w-full overflow-hidden items-center justify-center bg-[#0F0E0C]"
+                >
+                  <View
+                    className={`absolute top-2.5 left-2.5 z-20 px-2 py-0.5 rounded border ${rarity.color}`}
+                  >
+                    <Text
+                      className={`text-[8px] font-bold uppercase tracking-wider ${
+                        rarity.color.split(' ')[0]
+                      }`}
+                    >
+                      {rarity.label}
+                    </Text>
+                  </View>
+
+                  {item.item_type === 'theme' && item.theme_key ? (
+                    <View className="w-full h-full">
+                      <ThemeCardPreview
+                        themeKey={item.theme_key}
+                        fontOverride={preferredFont}
                       />
                     </View>
-                  ) : fullImageUrl ? (
+                  ) : fullImageUrl && !hasImageError ? (
                     <Image
                       source={{ uri: fullImageUrl }}
-                      contentFit="cover"
-                      className="w-12 h-12 rounded-xl mr-3 bg-slate-800 border border-slate-700"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        padding:
+                          item.item_type === 'board' || item.item_type === 'avatar' ? 0 : 12,
+                      }}
+                      contentFit={
+                        item.item_type === 'board' || item.item_type === 'avatar'
+                          ? 'cover'
+                          : 'contain'
+                      }
+                      onError={() =>
+                        setFailedImages((prev) => ({ ...prev, [item.id]: true }))
+                      }
                     />
                   ) : (
-                    <View className="w-12 h-12 rounded-xl mr-3 bg-amber-500/10 border border-amber-500/30 items-center justify-center">
-                      <Text className="text-xl">{getItemEmoji(item.item_type)}</Text>
-                    </View>
-                  )}
-
-                  <View className="flex-1">
-                    <View className="flex-row items-center gap-1.5 mb-0.5">
-                      <View className={`px-1.5 py-0.2 rounded border ${rarity.bg} ${rarity.border}`}>
-                        <Text className={`text-[9px] font-black ${rarity.text}`}>{rarity.label}</Text>
-                      </View>
-                      <Text className="text-[10px] text-slate-400 font-bold uppercase">
-                        {item.item_type}
+                    <View className="w-full h-full items-center justify-center bg-[#141210]">
+                      <Text className="text-4xl opacity-40">
+                        {item.item_type === 'avatar'
+                          ? '👤'
+                          : item.item_type === 'board'
+                          ? '🃏'
+                          : item.item_type === 'emotic'
+                          ? '💬'
+                          : '✨'}
                       </Text>
                     </View>
+                  )}
+                </View>
 
-                    <Text className="text-white font-bold text-sm" numberOfLines={1}>
-                      {item.name}
+                {/* Content Area */}
+                <View className="p-3.5 flex-col flex-grow justify-between">
+                  <View>
+                    <Text className="text-[9px] text-[#A78BFA] uppercase tracking-widest font-black mb-1">
+                      {getCategoryLabel(item.item_type).split(' ')[1] || item.item_type}
                     </Text>
-                    <Text className="text-slate-400 text-[11px] mt-0.5" numberOfLines={1}>
-                      {item.description}
+
+                    <Text
+                      className="font-bold text-sm text-white mb-2 leading-tight"
+                      numberOfLines={2}
+                    >
+                      {item.name}
                     </Text>
 
                     {viewMode === 'store' && (
-                      <Text className="text-amber-400 font-bold text-xs mt-1">
-                        🪙 {item.price.toLocaleString()}
-                      </Text>
+                      <View className="flex-row items-center gap-1 mb-3">
+                        <Text className="text-xs">🪙</Text>
+                        <Text className="text-[#FACC15] font-bold text-xs">
+                          {item.price.toLocaleString()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Actions */}
+                  <View className="mt-auto pt-1">
+                    {viewMode === 'store' ? (
+                      <Pressable
+                        onPress={() => toggleCartItem(item)}
+                        className={`w-full py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${
+                          inCart
+                            ? 'bg-[#2A2722] border border-[#FACC15]/30'
+                            : 'bg-[#FACC15] active:bg-[#FDE68A]'
+                        }`}
+                      >
+                        <Text
+                          className={`font-bold text-xs ${
+                            inCart ? 'text-[#FACC15]' : 'text-black'
+                          }`}
+                        >
+                          {inCart ? '✓ EN EL CARRITO' : '🛒 AÑADIR'}
+                        </Text>
+                      </Pressable>
+                    ) : item.item_type === 'emotic' ? (
+                      <View className="flex-col gap-1.5">
+                        <Text className="text-[9px] text-[#A1A1AA] uppercase tracking-wider text-center font-bold">
+                          Equipar en Slot:
+                        </Text>
+                        <View className="flex-row flex-wrap justify-between gap-1">
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((slot) => {
+                            const isEquippedInSlot =
+                              profile?.equipped_emotics?.[slot - 1] === item.image_url;
+                            return (
+                              <Pressable
+                                key={slot}
+                                onPress={() => handleEquip(item, slot)}
+                                disabled={processingId === item.id || isEquippedInSlot}
+                                style={{ width: '22%' }}
+                                className={`py-1.5 rounded-lg items-center border ${
+                                  isEquippedInSlot
+                                    ? 'bg-[#FACC15]/20 border-[#FACC15]/50'
+                                    : 'bg-[#2A2722] border-[#3A362F] active:bg-[#3A362F]'
+                                }`}
+                              >
+                                <Text
+                                  className={`font-bold text-[10px] ${
+                                    isEquippedInSlot ? 'text-[#FACC15]' : 'text-white'
+                                  }`}
+                                >
+                                  S{slot}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => handleEquip(item)}
+                        disabled={isEquipped || processingId === item.id}
+                        className={`w-full py-2.5 rounded-xl items-center justify-center border ${
+                          isEquipped
+                            ? 'bg-[#FACC15]/10 border-[#FACC15]/20'
+                            : 'bg-[#2A2722] border-[#3A362F] active:bg-[#3A362F]'
+                        }`}
+                      >
+                        <Text
+                          className={`font-bold text-xs ${
+                            isEquipped ? 'text-[#FACC15]' : 'text-white'
+                          }`}
+                        >
+                          {processingId === item.id
+                            ? 'Cargando...'
+                            : isEquipped
+                            ? '★ EQUIPADO'
+                            : 'EQUIPAR'}
+                        </Text>
+                      </Pressable>
                     )}
                   </View>
                 </View>
-
-                {/* Acciones */}
-                {viewMode === 'store' ? (
-                  <Pressable
-                    disabled={inCart}
-                    onPress={() => toggleCartItem(item)}
-                    className={`px-3 py-2 rounded-xl flex-row items-center gap-1 ${
-                      inCart
-                        ? 'bg-amber-500/20 border border-amber-500/40'
-                        : 'bg-amber-500 active:bg-amber-600'
-                    }`}
-                  >
-                    {inCart ? (
-                      <>
-                        <Check color="#fbbf24" size={13} />
-                        <Text className="font-bold text-xs text-amber-400">En carrito</Text>
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart color="#020617" size={13} />
-                        <Text className="font-bold text-xs text-slate-950">Añadir</Text>
-                      </>
-                    )}
-                  </Pressable>
-                ) : item.item_type === 'emotic' ? (
-                  <Pressable
-                    disabled={isBusy}
-                    onPress={() => {
-                      triggerHaptic('light');
-                      setSelectedEmoticItem(item);
-                    }}
-                    className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 active:bg-slate-700"
-                  >
-                    <Text className="font-bold text-xs text-amber-400">Slots (1-8)</Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    disabled={isEquipped || isBusy}
-                    onPress={() => handleEquip(item)}
-                    className={`px-3 py-2 rounded-xl ${
-                      isEquipped
-                        ? 'bg-amber-500/20 border border-amber-500/40'
-                        : 'bg-slate-800 border border-slate-700 active:bg-slate-700'
-                    }`}
-                  >
-                    <Text
-                      className={`font-bold text-xs ${
-                        isEquipped ? 'text-amber-400 font-black' : 'text-white'
-                      }`}
-                    >
-                      {isBusy ? '...' : isEquipped ? '★ ACTIVO' : 'EQUIPAR'}
-                    </Text>
-                  </Pressable>
-                )}
               </View>
             );
           }}
         />
       )}
 
-      {/* ── Modal de Slots para Emoticones ───────────────────── */}
-      <Modal
-        visible={Boolean(selectedEmoticItem)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedEmoticItem(null)}
-      >
-        <View className="flex-1 bg-black/70 justify-center items-center px-4">
-          <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 w-full max-w-sm">
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-white font-bold text-base">Equipar Emoticón</Text>
-              <Pressable onPress={() => setSelectedEmoticItem(null)} className="p-1">
-                <X color="#94a3b8" size={20} />
-              </Pressable>
-            </View>
-
-            <Text className="text-slate-400 text-xs mb-4">
-              Selecciona en qué ranura táctica (1 a 8) deseas equipar{' '}
-              <Text className="text-amber-400 font-bold">{selectedEmoticItem?.name}</Text>:
-            </Text>
-
-            <View className="flex-row flex-wrap justify-between gap-2 mb-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((slot) => {
-                const isEquippedInThisSlot =
-                  profile?.equipped_emotics?.[slot - 1] === selectedEmoticItem?.image_url;
-
-                return (
-                  <Pressable
-                    key={slot}
-                    disabled={isEquippedInThisSlot || processingId === selectedEmoticItem?.id}
-                    onPress={() => selectedEmoticItem && handleEquip(selectedEmoticItem, slot)}
-                    className={`w-[22%] py-3 rounded-2xl items-center border ${
-                      isEquippedInThisSlot
-                        ? 'bg-amber-500/20 border-amber-400'
-                        : 'bg-slate-800/80 border-slate-700 active:bg-slate-700'
-                    }`}
-                  >
-                    <Text
-                      className={`font-bold text-xs ${
-                        isEquippedInThisSlot ? 'text-amber-400' : 'text-slate-200'
-                      }`}
-                    >
-                      Slot {slot}
-                    </Text>
-                    {isEquippedInThisSlot && (
-                      <Text className="text-[9px] text-amber-400 font-bold mt-0.5">Activo</Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Pressable
-              onPress={() => setSelectedEmoticItem(null)}
-              className="bg-slate-800 p-2.5 rounded-xl items-center"
-            >
-              <Text className="text-slate-400 font-bold text-xs">Cerrar</Text>
-            </Pressable>
+      {/* Floating Cart Button (idéntico a Store.tsx Web) */}
+      {viewMode === 'store' && cart.length > 0 && (
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light');
+            setIsCartOpen(true);
+          }}
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            right: 20,
+            zIndex: 40,
+            elevation: 16,
+          }}
+          className="bg-[#FACC15] active:bg-[#FDE68A] w-14 h-14 rounded-full shadow-2xl items-center justify-center border border-[#FDE68A]"
+        >
+          <Text className="text-2xl">🛒</Text>
+          <View className="absolute -top-1 -right-1 bg-red-600 w-6 h-6 rounded-full items-center justify-center border border-white">
+            <Text className="text-white text-[10px] font-black">{cart.length}</Text>
           </View>
-        </View>
-      </Modal>
+        </Pressable>
+      )}
 
-      {/* ── Modal del Carrito de Compras ────────────────────── */}
+      {/* Shopping Cart Drawer / Modal (idéntico a Store.tsx Web) */}
       <Modal
         visible={isCartOpen}
         transparent
         animationType="slide"
+        statusBarTranslucent={true}
         onRequestClose={() => setIsCartOpen(false)}
       >
-        <View className="flex-1 bg-black/75 justify-end">
-          <View className="bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 max-h-[80%] flex-col">
-            <View className="flex-row justify-between items-center pb-3 border-b border-slate-800 mb-3">
+        <View className="flex-1 bg-black/70 justify-end">
+          <View className="w-full bg-[#09090B] border-t border-white/10 rounded-t-3xl max-h-[85%] flex-col shadow-2xl overflow-hidden">
+            <View className="p-5 border-b border-white/5 flex-row justify-between items-center bg-[#18181B]">
               <View className="flex-row items-center gap-2">
-                <ShoppingCart color="#fbbf24" size={20} />
-                <Text className="text-white font-bold text-lg">Tu Carrito ({cart.length})</Text>
+                <Text className="text-lg">🛒</Text>
+                <Text className="text-xl font-bold text-white">Tu Carrito</Text>
               </View>
-              <Pressable onPress={() => setIsCartOpen(false)} className="p-1">
-                <X color="#94a3b8" size={20} />
+              <Pressable
+                onPress={() => setIsCartOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 items-center justify-center"
+              >
+                <Text className="text-[#A1A1AA] font-bold">✕</Text>
               </Pressable>
             </View>
 
-            {cart.length === 0 ? (
-              <View className="py-12 items-center">
-                <ShoppingCart color="#64748b" size={44} className="mb-2" />
-                <Text className="text-slate-400 text-sm font-semibold">Tu carrito está vacío</Text>
-              </View>
-            ) : (
-              <ScrollView className="flex-1 mb-3">
-                {cart.map((item) => {
+            <ScrollView className="p-5" contentContainerStyle={{ gap: 12 }}>
+              {cart.length === 0 ? (
+                <View className="py-12 items-center justify-center">
+                  <Text className="text-5xl mb-3 opacity-60">🛒</Text>
+                  <Text className="text-[#A1A1AA] text-sm">El carrito está vacío</Text>
+                </View>
+              ) : (
+                cart.map((item) => {
                   const fullImageUrl = resolveImageUrl(item.image_url);
                   return (
                     <View
-                      key={item.id}
-                      className="bg-slate-800/80 p-3 rounded-2xl mb-2 flex-row items-center justify-between border border-slate-700/60"
+                      key={`cart-${item.id}`}
+                      className="flex-row gap-3.5 p-3.5 rounded-2xl bg-[#18181B] border border-white/5 items-center"
                     >
-                      <View className="flex-row items-center flex-1 mr-2">
+                      <View className="w-14 h-14 rounded-xl bg-[#27272A] items-center justify-center overflow-hidden p-1">
                         {fullImageUrl ? (
                           <Image
                             source={{ uri: fullImageUrl }}
-                            contentFit="cover"
-                            className="w-10 h-10 rounded-xl mr-2.5 bg-slate-700"
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="contain"
                           />
                         ) : (
-                          <View className="w-10 h-10 rounded-xl mr-2.5 bg-amber-500/10 items-center justify-center">
-                            <Text className="text-base">{getItemEmoji(item.item_type)}</Text>
-                          </View>
+                          <Text className="text-base">✨</Text>
                         )}
-                        <View className="flex-1">
-                          <Text className="text-white font-bold text-xs" numberOfLines={1}>
-                            {item.name}
-                          </Text>
-                          <Text className="text-amber-400 font-bold text-xs">
-                            🪙 {item.price.toLocaleString()}
-                          </Text>
-                        </View>
                       </View>
-
+                      <View className="flex-1 min-w-0">
+                        <Text className="text-white font-bold text-sm" numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text className="text-[#A1A1AA] text-xs">
+                          {getCategoryLabel(item.item_type)}
+                        </Text>
+                        <Text className="text-[#FACC15] font-bold text-sm mt-1">
+                          🪙 {item.price.toLocaleString()}
+                        </Text>
+                      </View>
                       <Pressable
                         onPress={() => toggleCartItem(item)}
-                        className="p-2 rounded-xl bg-red-500/10 border border-red-500/30"
+                        className="w-8 h-8 rounded-full items-center justify-center bg-red-500/10"
                       >
-                        <Trash2 color="#f87171" size={15} />
+                        <Text className="text-red-400 font-bold text-xs">✕</Text>
                       </Pressable>
                     </View>
                   );
-                })}
-              </ScrollView>
-            )}
+                })
+              )}
+            </ScrollView>
 
-            {/* Total y Checkout */}
-            <View className="border-t border-slate-800 pt-3">
-              <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-slate-400 font-bold text-sm">Total a pagar:</Text>
+            <View className="p-5 border-t border-white/5 bg-[#18181B]">
+              <View className="flex-row justify-between items-end mb-4">
+                <Text className="text-[#A1A1AA] font-bold">Total a pagar:</Text>
                 <Text
-                  className={`font-bold text-lg ${
-                    cartTotal > (profile?.coins || 0) ? 'text-red-400' : 'text-amber-400'
+                  className={`text-2xl font-bold ${
+                    cartTotal > (profile?.coins || 0) ? 'text-red-400' : 'text-white'
                   }`}
                 >
                   🪙 {cartTotal.toLocaleString()}
@@ -815,35 +1048,79 @@ export default function ShopScreen() {
               </View>
 
               {cartTotal > (profile?.coins || 0) && (
-                <Text className="text-red-400 text-xs text-center mb-3 font-semibold">
-                  Saldo insuficiente. Te faltan {(cartTotal - (profile?.coins || 0)).toLocaleString()} 🪙
+                <Text className="text-red-400 text-xs mb-3 font-bold text-center">
+                  Monedas insuficientes. Te faltan{' '}
+                  {(cartTotal - (profile?.coins || 0)).toLocaleString()} 🪙
                 </Text>
               )}
 
               <Pressable
-                disabled={cart.length === 0 || cartTotal > (profile?.coins || 0) || isCheckingOut}
                 onPress={handleCheckout}
-                className={`p-3.5 rounded-2xl items-center ${
+                disabled={
+                  cart.length === 0 ||
+                  cartTotal > (profile?.coins || 0) ||
+                  processingId === 'checkout'
+                }
+                className={`w-full py-4 rounded-xl items-center justify-center flex-row gap-2 ${
                   cart.length === 0 || cartTotal > (profile?.coins || 0)
-                    ? 'bg-slate-800 border border-slate-700'
-                    : 'bg-amber-500 active:bg-amber-600'
+                    ? 'bg-[#27272A]'
+                    : 'bg-[#F8FAFC] active:bg-white'
                 }`}
               >
-                {isCheckingOut ? (
-                  <ActivityIndicator size="small" color="#020617" />
+                {processingId === 'checkout' ? (
+                  <>
+                    <ActivityIndicator size="small" color="#09090B" />
+                    <Text className="text-[#09090B] font-bold text-base">
+                      Procesando...
+                    </Text>
+                  </>
                 ) : (
                   <Text
-                    className={`font-black text-sm uppercase tracking-wider ${
+                    className={`font-bold text-base ${
                       cart.length === 0 || cartTotal > (profile?.coins || 0)
-                        ? 'text-slate-500'
-                        : 'text-slate-950'
+                        ? 'text-[#71717A]'
+                        : 'text-[#09090B]'
                     }`}
                   >
-                    Confirmar Compra ({cart.length})
+                    Confirmar Compra
                   </Text>
                 )}
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Limit Reached Animation Modal (idéntico a Store.tsx Web) */}
+      <Modal
+        visible={showLimitReachedAnimation}
+        transparent
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => setShowLimitReachedAnimation(false)}
+      >
+        <View className="flex-1 bg-black/80 items-center justify-center p-5">
+          <View className="bg-[#1A1815] border border-yellow-500/30 rounded-3xl p-7 max-w-sm w-full items-center shadow-2xl">
+            <View className="relative mb-5 justify-center items-center h-24 w-24 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+              <Text className="text-5xl">🎬</Text>
+            </View>
+
+            <Text className="text-2xl font-black text-white mb-3 text-center">
+              ¡Anuncios Agotados!
+            </Text>
+
+            <Text className="text-gray-300 text-xs mb-6 leading-relaxed text-center">
+              Has completado el límite máximo de{' '}
+              <Text className="text-yellow-400 font-bold">3 anuncios diarios</Text>.{'\n'}
+              ¡Muchas gracias por apoyar el juego! Vuelve mañana para seguir obteniendo monedas gratis.
+            </Text>
+
+            <Pressable
+              onPress={() => setShowLimitReachedAnimation(false)}
+              className="w-full bg-amber-500 active:bg-amber-400 py-3.5 rounded-xl items-center"
+            >
+              <Text className="text-black font-black text-sm uppercase">Entendido</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, ScrollView, Alert } from 'react-native';
-import { Swords, Users, Coins, X } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  Alert,
+  useWindowDimensions,
+  StyleSheet,
+} from 'react-native';
+import { Swords, Users, X } from 'lucide-react-native';
 
 interface CreateRoomModalProps {
   visible: boolean;
@@ -17,8 +24,11 @@ export function CreateRoomModal({
   onClose,
   onCreateRoom,
 }: CreateRoomModalProps) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [selectedMode, setSelectedMode] = useState<'1v1' | '2v2'>('1v1');
   const [selectedBet, setSelectedBet] = useState<number>(0);
+
+  if (!visible) return null;
 
   const handleConfirm = () => {
     if (selectedBet > userCoins) {
@@ -28,92 +38,220 @@ export function CreateRoomModal({
     onCreateRoom(selectedMode, selectedBet);
   };
 
+  const cardWidth = Math.min(Math.max(windowWidth - 32, 280), 370);
+
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View className="flex-1 bg-black/80 justify-center items-center p-5">
-        <View className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm">
-          {/* Header */}
-          <View className="flex-row justify-between items-center mb-5">
-            <View>
-              <Text className="text-amber-400 font-bold text-xl">Crear Sala Privada</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">Configura tu partida personalizada</Text>
-            </View>
-            <Pressable onPress={onClose} className="p-2 bg-slate-800 rounded-xl">
-              <X color="#94a3b8" size={18} />
-            </Pressable>
+    <View
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          width: windowWidth,
+          height: windowHeight,
+          backgroundColor: 'rgba(0, 0, 0, 0.82)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 16,
+          zIndex: 999999,
+          elevation: 999999,
+        },
+      ]}
+    >
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+
+      <View
+        style={{
+          width: cardWidth,
+          backgroundColor: '#0f172a',
+          borderWidth: 1.5,
+          borderColor: '#1e293b',
+          borderRadius: 24,
+          padding: 22,
+        }}
+      >
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <View>
+            <Text style={{ color: '#fbbf24', fontWeight: '800', fontSize: 19 }}>
+              Crear Sala Privada
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 2 }}>
+              Configura tu partida personalizada
+            </Text>
           </View>
-
-          {/* Selector de Modo (1v1 / 2v2) */}
-          <Text className="text-slate-400 text-xs font-bold uppercase mb-2">Modo de Juego</Text>
-          <View className="flex-row mb-5">
-            <Pressable
-              onPress={() => setSelectedMode('1v1')}
-              className={`flex-1 py-3 px-3 rounded-2xl mr-2 flex-row items-center justify-center border ${
-                selectedMode === '1v1'
-                  ? 'bg-amber-500 border-amber-400'
-                  : 'bg-slate-800 border-slate-700'
-              }`}
-            >
-              <Swords color={selectedMode === '1v1' ? '#020617' : '#94a3b8'} size={18} className="mr-2" />
-              <Text className={`font-bold text-sm ${selectedMode === '1v1' ? 'text-slate-950' : 'text-slate-300'}`}>
-                1 vs 1
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setSelectedMode('2v2')}
-              className={`flex-1 py-3 px-3 rounded-2xl ml-2 flex-row items-center justify-center border ${
-                selectedMode === '2v2'
-                  ? 'bg-amber-500 border-amber-400'
-                  : 'bg-slate-800 border-slate-700'
-              }`}
-            >
-              <Users color={selectedMode === '2v2' ? '#020617' : '#94a3b8'} size={18} className="mr-2" />
-              <Text className={`font-bold text-sm ${selectedMode === '2v2' ? 'text-slate-950' : 'text-slate-300'}`}>
-                2 vs 2
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Selector de Apuesta en Monedas */}
-          <Text className="text-slate-400 text-xs font-bold uppercase mb-2">
-            Apuesta en Monedas (🪙 Tu Saldo: {userCoins})
-          </Text>
-          <View className="flex-row flex-wrap justify-between mb-6">
-            {BET_OPTIONS.map((bet) => {
-              const isDisabled = bet > userCoins;
-              const isSelected = selectedBet === bet;
-
-              return (
-                <Pressable
-                  key={bet}
-                  disabled={isDisabled}
-                  onPress={() => setSelectedBet(bet)}
-                  className={`w-[30%] py-2.5 mb-2.5 rounded-xl items-center border ${
-                    isSelected
-                      ? 'bg-amber-500 border-amber-400'
-                      : isDisabled
-                      ? 'bg-slate-900 border-slate-800 opacity-40'
-                      : 'bg-slate-800 border-slate-700'
-                  }`}
-                >
-                  <Text className={`font-bold text-xs ${isSelected ? 'text-slate-950' : 'text-amber-400'}`}>
-                    {bet === 0 ? 'Gratis' : `🪙 ${bet}`}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Botón de Confirmación */}
           <Pressable
-            onPress={handleConfirm}
-            className="bg-amber-500 active:bg-amber-600 p-4 rounded-2xl items-center"
+            onPress={onClose}
+            style={{
+              padding: 8,
+              backgroundColor: '#1e293b',
+              borderRadius: 12,
+            }}
           >
-            <Text className="text-slate-950 font-bold text-base uppercase">Confirmar y Crear Sala</Text>
+            <X color="#94a3b8" size={18} />
           </Pressable>
         </View>
+
+        {/* Selector de Modo (1v1 / 2v2) */}
+        <Text
+          style={{
+            color: '#94a3b8',
+            fontSize: 11,
+            fontWeight: '800',
+            textTransform: 'uppercase',
+            marginBottom: 8,
+          }}
+        >
+          Modo de Juego
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 18 }}>
+          <Pressable
+            onPress={() => setSelectedMode('1v1')}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              backgroundColor: selectedMode === '1v1' ? '#f59e0b' : '#1e293b',
+              borderWidth: 1,
+              borderColor: selectedMode === '1v1' ? '#fbbf24' : '#334155',
+            }}
+          >
+            <Swords color={selectedMode === '1v1' ? '#020617' : '#94a3b8'} size={18} />
+            <Text
+              style={{
+                fontWeight: '800',
+                fontSize: 14,
+                color: selectedMode === '1v1' ? '#020617' : '#cbd5e1',
+              }}
+            >
+              1 vs 1
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setSelectedMode('2v2')}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              backgroundColor: selectedMode === '2v2' ? '#f59e0b' : '#1e293b',
+              borderWidth: 1,
+              borderColor: selectedMode === '2v2' ? '#fbbf24' : '#334155',
+            }}
+          >
+            <Users color={selectedMode === '2v2' ? '#020617' : '#94a3b8'} size={18} />
+            <Text
+              style={{
+                fontWeight: '800',
+                fontSize: 14,
+                color: selectedMode === '2v2' ? '#020617' : '#cbd5e1',
+              }}
+            >
+              2 vs 2
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Selector de Apuesta en Monedas */}
+        <Text
+          style={{
+            color: '#94a3b8',
+            fontSize: 11,
+            fontWeight: '800',
+            textTransform: 'uppercase',
+            marginBottom: 8,
+          }}
+        >
+          Apuesta en Monedas (🪙 Tu Saldo: {userCoins})
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+          }}
+        >
+          {BET_OPTIONS.map((bet) => {
+            const isDisabled = bet > userCoins;
+            const isSelected = selectedBet === bet;
+
+            return (
+              <Pressable
+                key={bet}
+                disabled={isDisabled}
+                onPress={() => setSelectedBet(bet)}
+                style={{
+                  width: '31%',
+                  paddingVertical: 10,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  backgroundColor: isSelected
+                    ? '#f59e0b'
+                    : isDisabled
+                    ? '#020617'
+                    : '#1e293b',
+                  borderWidth: 1,
+                  borderColor: isSelected
+                    ? '#fbbf24'
+                    : isDisabled
+                    ? '#1e293b'
+                    : '#334155',
+                  opacity: isDisabled ? 0.45 : 1,
+                }}
+              >
+                <Text
+                  style={{
+                    fontWeight: '800',
+                    fontSize: 12,
+                    color: isSelected ? '#020617' : '#fbbf24',
+                  }}
+                >
+                  {bet === 0 ? 'Gratis' : `🪙 ${bet}`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Botón de Confirmación */}
+        <Pressable
+          onPress={handleConfirm}
+          style={({ pressed }) => ({
+            width: '100%',
+            backgroundColor: pressed ? '#d97706' : '#f59e0b',
+            paddingVertical: 14,
+            borderRadius: 14,
+            alignItems: 'center',
+          })}
+        >
+          <Text
+            style={{
+              color: '#020617',
+              fontWeight: '900',
+              fontSize: 14,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+          >
+            Confirmar y Crear Sala
+          </Text>
+        </Pressable>
       </View>
-    </Modal>
+    </View>
   );
 }

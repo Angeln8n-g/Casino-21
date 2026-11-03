@@ -11,9 +11,19 @@ interface HandViewProps {
   selectedCardId: string | null;
   theme?: CardTheme;
   fontKey?: ThemeFontKey;
+  headerAction?: React.ReactNode;
   onSelectCard: (cardId: string) => void;
+  onDragStart?: (card: Card) => void;
+  onDragMove?: (absoluteX: number, absoluteY: number) => void;
+  onDragRelease?: (
+    card: Card,
+    absoluteX: number,
+    absoluteY: number,
+    translationX: number,
+    translationY: number
+  ) => void;
   onDropOnBoard?: (card: Card) => void;
-  onDropOnFormation: (formationIndex: number, cardId: string) => void;
+  onDropOnFormation?: (formationIndex: number, cardId: string) => void;
 }
 
 export function HandView({
@@ -22,7 +32,11 @@ export function HandView({
   selectedCardId,
   theme,
   fontKey,
+  headerAction,
   onSelectCard,
+  onDragStart,
+  onDragMove,
+  onDragRelease,
   onDropOnBoard,
   onDropOnFormation,
 }: HandViewProps) {
@@ -32,48 +46,69 @@ export function HandView({
   return (
     <View
       style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        borderRadius: 24,
-        padding: 10,
+        backgroundColor: isCurrentTurn ? 'rgba(8, 51, 68, 0.55)' : 'rgba(9, 13, 22, 0.85)',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
         borderWidth: 1.5,
-        borderColor: isCurrentTurn ? 'rgba(251, 191, 36, 0.7)' : '#1e293b',
+        borderColor: isCurrentTurn ? 'rgba(34, 211, 238, 0.5)' : 'rgba(255, 255, 255, 0.1)',
         zIndex: 9999,
         elevation: 9999,
         overflow: 'visible',
       }}
     >
-      {/* Banner Superior de Tu Zona */}
-      <View className="flex-row justify-between items-center mb-1.5 px-1">
-        <View className="flex-row items-center">
-          <Text className="text-white font-bold text-sm mr-2">{localPlayer?.name || 'Tú'}</Text>
-          <View
-            className={`px-2 py-0.5 rounded-full border ${
-              isCurrentTurn ? 'bg-cyan-500/20 border-cyan-400' : 'bg-slate-800 border-slate-700'
-            }`}
-          >
-            <Text className={`font-bold text-[10px] ${isCurrentTurn ? 'text-cyan-300' : 'text-slate-500'}`}>
-              {isCurrentTurn ? 'Tu Turno' : 'Espera'}
-            </Text>
-          </View>
+      {/* Header Bar de Tu Mano (idéntico a HandView.tsx de Web) */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 6,
+          paddingHorizontal: 4,
+          zIndex: 50,
+          overflow: 'visible',
+        }}
+      >
+        <View className="flex-row items-center gap-2 flex-wrap">
+          <Text className="text-xs font-semibold text-gray-200">
+            Tu Mano <Text className="text-gray-400 font-normal">({hand.length})</Text>
+          </Text>
+
+          {isCurrentTurn && (
+            <View className="bg-cyan-500/20 border border-cyan-400/35 px-2 py-0.5 rounded-full">
+              <Text className="text-cyan-200 text-[10px] font-bold uppercase tracking-wider">
+                Tu Turno
+              </Text>
+            </View>
+          )}
+
+          {virados > 0 && (
+            <View className="bg-amber-500/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+              <Text className="text-[10px] text-amber-200/90 font-medium">
+                Virados: <Text className="font-bold text-amber-300">{virados}</Text>
+              </Text>
+            </View>
+          )}
         </View>
 
-        <View className="bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-          <Text className="text-amber-400 font-bold text-xs">Virados: {virados}</Text>
-        </View>
+        {headerAction && (
+          <View style={{ zIndex: 99999, overflow: 'visible' }}>{headerAction}</View>
+        )}
       </View>
 
-      {/* Cartas de la Mano del Jugador (Centradas y con soporte de Arrastre Libre) */}
+      {/* Cartas de la Mano del Jugador */}
       <View
         style={{
           flexDirection: 'row',
           justifyContent: 'center',
           alignItems: 'center',
           paddingVertical: 2,
+          minHeight: 102,
           overflow: 'visible',
         }}
       >
         {hand.length === 0 ? (
-          <Text className="text-slate-500 text-xs italic py-4">No tienes cartas en tu mano</Text>
+          <Text className="text-gray-300 text-xs italic py-4">Esperando cartas...</Text>
         ) : (
           hand.map((card: Card) => (
             <View
@@ -88,12 +123,20 @@ export function HandView({
               <DraggableCard
                 card={card}
                 selected={selectedCardId === card.id}
+                disabled={!isCurrentTurn}
                 theme={theme}
                 fontKey={fontKey}
                 variant="light"
-                onPress={() => onSelectCard(card.id)}
+                onPress={() => isCurrentTurn && onSelectCard(card.id)}
+                onDragStart={onDragStart}
+                onDragMove={onDragMove}
+                onDragRelease={onDragRelease}
                 onDropOnBoard={onDropOnBoard}
-                onDropOnFormation={(formationIdx) => onDropOnFormation(formationIdx, card.id)}
+                onDropOnFormation={
+                  onDropOnFormation
+                    ? (formationIdx) => onDropOnFormation(formationIdx, card.id)
+                    : undefined
+                }
               />
             </View>
           ))

@@ -15,6 +15,15 @@ interface DraggableCardProps {
   card: Card;
   selected?: boolean;
   onPress?: () => void;
+  onDragStart?: (card: Card) => void;
+  onDragMove?: (absoluteX: number, absoluteY: number) => void;
+  onDragRelease?: (
+    card: Card,
+    absoluteX: number,
+    absoluteY: number,
+    translationX: number,
+    translationY: number
+  ) => void;
   onDropOnBoard?: (card: Card) => void;
   onDropOnFormation?: (formationIndex: number, card: Card) => void;
   disabled?: boolean;
@@ -27,6 +36,9 @@ export function DraggableCard({
   card,
   selected,
   onPress,
+  onDragStart,
+  onDragMove,
+  onDragRelease,
   onDropOnBoard,
   onDropOnFormation,
   disabled,
@@ -44,29 +56,37 @@ export function DraggableCard({
     }
   };
 
-  const handleDrop = (x: number, y: number) => {
-    // Si la carta fue arrastrada hacia arriba al área del tablero o formaciones
-    if (y < -65) {
+  const handleStart = () => {
+    triggerHaptic('card_tap');
+    onDragStart?.(card);
+  };
+
+  const handleMove = (absX: number, absY: number) => {
+    onDragMove?.(absX, absY);
+  };
+
+  const handleEnd = (absX: number, absY: number, tx: number, ty: number) => {
+    if (onDragRelease) {
+      onDragRelease(card, absX, absY, tx, ty);
+      return;
+    }
+
+    // Fallback si no se provee onDragRelease
+    if (ty < -55) {
       triggerHaptic('card_tap');
-      // Si fue arrastrada a la zona de formaciones (centro-izquierda)
-      if (y < -120 && onDropOnFormation) {
-        if (x < -60) {
+      if (ty < -120 && onDropOnFormation) {
+        if (tx < -60) {
           onDropOnFormation(0, card);
           return;
-        } else if (x < 0) {
+        } else if (tx < 0) {
           onDropOnFormation(1, card);
           return;
-        } else if (x < 60) {
+        } else if (tx < 60) {
           onDropOnFormation(2, card);
           return;
         }
       }
-
-      // Si fue soltada en el tablero general
-      if (onDropOnBoard) {
-        onDropOnBoard(card);
-        return;
-      }
+      onDropOnBoard?.(card);
     }
   };
 
@@ -75,17 +95,30 @@ export function DraggableCard({
     .minDistance(6)
     .onStart(() => {
       isDragging.value = true;
-      runOnJS(triggerHaptic)('light');
+      runOnJS(handleStart)();
     })
     .onUpdate((event) => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
+      if (onDragMove) {
+        runOnJS(handleMove)(event.absoluteX, event.absoluteY);
+      }
     })
     .onEnd((event) => {
       isDragging.value = false;
-      runOnJS(handleDrop)(event.translationX, event.translationY);
-      translateX.value = withSpring(0, { damping: 14 });
-      translateY.value = withSpring(0, { damping: 14 });
+      runOnJS(handleEnd)(
+        event.absoluteX,
+        event.absoluteY,
+        event.translationX,
+        event.translationY
+      );
+      translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
+      translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
+    })
+    .onFinalize(() => {
+      isDragging.value = false;
+      translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
+      translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
     });
 
   const tapGesture = Gesture.Tap()
@@ -100,8 +133,8 @@ export function DraggableCard({
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },
-      { scale: isDragging.value ? 1.14 : 1 },
-      { rotate: isDragging.value ? '2.5deg' : '0deg' },
+      { scale: isDragging.value ? 1.12 : 1 },
+      { rotate: isDragging.value ? '2deg' : '0deg' },
     ],
     zIndex: isDragging.value ? 999999 : 1,
     elevation: isDragging.value ? 999999 : 1,

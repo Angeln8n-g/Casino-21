@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Pressable, Modal, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  useWindowDimensions,
+  StyleSheet,
+} from 'react-native';
 import { GameInviteToastData } from '../../hooks/useNotifications';
 import { useAudio } from '../../hooks/useAudio';
 import { Swords, Trophy, Flame } from 'lucide-react-native';
@@ -12,50 +19,65 @@ interface GameInvitationModalProps {
 }
 
 function getDivisionFromElo(elo: number) {
-  if (elo < 1200) return { label: 'Bronce', icon: '🥉', badge: 'border-amber-700/50 text-amber-500' };
-  if (elo < 1500) return { label: 'Plata', icon: '🥈', badge: 'border-slate-400/50 text-slate-300' };
-  if (elo < 1800) return { label: 'Oro', icon: '🥇', badge: 'border-amber-400/50 text-amber-400' };
-  if (elo < 2100) return { label: 'Platino', icon: '💎', badge: 'border-cyan-400/50 text-cyan-400' };
-  return { label: 'Diamante', icon: '👑', badge: 'border-purple-400/50 text-purple-400' };
+  if (elo < 1200) return { label: 'Bronce', icon: '🥉', color: '#f59e0b', border: 'rgba(180, 83, 9, 0.5)' };
+  if (elo < 1500) return { label: 'Plata', icon: '🥈', color: '#cbd5e1', border: 'rgba(148, 163, 184, 0.5)' };
+  if (elo < 1800) return { label: 'Oro', icon: '🥇', color: '#fbbf24', border: 'rgba(251, 191, 36, 0.5)' };
+  if (elo < 2100) return { label: 'Platino', icon: '💎', color: '#22d3ee', border: 'rgba(34, 211, 238, 0.5)' };
+  return { label: 'Diamante', icon: '👑', color: '#c084fc', border: 'rgba(192, 132, 252, 0.5)' };
 }
 
-export function GameInvitationModal({ invite, onAccept, onReject, onClose }: GameInvitationModalProps) {
-  if (!invite) return null;
-
+export function GameInvitationModal({
+  invite,
+  onAccept,
+  onReject,
+  onClose,
+}: GameInvitationModalProps) {
+  // IMPORTANTE: Todos los hooks deben declararse SIEMPRE antes de cualquier return condicional
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { startLoop, stopLoop } = useAudio();
   const [progress, setProgress] = useState(100);
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [accepting, setAccepting] = useState(false);
-  const loopIdRef = useRef(`invite-${invite.invitationId}`);
+  const activeLoopIdRef = useRef<string | null>(null);
 
-  const div = getDivisionFromElo(invite.elo || 1000);
-  const wins = invite.wins || 0;
-  const losses = invite.losses || 0;
-  const totalGames = wins + losses;
-  const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+  const invitationId = invite?.invitationId ?? null;
+  const expiresAt = invite?.expiresAt ?? null;
 
   useEffect(() => {
-    startLoop(loopIdRef.current, 'alert', { volumeMultiplier: 0.8, playbackRate: 0.95 });
+    if (!invitationId) return;
+
+    const loopId = `invite-${invitationId}`;
+    activeLoopIdRef.current = loopId;
+    setAccepting(false);
+    startLoop(loopId, 'alert', { volumeMultiplier: 0.8, playbackRate: 0.95 });
 
     return () => {
-      stopLoop(loopIdRef.current);
+      stopLoop(loopId);
     };
-  }, [startLoop, stopLoop]);
+  }, [invitationId, startLoop, stopLoop]);
 
   useEffect(() => {
-    let endTime = new Date(invite.expiresAt).getTime();
+    if (!invitationId || !expiresAt) return;
+
+    let endTime = new Date(expiresAt).getTime();
     if (isNaN(endTime)) {
       endTime = Date.now() + 60000;
     }
 
     const totalMs = Math.max(1000, endTime - Date.now());
+    if (endTime - Date.now() <= 0) {
+      if (activeLoopIdRef.current) stopLoop(activeLoopIdRef.current);
+      onReject(invitationId);
+      onClose();
+      return;
+    }
 
     const tick = setInterval(() => {
       const remaining = endTime - Date.now();
       if (remaining <= 0) {
         clearInterval(tick);
-        stopLoop(loopIdRef.current);
-        onReject(invite.invitationId);
+        if (activeLoopIdRef.current) stopLoop(activeLoopIdRef.current);
+        onReject(invitationId);
         onClose();
         return;
       }
@@ -65,120 +87,261 @@ export function GameInvitationModal({ invite, onAccept, onReject, onClose }: Gam
     }, 250);
 
     return () => clearInterval(tick);
-  }, [invite.expiresAt, invite.invitationId, onReject, onClose, stopLoop]);
+  }, [invitationId, expiresAt, onReject, onClose, stopLoop]);
+
+  if (!invite) return null;
+
+  const div = getDivisionFromElo(invite.elo || 1000);
+  const wins = invite.wins || 0;
+  const losses = invite.losses || 0;
+  const totalGames = wins + losses;
+  const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
 
   const handleAccept = () => {
-    stopLoop(loopIdRef.current);
+    if (activeLoopIdRef.current) stopLoop(activeLoopIdRef.current);
     setAccepting(true);
     onAccept(invite.invitationId, invite.roomId);
     onClose();
   };
 
   const handleReject = () => {
-    stopLoop(loopIdRef.current);
+    if (activeLoopIdRef.current) stopLoop(activeLoopIdRef.current);
     onReject(invite.invitationId);
     onClose();
   };
 
+  const cardWidth = Math.min(Math.max(windowWidth - 32, 280), 370);
+
   return (
-    <Modal visible={Boolean(invite)} transparent animationType="fade">
-      <View className="flex-1 bg-black/80 items-center justify-center px-4">
-        <View className="w-full max-w-sm bg-slate-900 border-2 border-amber-500/70 rounded-3xl overflow-hidden shadow-2xl">
-          {/* Barra de progreso de tiempo */}
-          <View className="h-1.5 w-full bg-slate-800">
+    <View
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          width: windowWidth,
+          height: windowHeight,
+          backgroundColor: 'rgba(0, 0, 0, 0.82)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+          zIndex: 999999,
+          elevation: 999999,
+        },
+      ]}
+    >
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={handleReject} />
+
+      <View
+        style={{
+          width: cardWidth,
+          backgroundColor: '#0f172a',
+          borderWidth: 2,
+          borderColor: 'rgba(245, 158, 11, 0.7)',
+          borderRadius: 24,
+          overflow: 'hidden',
+          shadowColor: '#f59e0b',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.35,
+          shadowRadius: 25,
+          elevation: 30,
+        }}
+      >
+        {/* Barra de progreso de tiempo */}
+        <View style={{ height: 6, width: '100%', backgroundColor: '#1e293b' }}>
+          <View
+            style={{
+              height: '100%',
+              width: `${progress}%`,
+              backgroundColor: secondsLeft <= 10 ? '#ef4444' : '#fbbf24',
+            }}
+          />
+        </View>
+
+        <View style={{ padding: 24 }}>
+          {/* Header */}
+          <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <View
-              className={`h-full ${secondsLeft <= 10 ? 'bg-red-500' : 'bg-amber-400'}`}
-              style={{ width: `${progress}%` }}
-            />
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                backgroundColor: 'rgba(245, 158, 11, 0.18)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12,
+                borderWidth: 2,
+                borderColor: '#fbbf24',
+              }}
+            >
+              <Swords color="#fbbf24" size={32} />
+            </View>
+            <Text
+              style={{
+                color: '#ffffff',
+                fontWeight: '900',
+                fontSize: 20,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+                textAlign: 'center',
+              }}
+            >
+              ¡HAS SIDO DESAFIADO!
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
+              Sala Privada:{' '}
+              <Text style={{ color: '#fbbf24', fontWeight: '800' }}>{invite.roomId}</Text>
+            </Text>
           </View>
 
-          <View className="p-6">
-            {/* Header */}
-            <View className="items-center mb-5">
-              <View className="w-16 h-16 rounded-2xl bg-amber-500/20 items-center justify-center mb-3 border-2 border-amber-400">
-                <Swords color="#fbbf24" size={32} />
-              </View>
-              <Text className="text-white font-black text-xl uppercase tracking-wider">
-                ¡HAS SIDO DESAFIADO!
-              </Text>
-              <Text className="text-slate-400 text-xs mt-1">
-                Sala Privada: <Text className="text-amber-400 font-mono font-bold">{invite.roomId}</Text>
+          {/* Perfil del Rival */}
+          <View
+            style={{
+              backgroundColor: '#020617',
+              padding: 14,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: '#1e293b',
+              marginBottom: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: '#1e293b',
+                borderWidth: 1,
+                borderColor: '#334155',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 18 }}>
+                {invite.username?.charAt(0)?.toUpperCase() || '?'}
               </Text>
             </View>
 
-            {/* Perfil del Rival */}
-            <View className="bg-slate-950 p-4 rounded-2xl border border-slate-800 mb-5 flex-row items-center">
-              <View className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center mr-3">
-                <Text className="text-white font-bold text-lg">
-                  {invite.username.charAt(0).toUpperCase()}
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text
+                  style={{ color: '#ffffff', fontWeight: '700', fontSize: 14, flexShrink: 1 }}
+                  numberOfLines={1}
+                >
+                  {invite.username}
+                </Text>
+                <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '700' }}>
+                  Niv.{invite.level}
                 </Text>
               </View>
 
-              <View className="flex-1 mr-2">
-                <View className="flex-row items-center">
-                  <Text className="text-white font-bold text-sm mr-2" numberOfLines={1}>
-                    {invite.username}
-                  </Text>
-                  <Text className="text-slate-500 text-[10px] font-bold">Niv.{invite.level}</Text>
-                </View>
-
-                <View className={`inline-flex self-start px-2 py-0.5 rounded-md border mt-1 ${div.badge}`}>
-                  <Text className="text-[10px] font-black uppercase">
-                    {div.icon} {div.label}
-                  </Text>
-                </View>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: div.border,
+                  marginTop: 4,
+                }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '900', color: div.color }}>
+                  {div.icon} {div.label}
+                </Text>
               </View>
+            </View>
 
-              <View className="items-end">
-                <View className="flex-row items-center mb-0.5">
-                  <Trophy color="#fbbf24" size={12} />
-                  <Text className="text-amber-400 font-bold text-xs font-mono ml-1">{invite.elo}</Text>
-                </View>
-                <View className="flex-row items-center">
-                  <Flame color={winRate >= 50 ? '#10b981' : '#ef4444'} size={12} />
+            <View style={{ alignItems: 'flex-end' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                <Trophy color="#fbbf24" size={12} />
+                <Text
+                  style={{
+                    color: '#fbbf24',
+                    fontWeight: '800',
+                    fontSize: 12,
+                    marginLeft: 4,
+                  }}
+                >
+                  {invite.elo}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Flame color={winRate >= 50 ? '#10b981' : '#ef4444'} size={12} />
+                <Text
+                  style={{
+                    fontWeight: '800',
+                    fontSize: 11,
+                    marginLeft: 4,
+                    color: winRate >= 50 ? '#34d399' : '#f87171',
+                  }}
+                >
+                  {winRate}%
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Acciones */}
+          <View style={{ gap: 10 }}>
+            <Pressable
+              disabled={accepting}
+              onPress={handleAccept}
+              style={({ pressed }) => ({
+                width: '100%',
+                paddingVertical: 14,
+                borderRadius: 16,
+                backgroundColor: pressed ? '#d97706' : '#f59e0b',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 8,
+                borderWidth: 1,
+                borderColor: '#fbbf24',
+              })}
+            >
+              {accepting ? (
+                <ActivityIndicator size="small" color="#020617" />
+              ) : (
+                <>
+                  <Swords color="#020617" size={18} />
                   <Text
-                    className={`font-bold text-[11px] font-mono ml-1 ${
-                      winRate >= 50 ? 'text-emerald-400' : 'text-red-400'
-                    }`}
+                    style={{
+                      color: '#020617',
+                      fontWeight: '900',
+                      fontSize: 14,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1,
+                    }}
                   >
-                    {winRate}%
+                    ACEPTAR DESAFÍO
                   </Text>
-                </View>
-              </View>
-            </View>
+                </>
+              )}
+            </Pressable>
 
-            {/* Acciones */}
-            <View className="space-y-3">
-              <Pressable
-                disabled={accepting}
-                onPress={handleAccept}
-                className="w-full py-3.5 rounded-2xl bg-amber-500 active:bg-amber-600 items-center justify-center flex-row border border-amber-400 shadow-lg mb-2"
-              >
-                {accepting ? (
-                  <ActivityIndicator size="small" color="#020617" />
-                ) : (
-                  <>
-                    <Swords color="#020617" size={18} className="mr-1.5" />
-                    <Text className="text-slate-950 font-black text-sm uppercase tracking-wider">
-                      ACEPTAR DESAFÍO
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-
-              <Pressable
-                disabled={accepting}
-                onPress={handleReject}
-                className="w-full py-3 rounded-2xl bg-slate-800/80 active:bg-slate-800 border border-slate-700 items-center justify-center"
-              >
-                <Text className="text-slate-400 font-bold text-xs">
-                  No, gracias ({secondsLeft}s)
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              disabled={accepting}
+              onPress={handleReject}
+              style={({ pressed }) => ({
+                width: '100%',
+                paddingVertical: 12,
+                borderRadius: 16,
+                backgroundColor: pressed ? '#334155' : '#1e293b',
+                borderWidth: 1,
+                borderColor: '#334155',
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
+              <Text style={{ color: '#94a3b8', fontWeight: '700', fontSize: 12 }}>
+                No, gracias ({secondsLeft}s)
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }

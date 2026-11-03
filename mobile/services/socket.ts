@@ -109,6 +109,18 @@ class MobileSocketService {
       this.socket = null;
     }
   }
+
+  notifyFriendConnected(friendId: string) {
+    if (this.socket?.connected) {
+      this.socket.emit('notify_friend_connected', { friendId });
+    }
+  }
+
+  notifyFriendWaiting(friendId: string) {
+    if (this.socket?.connected) {
+      this.socket.emit('notify_friend_waiting', { friendId });
+    }
+  }
 }
 
 export const socketService = new MobileSocketService();

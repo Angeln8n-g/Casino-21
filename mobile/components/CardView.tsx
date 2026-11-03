@@ -8,6 +8,7 @@ import { CardSuit } from './card/TacticalSuitIcon';
 export interface CardViewProps {
   card: Card;
   selected?: boolean;
+  isHovered?: boolean;
   onPress?: () => void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -23,6 +24,7 @@ export interface CardViewProps {
 export function CardView({
   card,
   selected = false,
+  isHovered = false,
   onPress,
   disabled = false,
   style,
@@ -42,6 +44,7 @@ export function CardView({
       suit={card.suit as CardSuit}
       value={card.value}
       selected={selected}
+      isHovered={isHovered}
       disabled={disabled}
       onClick={onPress}
       style={style}

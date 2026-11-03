@@ -12,6 +12,7 @@ export interface TacticalCard3DProps {
   suit?: CardSuit;
   value?: number;
   selected?: boolean;
+   isHovered?: boolean;
   disabled?: boolean;
   isKey?: boolean;
   isFaceDown?: boolean;
@@ -33,19 +34,36 @@ const SIZES: Record<
     suitSize: number;
     centerSuitSize: number;
     auraSize: number;
+    cornerOffset: number;
   }
 > = {
-  xs: { width: 44, height: 66, fontSize: 10, suitSize: 9, centerSuitSize: 18, auraSize: 26 },
-  sm: { width: 56, height: 84, fontSize: 11, suitSize: 11, centerSuitSize: 24, auraSize: 34 },
-  responsive: { width: 66, height: 98, fontSize: 13, suitSize: 12, centerSuitSize: 30, auraSize: 44 },
-  md: { width: 76, height: 112, fontSize: 14, suitSize: 13, centerSuitSize: 34, auraSize: 50 },
-  lg: { width: 92, height: 136, fontSize: 16, suitSize: 15, centerSuitSize: 42, auraSize: 60 },
+  xs: { width: 46, height: 68, fontSize: 10, suitSize: 9, centerSuitSize: 18, auraSize: 26, cornerOffset: 3.5 },
+  sm: { width: 58, height: 86, fontSize: 11, suitSize: 10, centerSuitSize: 24, auraSize: 34, cornerOffset: 4.5 },
+  responsive: { width: 68, height: 100, fontSize: 13, suitSize: 11, centerSuitSize: 28, auraSize: 42, cornerOffset: 5.5 },
+  md: { width: 78, height: 114, fontSize: 14, suitSize: 13, centerSuitSize: 34, auraSize: 48, cornerOffset: 6 },
+  lg: { width: 92, height: 136, fontSize: 16, suitSize: 15, centerSuitSize: 42, auraSize: 58, cornerOffset: 7 },
 };
+
+export function extractGradientColors(
+  bg: string | undefined | null,
+  fallback: [string, string, ...string[]]
+): [string, string, ...string[]] {
+  if (!bg) return fallback;
+  const matches = bg.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g);
+  if (matches && matches.length >= 2) {
+    return [matches[0], matches[1], ...matches.slice(2)];
+  }
+  if (matches && matches.length === 1) {
+    return [matches[0], matches[0]];
+  }
+  return fallback;
+}
 
 export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
   rank = 'A',
   suit = 'spades',
   selected = false,
+  isHovered = false,
   disabled = false,
   isKey = false,
   isFaceDown = false,
@@ -66,46 +84,69 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
   const isLightTheme =
     variant === 'light' ||
     (variant === 'auto' &&
-      (theme?.background?.includes('#ffffff') ||
-        theme?.background?.includes('255,255,255') ||
-        theme?.background?.includes('#fdf8ee') ||
-        theme?.background === '#ffffff'));
+      Boolean(
+        theme?.background?.includes('#ffffff') ||
+          theme?.background?.includes('255,255,255') ||
+          theme?.background?.includes('#fdf8ee') ||
+          theme?.background?.includes('#f8fafc') ||
+          theme?.background === '#ffffff'
+      ));
 
-  // Paleta adaptativa
-  const gradientColors: [string, string, ...string[]] = isLightTheme
-    ? ['#ffffff', '#f8fafc', '#e2e8f0']
-    : ['#172033', '#0d1322', '#060a12'];
+  const lightFallback: [string, string, ...string[]] = isRed
+    ? ['#ffffff', '#fff1f2', '#e2e8f0']
+    : ['#ffffff', '#f0f9ff', '#e2e8f0'];
+
+  const darkFallback: [string, string, ...string[]] = ['#131b2e', '#0d1322', '#070b14'];
+
+  const gradientColors: [string, string, ...string[]] =
+    variant === 'light'
+      ? lightFallback
+      : variant === 'dark'
+      ? darkFallback
+      : extractGradientColors(theme?.background, isLightTheme ? lightFallback : darkFallback);
 
   const defaultSuitColor = isLightTheme
     ? isRed
-      ? '#dc2626'
-      : '#111827'
+      ? '#e11d48'
+      : '#1e293b'
     : isRed
     ? '#ff3366'
     : '#e2e8f0';
 
-  const suitColor = isRed
-    ? theme?.redSuitColor || defaultSuitColor
-    : theme?.blackSuitColor || defaultSuitColor;
+  const suitColor =
+    variant === 'light'
+      ? defaultSuitColor
+      : variant === 'dark'
+      ? isRed
+        ? '#ff3366'
+        : '#e2e8f0'
+      : isRed
+      ? theme?.redSuitColor || defaultSuitColor
+      : theme?.blackSuitColor || defaultSuitColor;
 
-  const innerEdgeColor = selected
+  const outerBorderColor = isHovered
+    ? '#4ade80'
+    : selected
     ? '#fbbf24'
     : isKey
     ? '#38bdf8'
     : isLightTheme
-    ? 'rgba(148, 163, 184, 0.5)'
-    : theme?.innerEdge || 'rgba(56, 189, 248, 0.35)';
+    ? '#94a3b8'
+    : 'rgba(56, 189, 248, 0.4)';
 
-  const auraColor = isRed
-    ? isLightTheme
-      ? 'rgba(239, 68, 68, 0.22)'
-      : 'rgba(244, 63, 94, 0.38)'
+  const innerEdgeColor = isHovered
+    ? 'rgba(74, 222, 128, 0.7)'
+    : selected
+    ? 'rgba(251, 191, 36, 0.65)'
+    : isKey
+    ? 'rgba(56, 189, 248, 0.5)'
     : isLightTheme
-    ? 'rgba(56, 189, 248, 0.22)'
-    : 'rgba(56, 189, 248, 0.38)';
+    ? 'rgba(148, 163, 184, 0.45)'
+    : theme?.innerEdge || 'rgba(56, 189, 248, 0.28)';
 
-  const reticleColor = isLightTheme ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.22)';
-  const radarRingColor = isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)';
+  const auraBaseRgb = isRed ? '244, 63, 94' : '56, 189, 248';
+  const reticleColor = isLightTheme ? 'rgba(15, 23, 42, 0.18)' : 'rgba(255, 255, 255, 0.25)';
+  const radarRingColor = isLightTheme ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.12)';
 
   const isLaBuena = rank === '10' && suit === 'diamonds';
   const isLaChica = rank === '2' && suit === 'spades';
@@ -142,35 +183,32 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
         ]}
       >
         <LinearGradient
-          colors={['#172554', '#090d16', '#030712']}
+          colors={['#0f172a', '#090d16', '#04060a']}
           style={{ flex: 1, padding: 3, justifyContent: 'center', alignItems: 'center' }}
         >
-          {/* Marco Interno con Anillos de Energía */}
           <View
             style={{
               flex: 1,
               width: '100%',
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderColor: 'rgba(251, 191, 36, 0.25)',
               justifyContent: 'center',
               alignItems: 'center',
             }}
           >
-            {/* Corner Tech Accents */}
-            <View style={{ position: 'absolute', top: 3, left: 3, width: 4, height: 4, borderTopWidth: 1, borderLeftWidth: 1, borderColor: '#fbbf24' }} />
-            <View style={{ position: 'absolute', top: 3, right: 3, width: 4, height: 4, borderTopWidth: 1, borderRightWidth: 1, borderColor: '#fbbf24' }} />
-            <View style={{ position: 'absolute', bottom: 3, left: 3, width: 4, height: 4, borderBottomWidth: 1, borderLeftWidth: 1, borderColor: '#fbbf24' }} />
-            <View style={{ position: 'absolute', bottom: 3, right: 3, width: 4, height: 4, borderBottomWidth: 1, borderRightWidth: 1, borderColor: '#fbbf24' }} />
+            <View style={{ position: 'absolute', top: 3, left: 3, width: 4, height: 4, borderTopWidth: 1, borderLeftWidth: 1, borderColor: 'rgba(251, 191, 36, 0.6)' }} />
+            <View style={{ position: 'absolute', top: 3, right: 3, width: 4, height: 4, borderTopWidth: 1, borderRightWidth: 1, borderColor: 'rgba(251, 191, 36, 0.6)' }} />
+            <View style={{ position: 'absolute', bottom: 3, left: 3, width: 4, height: 4, borderBottomWidth: 1, borderLeftWidth: 1, borderColor: 'rgba(251, 191, 36, 0.6)' }} />
+            <View style={{ position: 'absolute', bottom: 3, right: 3, width: 4, height: 4, borderBottomWidth: 1, borderRightWidth: 1, borderColor: 'rgba(251, 191, 36, 0.6)' }} />
 
-            {/* Anillos concéntricos y emblema 21 */}
             <View
               style={{
                 width: dimensions.width * 0.55,
                 height: dimensions.width * 0.55,
                 borderRadius: (dimensions.width * 0.55) / 2,
                 borderWidth: 1,
-                borderColor: 'rgba(251, 191, 36, 0.35)',
+                borderColor: 'rgba(251, 191, 36, 0.25)',
                 justifyContent: 'center',
                 alignItems: 'center',
               }}
@@ -182,7 +220,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
                   borderRadius: (dimensions.width * 0.42) / 2,
                   borderWidth: 1,
                   borderStyle: 'dashed',
-                  borderColor: 'rgba(251, 191, 36, 0.45)',
+                  borderColor: 'rgba(251, 191, 36, 0.35)',
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}
@@ -191,7 +229,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
                   style={{
                     color: '#fbbf24',
                     fontFamily: 'RussoOne_400Regular',
-                    fontSize: dimensions.fontSize + 3,
+                    fontSize: dimensions.fontSize + 2,
                     fontWeight: 'bold',
                   }}
                 >
@@ -215,14 +253,23 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
           width: dimensions.width,
           height: dimensions.height,
           borderRadius: 14,
-          borderWidth: selected ? 2.5 : isKey ? 2 : 1.5,
-          borderColor: innerEdgeColor,
-          transform: [{ translateY: selected ? -8 : 0 }, { scale: selected ? 1.05 : 1 }],
-          shadowColor: selected ? '#fbbf24' : isLightTheme ? '#0f172a' : '#000',
-          shadowOffset: { width: 0, height: selected ? 6 : 3 },
-          shadowOpacity: selected ? 0.75 : isLightTheme ? 0.25 : 0.55,
-          shadowRadius: selected ? 8 : 4,
-          elevation: selected ? 8 : 4,
+          borderWidth: isHovered ? 2.5 : selected ? 2.5 : isKey ? 2 : 1.5,
+          borderColor: outerBorderColor,
+          transform: [
+            { translateY: selected ? -7 : isHovered ? -4 : 0 },
+            { scale: isHovered ? 1.08 : selected ? 1.05 : 1 },
+          ],
+          shadowColor: isHovered
+            ? '#4ade80'
+            : selected
+            ? '#fbbf24'
+            : isLightTheme
+            ? '#0f172a'
+            : '#000',
+          shadowOffset: { width: 0, height: selected || isHovered ? 6 : 3 },
+          shadowOpacity: selected || isHovered ? 0.8 : isLightTheme ? 0.3 : 0.6,
+          shadowRadius: selected || isHovered ? 8 : 4,
+          elevation: selected || isHovered ? 9 : 4,
           opacity: disabled ? 0.45 : 1,
           overflow: 'visible',
         },
@@ -231,14 +278,14 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
     >
       <LinearGradient
         colors={gradientColors}
-        start={{ x: 0.1, y: 0.1 }}
-        end={{ x: 0.9, y: 0.9 }}
+        start={{ x: 0.1, y: 0.05 }}
+        end={{ x: 0.9, y: 0.95 }}
         style={{
           flex: 1,
           borderRadius: 12,
-          padding: 3,
-          justifyContent: 'space-between',
           overflow: 'hidden',
+          justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
         {/* Recessed Inner Tactical Border con esquinas biseladas */}
@@ -246,62 +293,84 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: 2.5,
-            left: 2.5,
-            right: 2.5,
-            bottom: 2.5,
+            top: 3,
+            left: 3,
+            right: 3,
+            bottom: 3,
             borderRadius: 9,
             borderWidth: 1,
             borderColor: innerEdgeColor,
-            opacity: 0.7,
           }}
         >
           {/* Tech Corner Crosshairs (Brackets de mira táctica) */}
-          <View style={{ position: 'absolute', top: 1.5, left: 1.5, width: 3, height: 3, borderTopWidth: 1, borderLeftWidth: 1, borderColor: reticleColor }} />
-          <View style={{ position: 'absolute', top: 1.5, right: 1.5, width: 3, height: 3, borderTopWidth: 1, borderRightWidth: 1, borderColor: reticleColor }} />
-          <View style={{ position: 'absolute', bottom: 1.5, left: 1.5, width: 3, height: 3, borderBottomWidth: 1, borderLeftWidth: 1, borderColor: reticleColor }} />
-          <View style={{ position: 'absolute', bottom: 1.5, right: 1.5, width: 3, height: 3, borderBottomWidth: 1, borderRightWidth: 1, borderColor: reticleColor }} />
+          <View style={{ position: 'absolute', top: 1.5, left: 1.5, width: 3.5, height: 3.5, borderTopWidth: 1, borderLeftWidth: 1, borderColor: reticleColor }} />
+          <View style={{ position: 'absolute', top: 1.5, right: 1.5, width: 3.5, height: 3.5, borderTopWidth: 1, borderRightWidth: 1, borderColor: reticleColor }} />
+          <View style={{ position: 'absolute', bottom: 1.5, left: 1.5, width: 3.5, height: 3.5, borderBottomWidth: 1, borderLeftWidth: 1, borderColor: reticleColor }} />
+          <View style={{ position: 'absolute', bottom: 1.5, right: 1.5, width: 3.5, height: 3.5, borderBottomWidth: 1, borderRightWidth: 1, borderColor: reticleColor }} />
         </View>
 
-        {/* ── Esquina Superior Izquierda (Rank + Palo) ── */}
-        <View pointerEvents="none" style={{ alignItems: 'flex-start', paddingLeft: 2, paddingTop: 1 }}>
+        {/* ── TOP-LEFT CORNER (Rank + Suit) ── */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: dimensions.cornerOffset,
+            left: dimensions.cornerOffset + 1,
+            alignItems: 'center',
+            zIndex: 10,
+          }}
+        >
           <Text
             style={{
               color: suitColor,
               fontSize: dimensions.fontSize,
               fontWeight: '900',
               fontFamily: fontOption.fontFamily,
-              lineHeight: dimensions.fontSize + 2,
+              lineHeight: dimensions.fontSize + 1,
             }}
           >
             {rank}
           </Text>
-          <View style={{ marginTop: 1 }}>
+          <View style={{ marginTop: 0.5 }}>
             <TacticalSuitIcon suit={suit} size={dimensions.suitSize} color={suitColor} faceted={false} />
           </View>
         </View>
 
-        {/* ── Centro: Aura + Anillos de Radar + Escudo 3D Facetado ── */}
+        {/* ── CENTER EMBOSSED 3D PIECE (Aura Difuminada + Radar + Palo Facetado) ── */}
         <View
           pointerEvents="none"
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
             justifyContent: 'center',
             alignItems: 'center',
+            zIndex: 5,
           }}
         >
-          {/* Aura Lumínica Suave de Fondo */}
+          {/* Capas concéntricas para simular blur radial suave */}
           <View
             style={{
               position: 'absolute',
-              width: dimensions.auraSize,
-              height: dimensions.auraSize,
-              borderRadius: dimensions.auraSize / 2,
-              backgroundColor: auraColor,
+              width: dimensions.auraSize * 1.35,
+              height: dimensions.auraSize * 1.35,
+              borderRadius: (dimensions.auraSize * 1.35) / 2,
+              backgroundColor: `rgba(${auraBaseRgb}, ${isLightTheme ? 0.08 : 0.1})`,
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              width: dimensions.auraSize * 1.0,
+              height: dimensions.auraSize * 1.0,
+              borderRadius: (dimensions.auraSize * 1.0) / 2,
+              backgroundColor: `rgba(${auraBaseRgb}, ${isLightTheme ? 0.14 : 0.18})`,
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              width: dimensions.auraSize * 0.68,
+              height: dimensions.auraSize * 0.68,
+              borderRadius: (dimensions.auraSize * 0.68) / 2,
+              backgroundColor: `rgba(${auraBaseRgb}, ${isLightTheme ? 0.2 : 0.26})`,
             }}
           />
 
@@ -320,9 +389,9 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
           >
             <View
               style={{
-                width: dimensions.auraSize * 0.65,
-                height: dimensions.auraSize * 0.65,
-                borderRadius: (dimensions.auraSize * 0.65) / 2,
+                width: dimensions.auraSize * 0.64,
+                height: dimensions.auraSize * 0.64,
+                borderRadius: (dimensions.auraSize * 0.64) / 2,
                 borderWidth: 1,
                 borderStyle: 'dashed',
                 borderColor: radarRingColor,
@@ -335,7 +404,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
             <Text
               style={{
                 position: 'absolute',
-                top: dimensions.height * 0.22,
+                top: -dimensions.centerSuitSize * 0.65,
                 color: '#fbbf24',
                 fontSize: 8,
                 fontWeight: '900',
@@ -355,7 +424,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
             <View
               style={{
                 position: 'absolute',
-                bottom: dimensions.height * 0.2,
+                bottom: -dimensions.centerSuitSize * 0.55,
                 backgroundColor: '#f59e0b',
                 paddingHorizontal: 4,
                 paddingVertical: 1,
@@ -372,7 +441,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
             <View
               style={{
                 position: 'absolute',
-                bottom: dimensions.height * 0.2,
+                bottom: -dimensions.centerSuitSize * 0.55,
                 backgroundColor: '#38bdf8',
                 paddingHorizontal: 4,
                 paddingVertical: 1,
@@ -386,13 +455,15 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
           )}
         </View>
 
-        {/* ── Esquina Inferior Derecha (Rotada 180deg) ── */}
+        {/* ── BOTTOM-RIGHT CORNER (Rotada 180deg en su propio eje inferior derecho) ── */}
         <View
           pointerEvents="none"
           style={{
-            alignItems: 'flex-end',
-            paddingRight: 2,
-            paddingBottom: 1,
+            position: 'absolute',
+            bottom: dimensions.cornerOffset,
+            right: dimensions.cornerOffset + 1,
+            alignItems: 'center',
+            zIndex: 10,
             transform: [{ rotate: '180deg' }],
           }}
         >
@@ -402,12 +473,12 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
               fontSize: dimensions.fontSize,
               fontWeight: '900',
               fontFamily: fontOption.fontFamily,
-              lineHeight: dimensions.fontSize + 2,
+              lineHeight: dimensions.fontSize + 1,
             }}
           >
             {rank}
           </Text>
-          <View style={{ marginTop: 1 }}>
+          <View style={{ marginTop: 0.5 }}>
             <TacticalSuitIcon suit={suit} size={dimensions.suitSize} color={suitColor} faceted={false} />
           </View>
         </View>
@@ -417,7 +488,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
           <View
             style={{
               position: 'absolute',
-              bottom: -9,
+              bottom: 2,
               alignSelf: 'center',
               backgroundColor: '#020617',
               borderWidth: 1,
@@ -428,7 +499,7 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
               zIndex: 99,
             }}
           >
-            <Text style={{ color: '#fde68a', fontSize: 8, fontWeight: 'bold' }}>{annotation}</Text>
+            <Text style={{ color: '#fde68a', fontSize: 7, fontWeight: 'bold' }}>{annotation}</Text>
           </View>
         )}
       </LinearGradient>

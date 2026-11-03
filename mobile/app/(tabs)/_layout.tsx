@@ -1,8 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { ShoppingBag, Home, User, Users, Calendar } from 'lucide-react-native';
+import { useNotifications } from '../../hooks/useNotifications';
 
 export default function TabsLayout() {
+  const { totalPending, unreadCount } = useNotifications();
+
   return (
     <Tabs
       screenOptions={{
@@ -16,6 +19,12 @@ export default function TabsLayout() {
           paddingBottom: 8,
           paddingTop: 8,
         },
+        tabBarBadgeStyle: {
+          backgroundColor: '#ef4444',
+          color: '#ffffff',
+          fontSize: 10,
+          fontWeight: '900',
+        },
       }}
     >
       <Tabs.Screen
@@ -23,6 +32,7 @@ export default function TabsLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
         }}
       />
       <Tabs.Screen
@@ -44,6 +54,7 @@ export default function TabsLayout() {
         options={{
           title: 'Social',
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          tabBarBadge: totalPending > 0 ? totalPending : undefined,
         }}
       />
       <Tabs.Screen

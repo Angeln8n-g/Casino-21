@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { GameState } from 'domain/game-state';
 import { Card } from 'domain/card';
-import { DefaultActionValidator, Action } from 'application/action-validator';
 import { triggerHaptic } from '../utils/haptics';
 
 export type ActionPayload =
@@ -16,6 +15,7 @@ export type ActionPayload =
 interface ActionPanelProps {
   gameState: GameState | null;
   handCard: Card | null;
+  selectedHandCardId?: string | null;
   selectedBoardCardIds: Set<string>;
   selectedFormationIds: Set<string>;
   onPlayAction: (action: ActionPayload) => void;
@@ -25,33 +25,33 @@ interface ActionPanelProps {
 export function ActionPanel({
   gameState,
   handCard,
+  selectedHandCardId,
   selectedBoardCardIds,
   selectedFormationIds,
   onPlayAction,
   onClearSelection,
 }: ActionPanelProps) {
-  if (!handCard) {
-    return (
-      <View className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 my-1 items-center">
-        <Text className="text-slate-400 text-xs font-semibold text-center">
-          Selecciona una carta de tu mano para ver las jugadas disponibles.
-        </Text>
-      </View>
-    );
+  const activeHandCardId = selectedHandCardId ?? handCard?.id ?? null;
+
+  if (!activeHandCardId || !handCard) {
+    return null;
   }
 
-  const isAce = handCard.rank === 'A' || (handCard as any).rank === 1;
-  const hasBoardCardsSelected = selectedBoardCardIds.size > 0;
-  const hasFormationsSelected = selectedFormationIds.size > 0;
+  const handleColocar = () => {
+    triggerHaptic('card_tap');
+    onPlayAction({ type: 'colocar' });
+  };
 
   const handleLlevar = () => {
     triggerHaptic('card_tap');
-    let currentFormationIds = Array.from(selectedFormationIds);
+    const currentFormationIds = Array.from(selectedFormationIds);
 
     if (gameState) {
       const player = gameState.players[gameState.currentTurnPlayerIndex];
-      if (player) {
-        const targetValues = handCard.rank === 'A' ? [1, 14] : [handCard.value];
+      const activeCard = player?.hand.find((c) => c.id === activeHandCardId) || handCard;
+
+      if (player && activeCard) {
+        const targetValues = activeCard.rank === 'A' ? [1, 14] : [activeCard.value];
         const myPendingFormations = gameState.board.formations.filter(
           (f) => f.createdBy === player.id && targetValues.includes(f.value)
         );
@@ -71,16 +71,6 @@ export function ActionPanel({
     });
   };
 
-  const handleColocar = () => {
-    triggerHaptic('card_tap');
-    onPlayAction({ type: 'colocar' });
-  };
-
-  const handleCantar = () => {
-    triggerHaptic('card_tap');
-    onPlayAction({ type: 'cantar' });
-  };
-
   const handleFormar = () => {
     triggerHaptic('card_tap');
     onPlayAction({
@@ -89,12 +79,12 @@ export function ActionPanel({
     });
   };
 
-  const handleAgrupar = () => {
+  const handleFormarPar = () => {
     triggerHaptic('card_tap');
     if (selectedFormationIds.size === 1) {
       const formId = Array.from(selectedFormationIds)[0];
       onPlayAction({ type: 'formarPar', formationId: formId });
-    } else {
+    } else if (selectedBoardCardIds.size > 0) {
       onPlayAction({
         type: 'formarPar',
         boardCardIds: Array.from(selectedBoardCardIds),
@@ -102,7 +92,7 @@ export function ActionPanel({
     }
   };
 
-  const handleAumentar = () => {
+  const handleAumentarFormacion = () => {
     triggerHaptic('card_tap');
     const formId = Array.from(selectedFormationIds)[0];
     if (formId) {
@@ -113,93 +103,84 @@ export function ActionPanel({
     }
   };
 
-  return (
-    <View className="bg-slate-900/95 p-3 rounded-2xl border border-amber-500/40 my-1">
-      <View className="flex-row justify-between items-center mb-2 px-1">
-        <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
-          Acciones Disponibles
-        </Text>
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            onClearSelection();
-          }}
-          className="bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700"
-        >
-          <Text className="text-slate-400 text-[10px] font-bold">Limpiar</Text>
-        </Pressable>
-      </View>
+  const handleCantar = () => {
+    triggerHaptic('card_tap');
+    onPlayAction({ type: 'cantar' });
+  };
 
-      <View className="flex-row flex-wrap justify-center gap-2">
-        {/* 1. Sin nada seleccionado en tapete: Colocar Suelta y Cantar As */}
-        {!hasBoardCardsSelected && !hasFormationsSelected && (
+  return (
+    <View className="flex-row flex-wrap items-center justify-between gap-2 bg-gray-950/90 px-3 py-2 rounded-xl shadow-xl border border-white/10 w-full my-1">
+      <View className="flex-row flex-wrap items-center gap-2 flex-1">
+        {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
           <>
             <Pressable
               onPress={handleColocar}
-              className="flex-1 py-2.5 px-3 bg-blue-600 active:bg-blue-700 rounded-xl items-center min-w-[110px]"
+              className="min-h-[36px] bg-cyan-600 active:bg-cyan-500 px-4 py-1.5 rounded-lg justify-center items-center shadow border border-cyan-400/30"
             >
-              <Text className="text-white font-bold text-xs uppercase">Colocar Suelta</Text>
+              <Text className="text-white font-bold text-xs">Colocar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleCantar}
+              className="min-h-[36px] bg-purple-900/60 active:bg-purple-800/80 px-4 py-1.5 rounded-lg justify-center items-center shadow border border-purple-500/30"
+            >
+              <Text className="text-purple-200 font-bold text-xs">Cantar As</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Pressable
+              onPress={handleLlevar}
+              className="min-h-[36px] bg-emerald-600 active:bg-emerald-500 px-5 py-1.5 rounded-lg justify-center items-center shadow-md border border-emerald-400/40"
+            >
+              <Text className="text-white font-bold text-xs">Llevar</Text>
             </Pressable>
 
-            {isAce && (
-              <Pressable
-                onPress={handleCantar}
-                className="flex-1 py-2.5 px-3 bg-purple-600 active:bg-purple-700 rounded-xl items-center min-w-[110px]"
-              >
-                <Text className="text-white font-bold text-xs uppercase">Cantar As</Text>
-              </Pressable>
+            {selectedBoardCardIds.size > 0 && selectedFormationIds.size === 0 && (
+              <>
+                <Pressable
+                  onPress={handleFormar}
+                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-amber-500/30"
+                >
+                  <Text className="text-amber-300 font-bold text-xs">Formar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleFormarPar}
+                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-amber-500/30"
+                >
+                  <Text className="text-amber-200 font-bold text-xs">Agrupar</Text>
+                </Pressable>
+              </>
+            )}
+
+            {selectedFormationIds.size === 1 && selectedBoardCardIds.size === 0 && (
+              <>
+                <Pressable
+                  onPress={handleFormarPar}
+                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-amber-500/30"
+                >
+                  <Text className="text-amber-200 font-bold text-xs">Pares</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleAumentarFormacion}
+                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-rose-500/30"
+                >
+                  <Text className="text-rose-300 font-bold text-xs">Aumentar</Text>
+                </Pressable>
+              </>
             )}
           </>
         )}
-
-        {/* 2. Con cartas o formaciones seleccionadas: Llevar (Capturar) */}
-        {(hasBoardCardsSelected || hasFormationsSelected) && (
-          <Pressable
-            onPress={handleLlevar}
-            className="flex-1 py-2.5 px-3 bg-emerald-600 active:bg-emerald-700 rounded-xl items-center min-w-[120px]"
-          >
-            <Text className="text-white font-bold text-xs uppercase">Llevar (Capturar)</Text>
-          </Pressable>
-        )}
-
-        {/* 3. Con cartas sueltas seleccionadas: Formar y Agrupar */}
-        {hasBoardCardsSelected && !hasFormationsSelected && (
-          <>
-            <Pressable
-              onPress={handleFormar}
-              className="flex-1 py-2.5 px-3 bg-amber-500 active:bg-amber-600 rounded-xl items-center min-w-[90px]"
-            >
-              <Text className="text-slate-950 font-bold text-xs uppercase">Formar</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={handleAgrupar}
-              className="flex-1 py-2.5 px-3 bg-orange-600 active:bg-orange-700 rounded-xl items-center min-w-[90px]"
-            >
-              <Text className="text-white font-bold text-xs uppercase">Agrupar</Text>
-            </Pressable>
-          </>
-        )}
-
-        {/* 4. Con una formación seleccionada: Aumentar y Pares */}
-        {hasFormationsSelected && selectedFormationIds.size === 1 && (
-          <>
-            <Pressable
-              onPress={handleAumentar}
-              className="flex-1 py-2.5 px-3 bg-purple-600 active:bg-purple-700 rounded-xl items-center min-w-[110px]"
-            >
-              <Text className="text-white font-bold text-xs uppercase">Aumentar</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={handleAgrupar}
-              className="flex-1 py-2.5 px-3 bg-orange-600 active:bg-orange-700 rounded-xl items-center min-w-[90px]"
-            >
-              <Text className="text-white font-bold text-xs uppercase">Pares</Text>
-            </Pressable>
-          </>
-        )}
       </View>
+
+      <Pressable
+        onPress={() => {
+          triggerHaptic('light');
+          onClearSelection();
+        }}
+        className="min-h-[36px] bg-white/5 active:bg-white/10 px-3 py-1.5 rounded-lg justify-center items-center border border-white/10"
+      >
+        <Text className="text-gray-300 font-medium text-xs">Cancelar</Text>
+      </Pressable>
     </View>
   );
 }
