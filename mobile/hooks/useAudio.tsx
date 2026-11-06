@@ -54,82 +54,82 @@ interface CueConfig {
   poolSize: number;
 }
 
-// Catálogo sincronizado con src/web/hooks/useAudio.tsx (mismos baseVolume y cooldownMs)
+// Catálogo sincronizado con mobile/assets/audio/sfx/
 const AUDIO_CATALOG: Record<AudioCue, CueConfig> = {
   cardDeal: {
-    source: require('../../src/Public/card_deal.mp3'),
+    source: require('../assets/audio/sfx/card_deal.mp3'),
     baseVolume: 0.7,
     cooldownMs: 150,
     poolSize: 2,
   },
   cardPlay: {
-    source: require('../../src/Public/card_play.mp3'),
+    source: require('../assets/audio/sfx/card_play.mp3'),
     baseVolume: 0.55,
     cooldownMs: 60,
     poolSize: 3,
   },
   chipsClink: {
-    source: require('../../src/Public/clips_click.mp3'),
+    source: require('../assets/audio/sfx/clips_click.mp3'),
     baseVolume: 0.75,
     cooldownMs: 110,
     poolSize: 2,
   },
   matchFound: {
-    source: require('../../src/Public/Steel_Over_Stone.mp3'),
+    source: require('../assets/audio/sfx/steel_over_stone.mp3'),
     baseVolume: 0.5,
     cooldownMs: 500,
     poolSize: 1,
   },
   virado: {
-    source: require('../../src/Public/virado.mp3'),
+    source: require('../assets/audio/sfx/virado.mp3'),
     baseVolume: 0.85,
     cooldownMs: 800,
     poolSize: 1,
   },
   viradoOut: {
-    source: require('../../src/Public/Stomach Thumps.mp3'),
+    source: require('../assets/audio/sfx/stomach_thumps.mp3'),
     baseVolume: 0.75,
     cooldownMs: 800,
     poolSize: 1,
   },
   victory: {
-    source: require('../../src/Public/victory.mp3'),
+    source: require('../assets/audio/sfx/victory.mp3'),
     baseVolume: 0.85,
     cooldownMs: 1200,
     poolSize: 1,
   },
   defeat: {
-    source: require('../../src/Public/error_play.mp3'),
+    source: require('../assets/audio/sfx/error_play.mp3'),
     baseVolume: 0.6,
     cooldownMs: 1000,
     poolSize: 1,
   },
   error: {
-    source: require('../../src/Public/error_play.mp3'),
+    source: require('../assets/audio/sfx/error_play.mp3'),
     baseVolume: 0.45,
     cooldownMs: 180,
     poolSize: 2,
   },
   alert: {
-    source: require('../../src/Public/Steel_Over_Stone.mp3'),
+    source: require('../assets/audio/sfx/steel_over_stone.mp3'),
     baseVolume: 0.35,
     cooldownMs: 400,
     poolSize: 1,
   },
   turnChange: {
-    source: require('../../src/Public/sfx-impact22.mp3'),
+    source: require('../assets/audio/sfx/sfx_impact22.mp3'),
     baseVolume: 0.6,
     cooldownMs: 450,
     poolSize: 1,
   },
   emoteIn: {
-    source: require('../../src/Public/Rake Swing Whoosh Close.mp3'),
+    source: require('../assets/audio/sfx/rake_swing_whoosh_close.mp3'),
     baseVolume: 0.8,
     cooldownMs: 300,
     poolSize: 1,
   },
   emoteOut: {
-    source: require('../../src/Public/Sniffle.mp3'),
+    source: require('../assets/audio/sfx/sniffle.mp3'),
     baseVolume: 0.7,
     cooldownMs: 300,
     poolSize: 1,
@@ -153,7 +153,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const poolIndexRef = useRef<Map<AudioCue, number>>(new Map());
   const lastPlayTimesRef = useRef<Map<AudioCue, number>>(new Map());
 
-  // Inicialización de modo de audio y precarga paralela de todos los SFX
+  // Inicialización de modo de audio y precarga de todos los SFX
   useEffect(() => {
     let isMounted = true;
 
@@ -161,6 +161,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
       shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
     }).catch(() => {});
 
     AsyncStorage.getItem(AUDIO_SETTINGS_KEY).then((res) => {
@@ -177,29 +178,31 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
     const preloadAll = async () => {
       const cues = Object.keys(AUDIO_CATALOG) as AudioCue[];
-      await Promise.all(
-        cues.map(async (cue) => {
-          const config = AUDIO_CATALOG[cue];
-          const instances: Audio.Sound[] = [];
-          for (let i = 0; i < config.poolSize; i++) {
-            try {
-              const { sound } = await Audio.Sound.createAsync(config.source, {
-                shouldPlay: false,
-                volume: config.baseVolume,
-              });
-              if (isMounted) {
-                instances.push(sound);
-              } else {
-                sound.unloadAsync().catch(() => {});
-              }
-            } catch {}
-          }
-          if (isMounted && instances.length > 0) {
-            soundPoolsRef.current.set(cue, instances);
+      for (const cue of cues) {
+        if (!isMounted) break;
+        const config = AUDIO_CATALOG[cue];
+        if (!config) continue;
+        try {
+          // downloadFirst = false evita que expo-asset intente descargar el recurso bundled en standalone APKs
+          const { sound } = await Audio.Sound.createAsync(
+            config.source,
+            {
+              shouldPlay: false,
+              volume: config.baseVolume,
+            },
+            null,
+            false
+          );
+          if (isMounted) {
+            soundPoolsRef.current.set(cue, [sound]);
             poolIndexRef.current.set(cue, 0);
+          } else {
+            sound.unloadAsync().catch(() => {});
           }
-        })
-      );
+        } catch (err) {
+          console.warn(`[useAudio] Error preloading cue ${cue}:`, err);
+        }
+      }
     };
 
     preloadAll();
@@ -287,7 +290,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       );
       const playRate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
 
-      // 1. Reproducción instantánea sin filtro DSP de pitch-stretching (0ms buffer lag)
+      // 1. Reproducción instantánea desde el pool pre-cargado
       const pool = soundPoolsRef.current.get(cue);
       if (pool && pool.length > 0) {
         const idx = (poolIndexRef.current.get(cue) || 0) % pool.length;
@@ -295,37 +298,40 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         const sound = pool[idx];
 
         try {
-          await sound.replayAsync({
-            positionMillis: 0,
-            volume: targetVol,
-            rate: playRate,
-            shouldCorrectPitch: false,
-            isMuted: false,
-            shouldPlay: true,
-          });
+          await sound.setPositionAsync(0);
+          await sound.setVolumeAsync(targetVol);
+          await sound.playAsync();
           return;
         } catch {
-          // Si la instancia falló, continuar al fallback
+          try {
+            await sound.replayAsync({
+              positionMillis: 0,
+              volume: targetVol,
+              shouldPlay: true,
+            });
+            return;
+          } catch {}
         }
       }
 
-      // 2. Fallback dinámico si aún no terminó de precargar al arranque
+      // 2. Fallback dinámico si no estuviera precargado
       try {
         const { sound } = await Audio.Sound.createAsync(
           config.source,
           {
             shouldPlay: true,
             volume: targetVol,
-            rate: playRate,
-            shouldCorrectPitch: false,
           },
           (status) => {
             if (status.isLoaded && status.didJustFinish) {
               sound.unloadAsync().catch(() => {});
             }
-          }
+          },
+          false
         );
-      } catch {}
+      } catch (err) {
+        console.warn(`[useAudio] Error reproduciendo fallback SFX ${cue}:`, err);
+      }
     },
     [muted, volume]
   );
@@ -373,14 +379,19 @@ export function AudioProvider({ children }: { children: ReactNode }) {
           : clamp(volume * config.baseVolume * volMult, 0, 1);
         const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
 
-        const { sound } = await Audio.Sound.createAsync(config.source, {
-          shouldPlay: true,
-          isLooping: true,
-          volume: targetVol,
-          isMuted: muted,
-          rate,
-          shouldCorrectPitch: true,
-        });
+        const { sound } = await Audio.Sound.createAsync(
+          config.source,
+          {
+            shouldPlay: true,
+            isLooping: true,
+            volume: targetVol,
+            isMuted: muted,
+            rate,
+            shouldCorrectPitch: true,
+          },
+          null,
+          false
+        );
         loopsRef.current.set(id, {
           sound,
           baseVolume: config.baseVolume,

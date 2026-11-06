@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text } from 'react-native';
 import { Player } from 'domain/player';
 import { Card } from 'domain/card';
@@ -26,7 +26,7 @@ interface HandViewProps {
   onDropOnFormation?: (formationIndex: number, cardId: string) => void;
 }
 
-export function HandView({
+export const HandView = memo(function HandView({
   localPlayer,
   isCurrentTurn,
   selectedCardId,
@@ -126,7 +126,7 @@ export function HandView({
                 disabled={!isCurrentTurn}
                 theme={theme}
                 fontKey={fontKey}
-                variant="light"
+                variant="auto"
                 onPress={() => isCurrentTurn && onSelectCard(card.id)}
                 onDragStart={onDragStart}
                 onDragMove={onDragMove}
@@ -144,4 +144,4 @@ export function HandView({
       </View>
     </View>
   );
-}
+});

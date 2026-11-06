@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Svg, { Defs, LinearGradient, Stop, G, Path, Line, Circle } from 'react-native-svg';
 
 export type CardSuit = 'spades' | 'hearts' | 'diamonds' | 'clubs';
@@ -12,17 +12,65 @@ interface TacticalSuitIconProps {
 
 /**
  * Bespoke tactical SVG vectors for KASINO21 card suits in React Native.
- * Faceted geometry and lighting matching web version.
+ * Fast-path rendering for corner flat icons (zero gradient defs overhead)
+ * and high-fidelity faceted rendering for center focal icons.
  */
-export const TacticalSuitIcon: React.FC<TacticalSuitIconProps> = ({
+export const TacticalSuitIcon = memo(function TacticalSuitIcon({
   suit,
   size = 20,
   faceted = true,
   color,
-}) => {
+}: TacticalSuitIconProps) {
   const width = size;
   const height = size;
 
+  // FAST PATH: Iconos pequeños de esquinas planos (sin defs ni gradientes pesados)
+  if (!faceted) {
+    const flatColor = color || (suit === 'hearts' || suit === 'diamonds' ? '#FF4D6D' : '#E2E8F0');
+    switch (suit) {
+      case 'spades':
+        return (
+          <Svg viewBox="0 0 48 48" width={width} height={height}>
+            <Path
+              d="M24 4C24 4 11 16 8 23.5C5 31 10.5 35 17 34C22 33.2 23.5 28 24 28V4ZM24 4C24 4 37 16 40 23.5C43 31 37.5 35 31 34C26 33.2 24.5 28 24 28V4ZM22 28C22 34 16 41 14 43.5C18 43.8 30 43.8 34 43.5C32 41 26 34 26 28H22Z"
+              fill={flatColor}
+            />
+          </Svg>
+        );
+      case 'hearts':
+        return (
+          <Svg viewBox="0 0 48 48" width={width} height={height}>
+            <Path
+              d="M24 13.5C21 8 15 5 9.5 8C4 11 3.5 19 6.5 25C10 32 20 39.5 24 43V13.5ZM24 13.5C27 8 33 5 38.5 8C44 11 44.5 19 41.5 25C38 32 28 39.5 24 43V13.5Z"
+              fill={flatColor}
+            />
+          </Svg>
+        );
+      case 'diamonds':
+        return (
+          <Svg viewBox="0 0 48 48" width={width} height={height}>
+            <Path d="M24 4L7 24L24 44L41 24Z" fill={flatColor} />
+          </Svg>
+        );
+      case 'clubs':
+        return (
+          <Svg viewBox="0 0 48 48" width={width} height={height}>
+            <G>
+              <Circle cx="24" cy="14" r="9.5" fill={flatColor} />
+              <Circle cx="14" cy="27" r="9" fill={flatColor} />
+              <Circle cx="34" cy="27" r="9" fill={flatColor} />
+              <Circle cx="24" cy="24" r="5" fill={flatColor} />
+              <Path
+                d="M22 25C22 34 16 41 14 43.5C18 43.8 30 43.8 34 43.5C32 41 26 34 26 25H22Z"
+                fill={flatColor}
+              />
+            </G>
+          </Svg>
+        );
+    }
+  }
+
+  // DETAILED PATH: Palo central 3D facetado con iluminación
   switch (suit) {
     case 'spades':
       return (
@@ -44,25 +92,19 @@ export const TacticalSuitIcon: React.FC<TacticalSuitIconProps> = ({
             </LinearGradient>
           </Defs>
           <G>
-            {/* Left facet */}
             <Path
               d="M24 4C24 4 11 16 8 23.5C5 31 10.5 35 17 34C22 33.2 23.5 28 24 28V4Z"
-              fill={faceted ? 'url(#k21-spade-light)' : (color || '#E2E8F0')}
+              fill="url(#k21-spade-light)"
             />
-            {/* Right facet */}
             <Path
               d="M24 4C24 4 37 16 40 23.5C43 31 37.5 35 31 34C26 33.2 24.5 28 24 28V4Z"
-              fill={faceted ? 'url(#k21-spade-dark)' : (color || '#CBD5E1')}
+              fill="url(#k21-spade-dark)"
             />
-            {/* Base Stem */}
             <Path
               d="M22 28C22 34 16 41 14 43.5C18 43.8 30 43.8 34 43.5C32 41 26 34 26 28H22Z"
-              fill={faceted ? 'url(#k21-spade-stem)' : (color || '#94A3B8')}
+              fill="url(#k21-spade-stem)"
             />
-            {/* Center ridge specular highlight */}
-            {faceted && (
-              <Line x1="24" y1="5" x2="24" y2="28" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity={0.8} />
-            )}
+            <Line x1="24" y1="5" x2="24" y2="28" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity={0.8} />
           </G>
         </Svg>
       );
@@ -83,20 +125,15 @@ export const TacticalSuitIcon: React.FC<TacticalSuitIconProps> = ({
             </LinearGradient>
           </Defs>
           <G>
-            {/* Left lobe */}
             <Path
               d="M24 13.5C21 8 15 5 9.5 8C4 11 3.5 19 6.5 25C10 32 20 39.5 24 43V13.5Z"
-              fill={faceted ? 'url(#k21-heart-left)' : (color || '#FF4D6D')}
+              fill="url(#k21-heart-left)"
             />
-            {/* Right lobe */}
             <Path
               d="M24 13.5C27 8 33 5 38.5 8C44 11 44.5 19 41.5 25C38 32 28 39.5 24 43V13.5Z"
-              fill={faceted ? 'url(#k21-heart-right)' : (color || '#FB7185')}
+              fill="url(#k21-heart-right)"
             />
-            {/* Spine specular line */}
-            {faceted && (
-              <Line x1="24" y1="14" x2="24" y2="42" stroke="#FFE4E6" strokeWidth="0.8" strokeLinecap="round" opacity={0.75} />
-            )}
+            <Line x1="24" y1="14" x2="24" y2="42" stroke="#FFE4E6" strokeWidth="0.8" strokeLinecap="round" opacity={0.75} />
           </G>
         </Svg>
       );
@@ -123,19 +160,13 @@ export const TacticalSuitIcon: React.FC<TacticalSuitIconProps> = ({
             </LinearGradient>
           </Defs>
           <G>
-            {/* 4-facet diamond crystal */}
-            <Path d="M24 4L7 24L24 24V4Z" fill={faceted ? 'url(#k21-diam-top-left)' : (color || '#FDA4AF')} />
-            <Path d="M24 4L41 24L24 24V4Z" fill={faceted ? 'url(#k21-diam-top-right)' : (color || '#FB7185')} />
-            <Path d="M24 44L7 24L24 24V44Z" fill={faceted ? 'url(#k21-diam-bot-left)' : (color || '#E11D48')} />
-            <Path d="M24 44L41 24L24 24V44Z" fill={faceted ? 'url(#k21-diam-bot-right)' : (color || '#BE123C')} />
-            {/* Facet lines */}
-            {faceted && (
-              <>
-                <Line x1="24" y1="5" x2="24" y2="43" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity={0.8} />
-                <Line x1="8" y1="24" x2="40" y2="24" stroke="#FFFFFF" strokeWidth="0.8" strokeLinecap="round" opacity={0.6} />
-                <Circle cx="24" cy="24" r="1.5" fill="#FFFFFF" opacity={0.9} />
-              </>
-            )}
+            <Path d="M24 4L7 24L24 24V4Z" fill="url(#k21-diam-top-left)" />
+            <Path d="M24 4L41 24L24 24V4Z" fill="url(#k21-diam-top-right)" />
+            <Path d="M24 44L7 24L24 24V44Z" fill="url(#k21-diam-bot-left)" />
+            <Path d="M24 44L41 24L24 24V44Z" fill="url(#k21-diam-bot-right)" />
+            <Line x1="24" y1="5" x2="24" y2="43" stroke="#FFFFFF" strokeWidth="1" strokeLinecap="round" opacity={0.8} />
+            <Line x1="8" y1="24" x2="40" y2="24" stroke="#FFFFFF" strokeWidth="0.8" strokeLinecap="round" opacity={0.6} />
+            <Circle cx="24" cy="24" r="1.5" fill="#FFFFFF" opacity={0.9} />
           </G>
         </Svg>
       );
@@ -162,29 +193,19 @@ export const TacticalSuitIcon: React.FC<TacticalSuitIconProps> = ({
             </LinearGradient>
           </Defs>
           <G>
-            {/* Top Node */}
-            <Circle cx="24" cy="14" r="9.5" fill={faceted ? 'url(#k21-club-top)' : (color || '#E2E8F0')} />
-            {/* Left Node */}
-            <Circle cx="14" cy="27" r="9" fill={faceted ? 'url(#k21-club-left)' : (color || '#CBD5E1')} />
-            {/* Right Node */}
-            <Circle cx="34" cy="27" r="9" fill={faceted ? 'url(#k21-club-right)' : (color || '#94A3B8')} />
-            {/* Center fusion */}
-            <Circle cx="24" cy="24" r="5" fill={faceted ? '#64748B' : (color || '#64748B')} />
-            {/* Stem */}
+            <Circle cx="24" cy="14" r="9.5" fill="url(#k21-club-top)" />
+            <Circle cx="14" cy="27" r="9" fill="url(#k21-club-left)" />
+            <Circle cx="34" cy="27" r="9" fill="url(#k21-club-right)" />
+            <Circle cx="24" cy="24" r="5" fill={color || '#64748B'} />
             <Path
               d="M22 25C22 34 16 41 14 43.5C18 43.8 30 43.8 34 43.5C32 41 26 34 26 25H22Z"
-              fill={faceted ? 'url(#k21-club-stem)' : (color || '#94A3B8')}
+              fill="url(#k21-club-stem)"
             />
-            {/* Specular dots */}
-            {faceted && (
-              <>
-                <Circle cx="22" cy="11" r="2" fill="#FFFFFF" opacity={0.6} />
-                <Circle cx="12" cy="25" r="1.5" fill="#FFFFFF" opacity={0.5} />
-                <Circle cx="32" cy="25" r="1.5" fill="#FFFFFF" opacity={0.5} />
-              </>
-            )}
+            <Circle cx="22" cy="11" r="2" fill="#FFFFFF" opacity={0.6} />
+            <Circle cx="12" cy="25" r="1.5" fill="#FFFFFF" opacity={0.5} />
+            <Circle cx="32" cy="25" r="1.5" fill="#FFFFFF" opacity={0.5} />
           </G>
         </Svg>
       );
   }
-};
+});

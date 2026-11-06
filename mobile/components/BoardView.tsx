@@ -1,10 +1,10 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, memo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Board } from 'domain/board';
 import { Card } from 'domain/card';
 import { CardView } from './CardView';
-import { CardTheme, BoardTheme } from '../themes/themeRegistry';
+import { CardTheme, BoardTheme, ThemeFontKey } from '../themes/themeRegistry';
 import { extractGradientColors } from './card/TacticalCard3D';
 
 export interface DropTargetRect {
@@ -23,6 +23,7 @@ interface BoardViewProps {
   selectedFormationIds: Set<string>;
   hoveredTargetId?: string | null;
   theme?: CardTheme;
+  fontKey?: ThemeFontKey;
   boardTheme?: BoardTheme | null;
   onToggleBoardCard: (cardId: string) => void;
   onToggleFormation: (formationId: string) => void;
@@ -30,11 +31,13 @@ interface BoardViewProps {
   onTargetsMeasured?: (targets: DropTargetRect[]) => void;
 }
 
-export function BoardView({
+export const BoardView = memo(function BoardView({
   board,
   selectedBoardCardIds,
   selectedFormationIds,
   hoveredTargetId = null,
+  theme,
+  fontKey,
   boardTheme,
   onToggleBoardCard,
   onToggleFormation,
@@ -133,7 +136,7 @@ export function BoardView({
     return () => clearTimeout(timer);
   }, [looseCards.length, formations.length, cantedCards.length, measureAllTargets]);
 
-  const defaultMatColors: [string, string, ...string[]] = ['#2a103e', '#190a26', '#0f0517'];
+  const defaultMatColors: [string, string, ...string[]] = ['#0e4429', '#072e1a', '#041d10'];
   const matColors = boardTheme?.background
     ? extractGradientColors(boardTheme.background, defaultMatColors)
     : defaultMatColors;
@@ -151,9 +154,9 @@ export function BoardView({
         borderWidth: isBoardHovered ? 2.5 : 2,
         borderColor: isBoardHovered
           ? 'rgba(74, 222, 128, 0.7)'
-          : boardTheme?.borderColor || 'rgba(168, 85, 247, 0.45)',
+          : boardTheme?.borderColor || '#78350f',
         marginVertical: 4,
-        shadowColor: '#a855f7',
+        shadowColor: boardTheme?.glowColor || '#0e4429',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 10,
@@ -180,7 +183,7 @@ export function BoardView({
             bottom: 8,
             borderRadius: 18,
             borderWidth: 1,
-            borderColor: boardTheme?.innerRingColor || 'rgba(234, 179, 8, 0.15)',
+            borderColor: boardTheme?.innerRingColor || 'rgba(234, 179, 8, 0.45)',
           }}
         />
 
@@ -221,13 +224,14 @@ export function BoardView({
                         if (el) cardRefs.current.set(card.id, el);
                         else cardRefs.current.delete(card.id);
                       }}
-                      onLayout={measureAllTargets}
                     >
                       <CardView
                         card={card}
                         selected={isSelected}
                         isHovered={isHovered}
-                        variant="dark"
+                        theme={theme}
+                        fontKey={fontKey || theme?.fontKey}
+                        variant="auto"
                         onPress={() => onToggleBoardCard(card.id)}
                       />
                     </View>
@@ -255,7 +259,6 @@ export function BoardView({
                         if (el) formationRefs.current.set(formation.id, el as unknown as View);
                         else formationRefs.current.delete(formation.id);
                       }}
-                      onLayout={measureAllTargets}
                       onPress={() => onToggleFormation(formation.id)}
                       style={{
                         paddingHorizontal: 12,
@@ -307,7 +310,13 @@ export function BoardView({
                               marginLeft: i > 0 ? -16 : 0,
                             }}
                           >
-                            <CardView card={c} variant="dark" size="sm" />
+                            <CardView
+                              card={c}
+                              theme={theme}
+                              fontKey={fontKey || theme?.fontKey}
+                              variant="auto"
+                              size="sm"
+                            />
                           </View>
                         ))}
                       </View>
@@ -335,7 +344,6 @@ export function BoardView({
                         if (el) cardRefs.current.set(canted.card.id, el);
                         else cardRefs.current.delete(canted.card.id);
                       }}
-                      onLayout={measureAllTargets}
                       style={{ position: 'relative' }}
                     >
                       <View
@@ -358,7 +366,9 @@ export function BoardView({
                         card={canted.card}
                         selected={isSelected}
                         isHovered={isHovered}
-                        variant="dark"
+                        theme={theme}
+                        fontKey={fontKey || theme?.fontKey}
+                        variant="auto"
                         onPress={() => onToggleBoardCard(canted.card.id)}
                       />
                     </View>
@@ -371,4 +381,4 @@ export function BoardView({
       </LinearGradient>
     </View>
   );
-}
+});

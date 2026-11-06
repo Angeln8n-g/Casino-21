@@ -209,6 +209,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
 
   useEffect(() => {
     if (error) {
+      triggerHaptic('error');
       playSfx('error');
     }
   }, [error, playSfx]);
@@ -226,44 +227,53 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
         playSfx('turnChange');
       }
 
+      const currentVirados = gameState.phase === 'playing' ? getTotalVirados(gameState) : 0;
+      const prevVirados = gameState.phase === 'playing' ? getTotalVirados(previousState) : 0;
+      const viradoDelta = currentVirados - prevVirados;
+
       if (gameState.turnCount > previousState.turnCount && gameState.phase === 'playing') {
         switch (gameState.lastAction) {
           case 'colocar':
+            if (viradoDelta === 0) triggerHaptic('card_move');
             playSfx('cardPlay', { volumeMultiplier: 0.75, playbackRate: 1.05 });
             break;
           case 'llevar':
+            if (viradoDelta === 0) triggerHaptic('card_move');
             playSfx('cardPlay', { volumeMultiplier: 0.95, playbackRate: 0.92 });
             break;
           case 'formar':
           case 'formarPar':
+            if (viradoDelta === 0) triggerHaptic('formation');
             playSfx('cardPlay', { volumeMultiplier: 0.9, playbackRate: 0.88 });
             break;
           case 'aumentarFormacion':
+            if (viradoDelta === 0) triggerHaptic('formation');
             playSfx('cardPlay', { volumeMultiplier: 1, playbackRate: 0.82 });
             break;
           case 'cantar':
+            if (viradoDelta === 0) triggerHaptic('card_move');
             playSfx('chipsClink', { volumeMultiplier: 0.8, playbackRate: 1.08 });
             break;
         }
       }
 
       if (gameState.phase === 'playing') {
-        const currentVirados = getTotalVirados(gameState);
-        const prevVirados = getTotalVirados(previousState);
-
-        if (currentVirados > prevVirados) {
+        if (viradoDelta > 0) {
           setViradoBanner({
             id: Date.now(),
             playerName: previousState.players[previousState.currentTurnPlayerIndex]?.name ?? null,
           });
+          triggerHaptic('virado');
           playSfx('virado');
-        } else if (currentVirados < prevVirados) {
+        } else if (viradoDelta < 0) {
+          triggerHaptic('virado_out');
           playSfx('viradoOut');
         }
       }
 
       if (previousState.phase !== 'completed' && gameState.phase === 'completed') {
         const shouldCelebrate = isSpectator || didLocalPlayerWin(gameState, localPlayerId);
+        triggerHaptic(shouldCelebrate ? 'success' : 'error');
         playSfx(shouldCelebrate ? 'victory' : 'defeat');
 
         if (shouldCelebrate) {
@@ -474,6 +484,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }
     setSelectedBoardCardIds(newSet);
     clearError();
+    triggerHaptic('card_tap');
     playSfx('cardPlay', { volumeMultiplier: 0.28, playbackRate: 1.2 });
   };
 
@@ -487,6 +498,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }
     setSelectedFormationIds(newSet);
     clearError();
+    triggerHaptic('formation');
     playSfx('cardPlay', { volumeMultiplier: 0.3, playbackRate: 1.08 });
   };
 
@@ -514,8 +526,10 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     if (!isCurrentTurn) return;
     
     if (selectedHandCardId === card.id) {
+      triggerHaptic('light');
       handleClearSelection();
     } else {
+      triggerHaptic('card_tap');
       playSfx('cardPlay', { volumeMultiplier: 0.35, playbackRate: 1.18 });
       setSelectedHandCardId(card.id);
       setSelectedBoardCardIds(new Set());
@@ -548,6 +562,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     
     // Si no es el turno, ignorar el drop
     if (!isCurrentTurn) {
+      triggerHaptic('error');
       playSfx('error', { volumeMultiplier: 0.45 });
       return;
     }
@@ -560,6 +575,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     }
     
     if (gameState.players[gameState.currentTurnPlayerIndex]?.id !== localPlayerId) {
+      triggerHaptic('error');
       playSfx('error', { volumeMultiplier: 0.45 });
       return;
     }
@@ -571,7 +587,7 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
     const targetId = over.id.toString().replace('board-card-', '').replace('formation-', '');
 
     // Feedback táctil y sonido al soltar carta
-    triggerHaptic('card_tap');
+    triggerHaptic(targetType === 'formation' ? 'formation' : 'card_move');
     playSfx('cardPlay', { volumeMultiplier: 0.5, playbackRate: 1.1 });
 
     // Seleccionar automáticamente la carta de la mano para activar el ActionPanel inferior
@@ -1158,6 +1174,8 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
             onFormationClick={handleFormationClick}
             boardThemeUrl={boardThemeUrl}
             boardTheme={hostBoardTheme}
+            cardTheme={localCardTheme.cardTheme}
+            fontKey={localCardTheme.cardTheme.fontKey}
           />
 
           {!isSpectator && currentPlayer && (
@@ -1288,7 +1306,11 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
             {activeDragCard ? (
               <div className={`${isMobile ? 'rotate-2 scale-110' : 'rotate-6 scale-110'} shadow-2xl z-[9999] pointer-events-none drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] opacity-95`}>
-                <CardView card={activeDragCard} theme={localCardTheme.cardTheme} />
+                <CardView
+                  card={activeDragCard}
+                  theme={localCardTheme.cardTheme}
+                  fontKey={localCardTheme.cardTheme.fontKey}
+                />
               </div>
             ) : null}
           </DragOverlay>

@@ -2,6 +2,7 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { CardView } from './CardView';
 import { Card } from '../../domain/card';
+import { CardTheme, ThemeFontKey } from '../themes/themeRegistry';
 
 interface Formation {
   id: string;
@@ -14,9 +15,11 @@ interface DroppableFormationProps {
   formation: Formation;
   selected?: boolean;
   onClick?: () => void;
+  theme?: CardTheme;
+  fontKey?: ThemeFontKey;
 }
 
-export function DroppableFormation({ formation, selected, onClick }: DroppableFormationProps) {
+export function DroppableFormation({ formation, selected, onClick, theme, fontKey }: DroppableFormationProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `formation-${formation.id}`,
     data: {
@@ -50,7 +53,7 @@ export function DroppableFormation({ formation, selected, onClick }: DroppableFo
             style={{ zIndex: i + 1 }}
             className={`${i > 0 ? '-ml-3.5 sm:-ml-4 md:-ml-5' : ''} hover:-translate-y-1.5 transition-transform shadow-lg`}
           >
-            <CardView card={card} />
+            <CardView card={card} theme={theme} fontKey={fontKey} />
           </div>
         ))}
       </div>

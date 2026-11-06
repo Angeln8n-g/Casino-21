@@ -740,6 +740,10 @@ export default function Store() {
           numColumns={2}
           columnWrapperStyle={{ gap: 12 }}
           contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 110 }}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={() => (
             <View className="items-center justify-center py-20 px-6 bg-[#18181B]/50 rounded-3xl border border-white/5">

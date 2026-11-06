@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, Pressable, StyleProp, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TacticalSuitIcon, CardSuit } from './TacticalSuitIcon';
@@ -44,22 +44,27 @@ const SIZES: Record<
   lg: { width: 92, height: 136, fontSize: 16, suitSize: 15, centerSuitSize: 42, auraSize: 58, cornerOffset: 7 },
 };
 
+const gradientColorCache = new Map<string, [string, string, ...string[]]>();
+
 export function extractGradientColors(
   bg: string | undefined | null,
   fallback: [string, string, ...string[]]
 ): [string, string, ...string[]] {
   if (!bg) return fallback;
+  const cached = gradientColorCache.get(bg);
+  if (cached) return cached;
   const matches = bg.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g);
+  let res: [string, string, ...string[]] = fallback;
   if (matches && matches.length >= 2) {
-    return [matches[0], matches[1], ...matches.slice(2)];
+    res = [matches[0], matches[1], ...matches.slice(2)];
+  } else if (matches && matches.length === 1) {
+    res = [matches[0], matches[0]];
   }
-  if (matches && matches.length === 1) {
-    return [matches[0], matches[0]];
-  }
-  return fallback;
+  gradientColorCache.set(bg, res);
+  return res;
 }
 
-export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
+export const TacticalCard3D = memo(function TacticalCard3D({
   rank = 'A',
   suit = 'spades',
   selected = false,
@@ -74,9 +79,9 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
   fontKey,
   onClick,
   style,
-}) => {
+}: TacticalCard3DProps) {
   const isRed = suit === 'hearts' || suit === 'diamonds';
-  const effectiveFontKey = fontKey || theme?.fontKey || 'russo';
+  const effectiveFontKey = fontKey || theme?.fontKey || 'cinzel';
   const fontOption = getThemeFont(effectiveFontKey);
   const dimensions = SIZES[size] || SIZES.responsive;
 
@@ -89,12 +94,16 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
           theme?.background?.includes('255,255,255') ||
           theme?.background?.includes('#fdf8ee') ||
           theme?.background?.includes('#f8fafc') ||
+          theme?.background?.includes('#fdfcf9') ||
+          theme?.background?.includes('#f1f5f9') ||
+          theme?.background?.includes('#fafafa') ||
+          theme?.background?.includes('#f2f2f7') ||
           theme?.background === '#ffffff'
       ));
 
   const lightFallback: [string, string, ...string[]] = isRed
-    ? ['#ffffff', '#fff1f2', '#e2e8f0']
-    : ['#ffffff', '#f0f9ff', '#e2e8f0'];
+    ? ['#ffffff', '#fff1f2', '#f1f5f9']
+    : ['#ffffff', '#f8fafc', '#f1f5f9'];
 
   const darkFallback: [string, string, ...string[]] = ['#131b2e', '#0d1322', '#070b14'];
 
@@ -107,8 +116,8 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
 
   const defaultSuitColor = isLightTheme
     ? isRed
-      ? '#e11d48'
-      : '#1e293b'
+      ? '#dc2626'
+      : '#0f172a'
     : isRed
     ? '#ff3366'
     : '#e2e8f0';
@@ -505,4 +514,4 @@ export const TacticalCard3D: React.FC<TacticalCard3DProps> = ({
       </LinearGradient>
     </Pressable>
   );
-};
+});

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Action, ActionType } from '../../application/action-validator';
 import { GameState } from '../../domain/game-state';
+import { triggerHaptic } from '../utils/haptics';
 
 export type ActionPayload = 
   | { type: 'llevar'; boardCardIds: string[]; formationIds: string[] }
@@ -32,10 +33,12 @@ export function ActionPanel({
   }
 
   const handleColocar = () => {
+    triggerHaptic('card_move');
     onPlayAction({ type: 'colocar' });
   };
 
   const handleLlevar = () => {
+    triggerHaptic('card_move');
     let currentFormationIds = Array.from(selectedFormationIds);
     const player = gameState.players[gameState.currentTurnPlayerIndex];
     const handCard = player?.hand.find(c => c.id === selectedHandCardId);
@@ -61,6 +64,7 @@ export function ActionPanel({
   };
 
   const handleFormar = () => {
+    triggerHaptic('formation');
     onPlayAction({
       type: 'formar',
       boardCardIds: Array.from(selectedBoardCardIds)
@@ -68,6 +72,7 @@ export function ActionPanel({
   };
 
   const handleFormarPar = () => {
+    triggerHaptic('formation');
     if (selectedFormationIds.size === 1) {
       const formId = Array.from(selectedFormationIds)[0];
       onPlayAction({ type: 'formarPar', formationId: formId });
@@ -77,6 +82,7 @@ export function ActionPanel({
   };
 
   const handleAumentarFormacion = () => {
+    triggerHaptic('formation');
     const formId = Array.from(selectedFormationIds)[0];
     if (formId) {
       onPlayAction({ type: 'aumentarFormacion', formationId: formId });
@@ -84,6 +90,7 @@ export function ActionPanel({
   };
 
   const handleCantar = () => {
+    triggerHaptic('card_move');
     onPlayAction({ type: 'cantar' });
   };
 

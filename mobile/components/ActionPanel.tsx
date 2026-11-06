@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { GameState } from 'domain/game-state';
 import { Card } from 'domain/card';
@@ -22,7 +22,7 @@ interface ActionPanelProps {
   onClearSelection: () => void;
 }
 
-export function ActionPanel({
+export const ActionPanel = memo(function ActionPanel({
   gameState,
   handCard,
   selectedHandCardId,
@@ -38,12 +38,12 @@ export function ActionPanel({
   }
 
   const handleColocar = () => {
-    triggerHaptic('card_tap');
+    triggerHaptic('card_move');
     onPlayAction({ type: 'colocar' });
   };
 
   const handleLlevar = () => {
-    triggerHaptic('card_tap');
+    triggerHaptic('card_move');
     const currentFormationIds = Array.from(selectedFormationIds);
 
     if (gameState) {
@@ -72,7 +72,7 @@ export function ActionPanel({
   };
 
   const handleFormar = () => {
-    triggerHaptic('card_tap');
+    triggerHaptic('formation');
     onPlayAction({
       type: 'formar',
       boardCardIds: Array.from(selectedBoardCardIds),
@@ -80,7 +80,7 @@ export function ActionPanel({
   };
 
   const handleFormarPar = () => {
-    triggerHaptic('card_tap');
+    triggerHaptic('formation');
     if (selectedFormationIds.size === 1) {
       const formId = Array.from(selectedFormationIds)[0];
       onPlayAction({ type: 'formarPar', formationId: formId });
@@ -93,7 +93,7 @@ export function ActionPanel({
   };
 
   const handleAumentarFormacion = () => {
-    triggerHaptic('card_tap');
+    triggerHaptic('formation');
     const formId = Array.from(selectedFormationIds)[0];
     if (formId) {
       onPlayAction({
@@ -104,7 +104,7 @@ export function ActionPanel({
   };
 
   const handleCantar = () => {
-    triggerHaptic('card_tap');
+    triggerHaptic('card_move');
     onPlayAction({ type: 'cantar' });
   };
 
@@ -183,4 +183,4 @@ export function ActionPanel({
       </Pressable>
     </View>
   );
-}
+});

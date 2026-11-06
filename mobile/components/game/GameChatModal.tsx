@@ -7,9 +7,10 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
   StyleSheet,
+  Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { ChatMessage } from '../../hooks/useGame';
 import { X, Send, MessageSquare } from 'lucide-react-native';
@@ -44,7 +45,7 @@ export function GameChatModal({
   onSendMessage,
   onClose,
 }: GameChatModalProps) {
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
@@ -66,36 +67,35 @@ export function GameChatModal({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[
-        StyleSheet.absoluteFillObject,
-        {
-          width: windowWidth,
-          height: windowHeight,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          justifyContent: 'flex-end',
-          zIndex: 999999,
-          elevation: 999999,
-        },
-      ]}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
     >
-      <Pressable style={{ flex: 1 }} onPress={onClose} />
+      <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.75)' }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
+        >
+          <Pressable style={{ flex: 1 }} onPress={onClose} />
 
-      <View
-        style={{
-          width: windowWidth,
-          maxHeight: windowHeight * 0.78,
-          backgroundColor: '#0f172a',
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255, 255, 255, 0.15)',
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          padding: 16,
-          paddingBottom: 28,
-        }}
-      >
-        {/* Header (idéntico a GameChat.tsx en Web) */}
+          <View
+            style={{
+              width: '100%',
+              maxHeight: '82%',
+              backgroundColor: '#0f172a',
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(255, 255, 255, 0.15)',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingHorizontal: 16,
+              paddingTop: 16,
+              paddingBottom: Math.max(insets.bottom, 16),
+            }}
+          >
+            {/* Header (idéntico a GameChat.tsx en Web) */}
         <View
           style={{
             flexDirection: 'row',
@@ -130,7 +130,7 @@ export function GameChatModal({
           ref={flatListRef}
           data={messages}
           keyExtractor={(item, idx) => item.id || `${item.timestamp}-${idx}`}
-          style={{ maxHeight: 280, marginBottom: 12 }}
+          style={{ maxHeight: 240, flexShrink: 1, marginBottom: 12 }}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           ListEmptyComponent={() => (
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 36 }}>
@@ -318,5 +318,7 @@ export function GameChatModal({
         </View>
       </View>
     </KeyboardAvoidingView>
+  </View>
+</Modal>
   );
 }

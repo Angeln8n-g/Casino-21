@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
 import { Card } from 'domain/card';
 import { CardTheme, ThemeFontKey } from '../themes/themeRegistry';
@@ -21,7 +21,7 @@ export interface CardViewProps {
   isFaceDown?: boolean;
 }
 
-export function CardView({
+export const CardView = memo(function CardView({
   card,
   selected = false,
   isHovered = false,
@@ -57,4 +57,4 @@ export function CardView({
       isFaceDown={isHidden}
     />
   );
-}
+});

@@ -28,15 +28,16 @@ export interface TacticalCard3DProps extends React.HTMLAttributes<HTMLDivElement
   onClick?: () => void;
 }
 
-// Default Arena Táctica Esports palette
+// Default Classic Playing Card palette
 const DEFAULT_ESPORTS_THEME: CardTheme = {
-  background: 'linear-gradient(155deg, #131b2e 0%, #0d1322 55%, #070b14 100%)',
-  boxShadow: 'none',
-  boxShadowSelected: 'none',
-  border: 'none',
-  innerEdge: 'rgba(56, 189, 248, 0.25)',
-  redSuitColor: '#FF3366',
-  blackSuitColor: '#E2E8F0',
+  background: 'linear-gradient(165deg, #ffffff 0%, #fdfcf9 40%, #f1f5f9 100%)',
+  boxShadow: '0 10px 20px -6px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08) inset',
+  boxShadowSelected: '0 18px 36px -8px rgba(0,0,0,0.45), 0 0 0 2px rgba(234, 179, 8, 0.8) inset',
+  border: '1px solid rgba(15, 23, 42, 0.12)',
+  innerEdge: 'rgba(203, 213, 225, 0.7)',
+  redSuitColor: '#dc2626',
+  blackSuitColor: '#0f172a',
+  fontKey: 'cinzel',
 };
 
 export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
@@ -52,6 +53,7 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
       annotation,
       size = 'responsive',
       theme,
+      fontKey,
       customStyle,
       enableTilt = true,
       onClick,
@@ -66,7 +68,7 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
 
     const isRed = suit === 'hearts' || suit === 'diamonds';
     const activeTheme = theme ?? DEFAULT_ESPORTS_THEME;
-    const effectiveFontKey = customStyle?.fontKey || activeTheme.fontKey;
+    const effectiveFontKey = fontKey || customStyle?.fontKey || activeTheme.fontKey;
     const fontOption = getThemeFont(effectiveFontKey);
 
     const suitColor = isRed
@@ -147,6 +149,21 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
 
     // Background calculation
     const cardBg = customStyle?.cardBg || activeTheme.background;
+    const isLightTheme = Boolean(
+      cardBg?.includes('#ffffff') ||
+        cardBg?.includes('255,255,255') ||
+        cardBg?.includes('#fdf8ee') ||
+        cardBg?.includes('#f8fafc') ||
+        cardBg?.includes('#fdfcf9') ||
+        cardBg?.includes('#f1f5f9') ||
+        cardBg?.includes('#fafafa') ||
+        cardBg?.includes('#f2f2f7') ||
+        cardBg === '#ffffff'
+    );
+
+    const cornerShadowClass = isLightTheme
+      ? 'drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.25)]'
+      : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]';
 
     // ─── Face Down Card (Dorso 3D Esports) ───
     if (isFaceDown) {
@@ -269,7 +286,7 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
 
           {/* ── TOP-LEFT CORNER (Rank + Tactical Suit) ── */}
           <div
-            className={`absolute ${cornerTopLeftClass} flex flex-col items-center leading-none z-10 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] pointer-events-none`}
+            className={`absolute ${cornerTopLeftClass} flex flex-col items-center leading-none z-10 font-bold ${cornerShadowClass} pointer-events-none`}
             style={{ color: suitColor }}
           >
             <span
@@ -338,7 +355,7 @@ export const TacticalCard3D = forwardRef<HTMLDivElement, TacticalCard3DProps>(
 
           {/* ── BOTTOM-RIGHT CORNER (Rotated 180deg: Suit + Rank) ── */}
           <div
-            className={`absolute ${cornerBottomRightClass} flex flex-col items-center leading-none z-10 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] pointer-events-none rotate-180`}
+            className={`absolute ${cornerBottomRightClass} flex flex-col items-center leading-none z-10 font-bold ${cornerShadowClass} pointer-events-none rotate-180`}
             style={{
               color: suitColor,
               transform: 'rotate(180deg)',

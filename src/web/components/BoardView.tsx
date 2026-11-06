@@ -5,7 +5,7 @@ import { DroppableBoardCard } from './DroppableBoardCard';
 import { DroppableFormation } from './DroppableFormation';
 import { Card } from '../../domain/card';
 import splashBoard from '../../Public/splash.webp';
-import { BoardTheme } from '../themes/themeRegistry';
+import { BoardTheme, CardTheme, ThemeFontKey } from '../themes/themeRegistry';
 
 interface BoardViewProps {
   board: Board;
@@ -17,9 +17,23 @@ interface BoardViewProps {
   boardThemeUrl?: string | null;
   /** Store-based visual board theme from the host's equipped_theme */
   boardTheme?: BoardTheme | null;
+  /** Card theme from the player's equipped_theme */
+  cardTheme?: CardTheme;
+  /** Custom font key override */
+  fontKey?: ThemeFontKey;
 }
 
-export function BoardView({ board, selectedCardIds, selectedFormationIds, onCardClick, onFormationClick, boardThemeUrl, boardTheme }: BoardViewProps) {
+export function BoardView({
+  board,
+  selectedCardIds,
+  selectedFormationIds,
+  onCardClick,
+  onFormationClick,
+  boardThemeUrl,
+  boardTheme,
+  cardTheme,
+  fontKey,
+}: BoardViewProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'board-area',
     data: {
@@ -28,8 +42,8 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
   });
 
   // URL theme takes priority (tournaments/quests), then store theme, then default
-  const boardBorderColor = boardTheme?.borderColor ?? '#2A1810';
-  const watermarkOpacity = boardTheme?.watermarkOpacity ?? 0.1;
+  const boardBorderColor = boardTheme?.borderColor ?? '#78350f';
+  const watermarkOpacity = boardTheme?.watermarkOpacity ?? 0.08;
 
   // Ensure store themes (which are just image URLs) are wrapped in url() if they aren't already
   const formatBackground = (bg: string | undefined | null) => {
@@ -56,7 +70,7 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
       }
     : {
         backgroundImage:
-          'radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.2) 0%, rgba(15, 23, 42, 0) 38%), radial-gradient(circle at 50% 100%, rgba(14, 116, 144, 0.25) 0%, rgba(8, 47, 73, 0.05) 45%), linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
+          'radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.25) 0%, rgba(5, 46, 22, 0) 65%), linear-gradient(145deg, #0e4429 0%, #072e1a 50%, #041d10 100%)',
       };
 
   return (
@@ -139,6 +153,8 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
                       card={card}
                       selected={selectedCardIds.has(card.id)}
                       onClick={() => onCardClick(card)}
+                      theme={cardTheme}
+                      fontKey={fontKey || cardTheme?.fontKey}
                     />
                   ))}
                 </div>
@@ -156,6 +172,8 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
                       formation={{ ...form, cards: [...form.cards] }}
                       selected={selectedFormationIds.has(form.id)}
                       onClick={() => onFormationClick(form.id)}
+                      theme={cardTheme}
+                      fontKey={fontKey || cardTheme?.fontKey}
                     />
                   ))}
                 </div>
@@ -176,6 +194,8 @@ export function BoardView({ board, selectedCardIds, selectedFormationIds, onCard
                         card={canted.card}
                         selected={selectedCardIds.has(canted.card.id)}
                         onClick={() => onCardClick(canted.card)}
+                        theme={cardTheme}
+                        fontKey={fontKey || cardTheme?.fontKey}
                       />
                     </div>
                   ))}

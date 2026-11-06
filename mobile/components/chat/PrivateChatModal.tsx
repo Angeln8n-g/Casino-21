@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
   StyleSheet,
+  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -67,7 +67,6 @@ const isMediaUrl = (text: string): boolean => {
 
 export function PrivateChatModal({ friend, isOpen, onClose }: PrivateChatModalProps) {
   // Todos los hooks al inicio antes de cualquier return condicional
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
   const { playSfx } = useAudio();
@@ -442,20 +441,20 @@ export function PrivateChatModal({ friend, isOpen, onClose }: PrivateChatModalPr
   if (!isOpen || !friend) return null;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[
-        StyleSheet.absoluteFillObject,
-        {
-          width: windowWidth,
-          height: windowHeight,
-          backgroundColor: '#020617',
-          zIndex: 999999,
-          elevation: 999999,
-        },
-      ]}
+    <Modal
+      visible={Boolean(isOpen && friend)}
+      animationType="slide"
+      transparent={false}
+      statusBarTranslucent
+      onRequestClose={onClose}
     >
-      {/* ── Top Bar ─────────────────────────────────────────── */}
+      <View style={{ flex: 1, backgroundColor: '#020617' }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={0}
+        >
+          {/* ── Top Bar ─────────────────────────────────────────── */}
       <View
         style={{
           paddingTop: Math.max(insets.top, 16) + 8,
@@ -596,6 +595,7 @@ export function PrivateChatModal({ friend, isOpen, onClose }: PrivateChatModalPr
           ref={flatListRef}
           data={messages}
           keyExtractor={(item, idx) => item.id || `${item.created_at}-${idx}`}
+          style={{ flex: 1 }}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
@@ -762,5 +762,7 @@ export function PrivateChatModal({ friend, isOpen, onClose }: PrivateChatModalPr
         </Pressable>
       </View>
     </KeyboardAvoidingView>
+  </View>
+</Modal>
   );
 }

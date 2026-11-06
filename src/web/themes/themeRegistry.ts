@@ -99,30 +99,35 @@ export interface GameTheme {
   boardTheme: BoardTheme;
 }
 
-const DEFAULT_THEME: GameTheme = {
-  key: 'default',
-  name: 'Arena Táctica',
-  description: 'Estética oficial K21: obsidiana 3D, oro campeón y cortes tácticos.',
-  emoji: '🃏',
-  previewColor: '#0c1220',
+export const CLASSIC_THEME: GameTheme = {
+  key: 'classic',
+  name: 'Baraja Clásica',
+  description: 'Diseño tradicional de casino: tapete verde esmeralda, cartas marfil con tipografía romana Cinzel y palos carmesí y carbón.',
+  emoji: '🂠',
+  previewColor: '#0e4429',
   cardTheme: {
-    background: 'linear-gradient(155deg, #131b2e 0%, #0d1322 55%, #070b14 100%)',
-    boxShadow: 'none',
-    boxShadowSelected: 'none',
-    border: 'none',
-    innerEdge: 'rgba(56, 189, 248, 0.25)',
-    redSuitColor: '#FF3366',
-    blackSuitColor: '#E2E8F0',
-    fontKey: 'russo',
+    background: 'linear-gradient(165deg, #ffffff 0%, #fdfcf9 40%, #f1f5f9 100%)',
+    boxShadow: '0 10px 20px -6px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08) inset',
+    boxShadowSelected: '0 18px 36px -8px rgba(0,0,0,0.45), 0 0 0 2px rgba(234, 179, 8, 0.8) inset',
+    border: '1px solid rgba(15, 23, 42, 0.12)',
+    innerEdge: 'rgba(203, 213, 225, 0.7)',
+    redSuitColor: '#dc2626',
+    blackSuitColor: '#0f172a',
+    fontKey: 'cinzel',
   },
   boardTheme: {
     background:
-      'radial-gradient(circle at 50% 20%, rgba(56,189,248,0.2) 0%, rgba(15,23,42,0) 38%), radial-gradient(circle at 50% 100%, rgba(14,116,144,0.25) 0%, rgba(8,47,73,0.05) 45%), linear-gradient(145deg, #0a3258 0%, #07263f 45%, #041a2e 100%)',
-    borderColor: '#2A1810',
-    glowColor: 'rgba(34,211,238,0.4)',
-    innerRingColor: 'rgba(253,224,71,0.35)',
-    watermarkOpacity: 0.1,
+      'radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.25) 0%, rgba(5, 46, 22, 0) 65%), linear-gradient(145deg, #0e4429 0%, #072e1a 50%, #041d10 100%)',
+    borderColor: '#78350f',
+    glowColor: 'rgba(16, 185, 129, 0.35)',
+    innerRingColor: 'rgba(234, 179, 8, 0.45)',
+    watermarkOpacity: 0.08,
   },
+};
+
+export const DEFAULT_THEME: GameTheme = {
+  ...CLASSIC_THEME,
+  key: 'default',
 };
 
 let themeCache: Record<string, GameTheme> = {};
@@ -138,7 +143,12 @@ export async function loadThemes(): Promise<void> {
     const cardTheme = (row.card_theme || {}) as CardTheme;
     // Infer fontKey if missing from legacy records
     if (!cardTheme.fontKey) {
-      if (cardTheme.extraClass?.includes('font-serif') || row.key === 'Vaul') {
+      if (
+        cardTheme.extraClass?.includes('font-serif') ||
+        row.key === 'Vaul' ||
+        row.key === 'classic' ||
+        row.key === 'default'
+      ) {
         cardTheme.fontKey = 'cinzel';
       } else if (cardTheme.extraClass?.includes('font-mono') || row.key === 'neon-dealer') {
         cardTheme.fontKey = 'orbitron';
@@ -163,6 +173,8 @@ export async function loadThemes(): Promise<void> {
 
 export function getTheme(key: string | null | undefined): GameTheme {
   if (!key) return DEFAULT_THEME;
+  if (key === 'classic') return themeCache['classic'] ?? CLASSIC_THEME;
+  if (key === 'default') return themeCache['default'] ?? DEFAULT_THEME;
   return themeCache[key] ?? DEFAULT_THEME;
 }
 

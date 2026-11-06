@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useRef } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -32,7 +32,7 @@ interface DraggableCardProps {
   variant?: 'light' | 'dark' | 'auto';
 }
 
-export function DraggableCard({
+export const DraggableCard = memo(function DraggableCard({
   card,
   selected,
   onPress,
@@ -44,11 +44,12 @@ export function DraggableCard({
   disabled,
   theme,
   fontKey,
-  variant = 'light',
+  variant = 'auto',
 }: DraggableCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const isDragging = useSharedValue(false);
+  const lastMoveCallRef = useRef<number>(0);
 
   const handlePress = () => {
     if (!disabled && onPress) {
@@ -61,8 +62,13 @@ export function DraggableCard({
     onDragStart?.(card);
   };
 
+  // Throttled to 50ms (~20fps) to keep JS thread responsive and prevent frame drops during drag
   const handleMove = (absX: number, absY: number) => {
-    onDragMove?.(absX, absY);
+    const now = Date.now();
+    if (now - lastMoveCallRef.current >= 50) {
+      lastMoveCallRef.current = now;
+      onDragMove?.(absX, absY);
+    }
   };
 
   const handleEnd = (absX: number, absY: number, tx: number, ty: number) => {
@@ -73,19 +79,22 @@ export function DraggableCard({
 
     // Fallback si no se provee onDragRelease
     if (ty < -55) {
-      triggerHaptic('card_tap');
       if (ty < -120 && onDropOnFormation) {
         if (tx < -60) {
+          triggerHaptic('formation');
           onDropOnFormation(0, card);
           return;
         } else if (tx < 0) {
+          triggerHaptic('formation');
           onDropOnFormation(1, card);
           return;
         } else if (tx < 60) {
+          triggerHaptic('formation');
           onDropOnFormation(2, card);
           return;
         }
       }
+      triggerHaptic('card_move');
       onDropOnBoard?.(card);
     }
   };
@@ -155,4 +164,4 @@ export function DraggableCard({
       </Animated.View>
     </GestureDetector>
   );
-}
+});

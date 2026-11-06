@@ -8,17 +8,17 @@ const MUSIC_VOLUME_SCALE = 0.45; // 45% del volumen maestro (idéntico a src/web
 const LOBBY_MUSIC_SETTINGS_KEY = 'casino21_lobby_music';
 
 const CLASSIC_TRACKS = [
-  require('../../public/audio/secuencia_clasic_1.mp3'),
-  require('../../public/audio/secuencia_clasic_2.mp3'),
-  require('../../public/audio/secuencia_clasic_3.mp3'),
-  require('../../public/audio/secuencia_clasic_4.mp3'),
+  require('../assets/audio/music/secuencia_clasic_1.mp3'),
+  require('../assets/audio/music/secuencia_clasic_2.mp3'),
+  require('../assets/audio/music/secuencia_clasic_3.mp3'),
+  require('../assets/audio/music/secuencia_clasic_4.mp3'),
 ];
 
 const MODERN_TRACKS = [
-  require('../../public/audio/secuencia_moderna_1.mp3'),
-  require('../../public/audio/secuencia_moderna_2.mp3'),
-  require('../../public/audio/secuencia_moderna_3.mp3'),
-  require('../../public/audio/secuencia_moderna_4.mp3'),
+  require('../assets/audio/music/secuencia_moderna_1.mp3'),
+  require('../assets/audio/music/secuencia_moderna_2.mp3'),
+  require('../assets/audio/music/secuencia_moderna_3.mp3'),
+  require('../assets/audio/music/secuencia_moderna_4.mp3'),
 ];
 
 export function useGameMusic(gameState: GameState | null) {
@@ -112,12 +112,17 @@ export function useGameMusic(gameState: GameState | null) {
 
         if (cancelled || !mountedRef.current) return;
 
-        const { sound } = await Audio.Sound.createAsync(tracks[trackIndex], {
-          shouldPlay: !muted,
-          isLooping: true,
-          volume: targetVol,
-          isMuted: muted,
-        });
+        const { sound } = await Audio.Sound.createAsync(
+          tracks[trackIndex],
+          {
+            shouldPlay: !muted,
+            isLooping: true,
+            volume: targetVol,
+            isMuted: muted,
+          },
+          null,
+          false // Crucial: downloadFirst = false
+        );
 
         if (cancelled || !mountedRef.current) {
           await sound.unloadAsync().catch(() => {});

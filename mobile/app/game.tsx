@@ -110,11 +110,6 @@ export default function GameScreen() {
   // Avatares de jugadores desde Supabase
   const [playerAvatarUrls, setPlayerAvatarUrls] = useState<Record<string, string | null>>({});
 
-  // Temporizador local de turno (30s con resolución de 100ms, idéntico a src/web/components/GameScreen.tsx)
-  const [localTimeRemaining, setLocalTimeRemaining] = useState<number>(TURN_TIME_LIMIT_MS);
-  const turnStartAtRef = useRef<number>(Date.now());
-  const turnInitialMsRef = useRef<number>(TURN_TIME_LIMIT_MS);
-
   // Reacciones / Emotes Popover
   const [showEmotes, setShowEmotes] = useState(false);
   const [emoteCooldownTime, setEmoteCooldownTime] = useState(0);
@@ -133,38 +128,10 @@ export default function GameScreen() {
   const dropTargetsRef = useRef<DropTargetRect[]>([]);
   const measureBoardFnRef = useRef<(() => void) | null>(null);
 
-  // Temporizador de turno en vivo (reinicia en cada cambio de turno/ronda y sincroniza con timer_update en reconexión)
+  // Clave de turno para sincronizar HUD y animaciones sin re-renderizar GameScreen a 10fps
   const turnKey = gameState
     ? `${gameState.roundCount}-${gameState.turnCount}-${gameState.currentTurnPlayerIndex}`
     : '';
-
-  useEffect(() => {
-    if (!gameState || gameState.phase !== 'playing') {
-      setLocalTimeRemaining(TURN_TIME_LIMIT_MS);
-      return;
-    }
-
-    turnStartAtRef.current = Date.now();
-    turnInitialMsRef.current = TURN_TIME_LIMIT_MS;
-    setLocalTimeRemaining(TURN_TIME_LIMIT_MS);
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - turnStartAtRef.current;
-      const remaining = Math.max(0, turnInitialMsRef.current - elapsed);
-      setLocalTimeRemaining(remaining);
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [turnKey, gameState?.phase]);
-
-  // Sincronizar si el servidor envía un timer_update explícito (p. ej. al reconectar a mitad de turno)
-  useEffect(() => {
-    if (typeof timeRemaining === 'number' && timeRemaining > 0 && timeRemaining < TURN_TIME_LIMIT_MS - 400) {
-      turnStartAtRef.current = Date.now();
-      turnInitialMsRef.current = timeRemaining;
-      setLocalTimeRemaining(timeRemaining);
-    }
-  }, [timeRemaining]);
 
   // Temporizador de enfriamiento de emotes (5s igual que Web)
   useEffect(() => {
@@ -264,14 +231,15 @@ export default function GameScreen() {
     playSfx,
   ]);
 
-  // Sonido de error
+  // Sonido y vibración de error
   useEffect(() => {
     if (error) {
+      triggerHaptic('error');
       playSfx('error');
     }
   }, [error, playSfx]);
 
-  // Sincronización de efectos de sonido por jugadas, cambio de turno, virados y fin de partida (idéntico a Web)
+  // Sincronización de efectos de sonido y vibración háptica por jugadas, cambio de turno, virados y fin de partida
   useEffect(() => {
     if (!gameState) return;
     const previousState = previousGameStateRef.current;
@@ -284,26 +252,35 @@ export default function GameScreen() {
         playSfx('turnChange');
       }
 
+      const currentVirados = gameState.phase === 'playing' ? getTotalVirados(gameState) : 0;
+      const prevVirados = gameState.phase === 'playing' ? getTotalVirados(previousState) : 0;
+      const viradoDelta = currentVirados - prevVirados;
+
       if (gameState.turnCount > previousState.turnCount && gameState.phase === 'playing') {
         if (optimisticSfxPlayedRef.current) {
           optimisticSfxPlayedRef.current = false;
         } else {
           switch (gameState.lastAction) {
             case 'colocar':
+              if (viradoDelta === 0) triggerHaptic('card_move');
               playSfx('cardPlay', { volumeMultiplier: 0.75, playbackRate: 1.05 });
               break;
             case 'llevar':
+              if (viradoDelta === 0) triggerHaptic('card_move');
               playSfx('cardPlay', { volumeMultiplier: 0.95, playbackRate: 0.92 });
               break;
             case 'formar':
             case 'agrupar':
             case 'formarPar':
+              if (viradoDelta === 0) triggerHaptic('formation');
               playSfx('cardPlay', { volumeMultiplier: 0.9, playbackRate: 0.88 });
               break;
             case 'aumentarFormacion':
+              if (viradoDelta === 0) triggerHaptic('formation');
               playSfx('cardPlay', { volumeMultiplier: 1, playbackRate: 0.82 });
               break;
             case 'cantar':
+              if (viradoDelta === 0) triggerHaptic('card_move');
               playSfx('chipsClink', { volumeMultiplier: 0.8, playbackRate: 1.08 });
               break;
           }
@@ -311,23 +288,23 @@ export default function GameScreen() {
       }
 
       if (gameState.phase === 'playing') {
-        const currentVirados = getTotalVirados(gameState);
-        const prevVirados = getTotalVirados(previousState);
-
-        if (currentVirados > prevVirados) {
+        if (viradoDelta > 0) {
           setViradoBanner({
             id: Date.now(),
             playerName:
               previousState.players[previousState.currentTurnPlayerIndex]?.name ?? null,
           });
+          triggerHaptic('virado');
           playSfx('virado');
-        } else if (currentVirados < prevVirados) {
+        } else if (viradoDelta < 0) {
+          triggerHaptic('virado_out');
           playSfx('viradoOut');
         }
       }
 
       if (previousState.phase !== 'completed' && gameState.phase === 'completed') {
         const won = didLocalPlayerWin(gameState, user?.id || localPlayerId);
+        triggerHaptic(won ? 'success' : 'error');
         playSfx(won ? 'victory' : 'defeat');
       }
     }
@@ -397,8 +374,10 @@ export default function GameScreen() {
     if (!isCurrentTurn) return;
 
     if (selectedHandCardId === cardId) {
+      triggerHaptic('light');
       handleClearSelection();
     } else {
+      triggerHaptic('card_tap');
       playSfx('cardPlay', { volumeMultiplier: 0.35, playbackRate: 1.18 });
       // Si el usuario ya tenía otra carta de mano seleccionada, limpiamos la selección de mesa igual que en Web;
       // si seleccionó primero cartas de mesa y ahora toca su carta de mano, las conservamos para mostrar Llevar/Formar/Agrupar.
@@ -432,6 +411,7 @@ export default function GameScreen() {
     }
     setSelectedFormationIds(next);
     clearError();
+    triggerHaptic('formation');
     playSfx('cardPlay', { volumeMultiplier: 0.3, playbackRate: 1.08 });
   };
 
@@ -527,7 +507,13 @@ export default function GameScreen() {
       if (!isCurrentTurn) return;
       const target = findDropTargetAt(absX, absY);
       const nextId = target ? target.id : null;
-      setHoveredTargetId((prev) => (prev === nextId ? prev : nextId));
+      setHoveredTargetId((prev) => {
+        if (prev === nextId) return prev;
+        if (nextId && target && (target.type === 'boardCard' || target.type === 'formation')) {
+          triggerHaptic('card_tap');
+        }
+        return nextId;
+      });
     },
     [isCurrentTurn, findDropTargetAt]
   );
@@ -537,6 +523,7 @@ export default function GameScreen() {
       setHoveredTargetId(null);
 
       if (!isCurrentTurn || !gameState || !localPlayer) {
+        triggerHaptic('error');
         playSfx('error', { volumeMultiplier: 0.45 });
         return;
       }
@@ -548,7 +535,7 @@ export default function GameScreen() {
         return;
       }
 
-      triggerHaptic('card_tap');
+      triggerHaptic(target?.type === 'formation' ? 'formation' : 'card_move');
       playSfx('cardPlay', { volumeMultiplier: 0.5, playbackRate: 1.1 });
       clearError();
 
@@ -673,8 +660,9 @@ export default function GameScreen() {
         localPlayer={localPlayer}
         opponent={opponent}
         isCurrentTurn={isCurrentTurn}
-        timeRemaining={Math.ceil(localTimeRemaining / 1000)}
-        turnProgress={localTimeRemaining / TURN_TIME_LIMIT_MS}
+        turnKey={turnKey}
+        phase={gameState?.phase}
+        timeRemaining={timeRemaining}
         roundCount={gameState?.roundCount || 1}
         mode={gameState?.mode || '1v1'}
         muted={muted}
@@ -714,6 +702,7 @@ export default function GameScreen() {
         selectedFormationIds={selectedFormationIds}
         hoveredTargetId={hoveredTargetId}
         theme={localTheme.cardTheme}
+        fontKey={localTheme.cardTheme.fontKey}
         boardTheme={localTheme.boardTheme}
         onToggleBoardCard={handleToggleBoardCard}
         onToggleFormation={handleToggleFormation}

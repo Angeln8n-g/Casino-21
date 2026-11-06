@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
@@ -9,8 +9,10 @@ interface MatchPointHUDProps {
   localPlayer: Player | undefined;
   opponent: Player | undefined;
   isCurrentTurn: boolean;
-  timeRemaining: number;
+  timeRemaining?: number;
   turnProgress?: number; // 0.0 a 1.0 (localTimeRemaining / 30000)
+  turnKey?: string;
+  phase?: string;
   roundCount: number;
   mode?: '1v1' | '2v2';
   muted?: boolean;
@@ -26,12 +28,14 @@ const AVATAR_RADIUS = (AVATAR_RING_SIZE - AVATAR_STROKE) / 2;
 const AVATAR_CIRCUMFERENCE = 2 * Math.PI * AVATAR_RADIUS;
 const AVATAR_INNER_SIZE = AVATAR_RING_SIZE - AVATAR_STROKE * 2 - 2;
 
-export function MatchPointHUD({
+export const MatchPointHUD = memo(function MatchPointHUD({
   localPlayer,
   opponent,
   isCurrentTurn,
   timeRemaining,
-  turnProgress = 1,
+  turnProgress,
+  turnKey,
+  phase,
   roundCount,
   muted = false,
   localAvatarUrl,
@@ -41,6 +45,38 @@ export function MatchPointHUD({
 }: MatchPointHUDProps) {
   const [localImgError, setLocalImgError] = useState(false);
   const [opponentImgError, setOpponentImgError] = useState(false);
+
+  // Temporizador local autosuficiente para evitar re-renderizar GameScreen a 10fps
+  const [internalTimeMs, setInternalTimeMs] = useState<number>(30000);
+  const turnStartAtRef = useRef<number>(Date.now());
+  const turnInitialMsRef = useRef<number>(30000);
+
+  useEffect(() => {
+    if (!turnKey || phase !== 'playing') {
+      setInternalTimeMs(30000);
+      return;
+    }
+
+    turnStartAtRef.current = Date.now();
+    turnInitialMsRef.current = 30000;
+    setInternalTimeMs(30000);
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - turnStartAtRef.current;
+      const remaining = Math.max(0, turnInitialMsRef.current - elapsed);
+      setInternalTimeMs(remaining);
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [turnKey, phase]);
+
+  useEffect(() => {
+    if (typeof timeRemaining === 'number' && timeRemaining > 0 && timeRemaining < 29600) {
+      turnStartAtRef.current = Date.now();
+      turnInitialMsRef.current = timeRemaining;
+      setInternalTimeMs(timeRemaining);
+    }
+  }, [timeRemaining]);
 
   useEffect(() => {
     setLocalImgError(false);
@@ -58,8 +94,14 @@ export function MatchPointHUD({
   const localProgress = Math.min((localScore / 21) * 100, 100);
   const opponentProgress = Math.min((opponentScore / 21) * 100, 100);
 
-  const clampedTurnProgress = Math.max(0, Math.min(1, turnProgress));
-  const isUrgent = timeRemaining <= 10;
+  const activeRemainingMs = turnKey ? internalTimeMs : (typeof timeRemaining === 'number' ? timeRemaining : 30000);
+  const displaySeconds = Math.ceil(activeRemainingMs / 1000);
+  const activeTurnProgress = turnProgress !== undefined && !turnKey
+    ? turnProgress
+    : Math.max(0, Math.min(1, activeRemainingMs / 30000));
+
+  const clampedTurnProgress = Math.max(0, Math.min(1, activeTurnProgress));
+  const isUrgent = displaySeconds <= 10;
 
   const renderAvatarWithRing = (
     player: Player | undefined,
@@ -227,7 +269,7 @@ export function MatchPointHUD({
                     : 'text-gray-400'
                 }`}
               >
-                {isCurrentTurn ? `Turno (${timeRemaining}s)` : 'Espera'}
+                {isCurrentTurn ? `Turno (${displaySeconds}s)` : 'Espera'}
               </Text>
               <Text className="text-gray-300 text-[10px] font-medium">🃏 {localCollected}</Text>
             </View>
@@ -248,7 +290,7 @@ export function MatchPointHUD({
                 isUrgent ? 'text-red-400' : 'text-amber-300'
               }`}
             >
-              {timeRemaining}s
+              {displaySeconds}s
             </Text>
           </View>
         </View>
@@ -290,7 +332,7 @@ export function MatchPointHUD({
                     : 'text-gray-400'
                 }`}
               >
-                {!isCurrentTurn ? `Turno (${timeRemaining}s)` : 'Espera'}
+                {!isCurrentTurn ? `Turno (${displaySeconds}s)` : 'Espera'}
               </Text>
               <Text className="text-gray-300 text-[10px] font-medium">🃏 {opponentCollected}</Text>
             </View>
@@ -303,4 +345,4 @@ export function MatchPointHUD({
       </View>
     </View>
   );
-}
+});
