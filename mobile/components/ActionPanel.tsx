@@ -109,45 +109,121 @@ export const ActionPanel = memo(function ActionPanel({
   };
 
   return (
-    <View className="flex-row flex-wrap items-center justify-between gap-2 bg-gray-950/90 px-3 py-2 rounded-xl shadow-xl border border-white/10 w-full my-1">
-      <View className="flex-row flex-wrap items-center gap-2 flex-1">
+    <View
+      style={{
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        gap: 8,
+        backgroundColor: 'rgba(3, 7, 18, 0.94)',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.14)',
+        marginVertical: 4,
+        zIndex: 10000,
+        elevation: 20,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+      >
         {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
           <>
             <Pressable
               onPress={handleColocar}
-              className="min-h-[36px] bg-cyan-600 active:bg-cyan-500 px-4 py-1.5 rounded-lg justify-center items-center shadow border border-cyan-400/30"
+              style={({ pressed }) => ({
+                minHeight: 36,
+                backgroundColor: pressed ? '#06b6d4' : '#0891b2',
+                paddingHorizontal: 16,
+                paddingVertical: 6,
+                borderRadius: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(34, 211, 238, 0.35)',
+              })}
             >
-              <Text className="text-white font-bold text-xs">Colocar</Text>
+              <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>Colocar</Text>
             </Pressable>
             <Pressable
               onPress={handleCantar}
-              className="min-h-[36px] bg-purple-900/60 active:bg-purple-800/80 px-4 py-1.5 rounded-lg justify-center items-center shadow border border-purple-500/30"
+              style={({ pressed }) => ({
+                minHeight: 36,
+                backgroundColor: pressed ? 'rgba(107, 33, 168, 0.85)' : 'rgba(88, 28, 135, 0.65)',
+                paddingHorizontal: 16,
+                paddingVertical: 6,
+                borderRadius: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(168, 85, 247, 0.35)',
+              })}
             >
-              <Text className="text-purple-200 font-bold text-xs">Cantar As</Text>
+              <Text style={{ color: '#e9d5ff', fontWeight: '700', fontSize: 12 }}>Cantar As</Text>
             </Pressable>
           </>
         ) : (
           <>
             <Pressable
               onPress={handleLlevar}
-              className="min-h-[36px] bg-emerald-600 active:bg-emerald-500 px-5 py-1.5 rounded-lg justify-center items-center shadow-md border border-emerald-400/40"
+              style={({ pressed }) => ({
+                minHeight: 36,
+                backgroundColor: pressed ? '#10b981' : '#059669',
+                paddingHorizontal: 20,
+                paddingVertical: 6,
+                borderRadius: 10,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(52, 211, 153, 0.45)',
+              })}
             >
-              <Text className="text-white font-bold text-xs">Llevar</Text>
+              <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>Llevar</Text>
             </Pressable>
 
             {selectedBoardCardIds.size > 0 && selectedFormationIds.size === 0 && (
               <>
                 <Pressable
                   onPress={handleFormar}
-                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-amber-500/30"
+                  style={({ pressed }) => ({
+                    minHeight: 36,
+                    backgroundColor: pressed ? '#374151' : '#1f2937',
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    borderRadius: 10,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(245, 158, 11, 0.35)',
+                  })}
                 >
-                  <Text className="text-amber-300 font-bold text-xs">Formar</Text>
+                  <Text style={{ color: '#fcd34d', fontWeight: '700', fontSize: 12 }}>Formar</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleFormarPar}
-                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-amber-500/30"
+                  style={({ pressed }) => ({
+                    minHeight: 36,
+                    backgroundColor: pressed ? '#374151' : '#1f2937',
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    borderRadius: 10,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(245, 158, 11, 0.35)',
+                  })}
                 >
-                  <Text className="text-amber-200 font-bold text-xs">Agrupar</Text>
+                  <Text style={{ color: '#fde68a', fontWeight: '700', fontSize: 12 }}>Agrupar</Text>
                 </Pressable>
               </>
             )}
@@ -156,31 +232,61 @@ export const ActionPanel = memo(function ActionPanel({
               <>
                 <Pressable
                   onPress={handleFormarPar}
-                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-amber-500/30"
+                  style={({ pressed }) => ({
+                    minHeight: 36,
+                    backgroundColor: pressed ? '#374151' : '#1f2937',
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    borderRadius: 10,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(245, 158, 11, 0.35)',
+                  })}
                 >
-                  <Text className="text-amber-200 font-bold text-xs">Pares</Text>
+                  <Text style={{ color: '#fde68a', fontWeight: '700', fontSize: 12 }}>Pares</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleAumentarFormacion}
-                  className="min-h-[36px] bg-gray-800 active:bg-gray-700 px-4 py-1.5 rounded-lg justify-center items-center border border-rose-500/30"
+                  style={({ pressed }) => ({
+                    minHeight: 36,
+                    backgroundColor: pressed ? '#374151' : '#1f2937',
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    borderRadius: 10,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(244, 63, 94, 0.35)',
+                  })}
                 >
-                  <Text className="text-rose-300 font-bold text-xs">Aumentar</Text>
+                  <Text style={{ color: '#fda4af', fontWeight: '700', fontSize: 12 }}>Aumentar</Text>
                 </Pressable>
               </>
             )}
           </>
         )}
-      </View>
 
-      <Pressable
-        onPress={() => {
-          triggerHaptic('light');
-          onClearSelection();
-        }}
-        className="min-h-[36px] bg-white/5 active:bg-white/10 px-3 py-1.5 rounded-lg justify-center items-center border border-white/10"
-      >
-        <Text className="text-gray-300 font-medium text-xs">Cancelar</Text>
-      </Pressable>
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light');
+            onClearSelection();
+          }}
+          style={({ pressed }) => ({
+            minHeight: 36,
+            backgroundColor: pressed ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.06)',
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 10,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+          })}
+        >
+          <Text style={{ color: '#d1d5db', fontWeight: '600', fontSize: 12 }}>Cancelar</Text>
+        </Pressable>
+      </View>
     </View>
   );
 });

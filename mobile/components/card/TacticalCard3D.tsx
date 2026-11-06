@@ -163,17 +163,17 @@ export const TacticalCard3D = memo(function TacticalCard3D({
 
   const handlePress = () => {
     if (!disabled && onClick) {
-      triggerHaptic('card_tap');
       onClick();
     }
   };
 
+  const CardContainer = onClick ? Pressable : View;
+
   // ─── Dorso 3D Esports (Face Down) ───
   if (isFaceDown) {
     return (
-      <Pressable
-        disabled={disabled}
-        onPress={handlePress}
+      <CardContainer
+        {...(onClick ? { disabled, onPress: handlePress } : {})}
         style={[
           {
             width: dimensions.width,
@@ -248,15 +248,14 @@ export const TacticalCard3D = memo(function TacticalCard3D({
             </View>
           </View>
         </LinearGradient>
-      </Pressable>
+      </CardContainer>
     );
   }
 
   // ─── Cara Frontal 3D (Face Up) ───
   return (
-    <Pressable
-      disabled={disabled}
-      onPress={handlePress}
+    <CardContainer
+      {...(onClick ? { disabled, onPress: handlePress } : {})}
       style={[
         {
           width: dimensions.width,
@@ -512,6 +511,6 @@ export const TacticalCard3D = memo(function TacticalCard3D({
           </View>
         )}
       </LinearGradient>
-    </Pressable>
+    </CardContainer>
   );
 });

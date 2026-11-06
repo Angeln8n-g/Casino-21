@@ -370,89 +370,112 @@ export default function GameScreen() {
     clearError();
   }, [clearError]);
 
-  const handleSelectHandCard = (cardId: string) => {
-    if (!isCurrentTurn) return;
+  const handleSelectHandCard = useCallback(
+    (cardId: string) => {
+      if (!isCurrentTurn) return;
 
-    if (selectedHandCardId === cardId) {
-      triggerHaptic('light');
-      handleClearSelection();
-    } else {
-      triggerHaptic('card_tap');
-      playSfx('cardPlay', { volumeMultiplier: 0.35, playbackRate: 1.18 });
-      // Si el usuario ya tenía otra carta de mano seleccionada, limpiamos la selección de mesa igual que en Web;
-      // si seleccionó primero cartas de mesa y ahora toca su carta de mano, las conservamos para mostrar Llevar/Formar/Agrupar.
-      if (selectedHandCardId !== null) {
-        setSelectedBoardCardIds(new Set());
-        setSelectedFormationIds(new Set());
-      }
-      setSelectedHandCardId(cardId);
+      setSelectedHandCardId((prev) => {
+        if (prev === cardId) {
+          setSelectedBoardCardIds(new Set());
+          setSelectedFormationIds(new Set());
+          setHoveredTargetId(null);
+          clearError();
+          triggerHaptic('light');
+          return null;
+        } else {
+          // Si el usuario ya tenía otra carta de mano seleccionada, limpiamos la selección de mesa igual que en Web;
+          // si seleccionó primero cartas de mesa y ahora toca su carta de mano, las conservamos para mostrar Llevar/Formar/Agrupar.
+          if (prev !== null) {
+            setSelectedBoardCardIds(new Set());
+            setSelectedFormationIds(new Set());
+          }
+          clearError();
+          triggerHaptic('card_tap');
+          playSfx('cardPlay', { volumeMultiplier: 0.35, playbackRate: 1.18 });
+          return cardId;
+        }
+      });
+    },
+    [isCurrentTurn, clearError, playSfx]
+  );
+
+  const handleToggleBoardCard = useCallback(
+    (cardId: string) => {
+      setSelectedBoardCardIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(cardId)) {
+          next.delete(cardId);
+        } else {
+          next.add(cardId);
+        }
+        return next;
+      });
       clearError();
-    }
-  };
+      triggerHaptic('card_tap');
+      playSfx('cardPlay', { volumeMultiplier: 0.28, playbackRate: 1.2 });
+    },
+    [clearError, playSfx]
+  );
 
-  const handleToggleBoardCard = (cardId: string) => {
-    const next = new Set(selectedBoardCardIds);
-    if (next.has(cardId)) {
-      next.delete(cardId);
-    } else {
-      next.add(cardId);
-    }
-    setSelectedBoardCardIds(next);
-    clearError();
-    playSfx('cardPlay', { volumeMultiplier: 0.28, playbackRate: 1.2 });
-  };
+  const handleToggleFormation = useCallback(
+    (formationId: string) => {
+      setSelectedFormationIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(formationId)) {
+          next.delete(formationId);
+        } else {
+          next.add(formationId);
+        }
+        return next;
+      });
+      clearError();
+      triggerHaptic('formation');
+      playSfx('cardPlay', { volumeMultiplier: 0.3, playbackRate: 1.08 });
+    },
+    [clearError, playSfx]
+  );
 
-  const handleToggleFormation = (formationId: string) => {
-    const next = new Set(selectedFormationIds);
-    if (next.has(formationId)) {
-      next.delete(formationId);
-    } else {
-      next.add(formationId);
-    }
-    setSelectedFormationIds(next);
-    clearError();
-    triggerHaptic('formation');
-    playSfx('cardPlay', { volumeMultiplier: 0.3, playbackRate: 1.08 });
-  };
+  const handlePlayAction = useCallback(
+    (actionPayload: ActionPayload, cardToUse?: Card) => {
+      const card = cardToUse || selectedHandCard;
+      if (!card || !localPlayer) return;
 
-  const handlePlayAction = (actionPayload: ActionPayload, cardToUse?: Card) => {
-    const card = cardToUse || selectedHandCard;
-    if (!card || !localPlayer) return;
+      if (gameState?.players[gameState.currentTurnPlayerIndex]?.id !== localPlayer.id) {
+        return;
+      }
 
-    if (gameState?.players[gameState.currentTurnPlayerIndex]?.id !== localPlayer.id) {
-      return;
-    }
+      const fullAction: Action = {
+        ...actionPayload,
+        playerId: localPlayer.id,
+        cardId: card.id,
+      } as Action;
 
-    // Reproducir efecto de sonido de inmediato (0ms latencia de red) al pulsar la jugada
-    optimisticSfxPlayedRef.current = true;
-    switch (actionPayload.type) {
-      case 'colocar':
-        playSfx('cardPlay', { volumeMultiplier: 0.75, playbackRate: 1.05 });
-        break;
-      case 'llevar':
-        playSfx('cardPlay', { volumeMultiplier: 0.95, playbackRate: 0.92 });
-        break;
-      case 'formar':
-      case 'formarPar':
-        playSfx('cardPlay', { volumeMultiplier: 0.9, playbackRate: 0.88 });
-        break;
-      case 'aumentarFormacion':
-        playSfx('cardPlay', { volumeMultiplier: 1, playbackRate: 0.82 });
-        break;
-      case 'cantar':
-        playSfx('chipsClink', { volumeMultiplier: 0.8, playbackRate: 1.08 });
-        break;
-    }
+      // Actualizar estado y enviar jugada inmediatamente antes de efectos de audio
+      playCard(fullAction);
+      handleClearSelection();
 
-    const fullAction: Action = {
-      ...actionPayload,
-      playerId: localPlayer.id,
-      cardId: card.id,
-    } as Action;
-
-    playCard(fullAction);
-    handleClearSelection();
-  };
+      optimisticSfxPlayedRef.current = true;
+      switch (actionPayload.type) {
+        case 'colocar':
+          playSfx('cardPlay', { volumeMultiplier: 0.75, playbackRate: 1.05 });
+          break;
+        case 'llevar':
+          playSfx('cardPlay', { volumeMultiplier: 0.95, playbackRate: 0.92 });
+          break;
+        case 'formar':
+        case 'formarPar':
+          playSfx('cardPlay', { volumeMultiplier: 0.9, playbackRate: 0.88 });
+          break;
+        case 'aumentarFormacion':
+          playSfx('cardPlay', { volumeMultiplier: 1, playbackRate: 0.82 });
+          break;
+        case 'cantar':
+          playSfx('chipsClink', { volumeMultiplier: 0.8, playbackRate: 1.08 });
+          break;
+      }
+    },
+    [selectedHandCard, localPlayer, gameState, playCard, handleClearSelection, playSfx]
+  );
 
   // ── Hit-Testing de Drag & Drop (idéntico al flujo de DndContext en Web) ──
   const findDropTargetAt = useCallback(
@@ -530,14 +553,12 @@ export default function GameScreen() {
 
       const target = findDropTargetAt(absX, absY);
 
-      // Si no cayó en el tablero ni se arrastró hacia arriba suficientemente, cancelar
+      // Si no cayó en el tablero ni se arrastró hacia arriba suficientemente, igual seleccionamos la carta para abrir el ActionPanel
       if (!target && ty > -55) {
+        setSelectedHandCardId(card.id);
+        clearError();
         return;
       }
-
-      triggerHaptic(target?.type === 'formation' ? 'formation' : 'card_move');
-      playSfx('cardPlay', { volumeMultiplier: 0.5, playbackRate: 1.1 });
-      clearError();
 
       // Seleccionar automáticamente la carta de la mano para activar el ActionPanel inferior (idéntico a Web GameScreen.tsx)
       setSelectedHandCardId(card.id);
@@ -549,6 +570,10 @@ export default function GameScreen() {
       } else {
         // Soltado en espacio libre del tablero: mantiene la carta seleccionada para que el usuario elija Colocar o Cantar As (o Llevar/Formar si ya había cartas marcadas)
       }
+
+      clearError();
+      triggerHaptic(target?.type === 'formation' ? 'formation' : 'card_move');
+      playSfx('cardPlay', { volumeMultiplier: 0.5, playbackRate: 1.1 });
     },
     [isCurrentTurn, gameState, localPlayer, findDropTargetAt, playSfx, clearError]
   );
@@ -721,7 +746,7 @@ export default function GameScreen() {
         selectedHandCardId={selectedHandCardId}
         selectedBoardCardIds={selectedBoardCardIds}
         selectedFormationIds={selectedFormationIds}
-        onPlayAction={(payload) => handlePlayAction(payload)}
+        onPlayAction={handlePlayAction}
         onClearSelection={handleClearSelection}
       />
 

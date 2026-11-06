@@ -1,4 +1,4 @@
-import React, { memo, useRef } from 'react';
+import React, { memo, useRef, useMemo, useCallback } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -51,92 +51,141 @@ export const DraggableCard = memo(function DraggableCard({
   const isDragging = useSharedValue(false);
   const lastMoveCallRef = useRef<number>(0);
 
-  const handlePress = () => {
-    if (!disabled && onPress) {
-      onPress();
-    }
+  // Mantener referencias estables a los callbacks para no recrear los gestos nativos en cada render
+  const callbacksRef = useRef({
+    card,
+    disabled,
+    onPress,
+    onDragStart,
+    onDragMove,
+    onDragRelease,
+    onDropOnBoard,
+    onDropOnFormation,
+  });
+  callbacksRef.current = {
+    card,
+    disabled,
+    onPress,
+    onDragStart,
+    onDragMove,
+    onDragRelease,
+    onDropOnBoard,
+    onDropOnFormation,
   };
 
-  const handleStart = () => {
+  const handlePress = useCallback(() => {
+    const { disabled: isDisabled, onPress: pressFn } = callbacksRef.current;
+    if (!isDisabled && pressFn) {
+      pressFn();
+    }
+  }, []);
+
+  const handleStart = useCallback(() => {
+    const { card: currentCard, onDragStart: startFn } = callbacksRef.current;
     triggerHaptic('card_tap');
-    onDragStart?.(card);
-  };
+    startFn?.(currentCard);
+  }, []);
 
   // Throttled to 50ms (~20fps) to keep JS thread responsive and prevent frame drops during drag
-  const handleMove = (absX: number, absY: number) => {
+  const handleMove = useCallback((absX: number, absY: number) => {
+    const { onDragMove: moveFn } = callbacksRef.current;
+    if (!moveFn) return;
     const now = Date.now();
     if (now - lastMoveCallRef.current >= 50) {
       lastMoveCallRef.current = now;
-      onDragMove?.(absX, absY);
+      moveFn(absX, absY);
     }
-  };
+  }, []);
 
-  const handleEnd = (absX: number, absY: number, tx: number, ty: number) => {
-    if (onDragRelease) {
-      onDragRelease(card, absX, absY, tx, ty);
+  const handleEnd = useCallback((absX: number, absY: number, tx: number, ty: number) => {
+    const {
+      card: currentCard,
+      disabled: isDisabled,
+      onPress: pressFn,
+      onDragRelease: releaseFn,
+      onDropOnBoard: dropBoardFn,
+      onDropOnFormation: dropFormFn,
+    } = callbacksRef.current;
+
+    if (isDisabled) return;
+
+    // Si el desplazamiento fue pequeño (< 35px), tratarlo como un toque de selección inmediato
+    if (Math.hypot(tx, ty) < 35) {
+      pressFn?.();
+      return;
+    }
+
+    if (releaseFn) {
+      releaseFn(currentCard, absX, absY, tx, ty);
       return;
     }
 
     // Fallback si no se provee onDragRelease
     if (ty < -55) {
-      if (ty < -120 && onDropOnFormation) {
+      if (ty < -120 && dropFormFn) {
         if (tx < -60) {
           triggerHaptic('formation');
-          onDropOnFormation(0, card);
+          dropFormFn(0, currentCard);
           return;
         } else if (tx < 0) {
           triggerHaptic('formation');
-          onDropOnFormation(1, card);
+          dropFormFn(1, currentCard);
           return;
         } else if (tx < 60) {
           triggerHaptic('formation');
-          onDropOnFormation(2, card);
+          dropFormFn(2, currentCard);
           return;
         }
       }
       triggerHaptic('card_move');
-      onDropOnBoard?.(card);
+      dropBoardFn?.(currentCard);
+    } else {
+      pressFn?.();
     }
-  };
+  }, []);
 
-  const panGesture = Gesture.Pan()
-    .enabled(!disabled)
-    .minDistance(6)
-    .onStart(() => {
-      isDragging.value = true;
-      runOnJS(handleStart)();
-    })
-    .onUpdate((event) => {
-      translateX.value = event.translationX;
-      translateY.value = event.translationY;
-      if (onDragMove) {
+  const composedGesture = useMemo(() => {
+    const panGesture = Gesture.Pan()
+      .enabled(!disabled)
+      .minDistance(14)
+      .onStart(() => {
+        isDragging.value = true;
+        runOnJS(handleStart)();
+      })
+      .onUpdate((event) => {
+        translateX.value = event.translationX;
+        translateY.value = event.translationY;
         runOnJS(handleMove)(event.absoluteX, event.absoluteY);
-      }
-    })
-    .onEnd((event) => {
-      isDragging.value = false;
-      runOnJS(handleEnd)(
-        event.absoluteX,
-        event.absoluteY,
-        event.translationX,
-        event.translationY
-      );
-      translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
-      translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
-    })
-    .onFinalize(() => {
-      isDragging.value = false;
-      translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
-      translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
-    });
+      })
+      .onEnd((event) => {
+        isDragging.value = false;
+        runOnJS(handleEnd)(
+          event.absoluteX,
+          event.absoluteY,
+          event.translationX,
+          event.translationY
+        );
+        translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
+      })
+      .onFinalize(() => {
+        isDragging.value = false;
+        translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
+      });
 
-  const tapGesture = Gesture.Tap()
-    .enabled(!disabled)
-    .onEnd(() => {
-      runOnJS(handlePress)();
-    });
+    const tapGesture = Gesture.Tap()
+      .enabled(!disabled)
+      .maxDuration(600)
+      .maxDistance(18)
+      .onEnd((_event, success) => {
+        if (success) {
+          runOnJS(handlePress)();
+        }
+      });
 
-  const composedGesture = Gesture.Exclusive(panGesture, tapGesture);
+    return Gesture.Exclusive(panGesture, tapGesture);
+  }, [disabled, handleStart, handleMove, handleEnd, handlePress, isDragging, translateX, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -155,7 +204,6 @@ export const DraggableCard = memo(function DraggableCard({
         <CardView
           card={card}
           selected={selected}
-          onPress={onPress}
           disabled={disabled}
           theme={theme}
           fontKey={fontKey}

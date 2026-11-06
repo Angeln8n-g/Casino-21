@@ -95,8 +95,8 @@ export function ActionPanel({
   };
 
   return (
-    <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-2 bg-gray-950/90 backdrop-blur-xl px-3 py-2 rounded-xl md:rounded-2xl shadow-xl border border-white/10 w-full animate-in fade-in slide-in-from-bottom-2">
-      <div className="flex flex-wrap items-center gap-2 flex-1 justify-center md:justify-start">
+    <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-2 bg-gray-950/90 backdrop-blur-xl px-4 py-2 rounded-xl md:rounded-2xl shadow-xl border border-white/10 w-fit max-w-full mx-auto animate-in fade-in slide-in-from-bottom-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         {selectedBoardCardIds.size === 0 && selectedFormationIds.size === 0 ? (
           <>
             <button

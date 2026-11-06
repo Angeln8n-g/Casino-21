@@ -298,17 +298,17 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         const sound = pool[idx];
 
         try {
-          await sound.setPositionAsync(0);
-          await sound.setVolumeAsync(targetVol);
-          await sound.playAsync();
+          await sound.replayAsync({
+            positionMillis: 0,
+            volume: targetVol,
+            shouldPlay: true,
+          });
           return;
         } catch {
           try {
-            await sound.replayAsync({
-              positionMillis: 0,
-              volume: targetVol,
-              shouldPlay: true,
-            });
+            await sound.setPositionAsync(0);
+            await sound.setVolumeAsync(targetVol);
+            await sound.playAsync();
             return;
           } catch {}
         }
