@@ -2,7 +2,7 @@
   "expo": {
     "name": "KASINO 21 - Juego de Cartas",
     "slug": "kasino21-cardgame",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "scheme": "kasino21",
     "icon": "./assets/icon.png",
@@ -18,7 +18,13 @@
     },
     "android": {
       "package": "com.kasino21.cardgame",
-      "versionCode": 2,
+      "versionCode": 3,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#020617",
         "foregroundImage": "./assets/icon.png"
