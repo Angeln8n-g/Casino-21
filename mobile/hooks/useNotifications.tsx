@@ -110,7 +110,7 @@ function useNotificationsInternal(): NotificationsContextType {
       const id = Math.random().toString(36).substring(2, 9);
       setToast({ ...notif, id });
       triggerHaptic('light');
-      playSfx('alert');
+      playSfx('notification');
       toastTimerRef.current = setTimeout(() => {
         setToast((current) => (current?.id === id ? null : current));
       }, 6500);

@@ -1,7 +1,9 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { MotionConfig } from 'framer-motion';
+import { Volume2 } from 'lucide-react';
 import { GameProvider, useGame } from './hooks/useGame';
 import { AudioProvider, useAudio } from './hooks/useAudio';
+import { MusicProvider, useMusic } from './hooks/useMusic';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { triggerHaptic } from './utils/haptics';
 import { loadThemes } from './themes/themeRegistry';
@@ -55,6 +57,28 @@ function EventToast({ message, type }: { message: string; type: 'start' | 'end' 
   );
 }
 
+function MusicAutoplayPrompt() {
+  const { needsUserInteraction, activateMusic } = useMusic();
+  if (!needsUserInteraction) return null;
+
+  return (
+    <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[95] animate-fade-in pointer-events-auto">
+      <button
+        type="button"
+        onClick={activateMusic}
+        className="flex items-center gap-2.5 px-4 py-2.5 rounded-full border border-cyan-400/40 bg-slate-950/90 backdrop-blur-xl text-cyan-300 hover:text-white hover:border-cyan-300/70 hover:bg-cyan-500/15 shadow-[0_8px_32px_rgba(6,182,212,0.28)] transition-all active:scale-95"
+      >
+        <span className="w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center">
+          <Volume2 size={13} className="text-cyan-300 animate-pulse" />
+        </span>
+        <span className="text-[11px] font-black uppercase tracking-[0.16em]">
+          Activar música KASINO21
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function AppContent() {
   const { user, loading } = useAuth();
   const { gameState } = useGame();
@@ -70,14 +94,14 @@ function AppContent() {
       socket.on('event_started', (data: { eventId: string; title: string }) => {
         if (mounted) {
           setEventToast({ message: `🎲 "${data.title}" ha comenzado automáticamente`, type: 'start' });
-          playSfx('alert');
+          playSfx('notification');
           setTimeout(() => { if (mounted) setEventToast(null); }, 10000);
         }
       });
       socket.on('event_completed', (data: { eventId: string; title: string }) => {
         if (mounted) {
           setEventToast({ message: `✅ "${data.title}" ha finalizado`, type: 'end' });
-          playSfx('alert');
+          playSfx('notification');
           setTimeout(() => { if (mounted) setEventToast(null); }, 10000);
         }
       });
@@ -173,6 +197,7 @@ function AppContent() {
     return (
       <>
         <MainMenu />
+        <MusicAutoplayPrompt />
         {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
       </>
     );
@@ -182,6 +207,7 @@ function AppContent() {
     return (
       <>
         <MainMenu />
+        <MusicAutoplayPrompt />
         {eventToast && <EventToast message={eventToast.message} type={eventToast.type} />}
       </>
     );
@@ -282,17 +308,19 @@ export default function App() {
       <AuthProvider>
         <AudioProvider>
           <GameProvider>
-            <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white font-sans"
-              style={{ background: 'radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%)' }}
-            >
-              {/* Noise texture overlay */}
-              <div className="noise-overlay" />
-              <Suspense fallback={<LoadingFallback />}>
-                <AppContent />
-              </Suspense>
-            </div>
-            <CookieConsent />
-            <ChampionshipToast />
+            <MusicProvider>
+              <div className="absolute inset-0 w-screen h-screen overflow-hidden text-white font-sans"
+                style={{ background: 'radial-gradient(ellipse at top, #0f172a 0%, #020617 50%, #000000 100%)' }}
+              >
+                {/* Noise texture overlay */}
+                <div className="noise-overlay" />
+                <Suspense fallback={<LoadingFallback />}>
+                  <AppContent />
+                </Suspense>
+              </div>
+              <CookieConsent />
+              <ChampionshipToast />
+            </MusicProvider>
           </GameProvider>
         </AudioProvider>
       </AuthProvider>

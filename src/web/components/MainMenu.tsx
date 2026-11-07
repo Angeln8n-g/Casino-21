@@ -1004,6 +1004,11 @@ export function MainMenu() {
         {leftCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
       </motion.button>
 
+      {/* Global Audio & Music Mixer on desktop */}
+      <div className="hidden lg:flex fixed top-6 right-6 z-50">
+        <AudioControlButton />
+      </div>
+
       {/* ═════ MAIN CONTENT AREA ═════ */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         

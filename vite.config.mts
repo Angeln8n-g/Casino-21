@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => {
           // API calls + WebSocket + AdSense Reporting + Supabase APIs
           `connect-src 'self' https://${SUPABASE_HOST} wss://${SUPABASE_HOST} http://localhost:4000 ws://localhost:4000 https://*.supabase.co wss://*.supabase.co https://*.adtrafficquality.google https://www.google-analytics.com https://analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://tpc.googlesyndication.com https://www.google.com`,
           // Media: allow playing local sounds and sound tracks hosted on Supabase Storage
-          "media-src 'self' blob: https://*.supabase.co",
+          `media-src 'self' blob: https://${SUPABASE_HOST} https://*.supabase.co`,
           // AdSense iframes + Google services
           "frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.doubleclick.net https://*.adtrafficquality.google",
           // No plugins

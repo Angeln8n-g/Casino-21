@@ -26,6 +26,7 @@ import {
   Volume2,
   VolumeX,
   Music,
+  Sparkles,
   Play,
   Pause,
   SkipForward,
@@ -91,9 +92,119 @@ function EqualizerBar({ index, active, color }: EqualizerBarProps) {
   );
 }
 
+interface TouchVolumeSliderProps {
+  percent: number;
+  accentHex: string;
+  onChangeRatio: (ratio: number) => void;
+  onRelease?: () => void;
+}
+
+function TouchVolumeSlider({
+  percent,
+  accentHex,
+  onChangeRatio,
+  onRelease,
+}: TouchVolumeSliderProps) {
+  const widthRef = useRef<number>(240);
+  const cbRef = useRef(onChangeRatio);
+  cbRef.current = onChangeRatio;
+  const relRef = useRef(onRelease);
+  relRef.current = onRelease;
+
+  const applyX = useCallback((x: number) => {
+    const w = Math.max(1, widthRef.current);
+    const ratio = Math.round(Math.max(0, Math.min(1, x / w)) * 100) / 100;
+    cbRef.current(ratio);
+  }, []);
+
+  const handleRelease = useCallback(() => {
+    relRef.current?.();
+  }, []);
+
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .activeOffsetX([-4, 4])
+      .onBegin((e) => {
+        runOnJS(applyX)(e.x);
+      })
+      .onUpdate((e) => {
+        runOnJS(applyX)(e.x);
+      })
+      .onFinalize(() => {
+        runOnJS(handleRelease)();
+      });
+
+    const tap = Gesture.Tap().onEnd((e) => {
+      runOnJS(applyX)(e.x);
+      runOnJS(handleRelease)();
+    });
+
+    return Gesture.Race(pan, tap);
+  }, [applyX, handleRelease]);
+
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    if (w > 0) widthRef.current = w;
+  }, []);
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <View
+        onLayout={onLayout}
+        style={{
+          height: 32,
+          justifyContent: 'center',
+          position: 'relative',
+        }}
+      >
+        <View className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-white/5">
+          <View
+            style={{
+              width: `${percent}%`,
+              height: '100%',
+              backgroundColor: accentHex,
+              borderRadius: 999,
+            }}
+          />
+        </View>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: `${percent}%`,
+            marginLeft: -9,
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            backgroundColor: '#ffffff',
+            borderWidth: 2.5,
+            borderColor: accentHex,
+          }}
+        />
+      </View>
+    </GestureDetector>
+  );
+}
+
 export function AudioSettingsModal() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const { volume, muted, setVolume, setMuted, toggleMuted, playSfx } = useAudio();
+  const {
+    sfxVolume,
+    sfxMuted,
+    setSfxVolume,
+    setSfxMuted,
+    toggleSfxMuted,
+    musicEnabled,
+    musicMuted,
+    musicVolume,
+    setMusicEnabled,
+    toggleMusicEnabled,
+    setMusicMuted,
+    toggleMusicMuted,
+    setMusicVolume,
+    playSfx,
+  } = useAudio();
+
   const {
     style,
     playlists,
@@ -117,9 +228,7 @@ export function AudioSettingsModal() {
   } = useMusicSettings();
 
   const [selectedCategory, setSelectedCategory] = useState<MusicCategory>('lobby');
-  const sliderWidthRef = useRef<number>(240);
 
-  // Al abrir el modal, sincronizar la pestaña activa según si estamos en Partida o en Lobby
   useEffect(() => {
     if (showSettingsModal) {
       setSelectedCategory(isInGame ? 'game' : 'lobby');
@@ -136,7 +245,7 @@ export function AudioSettingsModal() {
   }, [currentTracks.length, effectiveCategory, gameTrackIndex, lobbyTrackIndex]);
 
   const isCategoryPlaying = useMemo(() => {
-    if (muted) return false;
+    if (!musicEnabled || musicMuted) return false;
     if (isInGame) {
       return !isGameMusicPaused;
     }
@@ -149,79 +258,70 @@ export function AudioSettingsModal() {
     isGameMusicPaused,
     isInGame,
     isLobbyPlaying,
-    muted,
+    musicEnabled,
+    musicMuted,
     previewGameTrackIndex,
   ]);
 
   const currentTrackLabel =
-    currentTracks[activeTrackIndex]?.label || 'Pista musical';
+    currentTracks[activeTrackIndex]?.label || 'KASINO21 — Arena Protocol';
 
-  const displayVolume = muted ? 0 : volume;
-  const currentPercent = Math.round(displayVolume * 100);
+  const displayMusicVolume = !musicEnabled || musicMuted ? 0 : musicVolume;
+  const musicPercent = Math.round(displayMusicVolume * 100);
+
+  const displaySfxVolume = sfxMuted ? 0 : sfxVolume;
+  const sfxPercent = Math.round(displaySfxVolume * 100);
+
   const isClassic = style === 'classic';
   const accentHex = isClassic ? '#f59e0b' : '#06b6d4';
   const accentLightHex = isClassic ? '#fbbf24' : '#22d3ee';
 
-  // Callback JS estable para actualizar volumen desde gestos táctiles
-  const applyVolumeFromX = useCallback(
-    (localX: number) => {
-      const width = Math.max(1, sliderWidthRef.current);
-      const ratio = Math.max(0, Math.min(1, localX / width));
-      const rounded = Math.round(ratio * 100) / 100;
-      setVolume(rounded);
-      if (rounded === 0) {
-        setMuted(true);
-      } else if (muted) {
-        setMuted(false);
+  const handleMusicRatioChange = useCallback(
+    (ratio: number) => {
+      setMusicVolume(ratio);
+      if (ratio === 0) {
+        setMusicMuted(true);
+      } else {
+        if (!musicEnabled) setMusicEnabled(true);
+        if (musicMuted) setMusicMuted(false);
       }
     },
-    [muted, setMuted, setVolume]
+    [musicEnabled, musicMuted, setMusicEnabled, setMusicMuted, setMusicVolume]
   );
 
-  const applyVolumeCallbackRef = useRef(applyVolumeFromX);
-  applyVolumeCallbackRef.current = applyVolumeFromX;
+  const handleSfxRatioChange = useCallback(
+    (ratio: number) => {
+      setSfxVolume(ratio);
+      if (ratio === 0) {
+        setSfxMuted(true);
+      } else if (sfxMuted) {
+        setSfxMuted(false);
+      }
+    },
+    [setSfxMuted, setSfxVolume, sfxMuted]
+  );
 
-  const handleSliderGestureX = useCallback((x: number) => {
-    applyVolumeCallbackRef.current(x);
-  }, []);
-
-  const sliderGesture = useMemo(() => {
-    const pan = Gesture.Pan()
-      .activeOffsetX([-4, 4])
-      .onBegin((e) => {
-        runOnJS(handleSliderGestureX)(e.x);
-      })
-      .onUpdate((e) => {
-        runOnJS(handleSliderGestureX)(e.x);
-      });
-
-    const tap = Gesture.Tap().onEnd((e) => {
-      runOnJS(handleSliderGestureX)(e.x);
-    });
-
-    return Gesture.Race(pan, tap);
-  }, [handleSliderGestureX]);
-
-  const handleSliderLayout = useCallback((e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    if (w > 0) {
-      sliderWidthRef.current = w;
+  const handleSfxRelease = useCallback(() => {
+    if (!sfxMuted) {
+      playSfx('cardPlay', { volumeMultiplier: 0.5 });
     }
-  }, []);
+  }, [playSfx, sfxMuted]);
 
-  const handlePresetVolume = (preset: number) => {
+  const handlePresetMusicVolume = (preset: number) => {
     triggerHaptic('light');
-    setVolume(preset);
-    if (preset === 0) {
-      setMuted(true);
-    } else if (muted) {
-      setMuted(false);
-    }
+    setMusicVolume(preset);
+    if (!musicEnabled) setMusicEnabled(true);
+    if (musicMuted) setMusicMuted(false);
   };
 
   const handlePlayPausePress = () => {
     triggerHaptic('light');
     if (isInGame) {
+      if (!musicEnabled) {
+        setMusicEnabled(true);
+        if (musicMuted) setMusicMuted(false);
+        return;
+      }
       toggleGameMusicPause();
       return;
     }
@@ -272,8 +372,8 @@ export function AudioSettingsModal() {
 
   if (!showSettingsModal) return null;
 
-  const cardWidth = Math.min(Math.max(windowWidth - 28, 290), 430);
-  const cardMaxHeight = Math.min(windowHeight * 0.88, 650);
+  const cardWidth = Math.min(Math.max(windowWidth - 28, 290), 435);
+  const cardMaxHeight = Math.min(windowHeight * 0.9, 680);
 
   return (
     <View
@@ -324,10 +424,10 @@ export function AudioSettingsModal() {
             </View>
             <View className="flex-1">
               <Text className="text-white font-black text-sm uppercase tracking-wider">
-                Configuraciones
+                Audio y Música
               </Text>
               <Text className="text-slate-400 text-[11px] mt-0.5" numberOfLines={1}>
-                Volumen maestro y pistas musicales
+                Controles independientes de Música y Efectos
               </Text>
             </View>
           </View>
@@ -343,37 +443,43 @@ export function AudioSettingsModal() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 18, paddingBottom: 22 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 22 }}
         >
-          {/* ── Sección 1: Volumen Maestro (paridad con AudioControlButton Web) ── */}
-          <View className="bg-slate-950/75 border border-slate-800 rounded-2xl p-4 mb-4">
-            <View className="flex-row items-center justify-between mb-3">
+          {/* ── Sección 1: Música (Control Independiente) ── */}
+          <View className="bg-slate-950/75 border border-slate-800 rounded-2xl p-4 mb-3">
+            <View className="flex-row items-center justify-between mb-2.5">
               <View className="flex-row items-center gap-2.5">
                 <Pressable
                   onPress={() => {
                     triggerHaptic('light');
-                    toggleMuted();
+                    toggleMusicMuted();
                   }}
+                  disabled={!musicEnabled}
                   className={`w-9 h-9 rounded-xl items-center justify-center border ${
-                    muted || currentPercent === 0
+                    !musicEnabled || musicMuted || musicPercent === 0
                       ? 'bg-red-500/15 border-red-500/30'
                       : isClassic
                         ? 'bg-amber-500/15 border-amber-500/30'
                         : 'bg-cyan-500/15 border-cyan-500/30'
                   }`}
+                  accessibilityLabel={musicMuted ? 'Quitar silencio de música' : 'Silenciar música'}
                 >
-                  {muted || currentPercent === 0 ? (
+                  {!musicEnabled || musicMuted || musicPercent === 0 ? (
                     <VolumeX color="#f87171" size={17} />
                   ) : (
-                    <Volume2 color={accentLightHex} size={17} />
+                    <Music color={accentLightHex} size={17} />
                   )}
                 </Pressable>
                 <View>
                   <Text className="text-[10px] uppercase tracking-widest font-black text-slate-400">
-                    Audio Maestro
+                    Volumen Música
                   </Text>
                   <Text className="text-sm font-black text-white">
-                    {muted ? 'Silenciado' : `${currentPercent}%`}
+                    {!musicEnabled
+                      ? 'Desactivada'
+                      : musicMuted
+                        ? 'Silenciada'
+                        : `${musicPercent}%`}
                   </Text>
                 </View>
               </View>
@@ -381,75 +487,45 @@ export function AudioSettingsModal() {
               <Pressable
                 onPress={() => {
                   triggerHaptic('light');
-                  toggleMuted();
+                  toggleMusicEnabled();
                 }}
                 className={`px-3 py-1.5 rounded-full border ${
-                  muted
-                    ? 'bg-red-500/15 border-red-500/35'
-                    : 'bg-emerald-500/15 border-emerald-500/35'
+                  musicEnabled
+                    ? 'bg-emerald-500/15 border-emerald-500/35'
+                    : 'bg-slate-800 border-slate-700'
                 }`}
               >
                 <Text
                   className={`text-[10px] uppercase font-black tracking-wider ${
-                    muted ? 'text-red-300' : 'text-emerald-300'
+                    musicEnabled ? 'text-emerald-300' : 'text-slate-400'
                   }`}
                 >
-                  {muted ? 'Audio Off' : 'Audio On'}
+                  {musicEnabled ? 'Música On' : 'Música Off'}
                 </Text>
               </Pressable>
             </View>
 
-            {/* Control deslizante táctil */}
-            <GestureDetector gesture={sliderGesture}>
-              <View
-                onLayout={handleSliderLayout}
-                style={{
-                  height: 34,
-                  justifyContent: 'center',
-                  position: 'relative',
-                }}
-              >
-                <View className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-white/5">
-                  <View
-                    style={{
-                      width: `${currentPercent}%`,
-                      height: '100%',
-                      backgroundColor: accentHex,
-                      borderRadius: 999,
-                    }}
-                  />
-                </View>
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    left: `${currentPercent}%`,
-                    marginLeft: -9,
-                    width: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    backgroundColor: '#ffffff',
-                    borderWidth: 2.5,
-                    borderColor: accentHex,
-                  }}
-                />
-              </View>
-            </GestureDetector>
+            <TouchVolumeSlider
+              percent={musicPercent}
+              accentHex={accentHex}
+              onChangeRatio={handleMusicRatioChange}
+            />
 
-            {/* Accesos rápidos de nivel */}
             <View className="flex-row items-center justify-between mt-1.5">
               {[
                 { label: 'Suave', value: 0.25 },
                 { label: 'Medio', value: 0.5 },
-                { label: 'Óptimo', value: 0.75 },
+                { label: 'Óptimo', value: 0.7 },
                 { label: 'Intenso', value: 1.0 },
               ].map((preset) => {
                 const isSelected =
-                  !muted && Math.abs(volume - preset.value) < 0.06;
+                  musicEnabled &&
+                  !musicMuted &&
+                  Math.abs(musicVolume - preset.value) < 0.06;
                 return (
                   <Pressable
                     key={preset.label}
-                    onPress={() => handlePresetVolume(preset.value)}
+                    onPress={() => handlePresetMusicVolume(preset.value)}
                     className={`px-2.5 py-1 rounded-lg border ${
                       isSelected
                         ? isClassic
@@ -475,22 +551,108 @@ export function AudioSettingsModal() {
             </View>
           </View>
 
-          {/* ── Sección 2: Estilo Musical (paridad con LobbyMusicSelector Web) ── */}
+          {/* ── Sección 2: Efectos de Sonido (SFX — Control Independiente) ── */}
+          <View className="bg-slate-950/75 border border-slate-800 rounded-2xl p-4 mb-4">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center gap-2.5">
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('light');
+                    toggleSfxMuted();
+                  }}
+                  className={`w-9 h-9 rounded-xl items-center justify-center border ${
+                    sfxMuted || sfxPercent === 0
+                      ? 'bg-red-500/15 border-red-500/30'
+                      : 'bg-amber-500/15 border-amber-500/30'
+                  }`}
+                  accessibilityLabel={sfxMuted ? 'Activar efectos de sonido' : 'Silenciar efectos de sonido'}
+                >
+                  {sfxMuted || sfxPercent === 0 ? (
+                    <VolumeX color="#f87171" size={17} />
+                  ) : (
+                    <Sparkles color="#fbbf24" size={17} />
+                  )}
+                </Pressable>
+                <View>
+                  <Text className="text-[10px] uppercase tracking-widest font-black text-slate-400">
+                    Efectos de Sonido (SFX)
+                  </Text>
+                  <Text className="text-sm font-black text-white">
+                    {sfxMuted ? 'Silenciados' : `${sfxPercent}%`}
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  triggerHaptic('light');
+                  const wasMuted = sfxMuted;
+                  toggleSfxMuted();
+                  if (wasMuted) {
+                    setTimeout(() => playSfx('cardPlay', { volumeMultiplier: 0.55 }), 50);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full border ${
+                  sfxMuted
+                    ? 'bg-red-500/15 border-red-500/35'
+                    : 'bg-amber-500/15 border-amber-500/35'
+                }`}
+              >
+                <Text
+                  className={`text-[10px] uppercase font-black tracking-wider ${
+                    sfxMuted ? 'text-red-300' : 'text-amber-300'
+                  }`}
+                >
+                  {sfxMuted ? 'SFX Off' : 'SFX On'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <TouchVolumeSlider
+              percent={sfxPercent}
+              accentHex="#f59e0b"
+              onChangeRatio={handleSfxRatioChange}
+              onRelease={handleSfxRelease}
+            />
+          </View>
+
+          {/* ── Sección 3: Estilo Musical ── */}
           <View className="mb-4">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-[10px] uppercase tracking-widest font-black text-slate-400">
-                Estilo Musical
+                Identidad Sonora
               </Text>
               <Text
                 className={`text-[10px] font-black uppercase ${
                   isClassic ? 'text-amber-400' : 'text-cyan-400'
                 }`}
               >
-                {isClassic ? '🎻 Clásico' : '🎧 Moderno'}
+                {isClassic ? '🎻 Clásico' : '⚡ Competitivo'}
               </Text>
             </View>
 
             <View className="flex-row gap-2.5">
+              <Pressable
+                onPress={() => handleStylePress('modern')}
+                className={`flex-1 rounded-2xl py-3 px-3 border items-center ${
+                  !isClassic
+                    ? 'bg-cyan-500/15 border-cyan-500/50'
+                    : 'bg-slate-950/60 border-slate-800'
+                }`}
+              >
+                <Text className="text-lg mb-0.5">⚡</Text>
+                <Text
+                  className={`text-[11px] font-black uppercase tracking-wider ${
+                    !isClassic ? 'text-cyan-400' : 'text-slate-400'
+                  }`}
+                >
+                  Competitivo
+                </Text>
+                <Text className="text-[9px] text-slate-500 mt-0.5">
+                  KASINO21 Electronic
+                </Text>
+              </Pressable>
+
               <Pressable
                 onPress={() => handleStylePress('classic')}
                 className={`flex-1 rounded-2xl py-3 px-3 border items-center ${
@@ -511,33 +673,11 @@ export function AudioSettingsModal() {
                   Piano & Lounge
                 </Text>
               </Pressable>
-
-              <Pressable
-                onPress={() => handleStylePress('modern')}
-                className={`flex-1 rounded-2xl py-3 px-3 border items-center ${
-                  !isClassic
-                    ? 'bg-cyan-500/15 border-cyan-500/50'
-                    : 'bg-slate-950/60 border-slate-800'
-                }`}
-              >
-                <Text className="text-lg mb-0.5">🎧</Text>
-                <Text
-                  className={`text-[11px] font-black uppercase tracking-wider ${
-                    !isClassic ? 'text-cyan-400' : 'text-slate-400'
-                  }`}
-                >
-                  Moderno
-                </Text>
-                <Text className="text-[9px] text-slate-500 mt-0.5">
-                  Beats & Electrónica
-                </Text>
-              </Pressable>
             </View>
           </View>
 
-          {/* ── Sección 3: Reproductor y Pistas de Audio (Supabase audio_tracks) ── */}
+          {/* ── Sección 4: Reproductor y Pistas de Audio ── */}
           <View className="bg-slate-950/75 border border-slate-800 rounded-2xl p-4">
-            {/* Pestañas de Categoría (Lobby vs Partida) cuando estamos fuera de /game */}
             {!isInGame ? (
               <View className="flex-row bg-slate-900 p-1 rounded-xl border border-slate-800 mb-3.5">
                 <Pressable
@@ -563,7 +703,7 @@ export function AudioSettingsModal() {
                         : 'text-slate-400'
                     }`}
                   >
-                    🎵 Pistas Lobby
+                    🎵 Pistas Menú
                   </Text>
                 </Pressable>
 
@@ -627,19 +767,20 @@ export function AudioSettingsModal() {
                     {currentTrackLabel}
                   </Text>
                   <Text className="text-[10px] text-slate-400 mt-0.5">
-                    {muted
-                      ? 'Audio silenciado'
-                      : isCategoryPlaying
-                        ? !isInGame && effectiveCategory === 'game'
-                          ? 'Vista previa activa'
-                          : 'Reproduciendo ahora'
-                        : 'Música en pausa'}
+                    {!musicEnabled
+                      ? 'Música desactivada'
+                      : musicMuted
+                        ? 'Música silenciada'
+                        : isCategoryPlaying
+                          ? !isInGame && effectiveCategory === 'game'
+                            ? 'Vista previa activa'
+                            : 'Reproduciendo en bucle'
+                          : 'Música en pausa'}
                   </Text>
                 </View>
               </View>
 
               <View className="flex-row items-center gap-2">
-                {/* Ecualizador animado (GPU scaleY) */}
                 <View className="flex-row items-center gap-[2px] h-5 px-1">
                   {[0, 1, 2, 3].map((idx) => (
                     <EqualizerBar

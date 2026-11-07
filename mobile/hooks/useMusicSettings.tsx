@@ -8,12 +8,13 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
-import { Platform } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePathname } from 'expo-router';
 import { supabase } from '../services/supabase';
 import { useAudio } from './useAudio';
+import { useAuth } from './useAuth';
 
 export type MusicStyle = 'classic' | 'modern';
 export type MusicCategory = 'lobby' | 'game';
@@ -60,7 +61,12 @@ interface MusicSettingsContextValue {
 }
 
 const LOBBY_MUSIC_SETTINGS_KEY = 'casino21_lobby_music';
-const LOBBY_VOLUME_SCALE = 0.4; // Idéntico a src/web/components/LobbyMusicSelector.tsx
+const CURRENT_SCHEMA_VERSION = 2;
+const LOBBY_VOLUME_SCALE = 0.52;
+const FADE_IN_MS = 1500;
+const FADE_OUT_MS = 800;
+
+const BUNDLED_KASINO21_THEME = require('../assets/audio/music/kasino21_theme.mp3');
 
 const BUNDLED_LOBBY_CLASSIC = [
   require('../assets/audio/music/lobby_clasic_1.mp3'),
@@ -68,6 +74,7 @@ const BUNDLED_LOBBY_CLASSIC = [
 ];
 
 const BUNDLED_LOBBY_MODERN = [
+  BUNDLED_KASINO21_THEME,
   require('../assets/audio/music/lobby_moderno_1.mp3'),
   require('../assets/audio/music/lobby_moderno_2.mp3'),
 ];
@@ -87,10 +94,11 @@ const BUNDLED_GAME_MODERN = [
 ];
 
 const LOCAL_AUDIO_PATH_MAP: Record<string, number> = {
+  '/audio/kasino21_theme.mp3': BUNDLED_KASINO21_THEME,
   '/audio/lobby_clasic_1.mp3': BUNDLED_LOBBY_CLASSIC[0],
   '/audio/lobby_clasic_2.mp3': BUNDLED_LOBBY_CLASSIC[1],
-  '/audio/lobby_moderno_1.mp3': BUNDLED_LOBBY_MODERN[0],
-  '/audio/lobby_moderno_2.mp3': BUNDLED_LOBBY_MODERN[1],
+  '/audio/lobby_moderno_1.mp3': BUNDLED_LOBBY_MODERN[1],
+  '/audio/lobby_moderno_2.mp3': BUNDLED_LOBBY_MODERN[2],
   '/audio/secuencia_clasic_1.mp3': BUNDLED_GAME_CLASSIC[0],
   '/audio/secuencia_clasic_2.mp3': BUNDLED_GAME_CLASSIC[1],
   '/audio/secuencia_clasic_3.mp3': BUNDLED_GAME_CLASSIC[2],
@@ -103,6 +111,16 @@ const LOCAL_AUDIO_PATH_MAP: Record<string, number> = {
   '/audio/secuencia_moderna_2.mp3': BUNDLED_GAME_MODERN[1],
   '/audio/secuencia_moderna_3.mp3': BUNDLED_GAME_MODERN[2],
   '/audio/secuencia_moderna_4.mp3': BUNDLED_GAME_MODERN[3],
+};
+
+const SIGNATURE_LOBBY_TRACK: MusicTrackItem = {
+  id: 'kasino21-arena-protocol',
+  label: 'KASINO21 — Arena Protocol',
+  src: '/audio/kasino21_theme.mp3',
+  localSource: BUNDLED_KASINO21_THEME,
+  category: 'lobby',
+  style: 'modern',
+  trackOrder: 0,
 };
 
 const FALLBACK_PLAYLISTS: PlaylistsMap = {
@@ -126,18 +144,19 @@ const FALLBACK_PLAYLISTS: PlaylistsMap = {
       },
     ],
     modern: [
+      SIGNATURE_LOBBY_TRACK,
       {
         id: 'fallback-lobby-modern-1',
-        label: 'Moderno 1',
-        localSource: BUNDLED_LOBBY_MODERN[0],
+        label: 'Pulso Competitivo 1',
+        localSource: BUNDLED_LOBBY_MODERN[1],
         category: 'lobby',
         style: 'modern',
         trackOrder: 1,
       },
       {
         id: 'fallback-lobby-modern-2',
-        label: 'Moderno 2',
-        localSource: BUNDLED_LOBBY_MODERN[1],
+        label: 'Pulso Competitivo 2',
+        localSource: BUNDLED_LOBBY_MODERN[2],
         category: 'lobby',
         style: 'modern',
         trackOrder: 2,
@@ -222,7 +241,7 @@ export function resolveTrackSource(
   return { primary: fallbackLocal, fallbackLocal };
 }
 
-async function readStoredMusicSettings(): Promise< string | null> {
+async function readStoredMusicSettings(): Promise<string | null> {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
     return window.localStorage.getItem(LOBBY_MUSIC_SETTINGS_KEY);
   }
@@ -237,18 +256,30 @@ async function writeStoredMusicSettings(value: string): Promise<void> {
   await AsyncStorage.setItem(LOBBY_MUSIC_SETTINGS_KEY, value);
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const MusicSettingsContext = createContext<MusicSettingsContextValue | undefined>(undefined);
 
 export function MusicSettingsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isInGame = pathname === '/game';
-  const { volume, muted } = useAudio();
+  const isOnAuthScreen = pathname === '/auth';
+  const { user, loading: authLoading } = useAuth();
+  const {
+    musicEnabled,
+    musicMuted,
+    musicVolume,
+    setMusicEnabled,
+    setMusicMuted,
+    settingsHydrated,
+  } = useAudio();
 
-  const [style, setStyleState] = useState<MusicStyle>('classic');
+  const [style, setStyleState] = useState<MusicStyle>('modern');
   const [playlists, setPlaylists] = useState<PlaylistsMap>(FALLBACK_PLAYLISTS);
   const [isLoadingTracks, setIsLoadingTracks] = useState<boolean>(true);
+  const [prefsHydrated, setPrefsHydrated] = useState<boolean>(false);
 
-  const [isLobbyPlaying, setIsLobbyPlaying] = useState<boolean>(false);
+  const [isLobbyPlaying, setIsLobbyPlaying] = useState<boolean>(true);
   const [lobbyTrackIndex, setLobbyTrackIndex] = useState<number>(0);
 
   const [isGameMusicPaused, setIsGameMusicPaused] = useState<boolean>(false);
@@ -256,32 +287,88 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
   const [previewGameTrackIndex, setPreviewGameTrackIndex] = useState<number | null>(null);
 
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [appIsActive, setAppIsActive] = useState<boolean>(
+    AppState.currentState ? AppState.currentState === 'active' : true
+  );
 
   const activeSoundRef = useRef<Audio.Sound | null>(null);
   const activeSoundKeyRef = useRef<string | null>(null);
+  const currentAppliedVolRef = useRef<number>(0);
   const requestIdRef = useRef<number>(0);
+  const fadeTokenRef = useRef<number>(0);
   const mountedRef = useRef<boolean>(true);
-  const volumeStateRef = useRef({ volume, muted });
-  volumeStateRef.current = { volume, muted };
 
-  // 1. Cargar preferencia persistida (misma clave que Web: 'casino21_lobby_music')
+  const getEffectiveLobbyVolume = useCallback(() => {
+    if (!musicEnabled || musicMuted) return 0;
+    return Math.max(0, Math.min(1, musicVolume * LOBBY_VOLUME_SCALE));
+  }, [musicEnabled, musicMuted, musicVolume]);
+
+  const effectiveVolRef = useRef<number>(getEffectiveLobbyVolume());
+  effectiveVolRef.current = getEffectiveLobbyVolume();
+
+  const musicStateRef = useRef({ musicEnabled, musicMuted });
+  musicStateRef.current = { musicEnabled, musicMuted };
+
+  // Seguimiento de primer/segundo plano en dispositivos móviles
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      setAppIsActive(nextState === 'active');
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
+  // 1. Cargar preferencia persistida (con migración automática a v2 -> KASINO21 Arena Protocol)
   useEffect(() => {
     let active = true;
     readStoredMusicSettings()
       .then((stored) => {
-        if (!active || !stored) return;
-        const parsed = JSON.parse(stored);
-        if (parsed.style === 'classic' || parsed.style === 'modern') {
-          setStyleState(parsed.style);
+        if (!active) return;
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.schemaVersion === CURRENT_SCHEMA_VERSION) {
+            if (parsed.style === 'classic' || parsed.style === 'modern') {
+              setStyleState(parsed.style);
+            }
+            if (typeof parsed.lobbyTrackIndex === 'number' && parsed.lobbyTrackIndex >= 0) {
+              setLobbyTrackIndex(parsed.lobbyTrackIndex);
+            }
+          } else {
+            // Inicializar nueva identidad sonora KASINO21 por defecto
+            writeStoredMusicSettings(
+              JSON.stringify({
+                schemaVersion: CURRENT_SCHEMA_VERSION,
+                style: 'modern',
+                lobbyTrackIndex: 0,
+              })
+            ).catch(() => {});
+          }
+        } else {
+          writeStoredMusicSettings(
+            JSON.stringify({
+              schemaVersion: CURRENT_SCHEMA_VERSION,
+              style: 'modern',
+              lobbyTrackIndex: 0,
+            })
+          ).catch(() => {});
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (active) setPrefsHydrated(true);
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  // 2. Consultar pistas reales desde Supabase ('audio_tracks') igual que LobbyMusicSelector y useGameMusic en Web
+  // Sincronizar isLobbyPlaying cuando el usuario activa/desactiva la música globalmente
+  useEffect(() => {
+    setIsLobbyPlaying(musicEnabled);
+  }, [musicEnabled]);
+
+  // 2. Consultar pistas reales desde Supabase manteniendo siempre KASINO21 — Arena Protocol como pista #1 en Moderno
   useEffect(() => {
     let active = true;
 
@@ -300,19 +387,23 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
         if (active && data && data.length > 0) {
           console.log('Audio tracks from API:', data.length);
           const next: PlaylistsMap = {
-            lobby: { classic: [], modern: [] },
+            lobby: { classic: [], modern: [SIGNATURE_LOBBY_TRACK] },
             game: { classic: [], modern: [] },
           };
 
           data.forEach((row: any) => {
             const cat = row.category as MusicCategory;
             const st = row.style as MusicStyle;
+            const rawSrc = String(row.src || '');
+            if (cat === 'lobby' && rawSrc.toLowerCase().includes('kasino21_theme')) {
+              return;
+            }
             if ((cat === 'lobby' || cat === 'game') && (st === 'classic' || st === 'modern')) {
               const idx = next[cat][st].length;
               next[cat][st].push({
                 id: String(row.id),
                 label: String(row.name || `Pista ${idx + 1}`),
-                src: String(row.src || ''),
+                src: rawSrc,
                 localSource: getFallbackAssetForTrack(cat, st, idx),
                 category: cat,
                 style: st,
@@ -322,7 +413,7 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
           });
 
           if (next.lobby.classic.length === 0) next.lobby.classic = FALLBACK_PLAYLISTS.lobby.classic;
-          if (next.lobby.modern.length === 0) next.lobby.modern = FALLBACK_PLAYLISTS.lobby.modern;
+          if (next.lobby.modern.length <= 1) next.lobby.modern = FALLBACK_PLAYLISTS.lobby.modern;
           if (next.game.classic.length === 0) next.game.classic = FALLBACK_PLAYLISTS.game.classic;
           if (next.game.modern.length === 0) next.game.modern = FALLBACK_PLAYLISTS.game.modern;
 
@@ -342,23 +433,79 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const persistStyle = useCallback((nextStyle: MusicStyle) => {
-    writeStoredMusicSettings(JSON.stringify({ style: nextStyle })).catch(() => {});
+  const persistMusicPrefs = useCallback((nextStyle: MusicStyle, nextTrackIdx: number) => {
+    writeStoredMusicSettings(
+      JSON.stringify({
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        style: nextStyle,
+        lobbyTrackIndex: nextTrackIdx,
+      })
+    ).catch(() => {});
   }, []);
 
-  const unloadActiveLobbySound = useCallback(async () => {
-    const prev = activeSoundRef.current;
-    activeSoundRef.current = null;
-    activeSoundKeyRef.current = null;
-    if (prev) {
+  const rampSoundVolume = useCallback(
+    async (
+      sound: Audio.Sound,
+      fromVol: number,
+      toVol: number,
+      durationMs: number,
+      token: number
+    ) => {
+      const steps = 12;
+      const stepDelay = Math.max(25, Math.round(durationMs / steps));
+      for (let i = 1; i <= steps; i++) {
+        await sleep(stepDelay);
+        if (!mountedRef.current || fadeTokenRef.current !== token) return false;
+        const progress = i / steps;
+        const v = Math.max(0, Math.min(1, fromVol + (toVol - fromVol) * progress));
+        currentAppliedVolRef.current = v;
+        try {
+          await sound.setStatusAsync({
+            volume: v,
+            isMuted: musicStateRef.current.musicMuted || !musicStateRef.current.musicEnabled,
+          });
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    []
+  );
+
+  const fadeOutAndUnloadLobbySound = useCallback(
+    async (durationMs: number = FADE_OUT_MS) => {
+      const prev = activeSoundRef.current;
+      activeSoundRef.current = null;
+      activeSoundKeyRef.current = null;
+      if (!prev) return;
+
+      const startVol = currentAppliedVolRef.current;
+      currentAppliedVolRef.current = 0;
+
+      if (durationMs > 0 && startVol > 0.01) {
+        const steps = 8;
+        const stepDelay = Math.max(25, Math.round(durationMs / steps));
+        for (let i = 1; i <= steps; i++) {
+          const v = Math.max(0, startVol * (1 - i / steps));
+          try {
+            await prev.setStatusAsync({ volume: v });
+          } catch {
+            break;
+          }
+          await sleep(stepDelay);
+        }
+      }
+
       try {
         await prev.stopAsync();
       } catch {}
       try {
         await prev.unloadAsync();
       } catch {}
-    }
-  }, []);
+    },
+    []
+  );
 
   // Al entrar a /game limpiamos cualquier preview de partida que estuviera abierto en el lobby
   useEffect(() => {
@@ -367,14 +514,22 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [isInGame, previewGameTrackIndex]);
 
-  // 3. Motor unificado de reproducción para Lobby (y vista previa de pistas de Partida fuera de /game)
+  // 3. Motor unificado de reproducción para la interfaz principal con Fade In, Bucle y Fade Out al entrar a partida
+  const isReadyInMainMenu =
+    settingsHydrated && prefsHydrated && !authLoading && Boolean(user) && !isOnAuthScreen;
+
   useEffect(() => {
     const isPreviewingGame = !isInGame && previewGameTrackIndex !== null;
-    const shouldPlayOutsideGame = !isInGame && (isPreviewingGame || isLobbyPlaying);
+    const shouldPlayOutsideGame =
+      isReadyInMainMenu &&
+      appIsActive &&
+      !isInGame &&
+      (isPreviewingGame || (musicEnabled && isLobbyPlaying));
 
     if (!shouldPlayOutsideGame) {
       requestIdRef.current += 1;
-      unloadActiveLobbySound();
+      fadeTokenRef.current += 1;
+      fadeOutAndUnloadLobbySound(isInGame || !musicEnabled ? FADE_OUT_MS : 350);
       return;
     }
 
@@ -382,24 +537,34 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
     const currentPlaylist = playlists[activeCategory][style] || [];
     if (currentPlaylist.length === 0) {
       requestIdRef.current += 1;
-      unloadActiveLobbySound();
+      fadeOutAndUnloadLobbySound(300);
       return;
     }
 
     const rawIndex = isPreviewingGame ? (previewGameTrackIndex ?? 0) : lobbyTrackIndex;
-    const safeIndex = ((rawIndex % currentPlaylist.length) + currentPlaylist.length) % currentPlaylist.length;
+    const safeIndex =
+      ((rawIndex % currentPlaylist.length) + currentPlaylist.length) % currentPlaylist.length;
     const track = currentPlaylist[safeIndex];
     const desiredKey = `${activeCategory}:${style}:${track.id}:${safeIndex}`;
 
-    // Si ya está cargada exactamente esa pista, solo asegurar que esté reproduciendo
+    // Si ya está cargada exactamente esa pista, asegurar reproducción y recuperar volumen con Fade In si estaba en 0
     if (activeSoundRef.current && activeSoundKeyRef.current === desiredKey) {
-      const { volume: curVol, muted: curMuted } = volumeStateRef.current;
-      const targetVol = curMuted ? 0 : Math.max(0, Math.min(1, curVol * LOBBY_VOLUME_SCALE));
-      activeSoundRef.current
+      const sound = activeSoundRef.current;
+      const targetVol = effectiveVolRef.current;
+      const token = ++fadeTokenRef.current;
+      sound
         .setStatusAsync({
           shouldPlay: true,
-          volume: targetVol,
-          isMuted: curMuted,
+          isLooping: true,
+          isMuted: musicStateRef.current.musicMuted,
+        })
+        .then(() => {
+          if (currentAppliedVolRef.current < targetVol * 0.5 && targetVol > 0) {
+            rampSoundVolume(sound, currentAppliedVolRef.current, targetVol, FADE_IN_MS, token);
+          } else {
+            currentAppliedVolRef.current = targetVol;
+            sound.setStatusAsync({ volume: targetVol }).catch(() => {});
+          }
         })
         .catch(() => {});
       return;
@@ -407,27 +572,26 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
 
     const reqId = ++requestIdRef.current;
 
-    const loadAndPlay = async () => {
-      await unloadActiveLobbySound();
+    const loadAndFadeIn = async () => {
+      await fadeOutAndUnloadLobbySound(activeSoundRef.current ? 550 : 0);
       if (!mountedRef.current || requestIdRef.current !== reqId) return;
 
       const { primary, fallbackLocal } = resolveTrackSource(track, safeIndex);
-      const { volume: curVol, muted: curMuted } = volumeStateRef.current;
-      const targetVol = curMuted ? 0 : Math.max(0, Math.min(1, curVol * LOBBY_VOLUME_SCALE));
+      const isMutedNow = musicStateRef.current.musicMuted || !musicStateRef.current.musicEnabled;
 
       const onStatusUpdate = (status: AVPlaybackStatus) => {
         if (!mountedRef.current || requestIdRef.current !== reqId) return;
         if (status.isLoaded && status.didJustFinish && !status.isLooping) {
-          // Auto-avanzar a la siguiente pista de Lobby igual que en Web
           setLobbyTrackIndex((prev) => (prev + 1) % Math.max(1, currentPlaylist.length));
         }
       };
 
+      // Arrancar en volumen 0 con isLooping: true para realizar un Fade In limpio y bucle continuo en el menú principal
       const initialStatus = {
         shouldPlay: true,
-        isLooping: isPreviewingGame,
-        volume: targetVol,
-        isMuted: curMuted,
+        isLooping: true,
+        volume: 0,
+        isMuted: isMutedNow,
       };
 
       let loadedSound: Audio.Sound | null = null;
@@ -441,7 +605,6 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
         );
         loadedSound = sound;
       } catch (err) {
-        // Respaldo local automático si falla la descarga remota
         try {
           const { sound } = await Audio.Sound.createAsync(
             fallbackLocal,
@@ -467,31 +630,44 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
 
       activeSoundRef.current = loadedSound;
       activeSoundKeyRef.current = desiredKey;
+      currentAppliedVolRef.current = 0;
+
+      const targetVol = effectiveVolRef.current;
+      if (targetVol > 0) {
+        const token = ++fadeTokenRef.current;
+        await rampSoundVolume(loadedSound, 0, targetVol, FADE_IN_MS, token);
+      }
     };
 
-    loadAndPlay();
+    loadAndFadeIn();
   }, [
+    isReadyInMainMenu,
+    appIsActive,
     isInGame,
+    musicEnabled,
     isLobbyPlaying,
     lobbyTrackIndex,
     previewGameTrackIndex,
     playlists,
     style,
-    unloadActiveLobbySound,
+    fadeOutAndUnloadLobbySound,
+    rampSoundVolume,
   ]);
 
-  // 4. Sincronizar volumen maestro y silencio en tiempo real sin reiniciar la pista
+  // 4. Sincronizar volumen de música y silencio en tiempo real cuando el jugador mueve el slider
   useEffect(() => {
     const sound = activeSoundRef.current;
     if (!sound) return;
-    const targetVol = muted ? 0 : Math.max(0, Math.min(1, volume * LOBBY_VOLUME_SCALE));
+    fadeTokenRef.current += 1; // Cancelar rampa en curso para respuesta inmediata al control del usuario
+    const targetVol = getEffectiveLobbyVolume();
+    currentAppliedVolRef.current = targetVol;
     sound
       .setStatusAsync({
         volume: targetVol,
-        isMuted: muted,
+        isMuted: musicMuted || !musicEnabled,
       })
       .catch(() => {});
-  }, [volume, muted]);
+  }, [musicVolume, musicMuted, musicEnabled, getEffectiveLobbyVolume]);
 
   // Limpieza al desmontar el árbol raíz
   useEffect(() => {
@@ -499,9 +675,10 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
-      unloadActiveLobbySound();
+      fadeTokenRef.current += 1;
+      fadeOutAndUnloadLobbySound(0);
     };
-  }, [unloadActiveLobbySound]);
+  }, [fadeOutAndUnloadLobbySound]);
 
   // ── Acciones ────────────────────────────────────────────────────────────────
   const setMusicStyle = useCallback(
@@ -513,28 +690,47 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
       if (previewGameTrackIndex !== null) {
         setPreviewGameTrackIndex(0);
       }
-      persistStyle(nextStyle);
+      persistMusicPrefs(nextStyle, 0);
     },
-    [persistStyle, previewGameTrackIndex, style]
+    [persistMusicPrefs, previewGameTrackIndex, style]
   );
 
   const toggleLobbyPlayPause = useCallback(() => {
     setPreviewGameTrackIndex(null);
-    setIsLobbyPlaying((prev) => !prev);
-  }, []);
+    if (musicEnabled && isLobbyPlaying && !musicMuted) {
+      setIsLobbyPlaying(false);
+      setMusicEnabled(false);
+    } else {
+      setIsLobbyPlaying(true);
+      setMusicEnabled(true);
+      if (musicMuted) setMusicMuted(false);
+    }
+  }, [isLobbyPlaying, musicEnabled, musicMuted, setMusicEnabled, setMusicMuted]);
 
-  const selectLobbyTrack = useCallback((index: number) => {
-    setPreviewGameTrackIndex(null);
-    setLobbyTrackIndex(Math.max(0, index));
-    setIsLobbyPlaying(true);
-  }, []);
+  const selectLobbyTrack = useCallback(
+    (index: number) => {
+      const safe = Math.max(0, index);
+      setPreviewGameTrackIndex(null);
+      setLobbyTrackIndex(safe);
+      setIsLobbyPlaying(true);
+      if (!musicEnabled) setMusicEnabled(true);
+      if (musicMuted) setMusicMuted(false);
+      persistMusicPrefs(style, safe);
+    },
+    [musicEnabled, musicMuted, persistMusicPrefs, setMusicEnabled, setMusicMuted, style]
+  );
 
   const skipLobbyTrack = useCallback(() => {
     setPreviewGameTrackIndex(null);
     const len = Math.max(1, playlists.lobby[style]?.length || 1);
-    setLobbyTrackIndex((prev) => (prev + 1) % len);
+    setLobbyTrackIndex((prev) => {
+      const next = (prev + 1) % len;
+      persistMusicPrefs(style, next);
+      return next;
+    });
     setIsLobbyPlaying(true);
-  }, [playlists.lobby, style]);
+    if (!musicEnabled) setMusicEnabled(true);
+  }, [musicEnabled, persistMusicPrefs, playlists.lobby, setMusicEnabled, style]);
 
   const toggleGameMusicPause = useCallback(() => {
     setIsGameMusicPaused((prev) => !prev);
@@ -545,11 +741,13 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
       const safeIdx = Math.max(0, index);
       setGameTrackIndex(safeIdx);
       setIsGameMusicPaused(false);
+      if (!musicEnabled) setMusicEnabled(true);
+      if (musicMuted) setMusicMuted(false);
       if (!isInGame && options?.previewInLobby) {
         setPreviewGameTrackIndex(safeIdx);
       }
     },
-    [isInGame]
+    [isInGame, musicEnabled, musicMuted, setMusicEnabled, setMusicMuted]
   );
 
   const skipGameTrack = useCallback(
@@ -595,7 +793,7 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
       playlists,
       isLoadingTracks,
       isInGame,
-      isLobbyPlaying,
+      isLobbyPlaying: musicEnabled && isLobbyPlaying,
       lobbyTrackIndex,
       toggleLobbyPlayPause,
       selectLobbyTrack,
@@ -623,6 +821,7 @@ export function MusicSettingsProvider({ children }: { children: ReactNode }) {
       isLoadingTracks,
       isLobbyPlaying,
       lobbyTrackIndex,
+      musicEnabled,
       openSettingsModal,
       playlists,
       previewGameTrackIndex,

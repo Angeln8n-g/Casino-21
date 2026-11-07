@@ -4,9 +4,11 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
   useRef,
 } from 'react';
+import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -21,6 +23,7 @@ export type AudioCue =
   | 'defeat'
   | 'error'
   | 'alert'
+  | 'notification'
   | 'turnChange'
   | 'emoteIn'
   | 'emoteOut';
@@ -30,12 +33,31 @@ interface PlaySfxOptions {
   volumeMultiplier?: number;
 }
 
-interface AudioContextValue {
+export interface AudioContextValue {
+  // Efectos de sonido (SFX) — mantiene alias muted/volume para retrocompatibilidad
   muted: boolean;
   volume: number;
+  sfxMuted: boolean;
+  sfxVolume: number;
   setMuted: (value: boolean) => void;
   toggleMuted: () => void;
   setVolume: (value: number) => void;
+  setSfxMuted: (value: boolean) => void;
+  toggleSfxMuted: () => void;
+  setSfxVolume: (value: number) => void;
+
+  // Música (independiente de efectos de sonido)
+  musicEnabled: boolean;
+  musicMuted: boolean;
+  musicVolume: number;
+  setMusicEnabled: (value: boolean) => void;
+  toggleMusicEnabled: () => void;
+  setMusicMuted: (value: boolean) => void;
+  toggleMusicMuted: () => void;
+  setMusicVolume: (value: number) => void;
+
+  settingsHydrated: boolean;
+
   playSfx: (cue: AudioCue, options?: PlaySfxOptions) => void;
   playUrl: (url: string, options?: PlaySfxOptions) => void;
   startLoop: (id: string, cue: AudioCue, options?: PlaySfxOptions) => void;
@@ -74,10 +96,24 @@ const AUDIO_CATALOG: Record<AudioCue, CueConfig> = {
     cooldownMs: 110,
     poolSize: 2,
   },
+  // Reservado estrictamente para duelos y desafíos (GameInvitationModal / Matchmaking)
   matchFound: {
     source: require('../assets/audio/sfx/steel_over_stone.mp3'),
     baseVolume: 0.5,
     cooldownMs: 500,
+    poolSize: 1,
+  },
+  alert: {
+    source: require('../assets/audio/sfx/steel_over_stone.mp3'),
+    baseVolume: 0.35,
+    cooldownMs: 400,
+    poolSize: 1,
+  },
+  // Notificación breve y moderna para avisos generales (nunca reproduce steel_over_stone)
+  notification: {
+    source: require('../assets/audio/sfx/ui_notify.mp3'),
+    baseVolume: 0.48,
+    cooldownMs: 250,
     poolSize: 1,
   },
   virado: {
@@ -110,12 +146,6 @@ const AUDIO_CATALOG: Record<AudioCue, CueConfig> = {
     cooldownMs: 180,
     poolSize: 2,
   },
-  alert: {
-    source: require('../assets/audio/sfx/steel_over_stone.mp3'),
-    baseVolume: 0.35,
-    cooldownMs: 400,
-    poolSize: 1,
-  },
   turnChange: {
     source: require('../assets/audio/sfx/sfx_impact22.mp3'),
     baseVolume: 0.6,
@@ -139,6 +169,21 @@ const AUDIO_CATALOG: Record<AudioCue, CueConfig> = {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
+async function readAudioStorage(): Promise<string | null> {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage.getItem(AUDIO_SETTINGS_KEY);
+  }
+  return AsyncStorage.getItem(AUDIO_SETTINGS_KEY);
+}
+
+async function writeAudioStorage(value: string): Promise<void> {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(AUDIO_SETTINGS_KEY, value);
+    return;
+  }
+  await AsyncStorage.setItem(AUDIO_SETTINGS_KEY, value);
+}
+
 interface LoopEntry {
   sound: Audio.Sound;
   baseVolume: number;
@@ -146,16 +191,41 @@ interface LoopEntry {
 }
 
 export function AudioProvider({ children }: { children: ReactNode }) {
-  const [muted, setMutedState] = useState(false);
-  const [volume, setVolumeState] = useState(0.75);
-  const mutedRef = useRef(false);
-  const volumeRef = useRef(0.75);
+  const [sfxMuted, setSfxMutedState] = useState(false);
+  const [sfxVolume, setSfxVolumeState] = useState(0.75);
+  const [musicEnabled, setMusicEnabledState] = useState(true);
+  const [musicMuted, setMusicMutedState] = useState(false);
+  const [musicVolume, setMusicVolumeState] = useState(0.7);
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
+
+  const stateRef = useRef({
+    sfxMuted: false,
+    sfxVolume: 0.75,
+    musicEnabled: true,
+    musicMuted: false,
+    musicVolume: 0.7,
+  });
+
   const loopsRef = useRef<Map<string, LoopEntry>>(new Map());
   const soundPoolsRef = useRef<Map<AudioCue, Audio.Sound[]>>(new Map());
   const poolIndexRef = useRef<Map<AudioCue, number>>(new Map());
   const lastPlayTimesRef = useRef<Map<AudioCue, number>>(new Map());
 
-  // Inicialización de modo de audio y precarga de todos los SFX
+  const persistAll = useCallback((next: typeof stateRef.current) => {
+    stateRef.current = next;
+    writeAudioStorage(
+      JSON.stringify({
+        sfxMuted: next.sfxMuted,
+        sfxVolume: next.sfxVolume,
+        musicEnabled: next.musicEnabled,
+        musicMuted: next.musicMuted,
+        musicVolume: next.musicVolume,
+        muted: next.sfxMuted,
+        volume: next.sfxVolume,
+      })
+    ).catch(() => {});
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -166,22 +236,56 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       playThroughEarpieceAndroid: false,
     }).catch(() => {});
 
-    AsyncStorage.getItem(AUDIO_SETTINGS_KEY).then((res) => {
-      if (res && isMounted) {
-        try {
-          const parsed = JSON.parse(res);
-          if (typeof parsed.muted === 'boolean') {
-            mutedRef.current = parsed.muted;
-            setMutedState(parsed.muted);
-          }
-          if (typeof parsed.volume === 'number') {
-            const loadedVol = clamp(parsed.volume, 0, 1);
-            volumeRef.current = loadedVol;
-            setVolumeState(loadedVol);
-          }
-        } catch {}
-      }
-    });
+    readAudioStorage()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res) {
+          try {
+            const parsed = JSON.parse(res);
+            const loadedSfxMuted =
+              typeof parsed.sfxMuted === 'boolean'
+                ? parsed.sfxMuted
+                : typeof parsed.muted === 'boolean'
+                  ? parsed.muted
+                  : false;
+            const loadedSfxVol = clamp(
+              typeof parsed.sfxVolume === 'number'
+                ? parsed.sfxVolume
+                : typeof parsed.volume === 'number'
+                  ? parsed.volume
+                  : 0.75,
+              0,
+              1
+            );
+            const loadedMusicEnabled =
+              typeof parsed.musicEnabled === 'boolean' ? parsed.musicEnabled : true;
+            const loadedMusicMuted =
+              typeof parsed.musicMuted === 'boolean' ? parsed.musicMuted : false;
+            const loadedMusicVol = clamp(
+              typeof parsed.musicVolume === 'number' ? parsed.musicVolume : 0.7,
+              0,
+              1
+            );
+
+            stateRef.current = {
+              sfxMuted: loadedSfxMuted,
+              sfxVolume: loadedSfxVol,
+              musicEnabled: loadedMusicEnabled,
+              musicMuted: loadedMusicMuted,
+              musicVolume: loadedMusicVol,
+            };
+
+            setSfxMutedState(loadedSfxMuted);
+            setSfxVolumeState(loadedSfxVol);
+            setMusicEnabledState(loadedMusicEnabled);
+            setMusicMutedState(loadedMusicMuted);
+            setMusicVolumeState(loadedMusicVol);
+          } catch {}
+        }
+      })
+      .finally(() => {
+        if (isMounted) setSettingsHydrated(true);
+      });
 
     const preloadAll = async () => {
       const cues = Object.keys(AUDIO_CATALOG) as AudioCue[];
@@ -190,7 +294,6 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         const config = AUDIO_CATALOG[cue];
         if (!config) continue;
         try {
-          // downloadFirst = false evita que expo-asset intente descargar el recurso bundled en standalone APKs
           const { sound } = await Audio.Sound.createAsync(
             config.source,
             {
@@ -231,59 +334,84 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Sincronizar volumen y mute en todos los loops activos (idéntico a Web)
+  // Sincronizar volumen y silencio de SFX en loops activos (p. ej. modal de desafío)
   useEffect(() => {
     loopsRef.current.forEach((entry) => {
-      const targetVol = muted
+      const targetVol = sfxMuted
         ? 0
-        : clamp(volume * entry.baseVolume * entry.volumeMultiplier, 0, 1);
+        : clamp(sfxVolume * entry.baseVolume * entry.volumeMultiplier, 0, 1);
       entry.sound
         .setStatusAsync({
           volume: targetVol,
-          isMuted: muted,
+          isMuted: sfxMuted,
         })
         .catch(() => {});
     });
-  }, [muted, volume]);
+  }, [sfxMuted, sfxVolume]);
 
-  const saveSettings = (newMuted: boolean, newVolume: number) => {
-    AsyncStorage.setItem(
-      AUDIO_SETTINGS_KEY,
-      JSON.stringify({ muted: newMuted, volume: newVolume })
-    ).catch(() => {});
-  };
-
-  const setMuted = useCallback(
+  const setSfxMuted = useCallback(
     (value: boolean) => {
-      setMutedState(value);
-      mutedRef.current = value;
-      saveSettings(value, volumeRef.current);
+      setSfxMutedState(value);
+      persistAll({ ...stateRef.current, sfxMuted: value });
     },
-    [volume]
+    [persistAll]
   );
 
-  const toggleMuted = useCallback(() => {
-    setMutedState((prev) => {
-      const next = !prev;
-      mutedRef.current = next;
-      saveSettings(next, volumeRef.current);
-      return next;
-    });
-  }, [volume]);
+  const toggleSfxMuted = useCallback(() => {
+    const next = !stateRef.current.sfxMuted;
+    setSfxMutedState(next);
+    persistAll({ ...stateRef.current, sfxMuted: next });
+  }, [persistAll]);
 
-  const setVolume = useCallback(
+  const setSfxVolume = useCallback(
     (value: number) => {
       const clamped = clamp(value, 0, 1);
-      setVolumeState(clamped);
-      volumeRef.current = clamped;
-      saveSettings(mutedRef.current, clamped);
+      setSfxVolumeState(clamped);
+      persistAll({ ...stateRef.current, sfxVolume: clamped });
     },
-    [muted]
+    [persistAll]
+  );
+
+  const setMusicEnabled = useCallback(
+    (value: boolean) => {
+      setMusicEnabledState(value);
+      persistAll({ ...stateRef.current, musicEnabled: value });
+    },
+    [persistAll]
+  );
+
+  const toggleMusicEnabled = useCallback(() => {
+    const next = !stateRef.current.musicEnabled;
+    setMusicEnabledState(next);
+    persistAll({ ...stateRef.current, musicEnabled: next });
+  }, [persistAll]);
+
+  const setMusicMuted = useCallback(
+    (value: boolean) => {
+      setMusicMutedState(value);
+      persistAll({ ...stateRef.current, musicMuted: value });
+    },
+    [persistAll]
+  );
+
+  const toggleMusicMuted = useCallback(() => {
+    const next = !stateRef.current.musicMuted;
+    setMusicMutedState(next);
+    persistAll({ ...stateRef.current, musicMuted: next });
+  }, [persistAll]);
+
+  const setMusicVolume = useCallback(
+    (value: number) => {
+      const clamped = clamp(value, 0, 1);
+      setMusicVolumeState(clamped);
+      persistAll({ ...stateRef.current, musicVolume: clamped });
+    },
+    [persistAll]
   );
 
   const playSfx = useCallback(
     async (cue: AudioCue, options?: PlaySfxOptions) => {
-      if (muted) return;
+      if (sfxMuted) return;
 
       const config = AUDIO_CATALOG[cue];
       if (!config) return;
@@ -294,13 +422,11 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       lastPlayTimesRef.current.set(cue, now);
 
       const targetVol = clamp(
-        volume * config.baseVolume * (options?.volumeMultiplier ?? 1),
+        sfxVolume * config.baseVolume * (options?.volumeMultiplier ?? 1),
         0,
         1
       );
-      const playRate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
 
-      // 1. Reproducción instantánea desde el pool pre-cargado
       const pool = soundPoolsRef.current.get(cue);
       if (pool && pool.length > 0) {
         const idx = (poolIndexRef.current.get(cue) || 0) % pool.length;
@@ -324,7 +450,6 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 2. Fallback dinámico si no estuviera precargado
       try {
         const { sound } = await Audio.Sound.createAsync(
           config.source,
@@ -343,14 +468,14 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         console.warn(`[useAudio] Error reproduciendo fallback SFX ${cue}:`, err);
       }
     },
-    [muted, volume]
+    [sfxMuted, sfxVolume]
   );
 
   const playUrl = useCallback(
     async (url: string, options?: PlaySfxOptions) => {
-      if (muted || !url) return;
+      if (sfxMuted || !url) return;
       try {
-        const vol = clamp(volume * (options?.volumeMultiplier ?? 1), 0, 1);
+        const vol = clamp(sfxVolume * (options?.volumeMultiplier ?? 1), 0, 1);
         const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
         const { sound } = await Audio.Sound.createAsync(
           { uri: url },
@@ -363,7 +488,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         );
       } catch {}
     },
-    [muted, volume]
+    [sfxMuted, sfxVolume]
   );
 
   const stopLoop = useCallback(async (id: string) => {
@@ -384,9 +509,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
       try {
         const volMult = options?.volumeMultiplier ?? 1;
-        const targetVol = muted
+        const targetVol = sfxMuted
           ? 0
-          : clamp(volume * config.baseVolume * volMult, 0, 1);
+          : clamp(sfxVolume * config.baseVolume * volMult, 0, 1);
         const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
 
         const { sound } = await Audio.Sound.createAsync(
@@ -395,7 +520,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
             shouldPlay: true,
             isLooping: true,
             volume: targetVol,
-            isMuted: muted,
+            isMuted: sfxMuted,
             rate,
             shouldCorrectPitch: true,
           },
@@ -409,7 +534,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         });
       } catch {}
     },
-    [muted, stopLoop, volume]
+    [sfxMuted, stopLoop, sfxVolume]
   );
 
   const startUrlLoop = useCallback(
@@ -419,7 +544,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
       try {
         const volMult = options?.volumeMultiplier ?? 1;
-        const targetVol = muted ? 0 : clamp(volume * volMult, 0, 1);
+        const targetVol = sfxMuted ? 0 : clamp(sfxVolume * volMult, 0, 1);
         const rate = clamp(options?.playbackRate ?? 1.0, 0.6, 1.8);
 
         const { sound } = await Audio.Sound.createAsync(
@@ -428,7 +553,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
             shouldPlay: true,
             isLooping: true,
             volume: targetVol,
-            isMuted: muted,
+            isMuted: sfxMuted,
             rate,
             shouldCorrectPitch: true,
           }
@@ -440,27 +565,60 @@ export function AudioProvider({ children }: { children: ReactNode }) {
         });
       } catch {}
     },
-    [muted, stopLoop, volume]
+    [sfxMuted, stopLoop, sfxVolume]
   );
 
-  return (
-    <AudioContext.Provider
-      value={{
-        muted,
-        volume,
-        setMuted,
-        toggleMuted,
-        setVolume,
-        playSfx,
-        playUrl,
-        startLoop,
-        startUrlLoop,
-        stopLoop,
-      }}
-    >
-      {children}
-    </AudioContext.Provider>
+  const value = useMemo<AudioContextValue>(
+    () => ({
+      muted: sfxMuted,
+      volume: sfxVolume,
+      sfxMuted,
+      sfxVolume,
+      setMuted: setSfxMuted,
+      toggleMuted: toggleSfxMuted,
+      setVolume: setSfxVolume,
+      setSfxMuted,
+      toggleSfxMuted,
+      setSfxVolume,
+      musicEnabled,
+      musicMuted,
+      musicVolume,
+      setMusicEnabled,
+      toggleMusicEnabled,
+      setMusicMuted,
+      toggleMusicMuted,
+      setMusicVolume,
+      settingsHydrated,
+      playSfx,
+      playUrl,
+      startLoop,
+      startUrlLoop,
+      stopLoop,
+    }),
+    [
+      sfxMuted,
+      sfxVolume,
+      setSfxMuted,
+      toggleSfxMuted,
+      setSfxVolume,
+      musicEnabled,
+      musicMuted,
+      musicVolume,
+      setMusicEnabled,
+      toggleMusicEnabled,
+      setMusicMuted,
+      toggleMusicMuted,
+      setMusicVolume,
+      settingsHydrated,
+      playSfx,
+      playUrl,
+      startLoop,
+      startUrlLoop,
+      stopLoop,
+    ]
   );
+
+  return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;
 }
 
 export function useAudio() {

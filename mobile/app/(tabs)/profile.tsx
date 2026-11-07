@@ -60,7 +60,7 @@ export function xpForLevel(level: number): number {
 export default function ProfileScreen() {
   const router = useRouter();
   const { profile, user, signOut, refetchProfile } = useAuth();
-  const { volume, muted, playSfx } = useAudio();
+  const { sfxVolume, sfxMuted, musicEnabled, musicMuted, musicVolume, playSfx } = useAudio();
   const { openSettingsModal, style: musicStyle } = useMusicSettings();
 
   // Estadísticas básicas
@@ -533,14 +533,15 @@ export default function ProfileScreen() {
               Configuraciones de Audio
             </Text>
             <Text className="text-slate-400 text-xs mt-0.5">
-              Estilo {musicStyle === 'classic' ? 'Clásico 🎻' : 'Moderno 🎧'} •{' '}
-              {muted ? 'Silenciado' : `Volumen ${Math.round(volume * 100)}%`}
+              {musicStyle === 'classic' ? 'Clásico 🎻' : 'Competitivo ⚡'} • Música{' '}
+              {!musicEnabled || musicMuted ? 'Off' : `${Math.round(musicVolume * 100)}%`} • SFX{' '}
+              {sfxMuted ? 'Off' : `${Math.round(sfxVolume * 100)}%`}
             </Text>
           </View>
         </View>
 
         <View className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl flex-row items-center gap-1.5">
-          {muted ? (
+          {(!musicEnabled || musicMuted) && sfxMuted ? (
             <VolumeX color="#f87171" size={14} />
           ) : (
             <Volume2

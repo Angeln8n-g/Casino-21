@@ -20,7 +20,7 @@ export default function HomeScreen() {
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   const { user, profile } = useAuth();
-  const { playSfx, muted } = useAudio();
+  const { playSfx, musicEnabled, musicMuted } = useAudio();
   const { openSettingsModal, isLobbyPlaying, style: musicStyle } = useMusicSettings();
   const { gameState } = useGame();
   const { unreadCount, totalPending, setShowNotificationsModal } = useNotifications();
@@ -327,7 +327,7 @@ export default function HomeScreen() {
           >
             <Settings
               color={
-                isLobbyPlaying && !muted
+                isLobbyPlaying && musicEnabled && !musicMuted
                   ? musicStyle === 'classic'
                     ? '#fbbf24'
                     : '#22d3ee'
@@ -335,7 +335,7 @@ export default function HomeScreen() {
               }
               size={20}
             />
-            {isLobbyPlaying && !muted ? (
+            {isLobbyPlaying && musicEnabled && !musicMuted ? (
               <View
                 className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border border-slate-950 ${
                   musicStyle === 'classic' ? 'bg-amber-400' : 'bg-cyan-400'
