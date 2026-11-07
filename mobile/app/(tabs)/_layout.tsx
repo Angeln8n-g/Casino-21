@@ -1,10 +1,13 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShoppingBag, Home, User, Users, Calendar } from 'lucide-react-native';
 import { useNotifications } from '../../hooks/useNotifications';
 
 export default function TabsLayout() {
   const { totalPending, unreadCount } = useNotifications();
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 8);
 
   return (
     <Tabs
@@ -15,9 +18,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: '#020617',
           borderTopColor: '#1e293b',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 54 + bottomPad,
+          paddingBottom: bottomPad,
+          paddingTop: 6,
         },
         tabBarBadgeStyle: {
           backgroundColor: '#ef4444',

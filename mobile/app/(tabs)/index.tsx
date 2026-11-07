@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useAudio } from '../../hooks/useAudio';
+import { useMusicSettings } from '../../hooks/useMusicSettings';
 import { useGame } from '../../hooks/useGame';
 import { useNotifications } from '../../hooks/useNotifications';
 import { socketService } from '../../services/socket';
@@ -12,12 +13,15 @@ import { DailyQuestsView } from '../../components/lobby/DailyQuestsView';
 import { RecentAchievementsView } from '../../components/lobby/RecentAchievementsView';
 import { TournamentLobbyBannerView } from '../../components/lobby/TournamentLobbyBannerView';
 import { TopRankingsView } from '../../components/lobby/TopRankingsView';
-import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle, Coins, Bell } from 'lucide-react-native';
+import { Bot, Swords, Users, PlusCircle, LogIn, Trophy, XCircle, Coins, Bell, Settings } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
   const { user, profile } = useAuth();
-  const { playSfx } = useAudio();
+  const { playSfx, muted } = useAudio();
+  const { openSettingsModal, isLobbyPlaying, style: musicStyle } = useMusicSettings();
   const { gameState } = useGame();
   const { unreadCount, totalPending, setShowNotificationsModal } = useNotifications();
   const totalBadgeCount = unreadCount + totalPending;
@@ -40,8 +44,17 @@ export default function HomeScreen() {
   const [playersInRoomData, setPlayersInRoomData] = useState<Array<{ name: string; id?: string; avatar?: string | null; team?: 1 | 2 }>>([]);
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  const playerName = profile?.username || 'Jugador K21';
+  const playerName = (profile?.username?.trim() || 'Jugador K21').slice(0, 30);
   const hasRequestedStateRef = useRef(false);
+  const showWaitingModalRef = useRef(false);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    showWaitingModalRef.current = showWaitingModal;
+  }, [showWaitingModal]);
 
   useEffect(() => {
     if (profile) {
@@ -54,17 +67,16 @@ export default function HomeScreen() {
     }
   }, [profile]);
 
-  // Navegar a /game si hay partida activa
+  // Limpiar estados de espera del Lobby cuando arranca una partida (la navegación a /game la gestiona _layout.tsx)
   useEffect(() => {
-    if (gameState && (gameState.phase as any) !== 'setup') {
+    if (gameState && (gameState.phase === 'playing' || gameState.phase === 'scoring')) {
       setShowWaitingModal(false);
       setShowCreateModal(false);
       setIsMatchmaking(false);
       setLoading(false);
       setLoadingAction(null);
-      router.push('/game');
     }
-  }, [gameState, router]);
+  }, [gameState?.phase]);
 
   // Temporizador de Matchmaking
   useEffect(() => {
@@ -90,20 +102,25 @@ export default function HomeScreen() {
         socket.on('room_created', ({ roomId, mode, betAmount }: any) => {
           setLoading(false);
           setLoadingAction(null);
-          setCurrentRoomId(roomId);
-          if (mode) setRoomMode(mode);
-          if (betAmount !== undefined) setRoomBetAmount(betAmount);
-          setPlayersInRoomData([{ name: playerName, avatar: profile?.avatar_url }]);
-          setShowWaitingModal(true);
+          // Solo abrir WaitingRoomModal si la sala fue creada desde Inicio (/), no desde un desafío en /social
+          if (pathnameRef.current === '/') {
+            setCurrentRoomId(roomId);
+            if (mode) setRoomMode(mode);
+            if (betAmount !== undefined) setRoomBetAmount(betAmount);
+            setPlayersInRoomData([{ name: playerName, avatar: profile?.avatar_url }]);
+            setShowWaitingModal(true);
+          }
         });
 
         socket.on('room_joined', ({ roomId, mode, betAmount }: any) => {
           setLoading(false);
           setLoadingAction(null);
-          setCurrentRoomId(roomId);
-          if (mode) setRoomMode(mode);
-          if (betAmount !== undefined) setRoomBetAmount(betAmount);
-          setShowWaitingModal(true);
+          if (pathnameRef.current === '/') {
+            setCurrentRoomId(roomId);
+            if (mode) setRoomMode(mode);
+            if (betAmount !== undefined) setRoomBetAmount(betAmount);
+            setShowWaitingModal(true);
+          }
         });
 
         socket.on('player_joined', ({ playersData }: any) => {
@@ -119,18 +136,23 @@ export default function HomeScreen() {
         });
 
         socket.on('room_closed', () => {
+          const wasWaitingInLobby = showWaitingModalRef.current;
           setShowWaitingModal(false);
           setCurrentRoomId(null);
           setPlayersInRoomData([]);
           setCountdown(null);
-          Alert.alert('Sala cerrada', 'La sala ha sido cerrada.');
+          if (wasWaitingInLobby) {
+            Alert.alert('Sala cerrada', 'La sala ha sido cerrada.');
+          }
         });
 
         socket.on('error', (msg: string) => {
           setLoading(false);
           setLoadingAction(null);
           setIsMatchmaking(false);
-          Alert.alert('Aviso', msg || 'Ocurrió un error en la sala');
+          if (pathnameRef.current === '/') {
+            Alert.alert('Aviso', msg || 'Ocurrió un error en la sala');
+          }
         });
       } catch (err) {
         console.warn('Error conectando socket en lobby:', err);
@@ -293,27 +315,55 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View className="flex-row items-center gap-2.5">
+        <View className="flex-row items-center gap-2">
+          {/* Botón de Configuraciones (Audio y Pistas) */}
+          <Pressable
+            onPress={() => {
+              playSfx('cardPlay');
+              openSettingsModal();
+            }}
+            accessibilityLabel="Abrir configuraciones de audio"
+            className="bg-slate-800/90 p-3 rounded-2xl border border-slate-700 items-center justify-center relative active:bg-slate-800"
+          >
+            <Settings
+              color={
+                isLobbyPlaying && !muted
+                  ? musicStyle === 'classic'
+                    ? '#fbbf24'
+                    : '#22d3ee'
+                  : '#94a3b8'
+              }
+              size={20}
+            />
+            {isLobbyPlaying && !muted ? (
+              <View
+                className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border border-slate-950 ${
+                  musicStyle === 'classic' ? 'bg-amber-400' : 'bg-cyan-400'
+                }`}
+              />
+            ) : null}
+          </Pressable>
+
           {/* Botón de Campana de Notificaciones */}
           <Pressable
             onPress={() => {
               playSfx('cardPlay');
               setShowNotificationsModal(true);
             }}
-            className="bg-slate-800/90 p-3.5 rounded-2xl border border-slate-700 items-center justify-center relative active:bg-slate-800"
+            className="bg-slate-800/90 p-3 rounded-2xl border border-slate-700 items-center justify-center relative active:bg-slate-800"
           >
-            <Bell color={totalBadgeCount > 0 ? '#fbbf24' : '#94a3b8'} size={22} />
-            {totalBadgeCount > 0 && (
+            <Bell color={totalBadgeCount > 0 ? '#fbbf24' : '#94a3b8'} size={20} />
+            {totalBadgeCount > 0 ? (
               <View className="absolute -top-1.5 -right-1.5 bg-red-600 rounded-full min-w-[20px] h-5 px-1 items-center justify-center border-2 border-slate-950">
                 <Text className="text-white text-[10px] font-black">{totalBadgeCount}</Text>
               </View>
-            )}
+            ) : null}
           </Pressable>
 
           {/* Insignia de ELO */}
-          <View className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30 items-center justify-center">
-            <Trophy color="#fbbf24" size={24} />
-            <Text className="text-amber-400 font-bold text-xs mt-1">{profile?.elo || 1000} ELO</Text>
+          <View className="bg-amber-500/10 p-2.5 rounded-2xl border border-amber-500/30 items-center justify-center">
+            <Trophy color="#fbbf24" size={22} />
+            <Text className="text-amber-400 font-bold text-[11px] mt-0.5">{profile?.elo || 1000} ELO</Text>
           </View>
         </View>
       </View>

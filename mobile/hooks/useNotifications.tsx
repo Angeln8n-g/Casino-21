@@ -51,6 +51,7 @@ export interface GameInviteToastData {
 interface NotificationsContextType {
   pendingFriendRequests: number;
   pendingGameInvites: number;
+  unreadPrivateMessages: number;
   totalPending: number;
   toast: ToastNotification | null;
   showToast: (notif: Omit<ToastNotification, 'id'>) => void;
@@ -86,6 +87,7 @@ function useNotificationsInternal(): NotificationsContextType {
 
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const [pendingGameInvites, setPendingGameInvites] = useState(0);
+  const [unreadPrivateMessages, setUnreadPrivateMessages] = useState(0);
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [activeGameInvitation, setActiveGameInvitation] = useState<GameInviteToastData | null>(null);
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
@@ -172,6 +174,12 @@ function useNotificationsInternal(): NotificationsContextType {
           .eq('receiver_id', user.id)
           .eq('status', 'pending');
 
+        const { count: pmUnreadCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+
         const { data: notifs } = await supabase
           .from('notifications')
           .select('*')
@@ -192,6 +200,7 @@ function useNotificationsInternal(): NotificationsContextType {
 
         setPendingFriendRequests(friendCount || 0);
         setPendingGameInvites(gameCount || 0);
+        setUnreadPrivateMessages(pmUnreadCount || 0);
 
         if (notifs) {
           if (!hasLoggedNotifsRef.current) {
@@ -310,11 +319,53 @@ function useNotificationsInternal(): NotificationsContextType {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'game_invitations', filter: `receiver_id=eq.${user.id}` },
         (payload) => {
-          if (payload.new.status !== 'pending') {
+        if (payload.new.status !== 'pending') {
             setPendingGameInvites((prev) => Math.max(0, prev - 1));
             seenGameInviteIdsRef.current.delete(payload.new.id);
             setActiveGameInvitation((curr) => (curr?.invitationId === payload.new.id ? null : curr));
+            supabase
+              .from('notifications')
+              .update({ is_read: true })
+              .eq('player_id', user.id)
+              .eq('type', 'game_invitation')
+              .contains('metadata', { invitation_id: payload.new.id })
+              .then(() => {});
           }
+        }
+      )
+      .subscribe();
+
+    // 3b. Suscripción a messages para actualizar badge global de Social
+    const refreshPmUnreadCount = async () => {
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+      if (isMounted) setUnreadPrivateMessages(count || 0);
+    };
+
+    const pmChannel = supabase
+      .channel(`mobile_pm_badge_${user.id}_${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => {
+          refreshPmUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => {
+          refreshPmUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => {
+          refreshPmUnreadCount();
         }
       )
       .subscribe();
@@ -325,6 +376,7 @@ function useNotificationsInternal(): NotificationsContextType {
       supabase.removeChannel(notifChannel);
       supabase.removeChannel(friendChannel);
       supabase.removeChannel(gameChannel);
+      supabase.removeChannel(pmChannel);
     };
   }, [user, showToast]);
 
@@ -335,23 +387,24 @@ function useNotificationsInternal(): NotificationsContextType {
     let attachedSocket: any = null;
 
     const handleOnlineFriendsSummary = (payload: {
-      count: number;
-      friends: Array<{ id: string; username: string }>;
+      count?: number;
+      friends: Array<{ id: string; username: string; status?: 'online' | 'in_match'; roomId?: string }>;
     }) => {
       if (!isMounted || !payload || !Array.isArray(payload.friends) || payload.friends.length === 0) return;
 
-      if (payload.friends.length === 1) {
-        const friend = payload.friends[0];
+      const matchFriend = payload.friends.find((f) => f.status === 'in_match');
+      if (matchFriend) {
         showToast({
-          title: '🟢 Amigo en línea',
-          message: `${friend.username} está conectado ahora.`,
+          title: '🎮 Amigo en Partida',
+          message: `Tu amigo ${matchFriend.username} está jugando una partida.`,
           type: 'info',
           actions: [
             {
-              label: 'Avisar que llegué',
+              label: '⏳ Decirle que lo espero',
               variant: 'primary',
               onClick: () => {
-                socketService.notifyFriendConnected(friend.id);
+                socketService.notifyFriendWaiting(matchFriend.id);
+                dismissToast();
               },
             },
             {
@@ -359,6 +412,35 @@ function useNotificationsInternal(): NotificationsContextType {
               variant: 'secondary',
               onClick: () => {
                 appEvents.emit('open_social_tab', { tab: 'friends' });
+                dismissToast();
+              },
+            },
+          ],
+        });
+        return;
+      }
+
+      if (payload.friends.length === 1) {
+        const friend = payload.friends[0];
+        showToast({
+          title: '⚡ Amigo en Línea',
+          message: `Tu amigo ${friend.username} está activo en el juego.`,
+          type: 'info',
+          actions: [
+            {
+              label: '👋 Notificar que entré',
+              variant: 'primary',
+              onClick: () => {
+                socketService.notifyFriendConnected(friend.id);
+                dismissToast();
+              },
+            },
+            {
+              label: 'Abrir Social',
+              variant: 'secondary',
+              onClick: () => {
+                appEvents.emit('open_social_tab', { tab: 'friends' });
+                dismissToast();
               },
             },
           ],
@@ -383,44 +465,50 @@ function useNotificationsInternal(): NotificationsContextType {
             variant: 'primary',
             onClick: () => {
               appEvents.emit('open_social_tab', { tab: 'friends' });
+              dismissToast();
             },
           },
         ],
       });
     };
 
-    const handleFriendJustConnected = (payload: { friendId: string; username: string }) => {
-      if (!isMounted || !payload?.friendId) return;
-      const friendName = payload.username || 'Tu amigo';
+    const handleFriendJustConnected = (payload: { senderId?: string; senderName?: string; friendId?: string; username?: string }) => {
+      const senderId = payload?.senderId || payload?.friendId;
+      if (!isMounted) return;
+      const friendName = payload?.senderName || payload?.username || 'Tu amigo';
       showToast({
-        title: '👋 Amigo conectado',
-        message: `${friendName} se acaba de conectar.`,
+        title: '👋 ¡Amigo Conectado!',
+        message: `¡${friendName} se acaba de conectar al juego!`,
         type: 'info',
-        actions: [
-          {
-            label: 'Avisar que lo esperas',
-            variant: 'primary',
-            onClick: () => {
-              socketService.notifyFriendWaiting(payload.friendId);
-            },
-          },
-          {
-            label: 'Ver en Social',
-            variant: 'secondary',
-            onClick: () => {
-              appEvents.emit('open_social_tab', { tab: 'friends' });
-            },
-          },
-        ],
+        actions: senderId
+          ? [
+              {
+                label: '⏳ Avisar que lo esperas',
+                variant: 'primary',
+                onClick: () => {
+                  socketService.notifyFriendWaiting(senderId);
+                  dismissToast();
+                },
+              },
+              {
+                label: 'Ver en Social',
+                variant: 'secondary',
+                onClick: () => {
+                  appEvents.emit('open_social_tab', { tab: 'friends' });
+                  dismissToast();
+                },
+              },
+            ]
+          : undefined,
       });
     };
 
-    const handleFriendWaitingForYou = (payload: { fromUserId: string; fromUsername: string }) => {
-      if (!isMounted || !payload?.fromUserId) return;
-      const fromName = payload.fromUsername || 'Un amigo';
+    const handleFriendWaitingForYou = (payload: { senderId?: string; senderName?: string; fromUserId?: string; fromUsername?: string }) => {
+      if (!isMounted) return;
+      const fromName = payload?.senderName || payload?.fromUsername || 'Un amigo';
       showToast({
-        title: '⏳ Te están esperando',
-        message: `${fromName} te está esperando para jugar.`,
+        title: '⏳ ¡Te están esperando!',
+        message: `¡${fromName} se ha conectado y te está esperando para jugar!`,
         type: 'warning',
         actions: [
           {
@@ -428,26 +516,29 @@ function useNotificationsInternal(): NotificationsContextType {
             variant: 'primary',
             onClick: () => {
               appEvents.emit('open_social_tab', { tab: 'friends' });
+              dismissToast();
             },
           },
         ],
       });
     };
 
-    const handleFriendConnectedSent = (payload: { friendId: string }) => {
-      if (!isMounted || !payload?.friendId) return;
+    const handleFriendConnectedSent = (payload: { targetId?: string; targetName?: string; friendId?: string }) => {
+      if (!isMounted) return;
+      const targetName = payload?.targetName || 'tu amigo';
       showToast({
-        title: '✅ Aviso enviado',
-        message: 'Le avisamos a tu amigo que ya te conectaste.',
+        title: '✅ Notificación Enviada',
+        message: `Le avisamos a ${targetName} que estás en el juego.`,
         type: 'success',
       });
     };
 
-    const handleFriendWaitingSent = (payload: { friendId: string }) => {
-      if (!isMounted || !payload?.friendId) return;
+    const handleFriendWaitingSent = (payload: { targetId?: string; targetName?: string; friendId?: string }) => {
+      if (!isMounted) return;
+      const targetName = payload?.targetName || 'tu amigo';
       showToast({
-        title: '📣 Notificación enviada',
-        message: 'Tu amigo recibió tu aviso para jugar.',
+        title: '📣 Aviso Enviado',
+        message: `Le avisamos a ${targetName} que lo estás esperando para jugar.`,
         type: 'success',
       });
     };
@@ -488,9 +579,18 @@ function useNotificationsInternal(): NotificationsContextType {
         });
 
         if (rpcError) {
-          // Fallback directo a tabla si la RPC falla
-          await supabase.from('friend_requests').update({ status }).eq('id', id);
-        } else if (result && !result.success && result.status !== 'already_friends') {
+          showToast({
+            title: '⚠️ Aviso',
+            message: rpcError.message || 'No se pudo procesar la solicitud.',
+            type: 'warning',
+          });
+          return;
+        } else if (
+          typeof result === 'object' &&
+          result !== null &&
+          result.success === false &&
+          result.status !== 'already_friends'
+        ) {
           showToast({
             title: '⚠️ Aviso',
             message: result.message || 'No se pudo procesar la solicitud.',
@@ -635,7 +735,8 @@ function useNotificationsInternal(): NotificationsContextType {
   return {
     pendingFriendRequests,
     pendingGameInvites,
-    totalPending: pendingFriendRequests + pendingGameInvites,
+    unreadPrivateMessages,
+    totalPending: pendingFriendRequests + pendingGameInvites + unreadPrivateMessages,
     toast,
     showToast,
     dismissToast,

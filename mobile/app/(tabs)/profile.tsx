@@ -13,6 +13,8 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useAudio } from '../../hooks/useAudio';
+import { useMusicSettings } from '../../hooks/useMusicSettings';
 import { triggerHaptic } from '../../utils/haptics';
 import { appEvents } from '../../utils/events';
 import { ProfileHistoryView } from '../../components/profile/ProfileHistoryView';
@@ -30,6 +32,9 @@ import {
   X,
   UserX,
   Clapperboard,
+  Settings,
+  Volume2,
+  VolumeX,
 } from 'lucide-react-native';
 
 export function getDivisionFromElo(elo: number) {
@@ -55,6 +60,8 @@ export function xpForLevel(level: number): number {
 export default function ProfileScreen() {
   const router = useRouter();
   const { profile, user, signOut, refetchProfile } = useAuth();
+  const { volume, muted, playSfx } = useAudio();
+  const { openSettingsModal, style: musicStyle } = useMusicSettings();
 
   // Estadísticas básicas
   const elo = profile?.elo || 1000;
@@ -498,6 +505,52 @@ export default function ProfileScreen() {
 
       {/* ── Historial de Partidas Oficiales ──────────────────── */}
       <ProfileHistoryView />
+
+      {/* ── Configuraciones de Audio y Pistas ────────────────── */}
+      <Pressable
+        onPress={() => {
+          triggerHaptic('light');
+          playSfx('cardPlay');
+          openSettingsModal();
+        }}
+        className="bg-slate-900/90 border border-slate-800 p-4 rounded-3xl mb-3 flex-row items-center justify-between active:bg-slate-800/80"
+      >
+        <View className="flex-row items-center gap-3 flex-1 mr-2">
+          <View
+            className={`p-2.5 rounded-xl border ${
+              musicStyle === 'classic'
+                ? 'bg-amber-500/15 border-amber-500/30'
+                : 'bg-cyan-500/15 border-cyan-500/30'
+            }`}
+          >
+            <Settings
+              color={musicStyle === 'classic' ? '#fbbf24' : '#22d3ee'}
+              size={20}
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="text-white font-bold text-sm">
+              Configuraciones de Audio
+            </Text>
+            <Text className="text-slate-400 text-xs mt-0.5">
+              Estilo {musicStyle === 'classic' ? 'Clásico 🎻' : 'Moderno 🎧'} •{' '}
+              {muted ? 'Silenciado' : `Volumen ${Math.round(volume * 100)}%`}
+            </Text>
+          </View>
+        </View>
+
+        <View className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl flex-row items-center gap-1.5">
+          {muted ? (
+            <VolumeX color="#f87171" size={14} />
+          ) : (
+            <Volume2
+              color={musicStyle === 'classic' ? '#fbbf24' : '#22d3ee'}
+              size={14}
+            />
+          )}
+          <Text className="text-slate-200 font-bold text-xs">Ajustar</Text>
+        </View>
+      </Pressable>
 
       {/* ── Acciones de Cuenta ───────────────────────────────── */}
       <View className="flex-col gap-2.5 mt-2">

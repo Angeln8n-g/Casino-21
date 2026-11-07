@@ -291,6 +291,7 @@ export function NotificationsModal({
             appNotifications.map((n) => {
               const isGameInvite = n.type === 'game_invitation';
               const isFriendReq = n.type === 'friend_request';
+              const isPrivateMsg = n.type === 'private_message' || n.type === 'chat_message';
 
               return (
                 <Pressable
@@ -305,7 +306,15 @@ export function NotificationsModal({
                     if (isFriendReq) {
                       router.push('/(tabs)/social');
                       setTimeout(() => {
-                        appEvents.emit('open_social_tab', { tab: 'requests' });
+                        appEvents.emit('open_social_tab', { tab: 'friends' });
+                      }, 100);
+                    } else if (isPrivateMsg) {
+                      router.push('/(tabs)/social');
+                      setTimeout(() => {
+                        appEvents.emit('open_social_tab', {
+                          tab: 'chat',
+                          friendId: n.metadata?.sender_id ? String(n.metadata.sender_id) : undefined,
+                        });
                       }, 100);
                     } else if (isGameInvite && n.metadata) {
                       onChallengeClick({

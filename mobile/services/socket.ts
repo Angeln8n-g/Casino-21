@@ -83,6 +83,18 @@ class MobileSocketService {
           socketEvents.emit('room_joined', { roomId });
         }
       });
+      this.socket.on('room_joined_as_spectator', ({ roomId }: { roomId?: string }) => {
+        if (roomId) {
+          this.currentRoomId = roomId;
+          socketEvents.emit('room_joined_as_spectator', { roomId });
+        }
+      });
+      this.socket.on('room_created', ({ roomId }: { roomId?: string }) => {
+        if (roomId) {
+          this.currentRoomId = roomId;
+          socketEvents.emit('room_created', { roomId });
+        }
+      });
       this.socket.on('game_over', () => {
         this.currentRoomId = null;
         socketEvents.emit('game_over');
@@ -110,15 +122,15 @@ class MobileSocketService {
     }
   }
 
-  notifyFriendConnected(friendId: string) {
+  notifyFriendConnected(targetUserId: string) {
     if (this.socket?.connected) {
-      this.socket.emit('notify_friend_connected', { friendId });
+      this.socket.emit('notify_friend_connected', { targetUserId });
     }
   }
 
-  notifyFriendWaiting(friendId: string) {
+  notifyFriendWaiting(targetUserId: string) {
     if (this.socket?.connected) {
-      this.socket.emit('notify_friend_waiting', { friendId });
+      this.socket.emit('notify_friend_waiting', { targetUserId });
     }
   }
 }

@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
 import { Player } from 'domain/player';
-import { Volume2, VolumeX } from 'lucide-react-native';
+import { Volume2, VolumeX, SlidersHorizontal } from 'lucide-react-native';
 
 interface MatchPointHUDProps {
   localPlayer: Player | undefined;
@@ -20,6 +20,7 @@ interface MatchPointHUDProps {
   opponentAvatarUrl?: string | null;
   onLeaveMatch: () => void;
   onToggleSound?: () => void;
+  onOpenSettings?: () => void;
 }
 
 const AVATAR_RING_SIZE = 38;
@@ -42,6 +43,7 @@ export const MatchPointHUD = memo(function MatchPointHUD({
   opponentAvatarUrl,
   onLeaveMatch,
   onToggleSound,
+  onOpenSettings,
 }: MatchPointHUDProps) {
   const [localImgError, setLocalImgError] = useState(false);
   const [opponentImgError, setOpponentImgError] = useState(false);
@@ -204,9 +206,10 @@ export const MatchPointHUD = memo(function MatchPointHUD({
         </View>
 
         <View className="flex-row items-center gap-1.5">
-          {onToggleSound && (
+          {onToggleSound ? (
             <Pressable
               onPress={onToggleSound}
+              accessibilityLabel={muted ? 'Activar audio' : 'Silenciar audio'}
               className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 items-center justify-center active:bg-white/10"
             >
               {muted ? (
@@ -215,7 +218,16 @@ export const MatchPointHUD = memo(function MatchPointHUD({
                 <Volume2 color="#e5e7eb" size={14} />
               )}
             </Pressable>
-          )}
+          ) : null}
+          {onOpenSettings ? (
+            <Pressable
+              onPress={onOpenSettings}
+              accessibilityLabel="Configuraciones de audio"
+              className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 items-center justify-center active:bg-white/10"
+            >
+              <SlidersHorizontal color="#fbbf24" size={13} />
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={onLeaveMatch}
             className="bg-red-950/40 active:bg-red-900/60 px-2.5 py-1 rounded-lg border border-red-500/30"

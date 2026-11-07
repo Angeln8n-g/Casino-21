@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,13 +8,17 @@ import { useFonts, RussoOne_400Regular } from '@expo-google-fonts/russo-one';
 import { ChakraPetch_700Bold } from '@expo-google-fonts/chakra-petch';
 import { Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 import { Orbitron_700Bold } from '@expo-google-fonts/orbitron';
-import { AuthProvider } from '../hooks/useAuth';
+import { AuthProvider, useAuth } from '../hooks/useAuth';
+import { socketService } from '../services/socket';
 import { AudioProvider } from '../hooks/useAudio';
+import { MusicSettingsProvider } from '../hooks/useMusicSettings';
 import { GameProvider, useGame } from '../hooks/useGame';
 import { NotificationsProvider, useNotifications } from '../hooks/useNotifications';
 import { GameInvitationModal } from '../components/notifications/GameInvitationModal';
 import { NotificationToastBanner } from '../components/notifications/NotificationToastBanner';
 import { NotificationsModal } from '../components/notifications/NotificationsModal';
+import { AudioSettingsModal } from '../components/settings/AudioSettingsModal';
+import { ReferralModal } from '../components/social/ReferralModal';
 import { appEvents } from '../utils/events';
 import { loadThemes } from '../themes/themeRegistry';
 import '../global.css';
@@ -26,7 +30,9 @@ export { ErrorBoundary } from 'expo-router';
 function RootContent() {
   const router = useRouter();
   const pathname = usePathname();
+  const { profile } = useAuth();
   const { gameState } = useGame();
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
   const {
     activeGameInvitation,
     setActiveGameInvitation,
@@ -48,10 +54,47 @@ function RootContent() {
   // Si una partida inicia (p. ej. tras aceptar un desafío desde Social o recibir confirmación del rival),
   // redirigir automáticamente a /game si aún no estamos allí.
   useEffect(() => {
-    if (gameState && gameState.phase === 'playing' && pathname !== '/game') {
+    if (
+      gameState &&
+      (gameState.phase === 'playing' || gameState.phase === 'scoring') &&
+      pathname !== '/game'
+    ) {
       router.push('/game');
     }
   }, [gameState?.phase, pathname, router]);
+
+  // Escuchar eventos globales: espectar/unirse a sala e invitaciones de referidos
+  useEffect(() => {
+    const handleJoinGameFromInvite = async (payload?: {
+      roomId?: string;
+      isTournament?: boolean;
+      isSpectator?: boolean;
+    }) => {
+      if (!payload?.roomId) return;
+      try {
+        const socket = await socketService.connect();
+        socket.emit('join_room', {
+          roomId: payload.roomId.toUpperCase(),
+          playerName: profile?.username || 'Jugador',
+          isTournament: payload.isTournament,
+          isSpectator: payload.isSpectator,
+        });
+      } catch (err) {
+        console.warn('Error uniéndose a sala desde invitación/espectador:', err);
+      }
+    };
+
+    const handleOpenReferral = () => {
+      setIsReferralModalOpen(true);
+    };
+
+    appEvents.on('join_game_from_invite', handleJoinGameFromInvite);
+    appEvents.on('open_referral_modal', handleOpenReferral);
+    return () => {
+      appEvents.off('join_game_from_invite', handleJoinGameFromInvite);
+      appEvents.off('open_referral_modal', handleOpenReferral);
+    };
+  }, [profile?.username]);
 
   // Navegar a /(tabs)/social cuando un toast o notificación emite 'open_social_tab'
   useEffect(() => {
@@ -104,6 +147,13 @@ function RootContent() {
         }}
         onClose={() => setActiveGameInvitation(null)}
       />
+
+      <AudioSettingsModal />
+
+      <ReferralModal
+        visible={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+      />
     </View>
   );
 }
@@ -139,11 +189,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <AudioProvider>
-            <GameProvider>
-              <NotificationsProvider>
-                <RootContent />
-              </NotificationsProvider>
-            </GameProvider>
+            <MusicSettingsProvider>
+              <GameProvider>
+                <NotificationsProvider>
+                  <RootContent />
+                </NotificationsProvider>
+              </GameProvider>
+            </MusicSettingsProvider>
           </AudioProvider>
         </AuthProvider>
       </SafeAreaProvider>

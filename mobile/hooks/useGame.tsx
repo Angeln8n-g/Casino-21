@@ -89,6 +89,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off('player_disconnected');
       socket.off('player_reconnected');
       socket.off('room_joined');
+      socket.off('room_joined_as_spectator');
       socket.off('room_created');
       socket.off('game_state_update');
       socket.off('receive_message');
@@ -144,6 +145,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
             return joinedRoomId;
           });
           AsyncStorage.setItem('casino21_roomId', joinedRoomId).catch(() => {});
+          appEvents.emit('room_joined_event');
+        }
+      });
+
+      socket.on('room_joined_as_spectator', ({ roomId: spectateRoomId }: { roomId?: string }) => {
+        if (spectateRoomId) {
+          socketService.currentRoomId = spectateRoomId;
+          setRoomId((prev) => {
+            if (prev && prev !== spectateRoomId) setChatMessages([]);
+            return spectateRoomId;
+          });
+          AsyncStorage.setItem('casino21_roomId', spectateRoomId).catch(() => {});
           appEvents.emit('room_joined_event');
         }
       });
@@ -339,6 +352,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setChatMessages([]);
     setError(null);
     setRoomId(null);
+    socketService.currentRoomId = null;
     AsyncStorage.removeItem('casino21_roomId').catch(() => {});
     appEvents.emit('room_left_event');
   }, []);

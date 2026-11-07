@@ -8,6 +8,7 @@ import { supabase } from '../services/supabase';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
 import { useAudio } from '../hooks/useAudio';
+import { useMusicSettings } from '../hooks/useMusicSettings';
 import { useGameTheme } from '../hooks/useGameTheme';
 import { useGameMusic } from '../hooks/useGameMusic';
 import { MatchPointHUD } from '../components/MatchPointHUD';
@@ -75,6 +76,7 @@ export default function GameScreen() {
   const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
   const { playSfx, muted, toggleMuted } = useAudio();
+  const { openSettingsModal } = useMusicSettings();
   const localTheme = useGameTheme();
 
   const {
@@ -350,14 +352,22 @@ export default function GameScreen() {
   }, [gameState, matchAbandonedData, router]);
 
   const currentUserId = user?.id || localPlayerId;
+  const isSpectatorMode = Boolean(
+    gameState && currentUserId && !gameState.players.some((p) => p.id === currentUserId)
+  );
   const localPlayer =
     gameState?.players.find((p) => p.id === currentUserId) || gameState?.players[0];
   const opponent =
     gameState?.players.find((p) => p.id !== localPlayer?.id) || gameState?.players[1];
 
-  const isCurrentTurn = gameState
-    ? gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id
-    : false;
+  const isCurrentTurn =
+    !isSpectatorMode && gameState
+      ? gameState.players[gameState.currentTurnPlayerIndex]?.id === localPlayer?.id
+      : false;
+  
+  
+
+
 
   const selectedHandCard: Card | null =
     localPlayer?.hand.find((c) => c.id === selectedHandCardId) || null;
@@ -681,6 +691,13 @@ export default function GameScreen() {
       )}
 
       {/* 1. Header & Panel VS (MatchPointHUD) */}
+      {isSpectatorMode ? (
+        <View className="self-center bg-purple-500/20 border border-purple-400/40 px-3 py-0.5 rounded-full mb-1 flex-row items-center gap-1.5">
+          <Text className="text-[10px] font-black uppercase tracking-widest text-purple-300">
+            👁️ Modo Espectador
+          </Text>
+        </View>
+      ) : null}
       <MatchPointHUD
         localPlayer={localPlayer}
         opponent={opponent}
@@ -694,7 +711,14 @@ export default function GameScreen() {
         localAvatarUrl={resolvedLocalAvatarUrl}
         opponentAvatarUrl={resolvedOpponentAvatarUrl}
         onToggleSound={toggleMuted}
-        onLeaveMatch={() => setShowAbandonConfirm(true)}
+        onOpenSettings={openSettingsModal}
+        onLeaveMatch={() => {
+          if (isSpectatorMode) {
+            handleBackToLobby();
+          } else {
+            setShowAbandonConfirm(true);
+          }
+        }}
       />
 
       {/* Banner de Error o Desconexión */}

@@ -1,54 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudio } from './useAudio';
+import { useMusicSettings, resolveTrackSource } from './useMusicSettings';
 import { GameState } from 'domain/game-state';
 
 const MUSIC_VOLUME_SCALE = 0.45; // 45% del volumen maestro (idéntico a src/web/hooks/useGameMusic.ts)
-const LOBBY_MUSIC_SETTINGS_KEY = 'casino21_lobby_music';
-
-const CLASSIC_TRACKS = [
-  require('../assets/audio/music/secuencia_clasic_1.mp3'),
-  require('../assets/audio/music/secuencia_clasic_2.mp3'),
-  require('../assets/audio/music/secuencia_clasic_3.mp3'),
-  require('../assets/audio/music/secuencia_clasic_4.mp3'),
-];
-
-const MODERN_TRACKS = [
-  require('../assets/audio/music/secuencia_moderna_1.mp3'),
-  require('../assets/audio/music/secuencia_moderna_2.mp3'),
-  require('../assets/audio/music/secuencia_moderna_3.mp3'),
-  require('../assets/audio/music/secuencia_moderna_4.mp3'),
-];
 
 export function useGameMusic(gameState: GameState | null) {
   const { volume, muted } = useAudio();
-  const [style, setStyle] = useState<'classic' | 'modern'>('classic');
+  const {
+    style,
+    playlists,
+    gameTrackIndex,
+    isGameMusicPaused,
+    advanceGameTrackOnScoring,
+    resetGameMusicSession,
+  } = useMusicSettings();
 
   const currentSoundRef = useRef<Audio.Sound | null>(null);
-  const activeTrackIndexRef = useRef<number | null>(null);
-  const activeStyleRef = useRef<'classic' | 'modern'>('classic');
-  const scoringCountRef = useRef<number>(0);
+  const activeSoundKeyRef = useRef<string | null>(null);
   const prevPhaseRef = useRef<string | null>(null);
   const mountedRef = useRef<boolean>(true);
-  const loadingRef = useRef<boolean>(false);
-
-  // Cargar preferencia de estilo musical guardada en el lobby
-  useEffect(() => {
-    let active = true;
-    AsyncStorage.getItem(LOBBY_MUSIC_SETTINGS_KEY)
-      .then((stored) => {
-        if (!active || !stored) return;
-        const parsed = JSON.parse(stored);
-        if (parsed.style === 'classic' || parsed.style === 'modern') {
-          setStyle(parsed.style);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+  const requestIdRef = useRef<number>(0);
+  const volumeStateRef = useRef({ volume, muted });
+  volumeStateRef.current = { volume, muted };
 
   const phase = gameState?.phase ?? null;
 
@@ -56,128 +31,151 @@ export function useGameMusic(gameState: GameState | null) {
   // nunca en repartos intermedios de 4 cartas (igual que src/web/hooks/useGameMusic.ts).
   useEffect(() => {
     if (!phase) return;
-
     const prevPhase = prevPhaseRef.current;
     prevPhaseRef.current = phase;
 
     if (phase === 'scoring' && prevPhase !== null && prevPhase !== 'scoring') {
-      scoringCountRef.current += 1;
+      advanceGameTrackOnScoring();
+    }
+  }, [phase, advanceGameTrackOnScoring]);
+
+  // Sincronizar pista activa por fase, estilo, selección manual o pausa de música
+  useEffect(() => {
+    if (!phase) return;
+
+    const currentPlaylist = playlists.game[style] || [];
+    if (currentPlaylist.length === 0) return;
+
+    const safeIndex =
+      ((gameTrackIndex % currentPlaylist.length) + currentPlaylist.length) %
+      currentPlaylist.length;
+    const track = currentPlaylist[safeIndex];
+    const desiredKey = `${style}:${track.id}:${safeIndex}`;
+    const shouldPlay = phase === 'playing' && !isGameMusicPaused;
+
+    if (!shouldPlay) {
+      // Pausar música en fases de conteo (scoring), partida terminada (completed) o pausa manual
+      requestIdRef.current += 1;
+      if (currentSoundRef.current) {
+        currentSoundRef.current.pauseAsync().catch(() => {});
+      }
+      return;
     }
 
-    const tracks = style === 'modern' ? MODERN_TRACKS : CLASSIC_TRACKS;
-    const trackIndex = scoringCountRef.current % tracks.length;
-    const shouldPlay = phase === 'playing';
-    const targetVol = muted ? 0 : Math.max(0, Math.min(1, volume * MUSIC_VOLUME_SCALE));
+    // Si ya tenemos la misma pista cargada del mismo estilo, solo reanudar / ajustar volumen
+    if (currentSoundRef.current && activeSoundKeyRef.current === desiredKey) {
+      const { volume: curVol, muted: curMuted } = volumeStateRef.current;
+      const targetVol = curMuted
+        ? 0
+        : Math.max(0, Math.min(1, curVol * MUSIC_VOLUME_SCALE));
+      currentSoundRef.current
+        .setStatusAsync({
+          volume: targetVol,
+          isMuted: curMuted,
+          shouldPlay: true,
+        })
+        .catch(() => {});
+      return;
+    }
 
-    let cancelled = false;
+    const reqId = ++requestIdRef.current;
 
-    const syncTrack = async () => {
-      if (!shouldPlay) {
-        // Pausar música en fases de conteo (scoring) o partida terminada (completed)
-        if (currentSoundRef.current) {
-          try {
-            await currentSoundRef.current.pauseAsync();
-          } catch {}
-        }
-        return;
+    const loadTrack = async () => {
+      if (currentSoundRef.current) {
+        const oldSound = currentSoundRef.current;
+        currentSoundRef.current = null;
+        activeSoundKeyRef.current = null;
+        await oldSound.stopAsync().catch(() => {});
+        await oldSound.unloadAsync().catch(() => {});
       }
 
-      // Si ya tenemos la misma pista cargada del mismo estilo, solo reanudar / ajustar volumen
-      if (
-        currentSoundRef.current &&
-        activeTrackIndexRef.current === trackIndex &&
-        activeStyleRef.current === style
-      ) {
-        try {
-          await currentSoundRef.current.setStatusAsync({
-            volume: targetVol,
-            isMuted: muted,
-            shouldPlay: !muted,
-          });
-        } catch {}
-        return;
-      }
+      if (!mountedRef.current || requestIdRef.current !== reqId) return;
 
-      if (loadingRef.current) return;
-      loadingRef.current = true;
+      const { primary, fallbackLocal } = resolveTrackSource(track, safeIndex);
+      const { volume: curVol, muted: curMuted } = volumeStateRef.current;
+      const targetVol = curMuted
+        ? 0
+        : Math.max(0, Math.min(1, curVol * MUSIC_VOLUME_SCALE));
 
+      const initialStatus = {
+        shouldPlay: true,
+        isLooping: true,
+        volume: targetVol,
+        isMuted: curMuted,
+      };
+
+      let loadedSound: Audio.Sound | null = null;
       try {
-        if (currentSoundRef.current) {
-          const oldSound = currentSoundRef.current;
-          currentSoundRef.current = null;
-          activeTrackIndexRef.current = null;
-          await oldSound.stopAsync().catch(() => {});
-          await oldSound.unloadAsync().catch(() => {});
-        }
-
-        if (cancelled || !mountedRef.current) return;
-
+        const isBundledNumber = typeof primary === 'number';
         const { sound } = await Audio.Sound.createAsync(
-          tracks[trackIndex],
-          {
-            shouldPlay: !muted,
-            isLooping: true,
-            volume: targetVol,
-            isMuted: muted,
-          },
+          primary,
+          initialStatus,
           null,
-          false // Crucial: downloadFirst = false
+          isBundledNumber ? false : undefined
         );
-
-        if (cancelled || !mountedRef.current) {
-          await sound.unloadAsync().catch(() => {});
-          return;
-        }
-
-        currentSoundRef.current = sound;
-        activeTrackIndexRef.current = trackIndex;
-        activeStyleRef.current = style;
+        loadedSound = sound;
       } catch (err) {
-        console.warn('[useGameMusic] Error cargando pista musical:', err);
-      } finally {
-        loadingRef.current = false;
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            fallbackLocal,
+            initialStatus,
+            null,
+            false
+          );
+          loadedSound = sound;
+        } catch (fallbackErr) {
+          console.warn('[useGameMusic] Error cargando pista musical:', err, fallbackErr);
+        }
       }
+
+      if (!loadedSound) return;
+
+      if (!mountedRef.current || requestIdRef.current !== reqId) {
+        loadedSound
+          .stopAsync()
+          .then(() => loadedSound?.unloadAsync())
+          .catch(() => {});
+        return;
+      }
+
+      currentSoundRef.current = loadedSound;
+      activeSoundKeyRef.current = desiredKey;
     };
 
-    syncTrack();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [phase, style]);
+    loadTrack();
+  }, [phase, style, playlists.game, gameTrackIndex, isGameMusicPaused]);
 
   // Sincronizar volumen y estado de silencio en caliente sin reiniciar la pista
   useEffect(() => {
-    const syncVolumeAndMute = async () => {
-      const sound = currentSoundRef.current;
-      if (!sound) return;
-      try {
-        const targetVol = muted ? 0 : Math.max(0, Math.min(1, volume * MUSIC_VOLUME_SCALE));
-        const shouldBePlaying = phase === 'playing' && !muted;
-        await sound.setStatusAsync({
-          volume: targetVol,
-          isMuted: muted,
-          shouldPlay: shouldBePlaying,
-        });
-      } catch {}
-    };
-    syncVolumeAndMute();
-  }, [volume, muted, phase]);
+    const sound = currentSoundRef.current;
+    if (!sound) return;
+    const targetVol = muted ? 0 : Math.max(0, Math.min(1, volume * MUSIC_VOLUME_SCALE));
+    const shouldBePlaying = phase === 'playing' && !isGameMusicPaused;
+    sound
+      .setStatusAsync({
+        volume: targetVol,
+        isMuted: muted,
+        shouldPlay: shouldBePlaying,
+      })
+      .catch(() => {});
+  }, [volume, muted, phase, isGameMusicPaused]);
 
   // Limpiar recursos al desmontar la pantalla de partida
   useEffect(() => {
     mountedRef.current = true;
+    resetGameMusicSession();
     return () => {
       mountedRef.current = false;
+      requestIdRef.current += 1;
       if (currentSoundRef.current) {
         const sound = currentSoundRef.current;
         currentSoundRef.current = null;
-        activeTrackIndexRef.current = null;
+        activeSoundKeyRef.current = null;
         sound
           .stopAsync()
           .then(() => sound.unloadAsync())
           .catch(() => {});
       }
     };
-  }, []);
+  }, [resetGameMusicSession]);
 }

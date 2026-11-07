@@ -148,6 +148,8 @@ interface LoopEntry {
 export function AudioProvider({ children }: { children: ReactNode }) {
   const [muted, setMutedState] = useState(false);
   const [volume, setVolumeState] = useState(0.75);
+  const mutedRef = useRef(false);
+  const volumeRef = useRef(0.75);
   const loopsRef = useRef<Map<string, LoopEntry>>(new Map());
   const soundPoolsRef = useRef<Map<AudioCue, Audio.Sound[]>>(new Map());
   const poolIndexRef = useRef<Map<AudioCue, number>>(new Map());
@@ -168,9 +170,14 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       if (res && isMounted) {
         try {
           const parsed = JSON.parse(res);
-          if (typeof parsed.muted === 'boolean') setMutedState(parsed.muted);
+          if (typeof parsed.muted === 'boolean') {
+            mutedRef.current = parsed.muted;
+            setMutedState(parsed.muted);
+          }
           if (typeof parsed.volume === 'number') {
-            setVolumeState(clamp(parsed.volume, 0, 1));
+            const loadedVol = clamp(parsed.volume, 0, 1);
+            volumeRef.current = loadedVol;
+            setVolumeState(loadedVol);
           }
         } catch {}
       }
@@ -249,7 +256,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const setMuted = useCallback(
     (value: boolean) => {
       setMutedState(value);
-      saveSettings(value, volume);
+      mutedRef.current = value;
+      saveSettings(value, volumeRef.current);
     },
     [volume]
   );
@@ -257,7 +265,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const toggleMuted = useCallback(() => {
     setMutedState((prev) => {
       const next = !prev;
-      saveSettings(next, volume);
+      mutedRef.current = next;
+      saveSettings(next, volumeRef.current);
       return next;
     });
   }, [volume]);
@@ -266,7 +275,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     (value: number) => {
       const clamped = clamp(value, 0, 1);
       setVolumeState(clamped);
-      saveSettings(muted, clamped);
+      volumeRef.current = clamped;
+      saveSettings(mutedRef.current, clamped);
     },
     [muted]
   );
