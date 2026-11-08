@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ToastNotification } from '../hooks/useNotifications';
 import { FriendRequestModal } from './FriendRequestModal';
 import { FriendRequestProfile } from './FriendRequestModal';
@@ -18,6 +18,11 @@ export function NotificationToast({
   onGameInviteReject,
 }: NotificationToastProps) {
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [toast?.id, toast?.avatarUrl]);
 
   if (!toast) return null;
 
@@ -58,14 +63,40 @@ export function NotificationToast({
     <>
       {/* ── Generic / Friend-request Toast ──────────────────── */}
       <div className="fixed top-4 inset-x-2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-[9998] w-auto max-w-sm mx-auto animate-slide-down">
-        <div className="glass-panel-strong p-4 border-casino-gold/50 shadow-[0_0_20px_rgba(251,191,36,0.15)] relative overflow-hidden">
+        <div
+          onClick={() => {
+            if (toast.onClick) {
+              toast.onClick();
+              onDismiss();
+            }
+          }}
+          className={`glass-panel-strong p-4 border-casino-gold/50 shadow-[0_0_20px_rgba(251,191,36,0.15)] relative overflow-hidden ${
+            toast.onClick ? 'cursor-pointer hover:border-casino-gold/80 transition-colors' : ''
+          }`}
+        >
           {/* Glow */}
           <div className="absolute -top-10 -right-10 w-20 h-20 bg-casino-gold/20 blur-2xl rounded-full pointer-events-none" />
 
           {/* Header */}
           <div className="flex justify-between items-start mb-2">
-            <div className="flex items-center gap-2 pr-2 min-w-0">
-              <span className="text-xl shrink-0">🔔</span>
+            <div className="flex items-center gap-2.5 pr-2 min-w-0">
+              {toast.avatarUrl && !avatarFailed ? (
+                <div className="relative w-8 h-8 shrink-0">
+                  <img
+                    src={toast.avatarUrl}
+                    alt={toast.avatarFallback || toast.title}
+                    className="w-8 h-8 rounded-full object-cover border border-casino-gold/50"
+                    onError={() => setAvatarFailed(true)}
+                  />
+                  {toast.iconEmoji && (
+                    <span className="absolute -bottom-1 -right-1 text-[10px] leading-none bg-slate-950 rounded-full p-0.5 border border-casino-gold/40">
+                      {toast.iconEmoji}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xl shrink-0">{toast.iconEmoji || '🔔'}</span>
+              )}
               <h4 className="font-display font-bold text-white text-sm truncate">{toast.title}</h4>
             </div>
             <button
@@ -81,12 +112,15 @@ export function NotificationToast({
             </button>
           </div>
 
-          <p className="text-gray-300 text-sm mb-3">{toast.message}</p>
+          <p className="text-gray-300 text-sm mb-3 line-clamp-2 break-words">{toast.message}</p>
 
           {/* Friend request → open profile modal */}
           {hasFriendRequest && (
             <button
-              onClick={() => setShowProfileModal(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowProfileModal(true);
+              }}
               className="w-full py-2.5 rounded-xl bg-gradient-to-r from-casino-gold to-yellow-500 text-black font-bold text-sm hover:from-yellow-400 hover:to-casino-gold transition-all active:scale-[0.98] shadow-lg shadow-casino-gold/20"
             >
               👤 Ver perfil y responder
@@ -99,7 +133,10 @@ export function NotificationToast({
               {toast.actions.map((action, idx) => (
                 <button
                   key={idx}
-                  onClick={action.onClick}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    action.onClick();
+                  }}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                     action.primary
                       ? 'bg-casino-gold text-casino-bg hover:brightness-110'

@@ -325,25 +325,31 @@ export function RoundSummaryModal({
         ) : (
           <Pressable
             onPress={onContinue}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? '#d97706' : '#f59e0b',
-              paddingVertical: 14,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}
+            style={{ width: '100%', borderRadius: 14, overflow: 'hidden' }}
           >
-            <Text
-              style={{
-                color: '#020617',
-                fontWeight: '900',
-                fontSize: 14,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Continuar a la siguiente ronda
-            </Text>
+            {({ pressed }) => (
+              <View
+                style={{
+                  backgroundColor: pressed ? '#d97706' : '#f59e0b',
+                  paddingVertical: 14,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#020617',
+                    fontWeight: '900',
+                    fontSize: 14,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  Continuar a la siguiente ronda
+                </Text>
+              </View>
+            )}
           </Pressable>
         )}
       </View>

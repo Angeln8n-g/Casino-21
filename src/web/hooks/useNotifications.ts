@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from './useAuth';
 import { useGame } from './useGame';
+import { useAudio } from './useAudio';
 import { socketService } from '../services/socket';
 
 export interface AppNotification {
@@ -49,6 +50,11 @@ export interface ToastNotification {
   message: string;
   division?: string;
   expiresAt?: string;
+  durationMs?: number;
+  iconEmoji?: string;
+  avatarUrl?: string | null;
+  avatarFallback?: string;
+  onClick?: () => void;
   actions?: NotificationAction[];
   /** If set, the toast should open the FriendRequestModal instead of inline buttons */
   friendRequestData?: FriendRequestToastData;
@@ -59,8 +65,13 @@ export interface ToastNotification {
 export function useNotifications() {
   const { user } = useAuth();
   const { gameState } = useGame();
+  const { playSfx } = useAudio();
   const gameStateRef = useRef(gameState);
   const seenGameInviteIdsRef = useRef<Set<string>>(new Set());
+  const seenPrivateMsgIdsRef = useRef<Set<string>>(new Set());
+  const friendIdsRef = useRef<Set<string>>(new Set());
+  const activePrivateChatFriendIdRef = useRef<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -68,11 +79,57 @@ export function useNotifications() {
   
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const [pendingGameInvites, setPendingGameInvites] = useState(0);
+  const [unreadPrivateMessages, setUnreadPrivateMessages] = useState(0);
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [activeGameInvitation, setActiveGameInvitation] = useState<GameInviteToastData | null>(null);
   
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const dismissToast = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  }, []);
+
+  const showToast = useCallback(
+    (notification: ToastNotification) => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
+      }
+      setToast(notification);
+      try {
+        playSfx('notification');
+      } catch {}
+
+      let timeoutMs = notification.durationMs ?? 3000;
+      if (notification.expiresAt) {
+        const remaining = new Date(notification.expiresAt).getTime() - Date.now();
+        timeoutMs = Math.max(timeoutMs, remaining);
+      }
+
+      toastTimerRef.current = setTimeout(() => {
+        setToast((current) => (current?.id === notification.id ? null : current));
+        toastTimerRef.current = null;
+      }, timeoutMs);
+    },
+    [playSfx]
+  );
+
+  useEffect(() => {
+    const handleActiveChatChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ friendId?: string | null }>;
+      activePrivateChatFriendIdRef.current = customEvent.detail?.friendId || null;
+    };
+    window.addEventListener('active_private_chat_changed', handleActiveChatChanged);
+    return () => {
+      window.removeEventListener('active_private_chat_changed', handleActiveChatChanged);
+      activePrivateChatFriendIdRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -116,6 +173,104 @@ export function useNotifications() {
       });
     };
 
+    const refreshFriendIds = async () => {
+      try {
+        const [reqFriendsRes, friendshipsRes] = await Promise.all([
+          supabase
+            .from('friend_requests')
+            .select('sender_id, receiver_id')
+            .eq('status', 'accepted')
+            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+          supabase
+            .from('friendships')
+            .select('player1_id, player2_id')
+            .eq('status', 'accepted')
+            .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`),
+        ]);
+
+        const nextFriends = new Set<string>();
+        for (const row of (reqFriendsRes.data || []) as any[]) {
+          const otherId = row.sender_id === user.id ? row.receiver_id : row.sender_id;
+          if (otherId) nextFriends.add(otherId);
+        }
+        for (const row of (friendshipsRes.data || []) as any[]) {
+          const otherId = row.player1_id === user.id ? row.player2_id : row.player1_id;
+          if (otherId) nextFriends.add(otherId);
+        }
+        if (isMounted) {
+          friendIdsRef.current = nextFriends;
+        }
+      } catch {}
+    };
+
+    const checkIsFriend = async (senderId: string): Promise<boolean> => {
+      if (friendIdsRef.current.has(senderId)) return true;
+      try {
+        const [reqRes, fsRes] = await Promise.all([
+          supabase
+            .from('friend_requests')
+            .select('id')
+            .eq('status', 'accepted')
+            .or(
+              `and(sender_id.eq.${user.id},receiver_id.eq.${senderId}),and(sender_id.eq.${senderId},receiver_id.eq.${user.id})`
+            )
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('friendships')
+            .select('id')
+            .eq('status', 'accepted')
+            .or(
+              `and(player1_id.eq.${user.id},player2_id.eq.${senderId}),and(player1_id.eq.${senderId},player2_id.eq.${user.id})`
+            )
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        if (reqRes.data || fsRes.data) {
+          friendIdsRef.current.add(senderId);
+          return true;
+        }
+      } catch {}
+      return false;
+    };
+
+    const isPrivateChatOpenWith = (senderId: string): boolean => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return false;
+      }
+      return activePrivateChatFriendIdRef.current === senderId;
+    };
+
+    const formatPrivateMessagePreview = (msg: any): string => {
+      const normalized =
+        typeof msg?.content === 'string'
+          ? msg.content.replace(/\s+/g, ' ').trim()
+          : '';
+      if (msg?.message_type === 'image') {
+        return normalized ? `📷 Imagen: ${normalized}` : '📷 Te envió una imagen';
+      }
+      if (msg?.message_type === 'audio') {
+        return '🎤 Te envió un mensaje de voz';
+      }
+      if (!normalized) {
+        return 'Te envió un mensaje';
+      }
+      return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
+    };
+
+    const refreshPmUnreadCount = async () => {
+      try {
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+        if (isMounted) {
+          setUnreadPrivateMessages(count || 0);
+        }
+      } catch {}
+    };
+
     // Fetch initial counts
     const fetchCounts = async () => {
       try {
@@ -156,10 +311,17 @@ export function useNotifications() {
           .limit(1)
           .maybeSingle();
 
+        const { count: pmUnreadCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+
         if (!isMounted) return;
 
         setPendingFriendRequests(friendCount || 0);
         setPendingGameInvites(gameCount || 0);
+        setUnreadPrivateMessages(pmUnreadCount || 0);
 
         if (notifs) {
           setAppNotifications(notifs as AppNotification[]);
@@ -169,6 +331,8 @@ export function useNotifications() {
         if (latestPendingInvite && latestPendingInvite.room_id) {
           await buildAndShowGameInvite(latestPendingInvite);
         }
+
+        await refreshFriendIds();
       } catch (error: any) {
         if (!isMounted) return;
         const message = String(error?.message || '');
@@ -332,6 +496,130 @@ export function useNotifications() {
         }
       });
 
+    // Subscribe to private messages for unread count & interactive friend-message toast
+    const pmSubscription = supabase
+      .channel(`messages_notif_${user.id}_${Date.now()}_${Math.random()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (!newMsg?.sender_id || newMsg.sender_id === user.id || newMsg.deleted_at) {
+            return;
+          }
+
+          const senderId = String(newMsg.sender_id);
+          const isViewingThisChat = isPrivateChatOpenWith(senderId);
+
+          if (!isViewingThisChat) {
+            refreshPmUnreadCount();
+          }
+
+          if (newMsg.id && seenPrivateMsgIdsRef.current.has(newMsg.id)) {
+            return;
+          }
+          if (newMsg.id) {
+            if (seenPrivateMsgIdsRef.current.size >= 100) {
+              const oldest = seenPrivateMsgIdsRef.current.values().next().value;
+              if (oldest) seenPrivateMsgIdsRef.current.delete(oldest);
+            }
+            seenPrivateMsgIdsRef.current.add(newMsg.id);
+          }
+
+          if (isViewingThisChat) {
+            return;
+          }
+
+          (async () => {
+            try {
+              const [isFriend, profileRes] = await Promise.all([
+                checkIsFriend(senderId),
+                supabase
+                  .from('profiles')
+                  .select('id, username, avatar_url, equipped_avatar')
+                  .eq('id', senderId)
+                  .maybeSingle(),
+              ]);
+
+              if (!isMounted || !isFriend || isPrivateChatOpenWith(senderId)) {
+                return;
+              }
+
+              const sender = profileRes.data;
+              const senderName = sender?.username || 'Tu amigo';
+              const preview = formatPrivateMessagePreview(newMsg);
+              const avatarUrl =
+                typeof (sender?.equipped_avatar || sender?.avatar_url) === 'string'
+                  ? (sender?.equipped_avatar || sender?.avatar_url).trim()
+                  : null;
+
+              const openChat = () => {
+                sessionStorage.setItem('open_chat_friend_id', senderId);
+                window.dispatchEvent(
+                  new CustomEvent('open_social_tab', {
+                    detail: { tab: 'chat', friendId: senderId },
+                  })
+                );
+                dismissToast();
+              };
+
+              showToast({
+                id: `pm-${newMsg.id || Date.now()}`,
+                title: `💬 Mensaje de ${senderName}`,
+                message: preview,
+                iconEmoji: '💬',
+                avatarUrl,
+                avatarFallback: senderName.charAt(0).toUpperCase() || 'A',
+                durationMs: 6500,
+                onClick: openChat,
+                actions: [
+                  {
+                    label: '💬 Responder',
+                    onClick: openChat,
+                    primary: true,
+                  },
+                ],
+              });
+            } catch {}
+          })();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          refreshPmUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          refreshPmUnreadCount();
+        }
+      )
+      .subscribe();
+
+    const handleFriendshipsChanged = () => {
+      refreshFriendIds();
+    };
+    window.addEventListener('friendships_changed', handleFriendshipsChanged);
+
     // Subscribe to Socket.io events for friend presence & waiting notifications
     let socketInstance: any = null;
     socketService.connect().then((socket) => {
@@ -433,36 +721,16 @@ export function useNotifications() {
     return () => {
       isMounted = false;
       window.clearInterval(pollingId);
+      window.removeEventListener('friendships_changed', handleFriendshipsChanged);
       supabase.removeChannel(friendSubscription);
       supabase.removeChannel(appNotifSubscription);
       supabase.removeChannel(gameSubscription);
+      supabase.removeChannel(pmSubscription);
       if (socketInstance?._friendCleanup) {
         socketInstance._friendCleanup();
       }
     };
-  }, [user]);
-
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const showToast = (notification: ToastNotification) => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
-    }
-    setToast(notification);
-    
-    // Auto-dismiss logic: 3 seconds default
-    let timeoutMs = 3000;
-    if (notification.expiresAt) {
-      const remaining = new Date(notification.expiresAt).getTime() - Date.now();
-      timeoutMs = Math.max(3000, remaining);
-    }
-    
-    toastTimerRef.current = setTimeout(() => {
-      setToast((current) => (current?.id === notification.id ? null : current));
-      toastTimerRef.current = null;
-    }, timeoutMs);
-  };
+  }, [user, showToast, dismissToast]);
 
   const handleFriendRequest = async (id: string, status: 'accepted' | 'rejected') => {
     if (!user) return;
@@ -516,15 +784,7 @@ export function useNotifications() {
     }
   };
 
-  const dismissToast = () => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
-    }
-    setToast(null);
-  };
-
-  const totalPending = pendingFriendRequests + pendingGameInvites;
+  const totalPending = pendingFriendRequests + pendingGameInvites + unreadPrivateMessages;
 
   const removeNotificationFromState = (id: string) => {
     setAppNotifications((prev) => {

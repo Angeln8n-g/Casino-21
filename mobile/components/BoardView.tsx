@@ -161,6 +161,7 @@ export const BoardView = memo(function BoardView({
         shadowOpacity: 0.25,
         shadowRadius: 10,
         elevation: 6,
+        zIndex: 1,
       }}
     >
       <LinearGradient

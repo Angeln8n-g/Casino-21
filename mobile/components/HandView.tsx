@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { Player } from 'domain/player';
 import { Card } from 'domain/card';
@@ -42,6 +42,25 @@ export const HandView = memo(function HandView({
 }: HandViewProps) {
   const virados = localPlayer?.virados || 0;
   const hand = localPlayer?.hand || [];
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isCurrentTurn) {
+      setDraggingCardId(null);
+    }
+  }, [isCurrentTurn]);
+
+  const handleCardDragStart = useCallback(
+    (card: Card) => {
+      setDraggingCardId(card.id);
+      onDragStart?.(card);
+    },
+    [onDragStart]
+  );
+
+  const handleCardDragEnd = useCallback((card: Card) => {
+    setDraggingCardId((prev) => (prev === card.id ? null : prev));
+  }, []);
 
   return (
     <View
@@ -65,7 +84,7 @@ export const HandView = memo(function HandView({
           alignItems: 'center',
           marginBottom: 6,
           paddingHorizontal: 4,
-          zIndex: 50,
+          zIndex: draggingCardId ? 1 : 50,
           overflow: 'visible',
         }}
       >
@@ -104,42 +123,49 @@ export const HandView = memo(function HandView({
           alignItems: 'center',
           paddingVertical: 2,
           minHeight: 102,
+          zIndex: draggingCardId ? 200 : 10,
+          elevation: draggingCardId ? 200 : 10,
           overflow: 'visible',
         }}
       >
         {hand.length === 0 ? (
           <Text className="text-gray-300 text-xs italic py-4">Esperando cartas...</Text>
         ) : (
-          hand.map((card: Card) => (
-            <View
-              key={card.id}
-              style={{
-                marginHorizontal: 5,
-                overflow: 'visible',
-                zIndex: selectedCardId === card.id ? 99999 : 9999,
-                elevation: selectedCardId === card.id ? 99999 : 9999,
-              }}
-            >
-              <DraggableCard
-                card={card}
-                selected={selectedCardId === card.id}
-                disabled={!isCurrentTurn}
-                theme={theme}
-                fontKey={fontKey}
-                variant="auto"
-                onPress={() => isCurrentTurn && onSelectCard(card.id)}
-                onDragStart={onDragStart}
-                onDragMove={onDragMove}
-                onDragRelease={onDragRelease}
-                onDropOnBoard={onDropOnBoard}
-                onDropOnFormation={
-                  onDropOnFormation
-                    ? (formationIdx) => onDropOnFormation(formationIdx, card.id)
-                    : undefined
-                }
-              />
-            </View>
-          ))
+          hand.map((card: Card) => {
+            const isCardDragging = draggingCardId === card.id;
+            const isCardSelected = selectedCardId === card.id;
+            return (
+              <View
+                key={card.id}
+                style={{
+                  marginHorizontal: 5,
+                  overflow: 'visible',
+                  zIndex: isCardDragging ? 999999 : isCardSelected ? 99999 : 1,
+                  elevation: isCardDragging ? 999999 : isCardSelected ? 99999 : 1,
+                }}
+              >
+                <DraggableCard
+                  card={card}
+                  selected={isCardSelected}
+                  disabled={!isCurrentTurn}
+                  theme={theme}
+                  fontKey={fontKey}
+                  variant="auto"
+                  onPress={() => isCurrentTurn && onSelectCard(card.id)}
+                  onDragStart={handleCardDragStart}
+                  onDragMove={onDragMove}
+                  onDragEnd={handleCardDragEnd}
+                  onDragRelease={onDragRelease}
+                  onDropOnBoard={onDropOnBoard}
+                  onDropOnFormation={
+                    onDropOnFormation
+                      ? (formationIdx) => onDropOnFormation(formationIdx, card.id)
+                      : undefined
+                  }
+                />
+              </View>
+            );
+          })
         )}
       </View>
     </View>

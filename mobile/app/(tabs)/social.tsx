@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Users,
@@ -31,7 +31,12 @@ import { socketService } from '../../services/socket';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfilePresence } from '../../hooks/useProfilePresence';
 import { useNotifications } from '../../hooks/useNotifications';
-import { appEvents } from '../../utils/events';
+import {
+  appEvents,
+  consumePendingSocialTabIntent,
+  clearPendingSocialTabIntent,
+  SocialTabIntent,
+} from '../../utils/events';
 import { triggerHaptic } from '../../utils/haptics';
 import {
   FriendData,
@@ -54,8 +59,9 @@ export default function SocialScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, profile, presenceByUserId } = useAuth();
-  const { showToast } = useNotifications();
+  const { showToast, setActivePrivateChat } = useNotifications();
 
+  const [isScreenFocused, setIsScreenFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<SocialTab>('friends');
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
@@ -88,6 +94,9 @@ export default function SocialScreen() {
   const hasLoggedFriendsRef = useRef(false);
   const selectedChatFriendRef = useRef<FriendData | null>(null);
   const activeTabRef = useRef<SocialTab>('friends');
+  const isScreenFocusedRef = useRef(false);
+  const friendsRef = useRef<FriendData[]>([]);
+  const pendingChatFriendIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     selectedChatFriendRef.current = selectedChatFriend;
@@ -96,6 +105,25 @@ export default function SocialScreen() {
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
+
+  useEffect(() => {
+    friendsRef.current = friends;
+  }, [friends]);
+
+  // Reportar a useNotifications si este usuario está leyendo un chat privado en primer plano
+  useEffect(() => {
+    const activeFriendId =
+      isScreenFocused && activeTab === 'chat' && selectedChatFriend
+        ? selectedChatFriend.id
+        : null;
+    setActivePrivateChat('social', activeFriendId);
+  }, [isScreenFocused, activeTab, selectedChatFriend?.id, setActivePrivateChat]);
+
+  useEffect(() => {
+    return () => {
+      setActivePrivateChat('social', null);
+    };
+  }, [setActivePrivateChat]);
 
   // Presencia en tiempo real desde la tabla profiles (last_seen_at y current_room_id)
   const friendIds = useMemo(() => friends.map((f) => f.id), [friends]);
@@ -140,27 +168,87 @@ export default function SocialScreen() {
     [presenceByUserId, profilePresenceMap]
   );
 
+  // Resolver intenciones de navegación hacia pestañas/chats específicos de Social
+  const applySocialTabIntent = useCallback((payload?: SocialTabIntent | null) => {
+    if (!payload) return;
+    const requested = payload.tab;
+    if (requested === 'search') {
+      setActiveTab('search');
+    } else if (requested === 'chat') {
+      if (payload.friendId) {
+        const found = friendsRef.current.find((f) => f.id === payload.friendId);
+        if (found) {
+          setSelectedChatFriend(found);
+          setUnreadMap((prev) => ({ ...prev, [found.id]: 0 }));
+          pendingChatFriendIdRef.current = null;
+        } else {
+          pendingChatFriendIdRef.current = payload.friendId;
+          if (payload.friendProfile) {
+            setSelectedChatFriend({
+              id: payload.friendId,
+              username: payload.friendProfile.username || 'Amigo',
+              avatar_url: payload.friendProfile.avatar_url ?? null,
+              equipped_avatar: payload.friendProfile.equipped_avatar ?? null,
+              elo: payload.friendProfile.elo ?? 1000,
+              level: payload.friendProfile.level ?? 1,
+            });
+            setUnreadMap((prev) => ({ ...prev, [payload.friendId!]: 0 }));
+          }
+        }
+      }
+      setActiveTab('chat');
+    } else {
+      // 'friends' o 'requests' van a 'friends' (donde Solicitudes aparece arriba igual que Web)
+      setActiveTab('friends');
+    }
+    clearPendingSocialTabIntent();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsScreenFocused(true);
+      isScreenFocusedRef.current = true;
+      const pending = consumePendingSocialTabIntent();
+      if (pending) {
+        applySocialTabIntent(pending);
+      }
+      return () => {
+        setIsScreenFocused(false);
+        isScreenFocusedRef.current = false;
+      };
+    }, [applySocialTabIntent])
+  );
+
   // Escuchar eventos globales para abrir pestañas específicas (desde notificaciones o banners)
   useEffect(() => {
-    const handleOpenTab = (payload?: { tab?: string; friendId?: string }) => {
-      const requested = payload?.tab;
-      if (requested === 'search') {
-        setActiveTab('search');
-      } else if (requested === 'chat') {
-        if (payload?.friendId) {
-          const found = friends.find((f) => f.id === payload.friendId);
-          if (found) setSelectedChatFriend(found);
-        }
-        setActiveTab('chat');
-      } else {
-        // 'friends' o 'requests' van a 'friends' (donde Solicitudes aparece arriba igual que Web)
-        setActiveTab('friends');
-      }
+    const handleOpenTab = (payload?: SocialTabIntent) => {
+      applySocialTabIntent(payload);
     };
     appEvents.on('open_social_tab', handleOpenTab);
     return () => {
       appEvents.off('open_social_tab', handleOpenTab);
     };
+  }, [applySocialTabIntent]);
+
+  // Completar selección diferida del amigo cuando termine de cargar la lista `friends`
+  useEffect(() => {
+    if (!friends.length) return;
+    const pendingId = pendingChatFriendIdRef.current;
+    if (pendingId) {
+      const match = friends.find((f) => f.id === pendingId);
+      if (match) {
+        setSelectedChatFriend(match);
+        setUnreadMap((prev) => ({ ...prev, [match.id]: 0 }));
+        pendingChatFriendIdRef.current = null;
+        return;
+      }
+    }
+    if (selectedChatFriendRef.current) {
+      const refreshed = friends.find((f) => f.id === selectedChatFriendRef.current?.id);
+      if (refreshed && refreshed !== selectedChatFriendRef.current) {
+        setSelectedChatFriend(refreshed);
+      }
+    }
   }, [friends]);
 
   // Contador en vivo de jugadores online vía Socket.io
@@ -395,7 +483,12 @@ export default function SocialScreen() {
         (payload) => {
           const newMsg = payload.new as any;
           if (!newMsg?.sender_id) return;
+
+          // Propagar inmediatamente al chat activo vía event bus
+          appEvents.emit('realtime_chat_message', newMsg);
+
           const isActivelyReading =
+            isScreenFocusedRef.current &&
             activeTabRef.current === 'chat' &&
             selectedChatFriendRef.current?.id === newMsg.sender_id;
 
@@ -440,7 +533,15 @@ export default function SocialScreen() {
       )
       .subscribe();
 
+    const handleMessagesReadEvent = (payload?: { friendId?: string }) => {
+      if (payload?.friendId) {
+        setUnreadMap((prev) => ({ ...prev, [payload.friendId!]: 0 }));
+      }
+    };
+    appEvents.on('private_messages_read', handleMessagesReadEvent);
+
     return () => {
+      appEvents.off('private_messages_read', handleMessagesReadEvent);
       supabase.removeChannel(socialChannel);
     };
   }, [user, fetchSocialData, fetchUnreadAndLastChats]);
@@ -1621,6 +1722,7 @@ export default function SocialScreen() {
                 selectedChatFriend ? isFriendInRoom(selectedChatFriend.id) : false
               }
               showPartnerHeader={Boolean(selectedChatFriend)}
+              isActive={isScreenFocused && activeTab === 'chat'}
               onMessagesRead={() => {
                 if (selectedChatFriend) {
                   setUnreadMap((prev) => ({ ...prev, [selectedChatFriend.id]: 0 }));

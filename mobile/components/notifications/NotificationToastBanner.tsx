@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ToastNotification } from '../../hooks/useNotifications';
@@ -19,6 +20,11 @@ export function NotificationToastBanner({
 }: NotificationToastBannerProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [toast?.id, toast?.avatarUrl]);
 
   if (!toast) return null;
 
@@ -37,6 +43,18 @@ export function NotificationToastBanner({
     ? 'rgba(245, 158, 11, 0.15)'
     : 'rgba(251, 191, 36, 0.15)';
 
+  const hasAvatar = Boolean(toast.avatarUrl) && !avatarFailed;
+  const fallbackEmoji =
+    toast.iconEmoji ||
+    (toast.friendRequestData ? '🤝' : isSuccess ? '✅' : isWarning ? '⚠️' : '🔔');
+
+  const handleBodyPress = () => {
+    if (!toast.onPress) return;
+    triggerHaptic('light');
+    toast.onPress();
+    onDismiss();
+  };
+
   return (
     <View
       style={[
@@ -48,25 +66,43 @@ export function NotificationToastBanner({
       ]}
     >
       <View style={styles.row}>
-        {/* Icono */}
-        <View style={[styles.iconBox, { backgroundColor: badgeBg, borderColor }]}>
-          <Text style={styles.iconEmoji}>
-            {toast.friendRequestData
-              ? '🤝'
-              : isSuccess
-              ? '✅'
-              : isWarning
-              ? '⚠️'
-              : '🔔'}
-          </Text>
-        </View>
+        {/* Icono / Avatar */}
+        <Pressable
+          disabled={!toast.onPress}
+          onPress={handleBodyPress}
+          style={styles.iconWrap}
+        >
+          <View style={[styles.iconBox, { backgroundColor: badgeBg, borderColor }]}>
+            {hasAvatar ? (
+              <Image
+                source={{ uri: toast.avatarUrl! }}
+                style={styles.avatarImg}
+                contentFit="cover"
+                onError={() => setAvatarFailed(true)}
+              />
+            ) : (
+              <Text style={styles.iconEmoji}>{fallbackEmoji}</Text>
+            )}
+          </View>
+          {hasAvatar && toast.iconEmoji ? (
+            <View style={styles.iconCornerBadge}>
+              <Text style={styles.iconCornerText}>{toast.iconEmoji}</Text>
+            </View>
+          ) : null}
+        </Pressable>
 
         {/* Contenido */}
         <View style={styles.content}>
           <View style={styles.headerRow}>
-            <Text style={styles.title} numberOfLines={1}>
-              {toast.title}
-            </Text>
+            <Pressable
+              disabled={!toast.onPress}
+              onPress={handleBodyPress}
+              style={styles.titlePress}
+            >
+              <Text style={styles.title} numberOfLines={1}>
+                {toast.title}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() => {
                 triggerHaptic('light');
@@ -79,11 +115,13 @@ export function NotificationToastBanner({
             </Pressable>
           </View>
 
-          <Text style={styles.message} numberOfLines={2}>
-            {toast.message}
-          </Text>
+          <Pressable disabled={!toast.onPress} onPress={handleBodyPress}>
+            <Text style={styles.message} numberOfLines={2}>
+              {toast.message}
+            </Text>
+          </Pressable>
 
-          {/* Acciones personalizadas (ej. presencia de amigos) */}
+          {/* Acciones personalizadas (ej. presencia de amigos y mensajes) */}
           {toast.actions && toast.actions.length > 0 && (
             <View style={styles.actionsRow}>
               {toast.actions.map((action, idx) => {
@@ -150,10 +188,8 @@ export function NotificationToastBanner({
                 onPress={() => {
                   triggerHaptic('light');
                   onDismiss();
+                  appEvents.emit('open_social_tab', { tab: 'requests' });
                   router.push('/(tabs)/social');
-                  setTimeout(() => {
-                    appEvents.emit('open_social_tab', { tab: 'requests' });
-                  }, 100);
                 }}
                 style={[styles.actionBtn, styles.actionSecondary]}
               >
@@ -187,6 +223,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  iconWrap: {
+    position: 'relative',
+    marginRight: 12,
+  },
   iconBox: {
     width: 42,
     height: 42,
@@ -194,7 +234,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  iconCornerBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCornerText: {
+    fontSize: 10,
   },
   iconEmoji: {
     fontSize: 19,
@@ -208,12 +268,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 2,
   },
+  titlePress: {
+    flex: 1,
+    marginRight: 8,
+  },
   title: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',
-    flex: 1,
-    marginRight: 8,
   },
   closeBtn: {
     width: 24,

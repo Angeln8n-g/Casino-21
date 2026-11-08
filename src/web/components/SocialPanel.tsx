@@ -289,8 +289,15 @@ export function SocialPanel() {
         fetchFriends();
         fetchPendingIncoming();
       } else if (e.type === 'open_social_tab') {
-        const { tab } = customEvent.detail;
-        setActiveTab(tab);
+        const { tab, friendId } = customEvent.detail || {};
+        if (friendId) {
+          sessionStorage.removeItem('open_chat_friend_id');
+          setActiveChatFriendId(friendId);
+          setFriendUnreadMap((prev) => ({ ...prev, [friendId]: 0 }));
+        }
+        if (tab) {
+          setActiveTab(tab);
+        }
       }
     };
     window.addEventListener('friendships_changed', handleEvents);

@@ -110,7 +110,7 @@ export const ActionPanel = memo(function ActionPanel({
 
   return (
     <View
-      className="flex-row flex-wrap items-center justify-center gap-2 bg-gray-950/90 px-3 py-2 rounded-xl shadow-xl border border-white/10 self-center my-1"
+      className="flex-row flex-wrap items-center justify-center gap-2 bg-gray-950/90 px-3 py-2 rounded-xl border border-white/10 self-center my-1"
       style={{
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -125,8 +125,8 @@ export const ActionPanel = memo(function ActionPanel({
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
         marginVertical: 4,
-        zIndex: 10000,
-        elevation: 20,
+        zIndex: 1,
+        elevation: 4,
       }}
     >
       <View

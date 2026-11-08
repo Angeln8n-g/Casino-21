@@ -17,6 +17,7 @@ interface DraggableCardProps {
   onPress?: () => void;
   onDragStart?: (card: Card) => void;
   onDragMove?: (absoluteX: number, absoluteY: number) => void;
+  onDragEnd?: (card: Card) => void;
   onDragRelease?: (
     card: Card,
     absoluteX: number,
@@ -38,6 +39,7 @@ export const DraggableCard = memo(function DraggableCard({
   onPress,
   onDragStart,
   onDragMove,
+  onDragEnd,
   onDragRelease,
   onDropOnBoard,
   onDropOnFormation,
@@ -49,6 +51,7 @@ export const DraggableCard = memo(function DraggableCard({
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const isDragging = useSharedValue(false);
+  const hasStartedDrag = useSharedValue(false);
   const lastMoveCallRef = useRef<number>(0);
 
   // Mantener referencias estables a los callbacks para no recrear los gestos nativos en cada render
@@ -58,6 +61,7 @@ export const DraggableCard = memo(function DraggableCard({
     onPress,
     onDragStart,
     onDragMove,
+    onDragEnd,
     onDragRelease,
     onDropOnBoard,
     onDropOnFormation,
@@ -68,6 +72,7 @@ export const DraggableCard = memo(function DraggableCard({
     onPress,
     onDragStart,
     onDragMove,
+    onDragEnd,
     onDragRelease,
     onDropOnBoard,
     onDropOnFormation,
@@ -144,12 +149,18 @@ export const DraggableCard = memo(function DraggableCard({
     }
   }, []);
 
+  const handleDragFinalize = useCallback(() => {
+    const { card: currentCard, onDragEnd: endFn } = callbacksRef.current;
+    endFn?.(currentCard);
+  }, []);
+
   const composedGesture = useMemo(() => {
     const panGesture = Gesture.Pan()
       .enabled(!disabled)
       .minDistance(14)
       .onStart(() => {
         isDragging.value = true;
+        hasStartedDrag.value = true;
         runOnJS(handleStart)();
       })
       .onUpdate((event) => {
@@ -170,6 +181,10 @@ export const DraggableCard = memo(function DraggableCard({
       })
       .onFinalize(() => {
         isDragging.value = false;
+        if (hasStartedDrag.value) {
+          hasStartedDrag.value = false;
+          runOnJS(handleDragFinalize)();
+        }
         translateX.value = withSpring(0, { damping: 15, stiffness: 180 });
         translateY.value = withSpring(0, { damping: 15, stiffness: 180 });
       });
@@ -185,7 +200,7 @@ export const DraggableCard = memo(function DraggableCard({
       });
 
     return Gesture.Exclusive(panGesture, tapGesture);
-  }, [disabled, handleStart, handleMove, handleEnd, handlePress, isDragging, translateX, translateY]);
+  }, [disabled, handleStart, handleMove, handleEnd, handleDragFinalize, handlePress, isDragging, hasStartedDrag, translateX, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

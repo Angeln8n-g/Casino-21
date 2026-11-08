@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { ArrowLeft, Globe } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { ChatView } from './ChatView';
 import { resolveAvatarUrl } from '../social/socialUtils';
+import { useNotifications } from '../../hooks/useNotifications';
 
 export interface PrivateChatFriend {
   id: string;
@@ -40,10 +41,18 @@ export function PrivateChatModal({
   onAvatarClick,
 }: PrivateChatModalProps) {
   const insets = useSafeAreaInsets();
+  const { setActivePrivateChat } = useNotifications();
   const isGlobal = !friend;
   const avatarUri = friend
     ? resolveAvatarUrl(friend.equipped_avatar || friend.avatar_url)
     : null;
+
+  useEffect(() => {
+    setActivePrivateChat('modal', visible && friend ? friend.id : null);
+    return () => {
+      setActivePrivateChat('modal', null);
+    };
+  }, [visible, friend?.id, setActivePrivateChat]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
@@ -138,16 +147,19 @@ export function PrivateChatModal({
         </View>
 
         <View className="flex-1 p-2">
-          <ChatView
-            receiverId={friend?.id || null}
-            receiverName={friend?.username}
-            receiverAvatar={friend?.equipped_avatar || friend?.avatar_url}
-            isReceiverOnline={Boolean(friend?.isOnline)}
-            isReceiverInRoom={Boolean(friend?.isInRoom)}
-            showPartnerHeader={false}
-            onMessagesRead={onMessagesRead}
-            onAvatarClick={onAvatarClick}
-          />
+          {visible && friend ? (
+            <ChatView
+              receiverId={friend.id}
+              receiverName={friend.username}
+              receiverAvatar={friend.equipped_avatar || friend.avatar_url}
+              isReceiverOnline={Boolean(friend.isOnline)}
+              isReceiverInRoom={Boolean(friend.isInRoom)}
+              showPartnerHeader={false}
+              isActive={visible}
+              onMessagesRead={onMessagesRead}
+              onAvatarClick={onAvatarClick}
+            />
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>

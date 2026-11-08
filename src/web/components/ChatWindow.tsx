@@ -81,6 +81,12 @@ export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
     const presenceChannel = supabase.channel(`${conversationKey}_presence`);
     presenceChannelRef.current = presenceChannel;
 
+    window.dispatchEvent(
+      new CustomEvent('active_private_chat_changed', {
+        detail: { friendId: receiverId || null },
+      })
+    );
+
     if (receiverId) {
       // Private Chat Listeners
       dbChannel
@@ -91,8 +97,12 @@ export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
           filter: `receiver_id=eq.${user.id}`,
         }, async (payload) => {
           if (payload.new.sender_id === receiverId) {
-            await supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id);
-            fetchNewMessageProfile(payload.new);
+            if (document.visibilityState === 'visible') {
+              await supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id);
+              fetchNewMessageProfile({ ...payload.new, is_read: true });
+            } else {
+              fetchNewMessageProfile(payload.new);
+            }
           }
         })
         .on('postgres_changes', {
@@ -181,6 +191,9 @@ export function ChatWindow({ receiverId, onAvatarClick }: ChatWindowProps) {
     return () => {
       disposedRef.current = true;
       presenceChannelRef.current = null;
+      window.dispatchEvent(
+        new CustomEvent('active_private_chat_changed', { detail: { friendId: null } })
+      );
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       supabase.removeChannel(dbChannel);
       supabase.removeChannel(presenceChannel);

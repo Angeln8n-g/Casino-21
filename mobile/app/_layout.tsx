@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import { NotificationToastBanner } from '../components/notifications/Notificatio
 import { NotificationsModal } from '../components/notifications/NotificationsModal';
 import { AudioSettingsModal } from '../components/settings/AudioSettingsModal';
 import { ReferralModal } from '../components/social/ReferralModal';
+import { PrivateChatModal, PrivateChatFriend } from '../components/chat/PrivateChatModal';
 import { appEvents } from '../utils/events';
 import { loadThemes } from '../themes/themeRegistry';
 import '../global.css';
@@ -33,6 +34,17 @@ function RootContent() {
   const { profile } = useAuth();
   const { gameState } = useGame();
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+  const [quickReplyFriend, setQuickReplyFriend] = useState<PrivateChatFriend | null>(null);
+  const pathnameRef = useRef(pathname);
+  const gameStateRef = useRef(gameState);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
   const {
     activeGameInvitation,
     setActiveGameInvitation,
@@ -96,18 +108,43 @@ function RootContent() {
     };
   }, [profile?.username]);
 
-  // Navegar a /(tabs)/social cuando un toast o notificación emite 'open_social_tab'
+  // Navegar a /(tabs)/social cuando un toast o notificación emite 'open_social_tab',
+  // o abrir PrivateChatModal sobre la mesa si el jugador está dentro de una partida activa.
   useEffect(() => {
     const handleOpenSocial = () => {
-      if (!pathname.includes('social')) {
+      setQuickReplyFriend(null);
+      if (!pathnameRef.current.includes('social')) {
         router.push('/(tabs)/social');
       }
     };
+
+    const handleOpenPrivateChat = (payload?: { friend?: PrivateChatFriend }) => {
+      const friend = payload?.friend;
+      if (!friend?.id) return;
+
+      const phase = gameStateRef.current?.phase as string | undefined;
+      const inActiveGame =
+        pathnameRef.current === '/game' || phase === 'playing' || phase === 'scoring';
+
+      if (inActiveGame) {
+        setQuickReplyFriend(friend);
+      } else {
+        setQuickReplyFriend(null);
+        appEvents.emit('open_social_tab', {
+          tab: 'chat',
+          friendId: friend.id,
+          friendProfile: friend,
+        });
+      }
+    };
+
     appEvents.on('open_social_tab', handleOpenSocial);
+    appEvents.on('open_private_chat', handleOpenPrivateChat);
     return () => {
       appEvents.off('open_social_tab', handleOpenSocial);
+      appEvents.off('open_private_chat', handleOpenPrivateChat);
     };
-  }, [pathname, router]);
+  }, [router]);
 
   return (
     <View style={{ flex: 1, position: 'relative' }}>
@@ -153,6 +190,12 @@ function RootContent() {
       <ReferralModal
         visible={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
+      />
+
+      <PrivateChatModal
+        visible={Boolean(quickReplyFriend)}
+        friend={quickReplyFriend}
+        onClose={() => setQuickReplyFriend(null)}
       />
     </View>
   );

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { appEvents } from '../../utils/events';
 import { triggerHaptic } from '../../utils/haptics';
 import { resolveAvatarUrl } from '../social/socialUtils';
 
@@ -73,6 +74,7 @@ export interface ChatViewProps {
   isReceiverOnline?: boolean;
   isReceiverInRoom?: boolean;
   showPartnerHeader?: boolean;
+  isActive?: boolean;
   onMessagesRead?: () => void;
   onAvatarClick?: (playerId: string) => void;
 }
@@ -174,6 +176,7 @@ export function ChatView({
   isReceiverOnline = false,
   isReceiverInRoom = false,
   showPartnerHeader = false,
+  isActive = true,
   onMessagesRead,
   onAvatarClick,
 }: ChatViewProps) {
@@ -211,10 +214,19 @@ export function ChatView({
   const disposedRef = useRef(false);
   const hasLoggedChatRef = useRef(false);
   const onMessagesReadRef = useRef(onMessagesRead);
+  const isActiveRef = useRef(isActive);
+  const prevIsActiveRef = useRef(isActive);
+  const upsertIncomingMessageRef = useRef<(msgData: any, replaceTempId?: string) => Promise<void> | void>(() => {});
+  const fetchMessagesRef = useRef<(silent?: boolean) => Promise<void>>(() => Promise.resolve());
+  const refreshVisibleReactionsRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     onMessagesReadRef.current = onMessagesRead;
   }, [onMessagesRead]);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
 
   // Cargar emojis recientes
   useEffect(() => {
@@ -415,11 +427,14 @@ export function ChatView({
           data = res.data as any[] | null;
           error = res.error;
 
-          // Marcar como leídos los mensajes recibidos
+          // Marcar como leídos los mensajes recibidos solo si la vista de chat está activa en primer plano
+          const canMarkRead =
+            isActiveRef.current &&
+            (AppState.currentState ? AppState.currentState === 'active' : true);
           const hasUnread = (data || []).some(
             (m: any) => m.receiver_id === user.id && !m.is_read
           );
-          if (hasUnread) {
+          if (hasUnread && canMarkRead) {
             await supabase
               .from('messages')
               .update({ is_read: true })
@@ -516,44 +531,47 @@ export function ChatView({
     [user, receiverId, resolveReplies, fetchReactions, scrollToBottom]
   );
 
-  // Enriquecer e insertar mensaje entrante desde Realtime o tras enviar
+  // Mantener referencias actualizadas para evitar reconstrucción innecesaria de canales
+  useEffect(() => {
+    fetchMessagesRef.current = fetchMessages;
+  }, [fetchMessages]);
+
+  useEffect(() => {
+    refreshVisibleReactionsRef.current = refreshVisibleReactions;
+  }, [refreshVisibleReactions]);
+
+  // Enriquecer e insertar mensaje entrante de forma inmediata (0ms) y resolver citas en background
   const upsertIncomingMessage = useCallback(
     async (msgData: any, replaceTempId?: string) => {
       if (disposedRef.current || !user) return;
 
-      const { data: senderProfile } = await supabase
-        .from('profiles')
-        .select('username, avatar_url, equipped_avatar, level, elo')
-        .eq('id', msgData.sender_id)
-        .maybeSingle();
-
-      if (disposedRef.current) return;
-
-      let replyData: EnhancedChatMessage['reply_to'] = null;
-      if (msgData.reply_to_id) {
-        replyData = await resolveSingleReply(msgData.reply_to_id);
-      }
-
-      if (disposedRef.current) return;
+      const isSenderMe = msgData.sender_id === user.id;
+      const initialProfile = isSenderMe
+        ? {
+            username: profile?.username || 'Tú',
+            avatar_url: profile?.avatar_url,
+            equipped_avatar: profile?.equipped_avatar,
+            level: profile?.level || 1,
+            elo: profile?.elo || 1000,
+          }
+        : {
+            username: receiverName || 'Jugador',
+            avatar_url: receiverAvatar || null,
+            equipped_avatar: receiverAvatar || null,
+            level: 1,
+            elo: 1000,
+          };
 
       const fullMsg: EnhancedChatMessage = {
         ...msgData,
         message_type: msgData.message_type || 'text',
         local_status: 'sent',
-        profiles: senderProfile || {
-          username:
-            msgData.sender_id === user.id
-              ? profile?.username || 'Tú'
-              : receiverName || 'Jugador',
-          avatar_url: msgData.sender_id === user.id ? profile?.avatar_url : null,
-          equipped_avatar: msgData.sender_id === user.id ? profile?.equipped_avatar : null,
-          level: msgData.sender_id === user.id ? profile?.level || 1 : 1,
-          elo: msgData.sender_id === user.id ? profile?.elo || 1000 : 1000,
-        },
-        reply_to: replyData,
+        profiles: initialProfile,
+        reply_to: null,
         reactions: [],
       };
 
+      // 1. Renderizado instantáneo (0ms de latencia)
       setMessages((prev) => {
         if (replaceTempId) {
           const withoutTemp = prev.filter((m) => m.id !== replaceTempId);
@@ -593,6 +611,33 @@ export function ChatView({
       } else {
         setHasNewBelow(true);
       }
+
+      // 2. Enriquecer cita citada de forma asíncrona si existe
+      if (msgData.reply_to_id) {
+        resolveSingleReply(msgData.reply_to_id).then((replyData) => {
+          if (replyData && !disposedRef.current) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === fullMsg.id ? { ...m, reply_to: replyData } : m))
+            );
+          }
+        });
+      }
+
+      // 3. Enriquecer perfil si es ajeno en chat global
+      if (!isSenderMe && (!receiverName || msgData.room_id)) {
+        supabase
+          .from('profiles')
+          .select('username, avatar_url, equipped_avatar, level, elo')
+          .eq('id', msgData.sender_id)
+          .maybeSingle()
+          .then(({ data: sp }) => {
+            if (sp && !disposedRef.current) {
+              setMessages((prev) =>
+                prev.map((m) => (m.id === fullMsg.id ? { ...m, profiles: sp } : m))
+              );
+            }
+          });
+      }
     },
     [
       user,
@@ -602,10 +647,80 @@ export function ChatView({
       profile?.level,
       profile?.elo,
       receiverName,
+      receiverAvatar,
       resolveSingleReply,
       scrollToBottom,
     ]
   );
+
+  useEffect(() => {
+    upsertIncomingMessageRef.current = upsertIncomingMessage;
+  }, [upsertIncomingMessage]);
+
+  // Escuchar mensajes entrantes en tiempo real despachados por el bus de eventos global (0ms)
+  useEffect(() => {
+    if (!user) return;
+
+    const handleRealtimeMessage = (newMsg: any) => {
+      if (!newMsg || disposedRef.current) return;
+      const incomingSender = String(newMsg.sender_id || '');
+      const incomingReceiver = String(newMsg.receiver_id || '');
+
+      if (receiverId) {
+        // Chat Privado
+        const isFromPartner =
+          incomingSender === String(receiverId) && incomingReceiver === String(user.id);
+        const isFromMe =
+          incomingSender === String(user.id) && incomingReceiver === String(receiverId);
+
+        if (isFromPartner) {
+          setOtherUserTyping(false);
+          const canMarkRead =
+            isActiveRef.current &&
+            (AppState.currentState ? AppState.currentState === 'active' : true);
+
+          if (canMarkRead) {
+            supabase
+              .from('messages')
+              .update({ is_read: true })
+              .eq('id', newMsg.id)
+              .then(() => {
+                onMessagesReadRef.current?.();
+                appEvents.emit('private_messages_read', { friendId: receiverId });
+              });
+            upsertIncomingMessageRef.current?.({ ...newMsg, is_read: true });
+          } else {
+            upsertIncomingMessageRef.current?.(newMsg);
+          }
+        } else if (isFromMe) {
+          upsertIncomingMessageRef.current?.(newMsg);
+        }
+      } else {
+        // Chat Global
+        if (newMsg.room_id === GLOBAL_ROOM_ID || !newMsg.receiver_id) {
+          upsertIncomingMessageRef.current?.(newMsg);
+        }
+      }
+    };
+
+    appEvents.on('realtime_chat_message', handleRealtimeMessage);
+    return () => {
+      appEvents.off('realtime_chat_message', handleRealtimeMessage);
+    };
+  }, [user?.id, receiverId]);
+
+  // Fallback sync loop cada 3.5 segundos mientras la conversación esté activa en pantalla
+  useEffect(() => {
+    if (!user || !isActive) return;
+
+    const intervalId = setInterval(() => {
+      if (AppState.currentState === 'active' && !disposedRef.current) {
+        fetchMessagesRef.current?.(true);
+      }
+    }, 3500);
+
+    return () => clearInterval(intervalId);
+  }, [user?.id, receiverId, isActive]);
 
   // Efecto Principal: Carga inicial + Suscripciones Realtime (DB + Presence Typing + Reacciones)
   useEffect(() => {
@@ -625,7 +740,7 @@ export function ChatView({
     setIsNearBottom(true);
     setChatError(null);
 
-    fetchMessages(false);
+    fetchMessagesRef.current?.(false);
 
     // Mismo formato de canales que Web `ChatWindow.tsx` para interoperabilidad Web <-> Mobile
     const conversationKey = receiverId
@@ -649,11 +764,19 @@ export function ChatView({
           async (payload) => {
             if (disposedRef.current) return;
             const incoming = payload.new as any;
-            if (incoming.sender_id === receiverId) {
+            if (String(incoming.sender_id) === String(receiverId)) {
               setOtherUserTyping(false);
-              await supabase.from('messages').update({ is_read: true }).eq('id', incoming.id);
-              onMessagesReadRef.current?.();
-              await upsertIncomingMessage({ ...incoming, is_read: true });
+              const canMarkRead =
+                isActiveRef.current &&
+                (AppState.currentState ? AppState.currentState === 'active' : true);
+              if (canMarkRead) {
+                await supabase.from('messages').update({ is_read: true }).eq('id', incoming.id);
+                onMessagesReadRef.current?.();
+                appEvents.emit('private_messages_read', { friendId: receiverId });
+                await upsertIncomingMessageRef.current?.({ ...incoming, is_read: true });
+              } else {
+                await upsertIncomingMessageRef.current?.(incoming);
+              }
             }
           }
         )
@@ -668,8 +791,8 @@ export function ChatView({
           (payload) => {
             if (disposedRef.current) return;
             const outgoing = payload.new as any;
-            if (outgoing.receiver_id === receiverId) {
-              upsertIncomingMessage(outgoing);
+            if (String(outgoing.receiver_id) === String(receiverId)) {
+              upsertIncomingMessageRef.current?.(outgoing);
             }
           }
         )
@@ -709,7 +832,7 @@ export function ChatView({
         },
         (payload) => {
           if (disposedRef.current) return;
-          upsertIncomingMessage(payload.new);
+          upsertIncomingMessageRef.current?.(payload.new);
         }
       );
     }
@@ -741,7 +864,7 @@ export function ChatView({
           'postgres_changes',
           { event: '*', schema: 'public', table: 'message_reactions' },
           () => {
-            if (!disposedRef.current) refreshVisibleReactions();
+            if (!disposedRef.current) refreshVisibleReactionsRef.current?.();
           }
         )
         .subscribe();
@@ -750,7 +873,7 @@ export function ChatView({
     // Sincronizar al volver la app a primer plano
     const appStateSub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active' && !disposedRef.current) {
-        fetchMessages(true);
+        fetchMessagesRef.current?.(true);
       }
     });
 
@@ -763,7 +886,16 @@ export function ChatView({
       supabase.removeChannel(presenceChannel);
       if (reactionsChannel) supabase.removeChannel(reactionsChannel);
     };
-  }, [user?.id, receiverId, fetchMessages, upsertIncomingMessage, refreshVisibleReactions]);
+  }, [user?.id, receiverId]);
+
+  // Al volver a enfocar esta conversación desde otra pestaña, sincronizar y marcar leídos
+  useEffect(() => {
+    const becameActive = !prevIsActiveRef.current && isActive;
+    prevIsActiveRef.current = isActive;
+    if (becameActive && receiverId && user && !disposedRef.current) {
+      fetchMessages(true);
+    }
+  }, [isActive, receiverId, user, fetchMessages]);
 
   // Cargar mensajes anteriores (Paginación infinita en Privado y Global)
   const loadOlderMessages = useCallback(async () => {
@@ -1399,6 +1531,7 @@ export function ChatView({
           <FlatList
             ref={flatListRef}
             data={messages}
+            extraData={messages.length}
             keyExtractor={(item) => item.id}
             renderItem={renderMessageItem}
             onScroll={handleScroll}

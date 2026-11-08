@@ -192,7 +192,7 @@ export const MatchPointHUD = memo(function MatchPointHUD({
   };
 
   return (
-    <View className="bg-black/35 p-2.5 rounded-2xl border border-white/10 shadow-2xl mb-1.5">
+    <View className="bg-black/35 p-2.5 rounded-2xl border border-white/10 shadow-2xl mb-1.5" style={{ zIndex: 1 }}>
       {/* Row 1: Brand & Top Utilities (idéntico a GameScreen.tsx de Web) */}
       <View className="flex-row items-center justify-between w-full mb-2">
         <View className="flex-row items-center gap-1.5">
