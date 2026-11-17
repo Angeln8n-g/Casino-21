@@ -6,6 +6,7 @@ import { Card } from 'domain/card';
 import { CardView } from './CardView';
 import { CardTheme, BoardTheme, ThemeFontKey } from '../themes/themeRegistry';
 import { extractGradientColors } from './card/TacticalCard3D';
+import { BoardThemeOverlay } from './card/BoardThemeOverlay';
 
 export interface DropTargetRect {
   id: string;
@@ -173,6 +174,11 @@ export const BoardView = memo(function BoardView({
           padding: 10,
         }}
       >
+        <BoardThemeOverlay
+          background={boardTheme?.background}
+          overlayGradient={boardTheme?.overlayGradient}
+        />
+
         {/* Riel interior sutil igual que en Web */}
         <View
           pointerEvents="none"

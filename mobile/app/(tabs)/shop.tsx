@@ -21,6 +21,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useAudio } from '../../hooks/useAudio';
 import { CardView } from '../../components/CardView';
 import { extractGradientColors } from '../../components/card/TacticalCard3D';
+import { BoardThemeOverlay } from '../../components/card/BoardThemeOverlay';
 import { getTheme, ALL_THEME_FONTS, ThemeFontKey } from '../../themes/themeRegistry';
 import { getStoredFontPreference, setStoredFontPreference } from '../../hooks/useGameTheme';
 import { createCard } from 'domain/card';
@@ -80,6 +81,11 @@ function ThemeCardPreview({
           right: 0,
           bottom: 0,
         }}
+      />
+      <BoardThemeOverlay
+        background={theme.boardTheme.background}
+        overlayGradient={theme.boardTheme.overlayGradient}
+        compact
       />
       <View
         pointerEvents="none"
