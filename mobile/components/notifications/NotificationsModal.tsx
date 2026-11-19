@@ -291,7 +291,7 @@ export function NotificationsModal({
             appNotifications.map((n) => {
               const isGameInvite = n.type === 'game_invitation';
               const isFriendReq = n.type === 'friend_request';
-              const isPrivateMsg = n.type === 'private_message' || n.type === 'chat_message';
+              const isSocialNotice = n.type === 'friend_connected' || n.type === 'friend_waiting';
 
               return (
                 <Pressable
@@ -303,18 +303,10 @@ export function NotificationsModal({
                     }
                     onClose();
 
-                    if (isFriendReq) {
+                    if (isFriendReq || isSocialNotice) {
                       router.push('/(tabs)/social');
                       setTimeout(() => {
                         appEvents.emit('open_social_tab', { tab: 'friends' });
-                      }, 100);
-                    } else if (isPrivateMsg) {
-                      router.push('/(tabs)/social');
-                      setTimeout(() => {
-                        appEvents.emit('open_social_tab', {
-                          tab: 'chat',
-                          friendId: n.metadata?.sender_id ? String(n.metadata.sender_id) : undefined,
-                        });
                       }, 100);
                     } else if (isGameInvite && n.metadata) {
                       onChallengeClick({
@@ -417,6 +409,8 @@ export function NotificationsModal({
                           ? 'Desafío Real'
                           : isFriendReq
                           ? 'Solicitud de Amistad'
+                          : isSocialNotice
+                          ? 'Aviso Social'
                           : 'Sistema'}
                       </Text>
                       <Text

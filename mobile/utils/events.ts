@@ -10,7 +10,7 @@ export interface SocialTabFriendPreview {
 }
 
 export interface SocialTabIntent {
-  tab?: 'friends' | 'search' | 'chat' | 'requests';
+  tab?: 'friends' | 'search' | 'requests';
   friendId?: string;
   friendProfile?: SocialTabFriendPreview;
 }

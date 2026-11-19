@@ -70,8 +70,7 @@ self.addEventListener('push', (event) => {
         data: challengeData,
         actions: [
           { action: 'accept', title: '✅ Jugar' },
-          { action: 'reject', title: '❌ Rechazar' },
-          { action: 'chat', title: '💬 Chat' }
+          { action: 'reject', title: '❌ Rechazar' }
         ]
       };
 
@@ -86,11 +85,30 @@ self.addEventListener('push', (event) => {
         badge: '/icons/icon-96x96.png',
         tag: `response-${responseData.invitationId}`,
         vibrate: [100, 50, 100],
-        data: responseData
+        data: { ...responseData, pushType: 'challenge_response' }
       };
 
       event.waitUntil(
         self.registration.showNotification(data.title || 'Respuesta a Desafío', options)
+      );
+    } else if (data.type === 'friend_connected' || data.type === 'friend_waiting' || data.type === 'friend_request') {
+      const socialData = data.data || {};
+      const options: NotificationOptions = {
+        body: data.body || 'Tienes un nuevo aviso social',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-96x96.png',
+        tag: `${data.type}-${socialData.senderId || Date.now()}`,
+        renotify: true,
+        requireInteraction: data.type !== 'friend_connected',
+        vibrate: data.type === 'friend_waiting' ? [200, 100, 200] : [100, 50, 100],
+        data: { ...socialData, pushType: data.type },
+        actions: [
+          { action: 'view_social', title: '👥 Ver Amigos' }
+        ]
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(data.title || '👥 Aviso Social KASINO21', options)
       );
     } else if (data.type === 'tournament_start') {
       const tournamentData = data.data;
@@ -186,15 +204,52 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
+  if (
+    pushType === 'friend_connected' ||
+    pushType === 'friend_waiting' ||
+    pushType === 'friend_request' ||
+    event.action === 'view_social'
+  ) {
+    const fullUrl = new URL('/?openSocial=friends', self.location.origin).href;
+    const clickPromise = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          return client.navigate(fullUrl).then((c) => c?.focus());
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(fullUrl);
+      }
+    });
+
+    event.waitUntil(clickPromise);
+    return;
+  }
+
+  if (pushType === 'challenge_response') {
+    const fullUrl = new URL('/', self.location.origin).href;
+    const clickPromise = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          return client.navigate(fullUrl).then((c) => c?.focus());
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(fullUrl);
+      }
+    });
+
+    event.waitUntil(clickPromise);
+    return;
+  }
+
   // ── Notificaciones de Desafío (existentes) ──
-  const { roomId, invitationId, senderId } = notifData;
+  const { roomId, invitationId } = notifData;
 
   // Determinar la URL destino
   let url = '/';
   if (event.action === 'accept') {
     url = `/?joinInviteRoomId=${roomId}&invitationId=${invitationId}`;
-  } else if (event.action === 'chat') {
-    url = `/?openChatWith=${senderId}`;
   } else if (event.action === 'reject') {
     // Para rechazar, enviamos una petición HTTP silenciosa al backend (sin abrir la pestaña)
         const getSessionToken = () => {

@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
-import { MessageSquare } from 'lucide-react-native';
 import { triggerHaptic } from '../utils/haptics';
 
 interface EmoteBarProps {
   onSendEmote: (emoji: string) => void;
-  onOpenChat?: () => void;
-  hasUnreadChat?: boolean;
 }
 
 const DEFAULT_EMOJIS = ['😀', '😮', '🔥', '👏', '💀', '🎉', '💩', '😎'];
 
-export function EmoteBar({ onSendEmote, onOpenChat, hasUnreadChat = false }: EmoteBarProps) {
+export function EmoteBar({ onSendEmote }: EmoteBarProps) {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -32,7 +29,7 @@ export function EmoteBar({ onSendEmote, onOpenChat, hasUnreadChat = false }: Emo
   return (
     <View className="flex-row items-center justify-between my-1 px-1">
       {/* Scroll de Emoticones */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1 mr-2">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1">
         <View className="flex-row items-center">
           {DEFAULT_EMOJIS.map((emoji, index) => (
             <Pressable
@@ -48,22 +45,6 @@ export function EmoteBar({ onSendEmote, onOpenChat, hasUnreadChat = false }: Emo
           ))}
         </View>
       </ScrollView>
-
-      {/* Botón Chat */}
-      {onOpenChat && (
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            onOpenChat();
-          }}
-          className="w-10 h-10 bg-slate-900 border border-slate-800 rounded-xl items-center justify-center relative active:bg-slate-800"
-        >
-          <MessageSquare color="#fbbf24" size={18} />
-          {hasUnreadChat && (
-            <View className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-slate-900" />
-          )}
-        </Pressable>
-      )}
     </View>
   );
 }

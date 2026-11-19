@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { X, MessageCircle } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
 import {
   SearchPlayerData,
@@ -15,7 +15,6 @@ interface PlayerProfileModalProps {
   onClose: () => void;
   onSendRequest: (playerId: string) => Promise<void>;
   onAcceptRequest: (playerId: string, requestId?: string) => Promise<void>;
-  onOpenChat?: (player: SearchPlayerData) => void;
 }
 
 export function PlayerProfileModal({
@@ -23,7 +22,6 @@ export function PlayerProfileModal({
   onClose,
   onSendRequest,
   onAcceptRequest,
-  onOpenChat,
 }: PlayerProfileModalProps) {
   const [actionLoading, setActionLoading] = useState(false);
   const [status, setStatus] = useState(player?.relationshipStatus || 'none');
@@ -172,24 +170,10 @@ export function PlayerProfileModal({
           {/* Footer Action */}
           <View className="p-4 border-t border-[#2A2722] bg-[#0F0E0C]/60 gap-2">
             {status === 'friends' ? (
-              <View className="flex-row gap-2">
-                <View className="flex-1 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 items-center justify-center">
-                  <Text className="text-emerald-400 text-xs font-black uppercase tracking-wider">
-                    ✓ Ya son Amigos
-                  </Text>
-                </View>
-                {onOpenChat ? (
-                  <Pressable
-                    onPress={() => {
-                      onClose();
-                      onOpenChat(player);
-                    }}
-                    className="px-4 py-3 rounded-2xl bg-amber-400/15 border border-amber-400/30 items-center justify-center flex-row gap-1.5"
-                  >
-                    <MessageCircle color="#fbbf24" size={16} />
-                    <Text className="text-amber-400 text-xs font-black uppercase">Chat</Text>
-                  </Pressable>
-                ) : null}
+              <View className="w-full py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 items-center justify-center">
+                <Text className="text-emerald-400 text-xs font-black uppercase tracking-wider">
+                  ✓ Ya son Amigos
+                </Text>
               </View>
             ) : status === 'pending_sent' ? (
               <View className="w-full py-3 rounded-2xl bg-amber-400/10 border border-amber-400/20 items-center justify-center">

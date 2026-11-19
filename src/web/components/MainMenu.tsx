@@ -214,13 +214,13 @@ export function MainMenu() {
     }
   }, [profile]);
 
-  // ─── Auto-join via ?joinInviteRoomId= and ?openChatWith= query params ───
+  // ─── Auto-join via ?joinInviteRoomId= and ?openSocial= query params ───
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const joinInviteRoomId = params.get('joinInviteRoomId');
-    const openChatWith = params.get('openChatWith');
+    const openSocial = params.get('openSocial');
     
-    if (joinInviteRoomId || openChatWith) {
+    if (joinInviteRoomId || openSocial) {
       const url = new URL(window.location.href);
       
       if (joinInviteRoomId) {
@@ -247,9 +247,8 @@ export function MainMenu() {
         }
       }
       
-      if (openChatWith) {
-        url.searchParams.delete('openChatWith');
-        sessionStorage.setItem('open_chat_friend_id', openChatWith);
+      if (openSocial) {
+        url.searchParams.delete('openSocial');
         // Cambiar pestañas a la sección social
         setDesktopTab('social');
         setMobileTab('social');

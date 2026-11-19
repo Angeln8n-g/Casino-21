@@ -286,11 +286,6 @@ export function TournamentView({
         <FriendProfileModal
           friend={selectedPlayerProfile}
           onClose={() => setSelectedPlayerProfile(null)}
-          onOpenChat={() => {
-            sessionStorage.setItem('open_chat_friend_id', selectedPlayerProfile.id);
-            window.dispatchEvent(new CustomEvent('open_social_tab', { detail: { tab: 'chat' } }));
-            setSelectedPlayerProfile(null);
-          }}
         />
       )}
     </div>

@@ -3,27 +3,12 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getDivisionFromElo } from './ProfileHeader';
 import { useProfilePresence, ONLINE_WINDOW_MS } from '../hooks/useProfilePresence';
-import { FriendSearch, PlayerProfileModal, RelationshipStatus, SearchResult } from './FriendSearch';
-import { ChatWindow } from './ChatWindow';
+import { FriendSearch } from './FriendSearch';
 import { FriendRequestModal, FriendRequestProfile } from './FriendRequestModal';
 import { FriendProfileModal, FriendForModal } from './FriendProfileModal';
-import { UserProfileModal } from './UserProfileModal';
 import { triggerHaptic } from '../utils/haptics';
 import { socketService } from '../services/socket';
 import { Gift, ChevronRight } from 'lucide-react';
-
-function formatRelativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return 'ahora';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `hace ${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `hace ${hours}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `hace ${days}d`;
-  return new Date(isoString).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-}
 
 interface Friend {
   id: string;
@@ -44,13 +29,9 @@ export function SocialPanel() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<FriendRequestProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'friends' | 'search' | 'chat'>('friends');
-  const [activeChatFriendId, setActiveChatFriendId] = useState<string | null>(null);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  const [friendUnreadMap, setFriendUnreadMap] = useState<Record<string, number>>({});
-  const [lastMessageMap, setLastMessageMap] = useState<Record<string, { content: string; created_at: string; sender_id: string }>>({});
+  const [activeTab, setActiveTab] = useState<'friends' | 'search'>('friends');
   const friendIds = friends.map((f) => f.id);
-  const { presenceMap, refreshPresence } = useProfilePresence(friendIds);
+  const { presenceMap } = useProfilePresence(friendIds);
 
   const isFriendOnline = useCallback(
     (friend: Friend) => {
@@ -70,17 +51,6 @@ export function SocialPanel() {
   const [quickChallengeFriend, setQuickChallengeFriend] = useState<Friend | null>(null);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
 
-  // Active Count & Profile Clicks States
-  const [onlineCount, setOnlineCount] = useState<number | null>(null);
-  const [showOwnProfile, setShowOwnProfile] = useState(false);
-  const [selectedPlayerDetail, setSelectedPlayerDetail] = useState<{
-    player: SearchResult;
-    relationship: RelationshipStatus;
-  } | null>(null);
-  const [loadingPlayerProfile, setLoadingPlayerProfile] = useState(false);
-  const [sendingRequest, setSendingRequest] = useState(false);
-  const [actionFeedback, setActionFeedback] = useState<{ id: string; message: string; type: 'success' | 'error' } | null>(null);
-
   // Escape key closes modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -88,13 +58,11 @@ export function SocialPanel() {
         if (selectedRequest) setSelectedRequest(null);
         else if (selectedFriend) setSelectedFriend(null);
         else if (quickChallengeFriend) setQuickChallengeFriend(null);
-        else if (showOwnProfile) setShowOwnProfile(false);
-        else if (selectedPlayerDetail) setSelectedPlayerDetail(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedRequest, selectedFriend, quickChallengeFriend, showOwnProfile, selectedPlayerDetail]);
+  }, [selectedRequest, selectedFriend, quickChallengeFriend]);
 
   useEffect(() => {
     if (!user) return;
@@ -107,16 +75,6 @@ export function SocialPanel() {
       isMounted = false;
     };
   }, [user]);
-
-  // Abrir chat privado automáticamente si se viene de una notificación push
-  useEffect(() => {
-    const chatFriendId = sessionStorage.getItem('open_chat_friend_id');
-    if (chatFriendId) {
-      sessionStorage.removeItem('open_chat_friend_id');
-      setActiveChatFriendId(chatFriendId);
-      setActiveTab('chat');
-    }
-  }, [friends]);
 
   // ── Fetch accepted friends ──────────────────────────────────
   const fetchFriends = useCallback(async (getIsMounted?: () => boolean) => {
@@ -289,14 +247,11 @@ export function SocialPanel() {
         fetchFriends();
         fetchPendingIncoming();
       } else if (e.type === 'open_social_tab') {
-        const { tab, friendId } = customEvent.detail || {};
-        if (friendId) {
-          sessionStorage.removeItem('open_chat_friend_id');
-          setActiveChatFriendId(friendId);
-          setFriendUnreadMap((prev) => ({ ...prev, [friendId]: 0 }));
-        }
-        if (tab) {
+        const { tab } = customEvent.detail || {};
+        if (tab === 'friends' || tab === 'search') {
           setActiveTab(tab);
+        } else {
+          setActiveTab('friends');
         }
       }
     };
@@ -310,314 +265,7 @@ export function SocialPanel() {
     };
   }, [user, fetchFriends, fetchPendingIncoming]);
 
-  // ── Real-time: Chat Badges + Last Messages ────────────────────
-  useEffect(() => {
-    if (!user) return;
-    
-    // Initial fetch of unread counts
-    const fetchUnread = async () => {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('sender_id')
-        .eq('receiver_id', user.id)
-        .eq('is_read', false);
-      
-      if (!error && data) {
-        const counts: Record<string, number> = {};
-        data.forEach(m => {
-          counts[m.sender_id] = (counts[m.sender_id] || 0) + 1;
-        });
-        setFriendUnreadMap(counts);
-        
-        // Sum total overall unread messages
-        setUnreadMessagesCount(data.length);
-      }
-    };
-    fetchUnread();
-
-    const channelName = `social_panel_msgs_${user.id}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => { fetchUnread(); fetchLastMessages(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => fetchUnread()
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => fetchUnread()
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
-
-  // ── Fetch last messages for each friend ────────────────────────
-  const fetchLastMessages = useCallback(async () => {
-    if (!user || friends.length === 0) return;
-    const map: Record<string, { content: string; created_at: string; sender_id: string }> = {};
-    // Fetch the last message for each friend conversation
-    for (const friend of friends) {
-      const { data } = await supabase
-        .from('messages')
-        .select('content, created_at, sender_id, deleted_at')
-        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friend.id}),and(sender_id.eq.${friend.id},receiver_id.eq.${user.id})`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) {
-        map[friend.id] = {
-          content: (data as any).deleted_at ? 'Mensaje eliminado' : data.content,
-          created_at: data.created_at,
-          sender_id: data.sender_id,
-        };
-      }
-    }
-    setLastMessageMap(map);
-  }, [user, friends]);
-
-  useEffect(() => {
-    fetchLastMessages();
-  }, [fetchLastMessages]);
-
-  // Conexión por socket para conteo de usuarios online
-  useEffect(() => {
-    let active = true;
-    let socketInstance: any = null;
-
-    const setupSocket = async () => {
-      try {
-        const socket = await socketService.connect();
-        if (!active) return;
-        socketInstance = socket;
-
-        socket.on('online_count', ({ count }: { count: number }) => {
-          if (active) setOnlineCount(count);
-        });
-
-        // Solicitar conteo inicial
-        socket.emit('request_online_count');
-      } catch (err) {
-        console.error('Error in SocialPanel socket listener:', err);
-      }
-    };
-
-    setupSocket();
-
-    return () => {
-      active = false;
-      if (socketInstance) {
-        socketInstance.off('online_count');
-      }
-    };
-  }, []);
-
   // ── Handlers ─────────────────────────────────────────────────
-  const handleAvatarClick = useCallback(async (playerId: string) => {
-    if (!user) return;
-    triggerHaptic('light');
-
-    // 1. Si es el propio usuario
-    if (playerId === user.id) {
-      setShowOwnProfile(true);
-      return;
-    }
-
-    // 2. Si ya es un amigo
-    const existingFriend = friends.find(f => f.id === playerId);
-    if (existingFriend) {
-      openFriendModal(existingFriend);
-      return;
-    }
-
-    // 3. De lo contrario, consultar Supabase
-    setLoadingPlayerProfile(true);
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url, equipped_avatar, elo, level, wins, losses, xp, last_seen_at, current_room_id')
-        .eq('id', playerId)
-        .single();
-
-      if (profileError || !profileData) {
-        console.error('Error fetching player profile for chat click:', profileError);
-        return;
-      }
-
-      // Obtener relación
-      const { data: reqData, error: reqError } = await supabase
-        .from('friend_requests')
-        .select('id, sender_id, receiver_id, status')
-        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${playerId}),and(sender_id.eq.${playerId},receiver_id.eq.${user.id})`)
-        .maybeSingle();
-
-      let relationship: RelationshipStatus = 'none';
-      if (reqData) {
-        if (reqData.status === 'accepted') {
-          relationship = 'accepted';
-        } else if (reqData.status === 'pending') {
-          relationship = reqData.sender_id === user.id ? 'pending_sent' : 'pending_received';
-        } else if (reqData.status === 'rejected') {
-          relationship = 'rejected';
-        }
-      }
-
-      if (relationship === 'accepted') {
-        // Sincronizar por si acaso
-        fetchFriends();
-        openFriendModal({
-          id: profileData.id,
-          username: profileData.username,
-          avatar_url: profileData.avatar_url,
-          equipped_avatar: profileData.equipped_avatar,
-          elo: profileData.elo,
-          level: profileData.level,
-          wins: profileData.wins,
-          losses: profileData.losses,
-          xp: profileData.xp,
-          last_seen_at: profileData.last_seen_at,
-          current_room_id: profileData.current_room_id,
-        });
-      } else {
-        setSelectedPlayerDetail({
-          player: {
-            id: profileData.id,
-            username: profileData.username,
-            avatar_url: profileData.avatar_url,
-            equipped_avatar: profileData.equipped_avatar,
-            elo: profileData.elo,
-            level: profileData.level,
-            wins: profileData.wins,
-            losses: profileData.losses,
-            xp: profileData.xp,
-          },
-          relationship,
-        });
-      }
-    } catch (err) {
-      console.error('Error handling avatar click:', err);
-    } finally {
-      setLoadingPlayerProfile(false);
-    }
-  }, [user, friends]);
-
-  const handleSendRequest = async (receiverId: string) => {
-    if (!user || sendingRequest) return;
-    setSendingRequest(true);
-    setActionFeedback(null);
-
-    try {
-      // 1. Verificación fresca
-      const { data: existing, error: fetchError } = await supabase
-        .from('friend_requests')
-        .select('id, sender_id, receiver_id, status')
-        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
-        .maybeSingle();
-
-      if (existing) {
-        if (existing.status === 'accepted') {
-          if (selectedPlayerDetail) {
-            setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'accepted' } : null);
-          }
-          setActionFeedback({ id: receiverId, message: '¡Ya son amigos!', type: 'error' });
-          setSendingRequest(false);
-          return;
-        }
-        
-        if (existing.status === 'pending') {
-          if (existing.sender_id === user.id) {
-            if (selectedPlayerDetail) {
-              setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
-            }
-            setActionFeedback({ id: receiverId, message: 'Solicitud ya enviada', type: 'error' });
-            setSendingRequest(false);
-            return;
-          } else {
-            // Aceptar automáticamente
-            const { error: rpcError } = await supabase.rpc('auto_accept_friend_request', {
-              p_user_id: user.id,
-              p_other_id: receiverId
-            });
-
-            if (rpcError) {
-              setActionFeedback({ id: receiverId, message: 'Error al aceptar solicitud', type: 'error' });
-            } else {
-              if (selectedPlayerDetail) {
-                setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'accepted' } : null);
-              }
-              setActionFeedback({ id: receiverId, message: '¡Ahora son amigos!', type: 'success' });
-              fetchFriends();
-              window.dispatchEvent(new CustomEvent('friendships_changed'));
-            }
-            setSendingRequest(false);
-            return;
-          }
-        }
-        
-        if (existing.status === 'rejected') {
-          const { error: resendError } = await supabase.rpc('resend_friend_request', {
-            p_sender_id: user.id,
-            p_receiver_id: receiverId
-          });
-
-          if (resendError) {
-            setActionFeedback({ id: receiverId, message: `Error: ${resendError.message}`, type: 'error' });
-            setSendingRequest(false);
-            return;
-          }
-
-          if (selectedPlayerDetail) {
-            setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
-          }
-          setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
-          window.dispatchEvent(new CustomEvent('friendships_changed'));
-          setSendingRequest(false);
-          return;
-        }
-      }
-
-      // 2. Insertar nueva solicitud
-      const { error: insertError } = await supabase
-        .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: receiverId,
-          status: 'pending'
-        });
-
-      if (insertError) {
-        if (insertError.code === '23505') {
-          setActionFeedback({ id: receiverId, message: 'Solicitud ya existe', type: 'error' });
-          if (selectedPlayerDetail) {
-            setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
-          }
-        } else {
-          setActionFeedback({ id: receiverId, message: `Error: ${insertError.message}`, type: 'error' });
-        }
-        setSendingRequest(false);
-        return;
-      }
-
-      if (selectedPlayerDetail) {
-        setSelectedPlayerDetail(prev => prev ? { ...prev, relationship: 'pending_sent' } : null);
-      }
-      setActionFeedback({ id: receiverId, message: '¡Solicitud enviada!', type: 'success' });
-      window.dispatchEvent(new CustomEvent('friendships_changed'));
-
-    } catch (err) {
-      console.error('Send request error:', err);
-      setActionFeedback({ id: receiverId, message: 'Error inesperado', type: 'error' });
-    } finally {
-      setSendingRequest(false);
-      setTimeout(() => setActionFeedback(null), 3000);
-    }
-  };
   const handleRequestAccepted = (requestId: string) => {
     setPendingIncoming(prev => prev.filter(r => r.requestId !== requestId));
     fetchFriends();
@@ -716,19 +364,6 @@ export function SocialPanel() {
             }`}
           >
             Buscar
-          </button>
-          <button
-            onClick={() => { triggerHaptic('light'); setActiveTab('chat'); }}
-            className={`flex-1 py-2 text-xs uppercase tracking-widest font-black rounded-xl transition-all relative whitespace-nowrap px-4 ${
-              activeTab === 'chat' ? 'bg-white/10 text-casino-gold shadow-md border border-white/10' : 'text-gray-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            Chat {onlineCount !== null ? `(${onlineCount})` : ''}
-            {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-black text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse">
-                {unreadMessagesCount}
-              </span>
-            )}
           </button>
         </div>
 
@@ -859,7 +494,6 @@ export function SocialPanel() {
                     const isOnline = isFriendOnline(friend);
                     const presence = presenceMap[friend.id];
                     const isInRoom = presence?.isInRoom ?? !!friend.current_room_id;
-                    const unread = friendUnreadMap[friend.id] || 0;
 
                     return (
                       <div
@@ -922,28 +556,9 @@ export function SocialPanel() {
                                 {isInRoom ? '🎮 En partida' : '● Online'}
                               </span>
                             )}
-                            {unread > 0 && (
-                              <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
-                                {unread}
-                              </span>
-                            )}
                           </div>
                         </div>
 
-                        {/* Chat Button */}
-                        <button
-                          onClick={() => {
-                            triggerHaptic('card_tap');
-                            setActiveChatFriendId(friend.id);
-                            setActiveTab('chat');
-                          }}
-                          className="shrink-0 p-2 rounded-lg bg-white/5 text-gray-300 hover:text-casino-gold hover:bg-casino-gold/10 hover:border-casino-gold/30 border border-transparent transition-all md:opacity-0 md:group-hover:opacity-100 opacity-100 shadow-sm"
-                          title="Chat privado"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                          </svg>
-                        </button>
                         {/* Quick Notify Buttons */}
                         {isOnline && isInRoom && (
                           <button
@@ -1004,192 +619,10 @@ export function SocialPanel() {
               </div>
             </div>
           )}
-
-          {/* ─── CHAT TAB ───────────────────────────────────── */}
-          {activeTab === 'chat' && (
-            <div className="animate-fade-in h-full flex flex-col pb-2">
-              <div className="flex items-center justify-between shrink-0 mb-2">
-                <h3 className="section-header mb-0 flex items-center gap-2">
-                  {activeChatFriendId 
-                    ? `💬 Chat con ${friends.find(f => f.id === activeChatFriendId)?.username || 'Amigo'}` 
-                    : `🌍 Chat Global ${onlineCount !== null ? `• ${onlineCount} activos` : ''}`}
-                </h3>
-                {activeChatFriendId && (
-                  <button 
-                    onClick={() => { triggerHaptic('light'); setActiveChatFriendId(null); }}
-                    className="text-[10px] text-gray-300 hover:text-casino-gold font-bold uppercase transition-colors flex items-center gap-1"
-                  >
-                    <span>←</span> Global
-                  </button>
-                )}
-              </div>
-
-              {/* Horizontal Chat Selector Carousel */}
-              <div className="flex gap-3 overflow-x-auto pb-2 mb-3 shrink-0 border-b border-white/5 custom-scrollbar select-none">
-                {/* Global Chat Item */}
-                <div 
-                  onClick={() => { triggerHaptic('light'); setActiveChatFriendId(null); }}
-                  className="flex flex-col items-center gap-1 cursor-pointer group shrink-0"
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all relative ${
-                    activeChatFriendId === null 
-                      ? 'bg-gradient-to-br from-casino-gold/30 to-yellow-500/20 text-casino-gold border-2 border-casino-gold shadow-[0_0_10px_rgba(251,191,36,0.3)]' 
-                      : 'bg-white/5 text-gray-400 border border-white/10 hover:border-white/20 hover:text-white'
-                  }`}>
-                    <span>🌍</span>
-                    {onlineCount !== null && (
-                      <span className="absolute -bottom-1 -right-1 min-w-[14px] h-[14px] bg-casino-emerald rounded-full text-[8px] font-black text-black flex items-center justify-center px-0.5 shadow-[0_0_5px_rgba(16,185,129,0.5)] z-10">
-                        {onlineCount}
-                      </span>
-                    )}
-                    {unreadMessagesCount > 0 && activeChatFriendId !== null && (
-                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center px-0.5 animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.5)] z-10">
-                        {unreadMessagesCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className={`text-[8px] font-black uppercase tracking-wider max-w-[48px] truncate transition-colors ${
-                    activeChatFriendId === null ? 'text-casino-gold font-black' : 'text-gray-500 group-hover:text-gray-300'
-                  }`}>
-                    Global
-                  </span>
-                </div>
-
-                {/* Friends Items */}
-                {friends.length > 0 && [...friends]
-                  .sort((a, b) => {
-                    const aUnread = friendUnreadMap[a.id] || 0;
-                    const bUnread = friendUnreadMap[b.id] || 0;
-                    if (aUnread !== bUnread) return bUnread - aUnread; // unread first
-                    
-                    // Sort by most recent message
-                    const aLastMsg = lastMessageMap[a.id];
-                    const bLastMsg = lastMessageMap[b.id];
-                    if (aLastMsg && bLastMsg) {
-                      return new Date(bLastMsg.created_at).getTime() - new Date(aLastMsg.created_at).getTime();
-                    }
-                    if (aLastMsg && !bLastMsg) return -1;
-                    if (!aLastMsg && bLastMsg) return 1;
-                    
-                    const aOnline = isFriendOnline(a);
-                    const bOnline = isFriendOnline(b);
-                    if (aOnline !== bOnline) return aOnline ? -1 : 1; // online next
-                    
-                    return a.username.localeCompare(b.username);
-                  })
-                  .map(friend => {
-                    const isSelected = activeChatFriendId === friend.id;
-                    const unread = friendUnreadMap[friend.id] || 0;
-                    const isOnline = isFriendOnline(friend);
-                    const presence = presenceMap[friend.id];
-                    const isInRoom = presence?.isInRoom ?? !!friend.current_room_id;
-
-                    return (
-                      <div 
-                        key={friend.id}
-                        onClick={() => { triggerHaptic('light'); setActiveChatFriendId(friend.id); }}
-                        className="flex flex-col items-center gap-1 cursor-pointer group shrink-0"
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all relative overflow-hidden ${
-                          isSelected 
-                            ? 'bg-gradient-to-br from-casino-emerald/30 to-black/30 border-2 border-casino-emerald shadow-[0_0_10px_rgba(16,185,129,0.3)]' 
-                            : isOnline 
-                              ? 'bg-gradient-to-br from-white/5 to-black/30 border border-casino-emerald/30 hover:border-casino-emerald/60' 
-                              : 'bg-white/5 text-gray-500 border border-white/10 hover:border-white/20'
-                        }`}>
-                          {friend.equipped_avatar ? (
-                            <img 
-                              src={friend.equipped_avatar} 
-                              alt="Avatar" 
-                              className="w-full h-full object-cover" 
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent && !parent.querySelector('.social-avatar-fallback')) {
-                                  const span = document.createElement('span');
-                                  span.className = 'social-avatar-fallback';
-                                  span.textContent = friend.username?.charAt(0).toUpperCase() || 'P';
-                                  parent.appendChild(span);
-                                }
-                              }}
-                            />
-                          ) : friend.avatar_url ? (
-                            <img 
-                              src={friend.avatar_url} 
-                              alt="Avatar" 
-                              className="w-full h-full object-cover" 
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent && !parent.querySelector('.social-avatar-fallback')) {
-                                  const span = document.createElement('span');
-                                  span.className = 'social-avatar-fallback';
-                                  span.textContent = friend.username?.charAt(0).toUpperCase() || 'P';
-                                  parent.appendChild(span);
-                                }
-                              }}
-                            />
-                          ) : (
-                            friend.username.charAt(0).toUpperCase()
-                          )}
-                          
-                          {/* Online status indicator */}
-                          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0B101A] ${
-                            !isOnline ? 'bg-gray-600'
-                            : isInRoom ? 'bg-purple-500 animate-pulse'
-                            : 'bg-casino-emerald'
-                          }`} />
-
-                          {/* Unread badge */}
-                          {unread > 0 && (
-                            <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-red-500 rounded-full text-[8px] font-black text-white flex items-center justify-center px-0.5 animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.5)] z-10">
-                              {unread}
-                            </span>
-                          )}
-                        </div>
-                        <span className={`text-[8px] font-bold max-w-[48px] truncate transition-colors ${
-                          isSelected ? 'text-casino-emerald font-black' : isOnline ? 'text-gray-300 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-300'
-                        }`}>
-                          {friend.username}
-                        </span>
-                        {lastMessageMap[friend.id] && (
-                          <span className="text-[7px] text-gray-600 max-w-[48px] truncate block leading-tight">
-                            {formatRelativeTime(lastMessageMap[friend.id].created_at)}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-
-              <div className="flex-1 overflow-hidden">
-                <ChatWindow 
-                  receiverId={activeChatFriendId || undefined} 
-                  onAvatarClick={handleAvatarClick}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* ─── Modals ─────────────────────────────────────────────── */}
-      {showOwnProfile && (
-        <UserProfileModal onClose={() => setShowOwnProfile(false)} />
-      )}
-
-      {selectedPlayerDetail && (
-        <PlayerProfileModal
-          player={selectedPlayerDetail.player}
-          relationshipStatus={selectedPlayerDetail.relationship}
-          onSendRequest={() => handleSendRequest(selectedPlayerDetail.player.id)}
-          onClose={() => setSelectedPlayerDetail(null)}
-          sending={sendingRequest}
-          feedback={actionFeedback?.id === selectedPlayerDetail.player.id ? actionFeedback : null}
-        />
-      )}
       {selectedRequest && (
         <FriendRequestModal
           request={selectedRequest}
@@ -1212,11 +645,6 @@ export function SocialPanel() {
           <FriendProfileModal
             friend={dynamicFriend}
             onClose={() => setSelectedFriend(null)}
-            onOpenChat={() => {
-              setActiveChatFriendId(selectedFriend.id);
-              setActiveTab('chat');
-              setSelectedFriend(null);
-            }}
           />
         );
       })()}

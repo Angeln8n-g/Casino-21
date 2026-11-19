@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { AppState } from 'react-native';
 import { supabase } from '../services/supabase';
 import { useAuth } from './useAuth';
 import { useGame } from './useGame';
@@ -7,7 +6,6 @@ import { useAudio } from './useAudio';
 import { socketService } from '../services/socket';
 import { appEvents } from '../utils/events';
 import { triggerHaptic } from '../utils/haptics';
-import { resolveAvatarUrl } from '../components/social/socialUtils';
 
 export interface ToastAction {
   label: string;
@@ -57,7 +55,6 @@ export interface GameInviteToastData {
 interface NotificationsContextType {
   pendingFriendRequests: number;
   pendingGameInvites: number;
-  unreadPrivateMessages: number;
   totalPending: number;
   toast: ToastNotification | null;
   showToast: (notif: Omit<ToastNotification, 'id'>) => void;
@@ -74,7 +71,6 @@ interface NotificationsContextType {
   deleteNotification: (id: string) => Promise<void>;
   showNotificationsModal: boolean;
   setShowNotificationsModal: React.Dispatch<React.SetStateAction<boolean>>;
-  setActivePrivateChat: (source: 'social' | 'modal', friendId: string | null) => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | null>(null);
@@ -85,29 +81,8 @@ function useNotificationsInternal(): NotificationsContextType {
   const { playSfx } = useAudio();
   const gameStateRef = useRef(gameState);
   const seenGameInviteIdsRef = useRef<Set<string>>(new Set());
-  const seenPrivateMsgIdsRef = useRef<Set<string>>(new Set());
-  const friendIdsRef = useRef<Set<string>>(new Set());
-  const activeSocialChatFriendIdRef = useRef<string | null>(null);
-  const activeModalChatFriendIdRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoggedNotifsRef = useRef(false);
-
-  const setActivePrivateChat = useCallback((source: 'social' | 'modal', friendId: string | null) => {
-    if (source === 'social') {
-      activeSocialChatFriendIdRef.current = friendId;
-    } else {
-      activeModalChatFriendIdRef.current = friendId;
-    }
-  }, []);
-
-  const isPrivateChatOpenWith = useCallback((senderId: string) => {
-    const appIsActive = AppState.currentState ? AppState.currentState === 'active' : true;
-    if (!appIsActive) return false;
-    return (
-      activeSocialChatFriendIdRef.current === senderId ||
-      activeModalChatFriendIdRef.current === senderId
-    );
-  }, []);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -115,7 +90,6 @@ function useNotificationsInternal(): NotificationsContextType {
 
   const [pendingFriendRequests, setPendingFriendRequests] = useState(0);
   const [pendingGameInvites, setPendingGameInvites] = useState(0);
-  const [unreadPrivateMessages, setUnreadPrivateMessages] = useState(0);
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [activeGameInvitation, setActiveGameInvitation] = useState<GameInviteToastData | null>(null);
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
@@ -188,84 +162,6 @@ function useNotificationsInternal(): NotificationsContextType {
       setActiveGameInvitation(inviteData);
     };
 
-    const refreshFriendIds = async () => {
-      try {
-        const [reqFriendsRes, friendshipsRes] = await Promise.all([
-          supabase
-            .from('friend_requests')
-            .select('sender_id, receiver_id')
-            .eq('status', 'accepted')
-            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
-          supabase
-            .from('friendships')
-            .select('player1_id, player2_id')
-            .eq('status', 'accepted')
-            .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`),
-        ]);
-
-        const nextFriends = new Set<string>();
-        for (const row of (reqFriendsRes.data || []) as any[]) {
-          const otherId = row.sender_id === user.id ? row.receiver_id : row.sender_id;
-          if (otherId) nextFriends.add(otherId);
-        }
-        for (const row of (friendshipsRes.data || []) as any[]) {
-          const otherId = row.player1_id === user.id ? row.player2_id : row.player1_id;
-          if (otherId) nextFriends.add(otherId);
-        }
-        if (isMounted) {
-          friendIdsRef.current = nextFriends;
-        }
-      } catch {}
-    };
-
-    const checkIsFriend = async (senderId: string): Promise<boolean> => {
-      if (friendIdsRef.current.has(senderId)) return true;
-      try {
-        const [reqRes, fsRes] = await Promise.all([
-          supabase
-            .from('friend_requests')
-            .select('id')
-            .eq('status', 'accepted')
-            .or(
-              `and(sender_id.eq.${user.id},receiver_id.eq.${senderId}),and(sender_id.eq.${senderId},receiver_id.eq.${user.id})`
-            )
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('friendships')
-            .select('id')
-            .eq('status', 'accepted')
-            .or(
-              `and(player1_id.eq.${user.id},player2_id.eq.${senderId}),and(player1_id.eq.${senderId},player2_id.eq.${user.id})`
-            )
-            .limit(1)
-            .maybeSingle(),
-        ]);
-        if (reqRes.data || fsRes.data) {
-          friendIdsRef.current.add(senderId);
-          return true;
-        }
-      } catch {}
-      return false;
-    };
-
-    const formatPrivateMessagePreview = (msg: any): string => {
-      const normalized =
-        typeof msg?.content === 'string'
-          ? msg.content.replace(/\s+/g, ' ').trim()
-          : '';
-      if (msg?.message_type === 'image') {
-        return normalized ? `📷 Imagen: ${normalized}` : '📷 Te envió una imagen';
-      }
-      if (msg?.message_type === 'audio') {
-        return '🎤 Te envió un mensaje de voz';
-      }
-      if (!normalized) {
-        return 'Te envió un mensaje';
-      }
-      return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
-    };
-
     const fetchCounts = async () => {
       try {
         const { count: friendCount } = await supabase
@@ -279,12 +175,6 @@ function useNotificationsInternal(): NotificationsContextType {
           .select('*', { count: 'exact', head: true })
           .eq('receiver_id', user.id)
           .eq('status', 'pending');
-
-        const { count: pmUnreadCount } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('receiver_id', user.id)
-          .eq('is_read', false);
 
         const { data: notifs } = await supabase
           .from('notifications')
@@ -306,7 +196,6 @@ function useNotificationsInternal(): NotificationsContextType {
 
         setPendingFriendRequests(friendCount || 0);
         setPendingGameInvites(gameCount || 0);
-        setUnreadPrivateMessages(pmUnreadCount || 0);
 
         if (notifs) {
           if (!hasLoggedNotifsRef.current) {
@@ -320,8 +209,6 @@ function useNotificationsInternal(): NotificationsContextType {
         if (latestPendingInvite && latestPendingInvite.room_id) {
           await buildAndShowGameInvite(latestPendingInvite);
         }
-
-        await refreshFriendIds();
       } catch (error: any) {
         if (!isMounted) return;
         console.warn('Error fetching notification counts:', error);
@@ -408,9 +295,6 @@ function useNotificationsInternal(): NotificationsContextType {
           if (payload.new.status !== 'pending') {
             setPendingFriendRequests((prev) => Math.max(0, prev - 1));
           }
-          if (payload.new.status === 'accepted') {
-            refreshFriendIds();
-          }
         }
       )
       .subscribe();
@@ -446,141 +330,14 @@ function useNotificationsInternal(): NotificationsContextType {
       )
       .subscribe();
 
-    // 3b. Suscripción a messages para actualizar badge global de Social
-    const refreshPmUnreadCount = async () => {
-      const { count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .eq('is_read', false);
-      if (isMounted) setUnreadPrivateMessages(count || 0);
-    };
-
-    const pmChannel = supabase
-      .channel(`mobile_pm_badge_${user.id}_${Date.now()}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        (payload) => {
-          const newMsg = payload.new as any;
-          if (!newMsg?.sender_id || newMsg.sender_id === user.id || newMsg.deleted_at) {
-            return;
-          }
-
-          // Emitir inmediatamente al bus de eventos para que ChatView lo pinte de forma inmediata (0ms)
-          appEvents.emit('realtime_chat_message', newMsg);
-
-          const senderId = String(newMsg.sender_id);
-          const isViewingThisChat = isPrivateChatOpenWith(senderId);
-
-          // Si el usuario ya está viendo activamente este chat, no alterar el contador de no leídos ni mostrar toast
-          if (!isViewingThisChat) {
-            refreshPmUnreadCount();
-          }
-
-          if (newMsg.id && seenPrivateMsgIdsRef.current.has(newMsg.id)) {
-            return;
-          }
-          if (newMsg.id) {
-            if (seenPrivateMsgIdsRef.current.size >= 100) {
-              const oldest = seenPrivateMsgIdsRef.current.values().next().value;
-              if (oldest) seenPrivateMsgIdsRef.current.delete(oldest);
-            }
-            seenPrivateMsgIdsRef.current.add(newMsg.id);
-          }
-
-          if (isViewingThisChat) {
-            return;
-          }
-
-          (async () => {
-            try {
-              const [isFriend, profileRes] = await Promise.all([
-                checkIsFriend(senderId),
-                supabase
-                  .from('profiles')
-                  .select('id, username, avatar_url, equipped_avatar, elo, level')
-                  .eq('id', senderId)
-                  .maybeSingle(),
-              ]);
-
-              if (!isMounted || !isFriend || isPrivateChatOpenWith(senderId)) {
-                return;
-              }
-
-              const sender = profileRes.data;
-              const senderName = sender?.username || 'Tu amigo';
-              const preview = formatPrivateMessagePreview(newMsg);
-              const avatarUri = resolveAvatarUrl(
-                sender?.equipped_avatar || sender?.avatar_url
-              );
-
-              const openChat = () => {
-                appEvents.emit('open_private_chat', {
-                  friend: {
-                    id: senderId,
-                    username: senderName,
-                    avatar_url: sender?.avatar_url ?? null,
-                    equipped_avatar: sender?.equipped_avatar ?? null,
-                    elo: sender?.elo ?? 1000,
-                    level: sender?.level ?? 1,
-                    isOnline: true,
-                  },
-                });
-                dismissToast();
-              };
-
-              showToast({
-                title: `💬 Mensaje de ${senderName}`,
-                message: preview,
-                type: 'info',
-                iconEmoji: '💬',
-                avatarUrl: avatarUri,
-                avatarFallback: senderName.charAt(0).toUpperCase() || 'A',
-                onPress: openChat,
-                actions: [
-                  {
-                    label: '💬 Responder',
-                    variant: 'primary',
-                    onClick: openChat,
-                  },
-                ],
-              });
-            } catch {}
-          })();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => {
-          refreshPmUnreadCount();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => {
-          refreshPmUnreadCount();
-        }
-      )
-      .subscribe();
-
-    const handleMessagesRead = () => {
-      refreshPmUnreadCount();
-    };
-    appEvents.on('private_messages_read', handleMessagesRead);
-
     return () => {
       isMounted = false;
       clearInterval(pollingId);
-      appEvents.off('private_messages_read', handleMessagesRead);
       supabase.removeChannel(notifChannel);
       supabase.removeChannel(friendChannel);
       supabase.removeChannel(gameChannel);
-      supabase.removeChannel(pmChannel);
     };
-  }, [user, showToast, dismissToast, isPrivateChatOpenWith]);
+  }, [user, showToast, dismissToast]);
 
   // 4. Suscripción a eventos de presencia de amigos por Socket.io (idéntico a Web)
   useEffect(() => {
@@ -808,7 +565,7 @@ function useNotificationsInternal(): NotificationsContextType {
           title: status === 'accepted' ? '🤝 ¡Nuevo Amigo!' : 'Solicitud rechazada',
           message:
             status === 'accepted'
-              ? 'Solicitud aceptada. Ahora pueden jugar y chatear.'
+              ? 'Solicitud aceptada. ¡Ahora pueden jugar juntos!'
               : 'Has rechazado la solicitud de amistad.',
           type: status === 'accepted' ? 'success' : 'info',
         });
@@ -937,8 +694,7 @@ function useNotificationsInternal(): NotificationsContextType {
   return {
     pendingFriendRequests,
     pendingGameInvites,
-    unreadPrivateMessages,
-    totalPending: pendingFriendRequests + pendingGameInvites + unreadPrivateMessages,
+    totalPending: pendingFriendRequests + pendingGameInvites,
     toast,
     showToast,
     dismissToast,
@@ -954,7 +710,6 @@ function useNotificationsInternal(): NotificationsContextType {
     deleteNotification,
     showNotificationsModal,
     setShowNotificationsModal,
-    setActivePrivateChat,
   };
 }
 

@@ -5,24 +5,19 @@ import {
   TextInput,
   Pressable,
   FlatList,
-  ScrollView,
   ActivityIndicator,
   RefreshControl,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Users,
-  MessageCircle,
   Search,
   UserPlus,
   Check,
   X,
   Swords,
-  Globe,
   Clock,
   Hand,
 } from 'lucide-react-native';
@@ -45,30 +40,23 @@ import {
   SearchPlayerData,
   RelationshipStatus,
   resolveAvatarUrl,
-  formatRelativeTime,
 } from '../../components/social/socialUtils';
 import { FriendProfileModal } from '../../components/social/FriendProfileModal';
 import { QuickChallengeModal } from '../../components/social/QuickChallengeModal';
 import { FriendRequestModal } from '../../components/social/FriendRequestModal';
 import { PlayerProfileModal } from '../../components/social/PlayerProfileModal';
-import { ChatView } from '../../components/chat/ChatView';
 
-type SocialTab = 'friends' | 'search' | 'chat';
+type SocialTab = 'friends' | 'search';
 
 export default function SocialScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, profile, presenceByUserId } = useAuth();
-  const { showToast, setActivePrivateChat } = useNotifications();
+  const { showToast } = useNotifications();
 
-  const [isScreenFocused, setIsScreenFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<SocialTab>('friends');
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<SentRequest[]>([]);
-  const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
-  const [lastChatMap, setLastChatMap] = useState<Record<string, number>>({});
-  const [onlineCount, setOnlineCount] = useState<number>(0);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,9 +70,6 @@ export default function SocialScreen() {
   const [searchResults, setSearchResults] = useState<SearchPlayerData[]>([]);
   const [searching, setSearching] = useState(false);
 
-  // Chat activo en pestaña Chat (null = Global, FriendData = Privado)
-  const [selectedChatFriend, setSelectedChatFriend] = useState<FriendData | null>(null);
-
   // Modales Sociales (100% paridad con Web)
   const [selectedProfileFriend, setSelectedProfileFriend] = useState<FriendData | null>(null);
   const [quickChallengeTarget, setQuickChallengeTarget] = useState<FriendData | null>(null);
@@ -92,38 +77,6 @@ export default function SocialScreen() {
   const [selectedSearchPlayer, setSelectedSearchPlayer] = useState<SearchPlayerData | null>(null);
 
   const hasLoggedFriendsRef = useRef(false);
-  const selectedChatFriendRef = useRef<FriendData | null>(null);
-  const activeTabRef = useRef<SocialTab>('friends');
-  const isScreenFocusedRef = useRef(false);
-  const friendsRef = useRef<FriendData[]>([]);
-  const pendingChatFriendIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    selectedChatFriendRef.current = selectedChatFriend;
-  }, [selectedChatFriend]);
-
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
-
-  useEffect(() => {
-    friendsRef.current = friends;
-  }, [friends]);
-
-  // Reportar a useNotifications si este usuario está leyendo un chat privado en primer plano
-  useEffect(() => {
-    const activeFriendId =
-      isScreenFocused && activeTab === 'chat' && selectedChatFriend
-        ? selectedChatFriend.id
-        : null;
-    setActivePrivateChat('social', activeFriendId);
-  }, [isScreenFocused, activeTab, selectedChatFriend?.id, setActivePrivateChat]);
-
-  useEffect(() => {
-    return () => {
-      setActivePrivateChat('social', null);
-    };
-  }, [setActivePrivateChat]);
 
   // Presencia en tiempo real desde la tabla profiles (last_seen_at y current_room_id)
   const friendIds = useMemo(() => friends.map((f) => f.id), [friends]);
@@ -168,35 +121,11 @@ export default function SocialScreen() {
     [presenceByUserId, profilePresenceMap]
   );
 
-  // Resolver intenciones de navegación hacia pestañas/chats específicos de Social
+  // Resolver intenciones de navegación hacia pestañas de Social
   const applySocialTabIntent = useCallback((payload?: SocialTabIntent | null) => {
     if (!payload) return;
-    const requested = payload.tab;
-    if (requested === 'search') {
+    if (payload.tab === 'search') {
       setActiveTab('search');
-    } else if (requested === 'chat') {
-      if (payload.friendId) {
-        const found = friendsRef.current.find((f) => f.id === payload.friendId);
-        if (found) {
-          setSelectedChatFriend(found);
-          setUnreadMap((prev) => ({ ...prev, [found.id]: 0 }));
-          pendingChatFriendIdRef.current = null;
-        } else {
-          pendingChatFriendIdRef.current = payload.friendId;
-          if (payload.friendProfile) {
-            setSelectedChatFriend({
-              id: payload.friendId,
-              username: payload.friendProfile.username || 'Amigo',
-              avatar_url: payload.friendProfile.avatar_url ?? null,
-              equipped_avatar: payload.friendProfile.equipped_avatar ?? null,
-              elo: payload.friendProfile.elo ?? 1000,
-              level: payload.friendProfile.level ?? 1,
-            });
-            setUnreadMap((prev) => ({ ...prev, [payload.friendId!]: 0 }));
-          }
-        }
-      }
-      setActiveTab('chat');
     } else {
       // 'friends' o 'requests' van a 'friends' (donde Solicitudes aparece arriba igual que Web)
       setActiveTab('friends');
@@ -206,16 +135,10 @@ export default function SocialScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setIsScreenFocused(true);
-      isScreenFocusedRef.current = true;
       const pending = consumePendingSocialTabIntent();
       if (pending) {
         applySocialTabIntent(pending);
       }
-      return () => {
-        setIsScreenFocused(false);
-        isScreenFocusedRef.current = false;
-      };
     }, [applySocialTabIntent])
   );
 
@@ -229,97 +152,6 @@ export default function SocialScreen() {
       appEvents.off('open_social_tab', handleOpenTab);
     };
   }, [applySocialTabIntent]);
-
-  // Completar selección diferida del amigo cuando termine de cargar la lista `friends`
-  useEffect(() => {
-    if (!friends.length) return;
-    const pendingId = pendingChatFriendIdRef.current;
-    if (pendingId) {
-      const match = friends.find((f) => f.id === pendingId);
-      if (match) {
-        setSelectedChatFriend(match);
-        setUnreadMap((prev) => ({ ...prev, [match.id]: 0 }));
-        pendingChatFriendIdRef.current = null;
-        return;
-      }
-    }
-    if (selectedChatFriendRef.current) {
-      const refreshed = friends.find((f) => f.id === selectedChatFriendRef.current?.id);
-      if (refreshed && refreshed !== selectedChatFriendRef.current) {
-        setSelectedChatFriend(refreshed);
-      }
-    }
-  }, [friends]);
-
-  // Contador en vivo de jugadores online vía Socket.io
-  useEffect(() => {
-    if (!user) return;
-    let isMounted = true;
-    let attachedSocket: any = null;
-
-    const handleOnlineCount = ({ count }: { count: number }) => {
-      if (isMounted && typeof count === 'number') {
-        setOnlineCount(count);
-      }
-    };
-
-    socketService
-      .connect()
-      .then((socket) => {
-        if (!isMounted) return;
-        attachedSocket = socket;
-        socket.on('online_count', handleOnlineCount);
-        socket.emit('request_online_count');
-      })
-      .catch(() => {});
-
-    return () => {
-      isMounted = false;
-      if (attachedSocket) {
-        attachedSocket.off('online_count', handleOnlineCount);
-      }
-    };
-  }, [user]);
-
-  const fetchUnreadAndLastChats = useCallback(async () => {
-    if (!user) return;
-    try {
-      const [unreadRes, recentRes] = await Promise.all([
-        supabase
-          .from('messages')
-          .select('sender_id')
-          .eq('receiver_id', user.id)
-          .eq('is_read', false),
-        supabase
-          .from('messages')
-          .select('sender_id, receiver_id, created_at')
-          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .order('created_at', { ascending: false })
-          .limit(200),
-      ]);
-
-      if (unreadRes.data) {
-        const counts: Record<string, number> = {};
-        for (const row of unreadRes.data) {
-          counts[row.sender_id] = (counts[row.sender_id] || 0) + 1;
-        }
-        setUnreadMap(counts);
-      }
-
-      if (recentRes.data) {
-        const timeMap: Record<string, number> = {};
-        for (const m of recentRes.data) {
-          const otherId = m.sender_id === user.id ? m.receiver_id : m.sender_id;
-          if (otherId && !timeMap[otherId]) {
-            timeMap[otherId] = new Date(m.created_at).getTime();
-          }
-        }
-        setLastChatMap(timeMap);
-      }
-    } catch (err) {
-      console.warn('Error obteniendo no leídos y últimos chats:', err);
-    }
-  }, [user]);
 
   const fetchSocialData = useCallback(
     async (silent = false) => {
@@ -440,8 +272,6 @@ export default function SocialScreen() {
         } else {
           setSentRequests([]);
         }
-
-        await fetchUnreadAndLastChats();
       } catch (err) {
         console.warn('Error cargando datos sociales:', err);
       } finally {
@@ -449,14 +279,14 @@ export default function SocialScreen() {
         setRefreshing(false);
       }
     },
-    [user, fetchUnreadAndLastChats]
+    [user]
   );
 
   useEffect(() => {
     fetchSocialData();
   }, [fetchSocialData]);
 
-  // Suscripción Realtime a amistades, solicitudes y mensajes privados
+  // Suscripción Realtime a amistades y solicitudes
   useEffect(() => {
     if (!user) return;
 
@@ -472,79 +302,12 @@ export default function SocialScreen() {
         { event: '*', schema: 'public', table: 'friendships' },
         () => fetchSocialData(true)
       )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as any;
-          if (!newMsg?.sender_id) return;
-
-          // Propagar inmediatamente al chat activo vía event bus
-          appEvents.emit('realtime_chat_message', newMsg);
-
-          const isActivelyReading =
-            isScreenFocusedRef.current &&
-            activeTabRef.current === 'chat' &&
-            selectedChatFriendRef.current?.id === newMsg.sender_id;
-
-          if (!isActivelyReading) {
-            setUnreadMap((prev) => ({
-              ...prev,
-              [newMsg.sender_id]: (prev[newMsg.sender_id] || 0) + 1,
-            }));
-          }
-          setLastChatMap((prev) => ({
-            ...prev,
-            [newMsg.sender_id]: new Date(newMsg.created_at || Date.now()).getTime(),
-          }));
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `sender_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as any;
-          if (!newMsg?.receiver_id) return;
-          setLastChatMap((prev) => ({
-            ...prev,
-            [newMsg.receiver_id]: new Date(newMsg.created_at || Date.now()).getTime(),
-          }));
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${user.id}`,
-        },
-        () => fetchUnreadAndLastChats()
-      )
       .subscribe();
 
-    const handleMessagesReadEvent = (payload?: { friendId?: string }) => {
-      if (payload?.friendId) {
-        setUnreadMap((prev) => ({ ...prev, [payload.friendId!]: 0 }));
-      }
-    };
-    appEvents.on('private_messages_read', handleMessagesReadEvent);
-
     return () => {
-      appEvents.off('private_messages_read', handleMessagesReadEvent);
       supabase.removeChannel(socialChannel);
     };
-  }, [user, fetchSocialData, fetchUnreadAndLastChats]);
+  }, [user, fetchSocialData]);
 
   // Búsqueda de jugadores en tiempo real con resolución completa de relación
   useEffect(() => {
@@ -682,7 +445,7 @@ export default function SocialScreen() {
         title: action === 'accepted' ? '🤝 ¡Nuevo Amigo!' : 'Solicitud rechazada',
         message:
           action === 'accepted'
-            ? 'Solicitud aceptada. ¡Ya pueden jugar y chatear!'
+            ? 'Solicitud aceptada. ¡Ya pueden jugar juntos!'
             : 'Has rechazado la solicitud de amistad.',
         type: action === 'accepted' ? 'success' : 'info',
       });
@@ -852,92 +615,7 @@ export default function SocialScreen() {
     }
   };
 
-  // Abrir conversación con un amigo en la pestaña Chat (idéntico a Web)
-  const openFriendChat = useCallback((friend: FriendData) => {
-    triggerHaptic('light');
-    setSelectedChatFriend(friend);
-    setUnreadMap((prev) => ({ ...prev, [friend.id]: 0 }));
-    setActiveTab('chat');
-  }, []);
-
-  // Clic en avatar desde Chat Global o Chat Privado (idéntico a handleAvatarClick en Web)
-  const handleAvatarClick = useCallback(
-    async (playerId: string) => {
-      if (!user || !playerId || playerId === 'anon') return;
-      triggerHaptic('light');
-
-      if (playerId === user.id) {
-        router.push('/(tabs)/profile');
-        return;
-      }
-
-      const existingFriend = friends.find((f) => f.id === playerId);
-      if (existingFriend) {
-        setSelectedProfileFriend(existingFriend);
-        return;
-      }
-
-      try {
-        const [{ data: profileRow }, { data: reqs }] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id, username, avatar_url, equipped_avatar, elo, level, wins, losses, xp')
-            .eq('id', playerId)
-            .maybeSingle(),
-          supabase
-            .from('friend_requests')
-            .select('id, sender_id, receiver_id, status')
-            .or(
-              `and(sender_id.eq.${user.id},receiver_id.eq.${playerId}),and(sender_id.eq.${playerId},receiver_id.eq.${user.id})`
-            ),
-        ]);
-
-        if (!profileRow) return;
-
-        let rel: RelationshipStatus = 'none';
-        let reqId: string | undefined;
-        if (reqs && reqs.length > 0) {
-          const accepted = reqs.find((x: any) => x.status === 'accepted');
-          const pending = reqs.find((x: any) => x.status === 'pending');
-          if (accepted) {
-            rel = 'friends';
-          } else if (pending) {
-            if (pending.sender_id === user.id) {
-              rel = 'pending_sent';
-              reqId = pending.id;
-            } else {
-              rel = 'pending_received';
-              reqId = pending.id;
-            }
-          }
-        }
-
-        setSelectedSearchPlayer({
-          id: profileRow.id,
-          username: profileRow.username || 'Jugador',
-          avatar_url: profileRow.avatar_url,
-          equipped_avatar: profileRow.equipped_avatar,
-          elo: profileRow.elo || 1000,
-          level: profileRow.level || 1,
-          wins: profileRow.wins || 0,
-          losses: profileRow.losses || 0,
-          xp: profileRow.xp || 0,
-          relationshipStatus: rel,
-          requestId: reqId,
-        });
-      } catch (err) {
-        console.warn('Error cargando perfil al tocar avatar:', err);
-      }
-    },
-    [user, friends, router]
-  );
-
   // Totales y ordenamientos
-  const totalUnreadMessages = useMemo(
-    () => Object.values(unreadMap).reduce((sum, c) => sum + c, 0),
-    [unreadMap]
-  );
-
   const onlineFriendsCount = useMemo(
     () => friends.filter((f) => isFriendOnline(f.id)).length,
     [friends, isFriendOnline]
@@ -956,24 +634,6 @@ export default function SocialScreen() {
       return b.elo - a.elo;
     });
   }, [friends, friendFilter, isFriendOnline]);
-
-  const sortedCarouselFriends = useMemo(() => {
-    return [...friends].sort((a, b) => {
-      const uA = unreadMap[a.id] || 0;
-      const uB = unreadMap[b.id] || 0;
-      if (uB !== uA) return uB - uA;
-
-      const tA = lastChatMap[a.id] || 0;
-      const tB = lastChatMap[b.id] || 0;
-      if (tB !== tA) return tB - tA;
-
-      const oA = isFriendOnline(a.id) ? 1 : 0;
-      const oB = isFriendOnline(b.id) ? 1 : 0;
-      if (oB !== oA) return oB - oA;
-
-      return a.username.localeCompare(b.username);
-    });
-  }, [friends, unreadMap, lastChatMap, isFriendOnline]);
 
   return (
     <View
@@ -1019,7 +679,7 @@ export default function SocialScreen() {
           </Pressable>
         </View>
 
-        {/* Barra de 3 Pestañas Idéntica a Web: Amigos | Buscar | Chat (onlineCount) */}
+        {/* Barra de Pestañas: Amigos | Buscar */}
         <View className="flex-row bg-black/50 p-1 rounded-xl border border-white/[0.07]">
           <Pressable
             onPress={() => {
@@ -1072,32 +732,6 @@ export default function SocialScreen() {
             >
               Buscar
             </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              triggerHaptic('light');
-              setActiveTab('chat');
-            }}
-            className={`flex-1 py-2 rounded-lg flex-row items-center justify-center gap-1.5 ${
-              activeTab === 'chat' ? 'bg-amber-400' : ''
-            }`}
-          >
-            <MessageCircle color={activeTab === 'chat' ? '#020617' : '#9ca3af'} size={14} />
-            <Text
-              className={`text-xs font-bold ${
-                activeTab === 'chat' ? 'text-slate-950 font-black' : 'text-gray-400'
-              }`}
-            >
-              Chat{onlineCount > 0 ? ` (${onlineCount})` : ''}
-            </Text>
-            {totalUnreadMessages > 0 && activeTab !== 'chat' ? (
-              <View className="min-w-[16px] h-4 px-1 rounded-full bg-red-500 items-center justify-center">
-                <Text className="text-[9px] font-black text-white">
-                  {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
-                </Text>
-              </View>
-            ) : null}
           </Pressable>
         </View>
       </View>
@@ -1323,7 +957,6 @@ export default function SocialScreen() {
             renderItem={({ item }) => {
               const online = isFriendOnline(item.id);
               const inRoom = isFriendInRoom(item.id);
-              const unread = unreadMap[item.id] || 0;
               const avatarUri = resolveAvatarUrl(item.equipped_avatar || item.avatar_url);
 
               return (
@@ -1381,20 +1014,8 @@ export default function SocialScreen() {
                     </View>
                   </Pressable>
 
-                  {/* Botones de Acción Rápida (Chat, Avisar, Desafiar con Apuesta) */}
+                  {/* Botones de Acción Rápida (Avisar, Desafiar con Apuesta) */}
                   <View className="flex-row items-center gap-1.5">
-                    <Pressable
-                      onPress={() => openFriendChat(item)}
-                      className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 items-center justify-center relative"
-                    >
-                      <MessageCircle color="#fbbf24" size={16} />
-                      {unread > 0 ? (
-                        <View className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 items-center justify-center">
-                          <Text className="text-white text-[9px] font-black">{unread}</Text>
-                        </View>
-                      ) : null}
-                    </Pressable>
-
                     {online && inRoom ? (
                       <Pressable
                         onPress={() => {
@@ -1531,7 +1152,7 @@ export default function SocialScreen() {
                       <Pressable
                         onPress={() => {
                           const f = friends.find((fr) => fr.id === item.id);
-                          if (f) openFriendChat(f);
+                          if (f) setSelectedProfileFriend(f);
                         }}
                         className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30"
                       >
@@ -1567,174 +1188,6 @@ export default function SocialScreen() {
         </View>
       ) : null}
 
-      {/* ─── PESTAÑA 3: CHAT INTEGRADO (Carrusel Horizontal Global + Amigos + ChatView en vivo) ─── */}
-      {activeTab === 'chat' ? (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-        >
-          {/* Carrusel Horizontal de Chats (🌍 Global + Amigos ordenados por no leídos/recientes/online) */}
-          <View className="px-3 pb-2 border-b border-white/[0.06]">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingHorizontal: 4, paddingVertical: 4 }}
-            >
-              {/* Opción Global */}
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('light');
-                  setSelectedChatFriend(null);
-                }}
-                style={{ width: 58 }}
-                className="items-center"
-              >
-                <View className="relative">
-                  <View
-                    className={`w-11 h-11 rounded-full items-center justify-center border-2 ${
-                      !selectedChatFriend
-                        ? 'bg-amber-400/20 border-amber-400'
-                        : 'bg-white/[0.05] border-white/10'
-                    }`}
-                  >
-                    <Globe color={!selectedChatFriend ? '#fbbf24' : '#9ca3af'} size={20} />
-                  </View>
-                  {onlineCount > 0 ? (
-                    <View className="absolute -bottom-0.5 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-emerald-500 border border-slate-950 items-center justify-center">
-                      <Text className="text-[8px] font-black text-slate-950">{onlineCount}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text
-                  numberOfLines={1}
-                  className={`text-[10px] font-bold mt-1 ${
-                    !selectedChatFriend ? 'text-amber-400' : 'text-gray-400'
-                  }`}
-                >
-                  Global
-                </Text>
-              </Pressable>
-
-              {/* Amigos */}
-              {sortedCarouselFriends.map((f) => {
-                const isSelected = selectedChatFriend?.id === f.id;
-                const unread = unreadMap[f.id] || 0;
-                const online = isFriendOnline(f.id);
-                const inRoom = isFriendInRoom(f.id);
-                const lastTs = lastChatMap[f.id];
-                const avatarUri = resolveAvatarUrl(f.equipped_avatar || f.avatar_url);
-
-                return (
-                  <Pressable
-                    key={f.id}
-                    onPress={() => {
-                      triggerHaptic('light');
-                      setSelectedChatFriend(f);
-                      setUnreadMap((prev) => ({ ...prev, [f.id]: 0 }));
-                    }}
-                    style={{ width: 58 }}
-                    className="items-center"
-                  >
-                    <View className="relative">
-                      <View
-                        className={`w-11 h-11 rounded-full bg-slate-900 items-center justify-center overflow-hidden border-2 ${
-                          isSelected
-                            ? 'border-amber-400'
-                            : unread > 0
-                            ? 'border-red-500'
-                            : online && inRoom
-                            ? 'border-purple-400/60'
-                            : online
-                            ? 'border-emerald-400/60'
-                            : 'border-white/10'
-                        }`}
-                      >
-                        {avatarUri ? (
-                          <Image
-                            source={{ uri: avatarUri }}
-                            style={{ width: '100%', height: '100%' }}
-                            contentFit="cover"
-                          />
-                        ) : (
-                          <Text
-                            className={`font-black text-sm ${
-                              isSelected ? 'text-amber-400' : 'text-gray-300'
-                            }`}
-                          >
-                            {f.username.charAt(0).toUpperCase()}
-                          </Text>
-                        )}
-                      </View>
-
-                      {unread > 0 ? (
-                        <View className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 border border-slate-950 items-center justify-center">
-                          <Text className="text-[8px] font-black text-white">
-                            {unread > 9 ? '9+' : unread}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      {online ? (
-                        <View
-                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-950 ${
-                            inRoom ? 'bg-purple-500' : 'bg-emerald-400'
-                          }`}
-                        />
-                      ) : null}
-                    </View>
-
-                    <Text
-                      numberOfLines={1}
-                      className={`text-[10px] font-bold mt-1 max-w-[56px] ${
-                        isSelected
-                          ? 'text-amber-400'
-                          : unread > 0
-                          ? 'text-white font-black'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      {f.username}
-                    </Text>
-                    {lastTs ? (
-                      <Text className="text-[8px] text-gray-600 leading-tight">
-                        {formatRelativeTime(new Date(lastTs).toISOString())}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Vista de Chat en Vivo */}
-          <View className="flex-1 px-3 pt-2 pb-2">
-            <ChatView
-              receiverId={selectedChatFriend?.id || null}
-              receiverName={selectedChatFriend?.username}
-              receiverAvatar={
-                selectedChatFriend?.equipped_avatar || selectedChatFriend?.avatar_url
-              }
-              isReceiverOnline={
-                selectedChatFriend ? isFriendOnline(selectedChatFriend.id) : false
-              }
-              isReceiverInRoom={
-                selectedChatFriend ? isFriendInRoom(selectedChatFriend.id) : false
-              }
-              showPartnerHeader={Boolean(selectedChatFriend)}
-              isActive={isScreenFocused && activeTab === 'chat'}
-              onMessagesRead={() => {
-                if (selectedChatFriend) {
-                  setUnreadMap((prev) => ({ ...prev, [selectedChatFriend.id]: 0 }));
-                }
-                fetchUnreadAndLastChats();
-              }}
-              onAvatarClick={handleAvatarClick}
-            />
-          </View>
-        </KeyboardAvoidingView>
-      ) : null}
-
       {/* ─── MODALES SOCIALES (100% Paridad con Web) ─── */}
       <FriendProfileModal
         friend={selectedProfileFriend}
@@ -1745,7 +1198,6 @@ export default function SocialScreen() {
         }
         senderName={profile?.username || 'Jugador'}
         onClose={() => setSelectedProfileFriend(null)}
-        onOpenChat={(f) => openFriendChat(f)}
       />
 
       <QuickChallengeModal
@@ -1765,10 +1217,6 @@ export default function SocialScreen() {
         onClose={() => setSelectedSearchPlayer(null)}
         onSendRequest={handleSendFriendRequest}
         onAcceptRequest={handleAcceptSearchRequest}
-        onOpenChat={(p) => {
-          const existing = friends.find((f) => f.id === p.id);
-          if (existing) openFriendChat(existing);
-        }}
       />
     </View>
   );

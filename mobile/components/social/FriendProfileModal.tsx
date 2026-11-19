@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { X, MessageCircle, Swords, Eye, Trash2, Send } from 'lucide-react-native';
+import { X, Swords, Eye, Trash2, Send } from 'lucide-react-native';
 import { supabase } from '../../services/supabase';
 import { socketService } from '../../services/socket';
 import { useAuth } from '../../hooks/useAuth';
@@ -38,7 +38,6 @@ interface FriendProfileModalProps {
   currentRoomId?: string | null;
   senderName: string;
   onClose: () => void;
-  onOpenChat: (friend: FriendData) => void;
   onRemoveFriend?: (friend: FriendData) => void;
 }
 
@@ -49,7 +48,6 @@ export function FriendProfileModal({
   currentRoomId = null,
   senderName,
   onClose,
-  onOpenChat,
   onRemoveFriend,
 }: FriendProfileModalProps) {
   const { user, profile } = useAuth();
@@ -550,7 +548,7 @@ export function FriendProfileModal({
           challengeStatus === 'error' ? (
             <View className="p-4 border-t border-[#2A2722] bg-[#0F0E0C]/60 gap-2.5">
               {!isOnline ? (
-                /* Offline: Push Invite Preset Selector + Chat + Invitar */
+                /* Offline: Push Invite Preset Selector + Invitar */
                 <View className="gap-2">
                   <Pressable
                     onPress={() => {
@@ -593,31 +591,18 @@ export function FriendProfileModal({
                     </View>
                   ) : null}
 
-                  <View className="flex-row gap-2">
-                    <Pressable
-                      onPress={() => {
-                        onClose();
-                        onOpenChat(friend);
-                      }}
-                      className="flex-1 py-3 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] flex-row items-center justify-center gap-1.5"
-                    >
-                      <MessageCircle color="#d1d5db" size={16} />
-                      <Text className="text-gray-200 text-xs font-bold">Chat</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => handleSendChallenge(presetMessage)}
-                      className="flex-1 py-3 rounded-2xl bg-purple-600 active:bg-purple-500 flex-row items-center justify-center gap-1.5"
-                    >
-                      <Send color="#ffffff" size={15} />
-                      <Text className="text-white text-xs font-black uppercase tracking-wider">
-                        Invitar
-                      </Text>
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    onPress={() => handleSendChallenge(presetMessage)}
+                    className="w-full py-3 rounded-2xl bg-purple-600 active:bg-purple-500 flex-row items-center justify-center gap-1.5"
+                  >
+                    <Send color="#ffffff" size={15} />
+                    <Text className="text-white text-xs font-black uppercase tracking-wider">
+                      Invitar
+                    </Text>
+                  </Pressable>
                 </View>
               ) : isInRoom ? (
-                /* Online & In Match: Notify Waiting + Chat + Spectate */
+                /* Online & In Match: Notify Waiting + Spectate */
                 <View className="gap-2">
                   <Pressable
                     onPress={() => {
@@ -631,33 +616,20 @@ export function FriendProfileModal({
                     </Text>
                   </Pressable>
 
-                  <View className="flex-row gap-2">
+                  {currentRoomId ? (
                     <Pressable
-                      onPress={() => {
-                        onClose();
-                        onOpenChat(friend);
-                      }}
-                      className="flex-1 py-3 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] flex-row items-center justify-center gap-1.5"
+                      onPress={handleSpectate}
+                      className="w-full py-3 rounded-2xl bg-purple-600 active:bg-purple-500 flex-row items-center justify-center gap-1.5"
                     >
-                      <MessageCircle color="#d1d5db" size={16} />
-                      <Text className="text-gray-200 text-xs font-bold">Chat</Text>
+                      <Eye color="#ffffff" size={16} />
+                      <Text className="text-white text-xs font-black uppercase tracking-wider">
+                        Espectar
+                      </Text>
                     </Pressable>
-
-                    {currentRoomId ? (
-                      <Pressable
-                        onPress={handleSpectate}
-                        className="flex-1 py-3 rounded-2xl bg-purple-600 active:bg-purple-500 flex-row items-center justify-center gap-1.5"
-                      >
-                        <Eye color="#ffffff" size={16} />
-                        <Text className="text-white text-xs font-black uppercase tracking-wider">
-                          Espectar
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
+                  ) : null}
                 </View>
               ) : (
-                /* Online & Free: Notify Connected + Chat + Desafiar */
+                /* Online & Free: Notify Connected + Desafiar */
                 <View className="gap-2">
                   <Pressable
                     onPress={() => {
@@ -671,28 +643,15 @@ export function FriendProfileModal({
                     </Text>
                   </Pressable>
 
-                  <View className="flex-row gap-2">
-                    <Pressable
-                      onPress={() => {
-                        onClose();
-                        onOpenChat(friend);
-                      }}
-                      className="flex-1 py-3 rounded-2xl bg-[#0F0E0C] border border-[#2A2722] flex-row items-center justify-center gap-1.5"
-                    >
-                      <MessageCircle color="#d1d5db" size={16} />
-                      <Text className="text-gray-200 text-xs font-bold">Chat</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => handleSendChallenge()}
-                      className="flex-1 py-3 rounded-2xl bg-[#FACC15] active:bg-yellow-300 flex-row items-center justify-center gap-1.5"
-                    >
-                      <Swords color="#0F0E0C" size={16} />
-                      <Text className="text-[#0F0E0C] text-xs font-black uppercase tracking-wider">
-                        Desafiar
-                      </Text>
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    onPress={() => handleSendChallenge()}
+                    className="w-full py-3 rounded-2xl bg-[#FACC15] active:bg-yellow-300 flex-row items-center justify-center gap-1.5"
+                  >
+                    <Swords color="#0F0E0C" size={16} />
+                    <Text className="text-[#0F0E0C] text-xs font-black uppercase tracking-wider">
+                      Desafiar
+                    </Text>
+                  </Pressable>
                 </View>
               )}
             </View>

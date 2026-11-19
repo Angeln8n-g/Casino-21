@@ -26,7 +26,6 @@ import {
 } from './game';
 import { getTheme, BoardTheme } from '../themes/themeRegistry';
 import { triggerHaptic } from '../utils/haptics';
-import { GameChat } from './GameChat';
 import { AlertTriangle, Smile } from 'lucide-react';
 
 const getTotalVirados = (state: GameState) =>
@@ -1316,10 +1315,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           </DragOverlay>
         )}
 
-        {!isMockMobile && (
-          <GameChat roomId={roomId} isSpectator={isSpectator} />
-        )}
-
         {isEasyBotMatch && showTutorialGuide && (
           <BotTutorialOverlay
             gameState={gameState}
@@ -1350,11 +1345,6 @@ export function GameScreen({ isSpectator = false }: { isSpectator?: boolean }) {
           <div className="w-full h-full relative pointer-events-auto overflow-hidden">
             {renderGameContent(true)}
           </div>
-        </div>
-
-        {/* Chat Panel on Right */}
-        <div className="w-full flex-1 max-w-[400px] h-[90vh] max-h-[880px] flex flex-col pointer-events-auto">
-          <GameChat roomId={roomId} isSpectator={true} inline={true} isOpenForce={true} />
         </div>
       </div>
     );

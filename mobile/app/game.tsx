@@ -3,7 +3,7 @@ import { View, Text, Pressable, Platform, StatusBar as RNStatusBar } from 'react
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Smile, MessageSquare } from 'lucide-react-native';
+import { Smile } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useGame } from '../hooks/useGame';
 import { useAuth } from '../hooks/useAuth';
@@ -19,7 +19,6 @@ import { RoundSummaryModal } from '../components/game/RoundSummaryModal';
 import { MatchCompletedModal } from '../components/game/MatchCompletedModal';
 import { AbandonConfirmModal } from '../components/game/AbandonConfirmModal';
 import { MatchAbandonedModal } from '../components/game/MatchAbandonedModal';
-import { GameChatModal } from '../components/game/GameChatModal';
 import { triggerHaptic } from '../utils/haptics';
 import { Action } from 'application/action-validator';
 import { GameState } from 'domain/game-state';
@@ -119,8 +118,6 @@ export default function GameScreen() {
 
   // Modales
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [viradoBanner, setViradoBanner] = useState<{ id: number; playerName: string | null } | null>(null);
   const [emoteNotification, setEmoteNotification] = useState<{ senderName: string; text: string } | null>(null);
 
@@ -320,14 +317,10 @@ export default function GameScreen() {
     return () => clearTimeout(timer);
   }, [viradoBanner]);
 
-  // Recepción de emotes y mensajes en vivo
+  // Recepción de reacciones y emotes en vivo
   useEffect(() => {
     if (chatMessages.length > prevChatCountRef.current) {
-      const added = chatMessages.length - prevChatCountRef.current;
       const latest = chatMessages[chatMessages.length - 1];
-      if (!showChatModal) {
-        setUnreadChatCount((prev) => prev + added);
-      }
       if (latest) {
         setEmoteNotification({ senderName: latest.senderName, text: latest.text });
         if (latest.senderId !== (user?.id || localPlayerId)) {
@@ -339,7 +332,7 @@ export default function GameScreen() {
       }
     }
     prevChatCountRef.current = chatMessages.length;
-  }, [chatMessages, showChatModal, localPlayerId, user?.id, playSfx]);
+  }, [chatMessages, localPlayerId, user?.id, playSfx]);
 
   // Si no hay partida activa, regresar a tabs
   useEffect(() => {
@@ -858,37 +851,6 @@ export default function GameScreen() {
                 </Text>
               )}
             </Pressable>
-
-            <Pressable
-              onPress={() => {
-                triggerHaptic('light');
-                setUnreadChatCount(0);
-                setShowChatModal(true);
-              }}
-              className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 items-center justify-center relative"
-            >
-              <MessageSquare color="#fbbf24" size={13} />
-              {unreadChatCount > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -5,
-                    right: -5,
-                    backgroundColor: '#ef4444',
-                    borderRadius: 999,
-                    minWidth: 15,
-                    height: 15,
-                    paddingHorizontal: 3,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: '#ffffff', fontSize: 8, fontWeight: '900' }}>
-                    {unreadChatCount > 9 ? '9+' : unreadChatCount}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
           </View>
         }
       />
@@ -928,17 +890,6 @@ export default function GameScreen() {
         data={matchAbandonedData}
         localPlayerId={localPlayer?.id || null}
         onBackToMenu={handleBackToLobby}
-      />
-
-      <GameChatModal
-        visible={showChatModal}
-        messages={chatMessages}
-        localPlayerId={localPlayer?.id || user?.id || localPlayerId}
-        quickEmotes={playerEmotes}
-        onSendMessage={(text) => {
-          sendMessage(roomId || '', text);
-        }}
-        onClose={() => setShowChatModal(false)}
       />
     </View>
   );

@@ -956,55 +956,83 @@ io.on('connection', async (socket) => {
     socket.emit('online_count', { count: connectedUsers.size });
   });
 
-  // Escuchar cuando un jugador presiona [👋 Notificar que entré]
-  socket.on('notify_friend_connected', async (data: { targetUserId: string }) => {
+  async function sendFriendNotice(
+    targetUserId: string,
+    config: {
+      notifType: 'friend_connected' | 'friend_waiting';
+      socketEvent: 'friend_just_connected' | 'friend_waiting_for_you';
+      ackEvent: 'friend_connected_sent' | 'friend_waiting_sent';
+      pushTitle: string;
+      buildBody: (senderName: string) => string;
+      buildDbContent: (senderName: string) => string;
+    }
+  ) {
     const senderId = (socket as any).userId || (socket as any).user?.sub;
-    if (!senderId || !data?.targetUserId) return;
-
-    const targetSockets = connectedUsers.get(data.targetUserId);
-    if (!targetSockets || targetSockets.size === 0) return;
-
-    const profiles = await getProfilesByIds([senderId, data.targetUserId]);
-    const senderName = profiles[senderId]?.username || 'Tu amigo';
-    const targetName = profiles[data.targetUserId]?.username || 'Amigo';
-
-    for (const sId of targetSockets) {
-      io.to(sId).emit('friend_just_connected', {
-        senderId,
-        senderName,
-      });
+    if (!senderId || typeof targetUserId !== 'string' || !targetUserId.trim() || targetUserId === senderId) {
+      return;
     }
 
-    socket.emit('friend_connected_sent', {
+    const profiles = await getProfilesByIds([senderId, targetUserId]);
+    const senderName = profiles[senderId]?.username || 'Tu amigo';
+    const targetName = profiles[targetUserId]?.username || 'Amigo';
+
+    const targetSockets = connectedUsers.get(targetUserId);
+    if (targetSockets && targetSockets.size > 0) {
+      for (const sId of targetSockets) {
+        io.to(sId).emit(config.socketEvent, {
+          senderId,
+          senderName,
+        });
+      }
+    }
+
+    const { error: notifError } = await supabase.rpc('create_notification', {
+      p_player_id: targetUserId,
+      p_type: config.notifType,
+      p_content: config.buildDbContent(senderName),
+      p_metadata: JSON.stringify({ sender_id: senderId, sender_name: senderName }),
+    });
+    if (notifError) {
+      console.error(`Error creando notificación ${config.notifType}:`, notifError);
+    }
+
+    sendPushToUser(targetUserId, {
+      type: config.notifType,
+      title: config.pushTitle,
+      body: config.buildBody(senderName),
+      data: { senderId, senderName },
+    }).catch((err) => {
+      console.error(`Error al enviar push ${config.notifType}:`, err);
+    });
+
+    socket.emit(config.ackEvent, {
       success: true,
-      targetId: data.targetUserId,
+      targetId: targetUserId,
       targetName,
+    });
+  }
+
+  // Escuchar cuando un jugador presiona [👋 Notificar que entré]
+  socket.on('notify_friend_connected', async (data: { targetUserId: string }) => {
+    await sendFriendNotice(data?.targetUserId, {
+      notifType: 'friend_connected',
+      socketEvent: 'friend_just_connected',
+      ackEvent: 'friend_connected_sent',
+      pushTitle: '👋 ¡Amigo Conectado!',
+      buildBody: (senderName) => `¡${senderName} se acaba de conectar al juego!`,
+      buildDbContent: (senderName) => `👋 ¡${senderName} se acaba de conectar al juego!`,
     });
   });
 
   // Escuchar cuando un jugador presiona [⏳ Decirle que lo espero]
   socket.on('notify_friend_waiting', async (data: { targetUserId: string }) => {
-    const senderId = (socket as any).userId || (socket as any).user?.sub;
-    if (!senderId || !data?.targetUserId) return;
-
-    const targetSockets = connectedUsers.get(data.targetUserId);
-    if (!targetSockets || targetSockets.size === 0) return;
-
-    const profiles = await getProfilesByIds([senderId, data.targetUserId]);
-    const senderName = profiles[senderId]?.username || 'Tu amigo';
-    const targetName = profiles[data.targetUserId]?.username || 'Amigo';
-
-    for (const sId of targetSockets) {
-      io.to(sId).emit('friend_waiting_for_you', {
-        senderId,
-        senderName,
-      });
-    }
-
-    socket.emit('friend_waiting_sent', {
-      success: true,
-      targetId: data.targetUserId,
-      targetName,
+    await sendFriendNotice(data?.targetUserId, {
+      notifType: 'friend_waiting',
+      socketEvent: 'friend_waiting_for_you',
+      ackEvent: 'friend_waiting_sent',
+      pushTitle: '⏳ ¡Te están esperando!',
+      buildBody: (senderName) => `¡${senderName} se ha conectado y te está esperando para jugar!`,
+      buildDbContent: (senderName) => `⏳ ¡${senderName} te está esperando para jugar!`,
     });
   });
 
@@ -1197,24 +1225,22 @@ io.on('connection', async (socket) => {
       console.error('Error creando notificación:', notifError);
     }
 
-    // Enviar Push Notification si el oponente está offline
-    if (!isReceiverOnline) {
-      const pushPayload: PushPayload = {
-        type: 'game_challenge',
-        title: '⚔️ ¡Desafío en KASINO21!',
-        body: cleanChallengeMessage || `¡${playerName} te ha desafiado a jugar${betText}!`,
-        data: {
-          invitationId: invitation.id,
-          roomId,
-          senderId: userId,
-          senderName: playerName,
-          expiresAt
-        }
-      };
-      sendPushToUser(receiverId, pushPayload).catch(err => {
-        console.error('Error al enviar push de desafío:', err);
-      });
-    }
+    // Enviar Push Notification siempre (permite recibir aviso si la pestaña está en segundo plano o desconectado)
+    const pushPayload: PushPayload = {
+      type: 'game_challenge',
+      title: '⚔️ ¡Desafío en KASINO21!',
+      body: cleanChallengeMessage || `¡${playerName} te ha desafiado a jugar${betText}!`,
+      data: {
+        invitationId: invitation.id,
+        roomId,
+        senderId: userId,
+        senderName: playerName,
+        expiresAt
+      }
+    };
+    sendPushToUser(receiverId, pushPayload).catch(err => {
+      console.error('Error al enviar push de desafío:', err);
+    });
 
     socket.emit('room_created', {
       roomId,
@@ -1776,12 +1802,25 @@ io.on('connection', async (socket) => {
     const cleanText = text.trim().substring(0, 500);
     if (cleanText.length === 0) return;
 
-    // Rate limiting para chat por socket: máximo 1 mensaje por segundo (1000ms)
+    // Solo permitir reacciones/emotes (emojis cortos sin espacios o URLs de emotes equipados)
+    const isEmoteUrl =
+      !/\s/.test(cleanText) &&
+      (cleanText.startsWith('http://') ||
+        cleanText.startsWith('https://') ||
+        cleanText.startsWith('/storage/v1/object/public/') ||
+        cleanText.startsWith('/'));
+    const isShortReaction = !/\s/.test(cleanText) && cleanText.length <= 16;
+    if (!isEmoteUrl && !isShortReaction) {
+      socket.emit('error', 'Solo se permiten reacciones en sala.');
+      return;
+    }
+
+    // Rate limiting para reacciones por socket: máximo 1 reacción por segundo (1000ms)
     const now = Date.now();
     const chatRateLimitKey = `chat_rl_${socket.id}`;
     const lastMsgTime = actionTimestamps.get(chatRateLimitKey);
     if (lastMsgTime && (now - lastMsgTime) < 1000) {
-      socket.emit('error', 'Estás enviando mensajes demasiado rápido.');
+      socket.emit('error', 'Estás enviando reacciones demasiado rápido.');
       return;
     }
     actionTimestamps.set(chatRateLimitKey, now);
@@ -1810,19 +1849,7 @@ io.on('connection', async (socket) => {
     room.chatHistory.push(message);
     await persistRoom(roomId, room);
 
-    if (isSpectator) {
-      const quickEmojis = ['😀', '😮', '🔥', '👏', '💀', '🎉'];
-      const isReaction = quickEmojis.includes(cleanText) || cleanText.startsWith('http') || cleanText.includes('/storage/v1/object/public/');
-      if (isReaction) {
-        io.to(roomId).emit('receive_message', message);
-      } else {
-        room.spectators.forEach(s => {
-          io.to(s.socketId).emit('receive_message', message);
-        });
-      }
-    } else {
-      io.to(roomId).emit('receive_message', message);
-    }
+    io.to(roomId).emit('receive_message', message);
   });
 
   socket.on('request_rematch', async ({ roomId }: { roomId: string }) => {

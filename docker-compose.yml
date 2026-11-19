@@ -23,6 +23,9 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS}
       - ALLOW_INSECURE_JWT_FALLBACK=${ALLOW_INSECURE_JWT_FALLBACK:-false}
       - EXPOSE_RULES_VERSION=${EXPOSE_RULES_VERSION:-false}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:soporte@kasino21.com}
     restart: always
     ports:
       - "127.0.0.1:4000:4000"
@@ -41,6 +44,7 @@ services:
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
         - VITE_SOCKET_URL=${VITE_SOCKET_URL}
         - VITE_SHOW_RULES_VERSION=${VITE_SHOW_RULES_VERSION:-false}
+        - VITE_VAPID_PUBLIC_KEY=${VITE_VAPID_PUBLIC_KEY}
     container_name: casino21_frontend
     restart: always
     ports:

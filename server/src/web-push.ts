@@ -15,7 +15,14 @@ if (!vapidPublicKey || !vapidPrivateKey) {
 }
 
 export interface PushPayload {
-  type: 'game_challenge' | 'challenge_response' | 'tournament_start' | 'tournament_match_invite';
+  type:
+    | 'game_challenge'
+    | 'challenge_response'
+    | 'tournament_start'
+    | 'tournament_match_invite'
+    | 'friend_connected'
+    | 'friend_waiting'
+    | 'friend_request';
   title: string;
   body: string;
   data: {

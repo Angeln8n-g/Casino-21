@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Bell, Shield, TrendingUp, Trophy } from 'lucide-react';
+import { LogOut, Bell, Shield, TrendingUp, Trophy, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { supabase } from '../services/supabase';
 import { UserProfileModal } from './UserProfileModal';
 
@@ -52,6 +53,7 @@ export function ProfileHeader({
   onDeleteNotification
 }: ProfileHeaderProps) {
   const { profile, signOut } = useAuth();
+  const { isSupported: isPushSupported, isSubscribed: isPushSubscribed, isLoading: isPushLoading, subscribeToPush } = usePushNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserProfileModal, setShowUserProfileModal] = useState(false);
   const [localCoins, setLocalCoins] = useState(profile?.coins || 0);
@@ -248,113 +250,20 @@ export function ProfileHeader({
               overflow-hidden z-[1000] animate-scale-up origin-top-right
             "
           >
-            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-casino-gold animate-pulse" />
-                <h3 className="text-xs font-display font-black text-white uppercase tracking-widest italic">Avisos Recientes</h3>
-              </div>
-              <div className="flex gap-3">
-                {unreadCount > 0 && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMarkAllAsRead?.();
-                    }}
-                    className="text-[10px] font-black text-casino-gold hover:text-white transition-colors uppercase tracking-wider"
-                  >
-                    Limpiar todo
-                  </button>
-                )}
-                {appNotifications.some(n => n.is_read) && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteRead?.();
-                    }}
-                    className="text-[10px] font-black text-gray-300 hover:text-red-400 transition-colors uppercase tracking-wider"
-                    title="Borrar notificaciones leídas"
-                  >
-                    Borrar leídas
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="overflow-y-auto max-h-[400px] p-2 space-y-2 custom-scrollbar">
-              {appNotifications.length === 0 ? (
-                <div className="py-12 text-center space-y-3 opacity-40">
-                  <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto border border-white/5">
-                    <Bell className="w-6 h-6 text-gray-500" />
-                  </div>
-                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Bandeja vacía</p>
-                </div>
-              ) : (
-                appNotifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      if (!n.is_read) onMarkAsRead?.(n.id);
-                      setShowNotifications(false);
-                      if (n.type === 'friend_request') {
-                        window.dispatchEvent(new CustomEvent('open_social_tab', { detail: { tab: 'friends' } }));
-                      }
-                      if (n.type === 'game_invitation' && n.metadata) {
-                        onChallengeClick?.({
-                          invitationId: n.metadata.invitation_id,
-                          senderId: n.metadata.sender_id,
-                          username: n.metadata.senderName || n.metadata.sender_username || 'Amigo',
-                          elo: n.metadata.sender_elo || 1000,
-                          level: n.metadata.sender_level || 1,
-                          wins: n.metadata.sender_wins || 0,
-                          losses: n.metadata.sender_losses || 0,
-                          xp: n.metadata.sender_xp || 0,
-                          roomId: n.metadata.roomId || n.metadata.room_id || '????',
-                          expiresAt: n.metadata.expiresAt || n.metadata.expires_at
-                        });
-                      }
-                    }}
-                    className={`
-                      w-full text-left p-3.5 rounded-xl transition-all duration-300 group/notif cursor-pointer relative
-                      border border-transparent hover:border-white/10
-                      ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
-                    `}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteNotification?.(n.id);
-                      }}
-                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-300 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
-                      title="Eliminar notificación"
-                    >
-                      ×
-                    </button>
-                    <div className="flex gap-3">
-                      <div className={`
-                        w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5
-                        ${n.type === 'game_invitation' ? 'bg-casino-gold/20 text-casino-gold' : 'bg-blue-500/20 text-blue-400'}
-                      `}>
-                        {n.type === 'game_invitation' ? <Trophy className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">
-                          {n.type === 'game_invitation' ? 'Desafío Real' : 'Sistema'}
-                        </h4>
-                        <p className="text-[11px] font-bold text-white mb-0.5 line-clamp-2 leading-relaxed">
-                          {n.content}
-                        </p>
-                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                          {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      {!n.is_read && (
-                        <div className="w-2 h-2 rounded-full bg-casino-gold shrink-0 mt-3 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <NotificationsDropdownContent
+              appNotifications={appNotifications}
+              unreadCount={unreadCount}
+              isPushSupported={isPushSupported}
+              isPushSubscribed={isPushSubscribed}
+              isPushLoading={isPushLoading}
+              onSubscribePush={subscribeToPush}
+              onMarkAllAsRead={onMarkAllAsRead}
+              onMarkAsRead={onMarkAsRead}
+              onChallengeClick={onChallengeClick}
+              onDeleteRead={onDeleteRead}
+              onDeleteNotification={onDeleteNotification}
+              onClose={() => setShowNotifications(false)}
+            />
           </div>
         )}
       </div>
@@ -500,113 +409,21 @@ export function ProfileHeader({
                 overflow-hidden z-[1000] animate-scale-up origin-top-right
               "
             >
-              <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-casino-gold animate-pulse" />
-                  <h3 className="text-xs font-display font-black text-white uppercase tracking-widest italic">Avisos Recientes</h3>
-                </div>
-                <div className="flex gap-3">
-                  {unreadCount > 0 && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onMarkAllAsRead?.();
-                      }}
-                      className="text-[10px] font-black text-casino-gold hover:text-white transition-colors uppercase tracking-wider"
-                    >
-                      Limpiar todo
-                    </button>
-                  )}
-                  {appNotifications.some(n => n.is_read) && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteRead?.();
-                      }}
-                      className="text-[10px] font-black text-gray-300 hover:text-red-400 transition-colors uppercase tracking-wider"
-                      title="Borrar notificaciones leídas"
-                    >
-                      Borrar leídas
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="overflow-y-auto max-h-[400px] p-2 space-y-2 custom-scrollbar">
-                {appNotifications.length === 0 ? (
-                  <div className="py-12 text-center space-y-3 opacity-40">
-                    <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto border border-white/5">
-                      <Bell className="w-6 h-6 text-gray-500" />
-                    </div>
-                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Bandeja vacía</p>
-                  </div>
-                ) : (
-                  appNotifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => {
-                        if (!n.is_read) onMarkAsRead?.(n.id);
-                        setShowNotifications(false);
-                        if (n.type === 'friend_request') {
-                          window.dispatchEvent(new CustomEvent('open_social_tab', { detail: { tab: 'friends' } }));
-                        }
-                        if (n.type === 'game_invitation' && n.metadata) {
-                          onChallengeClick?.({
-                            invitationId: n.metadata.invitation_id,
-                            senderId: n.metadata.sender_id,
-                            username: n.metadata.senderName || n.metadata.sender_username || 'Amigo',
-                            elo: n.metadata.sender_elo || 1000,
-                            level: n.metadata.sender_level || 1,
-                            wins: n.metadata.sender_wins || 0,
-                            losses: n.metadata.sender_losses || 0,
-                            xp: n.metadata.sender_xp || 0,
-                            roomId: n.metadata.roomId || n.metadata.room_id || '????',
-                            expiresAt: n.metadata.expiresAt || n.metadata.expires_at
-                          });
-                        }
-                      }}
-                      className={`
-                        w-full text-left p-3.5 rounded-2xl transition-all duration-300 group/notif cursor-pointer relative
-                        border border-transparent hover:border-white/10
-                        ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
-                      `}
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteNotification?.(n.id);
-                        }}
-                        className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-300 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
-                        title="Eliminar notificación"
-                      >
-                        ×
-                      </button>
-                      <div className="flex gap-3">
-                        <div className={`
-                          w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5
-                          ${n.type === 'game_invitation' ? 'bg-casino-gold/20 text-casino-gold' : 'bg-blue-500/20 text-blue-400'}
-                        `}>
-                          {n.type === 'game_invitation' ? <Trophy className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">
-                            {n.type === 'game_invitation' ? 'Desafío Real' : 'Sistema'}
-                          </h4>
-                          <p className="text-[11px] font-bold text-white mb-0.5 line-clamp-2 leading-relaxed">
-                            {n.content}
-                          </p>
-                          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                            {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        {!n.is_read && (
-                          <div className="w-2 h-2 rounded-full bg-casino-gold shrink-0 mt-3 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <NotificationsDropdownContent
+                appNotifications={appNotifications}
+                unreadCount={unreadCount}
+                isPushSupported={isPushSupported}
+                isPushSubscribed={isPushSubscribed}
+                isPushLoading={isPushLoading}
+                onSubscribePush={subscribeToPush}
+                onMarkAllAsRead={onMarkAllAsRead}
+                onMarkAsRead={onMarkAsRead}
+                onChallengeClick={onChallengeClick}
+                onDeleteRead={onDeleteRead}
+                onDeleteNotification={onDeleteNotification}
+                onClose={() => setShowNotifications(false)}
+                desktopCards
+              />
             </div>
           )}
         </div>
@@ -619,5 +436,186 @@ export function ProfileHeader({
         />
       )}
     </div>
+  );
+}
+
+interface NotificationsDropdownContentProps {
+  appNotifications: NonNullable<ProfileHeaderProps['appNotifications']>;
+  unreadCount: number;
+  isPushSupported: boolean;
+  isPushSubscribed: boolean;
+  isPushLoading: boolean;
+  onSubscribePush: () => Promise<boolean>;
+  onMarkAllAsRead?: () => void;
+  onMarkAsRead?: (id: string) => void;
+  onChallengeClick?: (inviteData: any) => void;
+  onDeleteRead?: () => void;
+  onDeleteNotification?: (id: string) => void;
+  onClose: () => void;
+  desktopCards?: boolean;
+}
+
+function NotificationsDropdownContent({
+  appNotifications,
+  unreadCount,
+  isPushSupported,
+  isPushSubscribed,
+  isPushLoading,
+  onSubscribePush,
+  onMarkAllAsRead,
+  onMarkAsRead,
+  onChallengeClick,
+  onDeleteRead,
+  onDeleteNotification,
+  onClose,
+  desktopCards = false,
+}: NotificationsDropdownContentProps) {
+  return (
+    <>
+      <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-casino-gold animate-pulse" />
+          <h3 className="text-xs font-display font-black text-white uppercase tracking-widest italic">Avisos Recientes</h3>
+        </div>
+        <div className="flex gap-3">
+          {unreadCount > 0 && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkAllAsRead?.();
+              }}
+              className="text-[10px] font-black text-casino-gold hover:text-white transition-colors uppercase tracking-wider"
+            >
+              Limpiar todo
+            </button>
+          )}
+          {appNotifications.some(n => n.is_read) && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteRead?.();
+              }}
+              className="text-[10px] font-black text-gray-300 hover:text-red-400 transition-colors uppercase tracking-wider"
+              title="Borrar notificaciones leídas"
+            >
+              Borrar leídas
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isPushSupported && !isPushSubscribed && (
+        <div className="px-3.5 py-2.5 bg-casino-gold/10 border-b border-casino-gold/20 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black text-casino-gold uppercase tracking-wider">
+              Notificaciones Push
+            </p>
+            <p className="text-[10px] text-gray-300 leading-tight">
+              Recibe avisos de amigos y desafíos al instante
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={isPushLoading}
+            onClick={(e) => {
+              e.stopPropagation();
+              void onSubscribePush();
+            }}
+            className="shrink-0 px-2.5 py-1.5 rounded-lg bg-casino-gold hover:bg-yellow-400 text-black text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-50"
+          >
+            {isPushLoading ? '...' : '🔔 Activar'}
+          </button>
+        </div>
+      )}
+
+      <div className="overflow-y-auto max-h-[400px] p-2 space-y-2 custom-scrollbar">
+        {appNotifications.length === 0 ? (
+          <div className="py-12 text-center space-y-3 opacity-40">
+            <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto border border-white/5">
+              <Bell className="w-6 h-6 text-gray-500" />
+            </div>
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Bandeja vacía</p>
+          </div>
+        ) : (
+          appNotifications.map((n) => {
+            const isSocialNotice = n.type === 'friend_request' || n.type === 'friend_connected' || n.type === 'friend_waiting';
+            return (
+              <div
+                key={n.id}
+                onClick={() => {
+                  if (!n.is_read) onMarkAsRead?.(n.id);
+                  onClose();
+                  if (isSocialNotice) {
+                    window.dispatchEvent(new CustomEvent('open_social_tab', { detail: { tab: 'friends' } }));
+                  }
+                  if (n.type === 'game_invitation' && n.metadata) {
+                    onChallengeClick?.({
+                      invitationId: n.metadata.invitation_id,
+                      senderId: n.metadata.sender_id,
+                      username: n.metadata.senderName || n.metadata.sender_username || 'Amigo',
+                      elo: n.metadata.sender_elo || 1000,
+                      level: n.metadata.sender_level || 1,
+                      wins: n.metadata.sender_wins || 0,
+                      losses: n.metadata.sender_losses || 0,
+                      xp: n.metadata.sender_xp || 0,
+                      roomId: n.metadata.roomId || n.metadata.room_id || '????',
+                      expiresAt: n.metadata.expiresAt || n.metadata.expires_at
+                    });
+                  }
+                }}
+                className={`
+                  w-full text-left p-3.5 ${desktopCards ? 'rounded-2xl' : 'rounded-xl'} transition-all duration-300 group/notif cursor-pointer relative
+                  border border-transparent hover:border-white/10
+                  ${!n.is_read ? 'bg-white/[0.04] shadow-lg' : 'opacity-40 grayscale-[0.5]'}
+                `}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteNotification?.(n.id);
+                  }}
+                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white/5 text-gray-300 hover:text-white hover:bg-red-500/20 transition-all flex items-center justify-center text-[11px] font-black"
+                  title="Eliminar notificación"
+                >
+                  ×
+                </button>
+                <div className="flex gap-3">
+                  <div className={`
+                    w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5
+                    ${n.type === 'game_invitation' ? 'bg-casino-gold/20 text-casino-gold' : isSocialNotice ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}
+                  `}>
+                    {n.type === 'game_invitation' ? (
+                      <Trophy className="w-5 h-5" />
+                    ) : isSocialNotice ? (
+                      <UserPlus className="w-5 h-5" />
+                    ) : (
+                      <Shield className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">
+                      {n.type === 'game_invitation'
+                        ? 'Desafío Real'
+                        : isSocialNotice
+                        ? 'Aviso Social'
+                        : 'Sistema'}
+                    </h4>
+                    <p className="text-[11px] font-bold text-white mb-0.5 line-clamp-2 leading-relaxed">
+                      {n.content}
+                    </p>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                      {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  {!n.is_read && (
+                    <div className="w-2 h-2 rounded-full bg-casino-gold shrink-0 mt-3 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
   );
 }
