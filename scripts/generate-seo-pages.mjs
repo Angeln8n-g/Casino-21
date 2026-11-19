@@ -13,29 +13,29 @@ const PAGES = {
   privacy: {
     title: 'Política de Privacidad — KASINO21 | Juego de Cartas Online',
     description:
-      'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, Google AdSense, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
+      'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
     canonical: 'https://kasino21.com/privacy',
     ogTitle: 'Política de Privacidad — KASINO21 | Juego de Cartas Online',
     ogDescription:
-      'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, Google AdSense, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
+      'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
   },
   terms: {
     title: 'Términos de Servicio — KASINO21 | Juego de Cartas Online',
     description:
-      'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios, propiedad intelectual y política de publicidad.',
+      'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios y propiedad intelectual.',
     canonical: 'https://kasino21.com/terms',
     ogTitle: 'Términos de Servicio — KASINO21 | Juego de Cartas Online',
     ogDescription:
-      'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios, propiedad intelectual y política de publicidad.',
+      'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios y propiedad intelectual.',
   },
   cookies: {
     title: 'Política de Cookies — KASINO21 | Juego de Cartas Online',
     description:
-      'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales, analíticas de Google Analytics y publicitarias de Google AdSense. Cumplimiento GDPR/ePrivacy.',
+      'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales y analíticas de Google Analytics. Cumplimiento GDPR/ePrivacy.',
     canonical: 'https://kasino21.com/cookies',
     ogTitle: 'Política de Cookies — KASINO21 | Juego de Cartas Online',
     ogDescription:
-      'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales, analíticas de Google Analytics y publicitarias de Google AdSense. Cumplimiento GDPR/ePrivacy.',
+      'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales y analíticas de Google Analytics. Cumplimiento GDPR/ePrivacy.',
   },
   'como-jugar': {
     title: 'Cómo Jugar Casino 21 — Reglas del Juego de Cartas Online | KASINO21',

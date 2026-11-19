@@ -1,7 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO } from '../utils/seo';
-import AdBanner from './AdBanner';
 
 export function ComoJugar() {
   useLayoutEffect(() => {
@@ -93,8 +92,6 @@ export function ComoJugar() {
             Los palos (picas, corazones, diamantes, tréboles) no afectan el valor de las cartas, pero son importantes para la puntuación.
           </p>
         </Section>
-
-        <AdBanner />
 
         <Section icon="🎮" title="Mecánicas del juego">
           <h3 className="text-base font-bold text-white mt-6 mb-3">Inicio de la partida</h3>

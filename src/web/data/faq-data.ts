@@ -12,7 +12,7 @@ export const faqData: FAQItem[] = [
   },
   {
     question: '¿Es gratuito?',
-    answer: 'Sí, Kasino21 es 100% gratuito. Las monedas del juego son virtuales y no tienen valor monetario real. No se pueden comprar ni vender por dinero real. El juego se mantiene mediante publicidad no intrusiva de Google AdSense.',
+    answer: 'Sí, Kasino21 es 100% gratuito. Las monedas del juego son virtuales y no tienen valor monetario real. No se pueden comprar ni vender por dinero real.',
     category: 'General',
   },
   {
@@ -37,7 +37,7 @@ export const faqData: FAQItem[] = [
   },
   {
     question: '¿Puedo jugar contra bots?',
-    answer: 'Sí, ofrecemos un modo contra bots con diferentes niveles de dificultad. Es perfecto para practicar antes de competir contra otros jugadores. Cada anuncio visto desbloquea 10 partidas contra bots.',
+    answer: 'Sí, ofrecemos un modo contra bots con diferentes niveles de dificultad. Es perfecto para practicar antes de competir contra otros jugadores.',
     category: 'Juego',
   },
   {
@@ -62,7 +62,7 @@ export const faqData: FAQItem[] = [
   },
   {
     question: '¿Cómo consigo más monedas?',
-    answer: 'Puedes ganar monedas de varias formas: jugando partidas (victoria y participación), completando misiones diarias, participando en torneos, o viendo anuncios patrocinados en la tienda del juego.',
+    answer: 'Puedes ganar monedas de varias formas: jugando partidas (victoria y participación), completando misiones diarias o participando en torneos.',
     category: 'Monedas',
   },
   {
@@ -74,11 +74,6 @@ export const faqData: FAQItem[] = [
     question: '¿Cómo participo en un torneo?',
     answer: 'Los torneos activos aparecen en la página principal del juego. Simplemente juega partidas durante el período del torneo y tus resultados se acumulan automáticamente en la tabla de clasificación. No necesitas inscripción previa.',
     category: 'Torneos',
-  },
-  {
-    question: '¿Cómo funciona el sistema de anuncios?',
-    answer: 'Kasino21 utiliza Google AdSense para mostrar anuncios que nos ayudan a mantener el juego gratuito. Los anuncios aparecen como intersticiales entre partidas, anuncios recompensados en la tienda, y anuncios de puerta para desbloquear partidas contra bots. Puedes ver nuestra política de cookies para más detalles.',
-    category: 'General',
   },
   {
     question: '¿Cómo reporto un problema?',

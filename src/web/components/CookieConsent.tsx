@@ -37,11 +37,6 @@ export function clearCookieConsent(): void {
   }
 }
 
-export function hasAdConsent(): boolean {
-  const consent = getCookieConsent();
-  return consent?.accepted === true;
-}
-
 function updateGoogleConsent(accepted: boolean) {
   if (typeof (window as any).gtag === 'function') {
     (window as any).gtag('consent', 'update', {
@@ -88,8 +83,7 @@ export function CookieConsent() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex-1">
               <p className="text-sm text-gray-300 leading-relaxed">
-                Usamos cookies para mejorar tu experiencia y mostrar anuncios relevantes.
-                Los anuncios nos ayudan a mantener el juego gratuito.{' '}
+                Usamos cookies esenciales y analíticas para garantizar el funcionamiento del juego y mejorar tu experiencia.{' '}
                 <a href="/cookies" className="text-casino-gold hover:underline font-bold">
                   Más información
                 </a>

@@ -114,7 +114,7 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
   };
 
   const handleShareWhatsapp = () => {
-    const text = `🎮 ¡Acompáñame en Kasino21! Juega 21 en tiempo real, ve ads para subir el pozo en vivo y compite por premios en dólares. Registrate con mi link aquí: ${referralLink}`;
+    const text = `🎮 ¡Acompáñame en Kasino21! Juega 21 en tiempo real, sube de rango ELO y compite en torneos oficiales. Regístrate con mi link aquí: ${referralLink}`;
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -222,38 +222,31 @@ export const ReferralModal: React.FC<Props> = ({ isOpen, onClose, eventId }) => 
               </h4>
 
               <div className="max-h-48 overflow-y-auto space-y-2.5 pr-1 scrollbar-thin scrollbar-thumb-purple-500/20">
-                {stats.referralsList.map((friend) => {
-                  const progress = Math.min(100, Math.max(0, (friend.ads_count / 100) * 100));
-                  return (
-                    <div
-                      key={friend.id}
-                      className="bg-black/40 border border-white/5 rounded-2xl p-3 flex items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 font-black text-sm flex items-center justify-center flex-shrink-0">
-                          {friend.referred_username.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-white truncate">@{friend.referred_username}</div>
-                          <div className="w-full bg-slate-900 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div className="bg-purple-400 h-full transition-all duration-500" style={{ width: `${progress}%` }} />
-                          </div>
-                        </div>
+                {stats.referralsList.map((friend) => (
+                  <div
+                    key={friend.id}
+                    className="bg-black/40 border border-white/5 rounded-2xl p-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 font-black text-sm flex items-center justify-center flex-shrink-0">
+                        {friend.referred_username.charAt(0).toUpperCase()}
                       </div>
-
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-xs font-mono font-bold text-gray-300">{friend.ads_count} / 100 ads</div>
-                        {friend.bonus_awarded ? (
-                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase border border-emerald-500/30">
-                            +200 Pts ✅
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-500 font-bold uppercase">Pendiente</span>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-white truncate">@{friend.referred_username}</div>
                       </div>
                     </div>
-                  );
-                })}
+
+                    <div className="text-right flex-shrink-0">
+                      {friend.bonus_awarded ? (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase border border-emerald-500/30">
+                          +200 Pts ✅
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-500 font-bold uppercase">Pendiente</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </motion.div>

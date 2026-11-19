@@ -44,80 +44,11 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
   // Delete Account (Unsubscribe) Modal Trigger
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Championship Stats
-  const [championshipData, setChampionshipData] = useState<{
-    points: number;
-    rank: number | null;
-    adsToday: number;
-    dailyCap: number;
-    isQualified: boolean;
-  } | null>(null);
-
   useEffect(() => {
     if (profile?.username) {
       setNewUsername(profile.username);
     }
   }, [profile?.username]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const userId = user.id;
-    async function fetchChampionshipStats() {
-      try {
-        const { data: eventData } = await supabase
-          .from('events')
-          .select('id, daily_ad_cap')
-          .eq('is_championship', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (eventData) {
-          const { data: partData } = await supabase
-            .from('championship_participants')
-            .select('points, ads_today, is_qualified')
-            .eq('event_id', eventData.id)
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (partData) {
-            const { count } = await supabase
-              .from('championship_participants')
-              .select('id', { count: 'exact', head: true })
-              .eq('event_id', eventData.id)
-              .gt('points', partData.points || 0);
-
-            const userRank = count !== null ? count + 1 : null;
-
-            setChampionshipData({
-              points: partData.points || 0,
-              rank: userRank,
-              adsToday: partData.ads_today || 0,
-              dailyCap: eventData.daily_ad_cap || 300,
-              isQualified: userRank ? userRank <= 32 : false,
-            });
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching championship stats for profile:', err);
-      }
-    }
-    fetchChampionshipStats();
-
-    const channel = supabase
-      .channel(`profile_championship_${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
-        fetchChampionshipStats();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'championship_participants' }, () => {
-        fetchChampionshipStats();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
 
   const handleEditUsername = () => {
     triggerHaptic('light');
@@ -356,74 +287,6 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
             </div>
           </div>
 
-          {/* Championship Stats Section */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-amber-950/40 via-yellow-950/20 to-black border border-casino-gold/40 p-4 rounded-2xl space-y-3 shadow-[0_0_20px_rgba(250,204,21,0.08)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-casino-gold animate-bounce" />
-                <span className="text-xs font-black text-casino-gold uppercase tracking-widest font-['Russo_One']">
-                  Kasino21 Championship
-                </span>
-              </div>
-              {championshipData?.isQualified && (
-                <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-casino-gold text-black rounded-md animate-pulse">
-                  👑 Top 32 Clasificado
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center pt-1">
-              <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
-                <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Puntos Pozo</span>
-                <span className="font-black text-sm tabular-nums text-casino-gold">
-                  {championshipData ? `${championshipData.points} pts` : '0 pts'}
-                </span>
-              </div>
-
-              <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
-                <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Posición</span>
-                <span className="text-white font-black text-sm tabular-nums">
-                  {championshipData?.rank ? `#${championshipData.rank}` : 'Sin Rango'}
-                </span>
-              </div>
-
-              <div className="bg-black/50 border border-white/5 p-2 rounded-xl">
-                <span className="text-[9px] text-gray-400 uppercase font-black tracking-wider block">Ads Hoy</span>
-                <span className="font-black text-sm tabular-nums text-emerald-400">
-                  {championshipData ? `${championshipData.adsToday}/${championshipData.dailyCap}` : '0/300'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={async () => {
-                if (!user?.id) return;
-                const { data: eventData } = await supabase
-                  .from('events')
-                  .select('id')
-                  .eq('is_championship', true)
-                  .order('created_at', { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
-
-                if (eventData?.id) {
-                  const { data } = await supabase.rpc('record_championship_ad_activity', {
-                    p_user_id: user.id,
-                    p_event_id: eventData.id,
-                    p_type: 'view',
-                  });
-
-                  if (data?.success === false) {
-                    alert(data.error === 'DAILY_CAP_REACHED' ? '⚠️ Has alcanzado el tope diario de 300 anuncios.' : `⚠️ Error: ${data.error}`);
-                  }
-                }
-              }}
-              className="w-full py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/40 hover:to-yellow-500/40 border border-casino-gold/40 rounded-xl text-casino-gold font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
-            >
-              <span>🎬 Sumar Anuncio (+1 Pt & Pozo)</span>
-            </button>
-          </div>
-
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-[#0F0E0C] border border-[#2A2722] p-3 text-center rounded-2xl flex flex-col items-center">
@@ -471,16 +334,6 @@ export function UserProfileModal({ onClose }: UserProfileModalProps) {
               ) : (
                 <div className="w-full text-center py-2 text-[10px] text-gray-500 italic">
                   Compite en torneos semanales para desbloquear tus primeros trofeos.
-                </div>
-              )}
-
-              {championshipData?.isQualified && (
-                <div className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-xl">
-                  <span className="text-base">👑</span>
-                  <div>
-                    <span className="text-[10px] font-black text-purple-400 block leading-tight">Top 32 Finalista</span>
-                    <span className="text-[8px] text-gray-400 font-mono">Kasino21 Championship</span>
-                  </div>
                 </div>
               )}
             </div>

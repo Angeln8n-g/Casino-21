@@ -2,7 +2,6 @@ import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { faqData, getFAQCategories } from '../data/faq-data';
-import AdBanner from './AdBanner';
 
 const categories = ['Todos', ...getFAQCategories()];
 
@@ -121,8 +120,6 @@ export function FAQ() {
             <p className="text-gray-500 text-sm">No hay preguntas en esta categoría.</p>
           </div>
         )}
-
-        <AdBanner />
 
         {/* Still need help */}
         <div className="mt-12 bg-gradient-to-r from-violet-900/30 to-indigo-900/30 border border-violet-500/20 rounded-2xl p-8 text-center">

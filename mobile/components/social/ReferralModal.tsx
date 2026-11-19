@@ -118,7 +118,7 @@ export function ReferralModal({ visible, onClose, eventId }: ReferralModalProps)
 
   const handleShareWhatsapp = async () => {
     triggerHaptic('light');
-    const message = `🎮 ¡Acompáñame en Kasino21! Juega 21 en tiempo real, ve ads para subir el pozo en vivo y compite por premios en dólares. Regístrate con mi link aquí: ${referralLink}`;
+    const message = `🎮 ¡Acompáñame en Kasino21! Juega 21 en tiempo real, sube de rango ELO y compite en torneos oficiales. Regístrate con mi link aquí: ${referralLink}`;
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     try {
       const canOpen = await Linking.canOpenURL(whatsappUrl);
@@ -259,57 +259,42 @@ export function ReferralModal({ visible, onClose, eventId }: ReferralModalProps)
                 </View>
               ) : (
                 <View className="gap-2.5">
-                  {stats.referralsList.map((friend) => {
-                    const progress = Math.min(
-                      100,
-                      Math.max(0, ((friend.ads_count || 0) / 100) * 100)
-                    );
-                    return (
-                      <View
-                        key={friend.id}
-                        className="bg-black/40 border border-white/5 rounded-2xl p-3 flex-row items-center justify-between gap-3"
-                      >
-                        <View className="flex-row items-center gap-3 flex-1">
-                          <View className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 items-center justify-center">
-                            <Text className="text-purple-300 font-black text-sm">
-                              {friend.referred_username?.charAt(0).toUpperCase() || 'J'}
-                            </Text>
-                          </View>
-                          <View className="flex-1">
-                            <Text
-                              numberOfLines={1}
-                              className="text-xs font-bold text-white"
-                            >
-                              @{friend.referred_username}
-                            </Text>
-                            <View className="w-full bg-slate-900 rounded-full h-1.5 mt-1.5 overflow-hidden">
-                              <View
-                                className="bg-purple-400 h-full"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </View>
-                          </View>
-                        </View>
-
-                        <View className="items-end">
-                          <Text className="text-xs font-mono font-bold text-gray-300">
-                            {friend.ads_count || 0} / 100 ads
+                  {stats.referralsList.map((friend) => (
+                    <View
+                      key={friend.id}
+                      className="bg-black/40 border border-white/5 rounded-2xl p-3 flex-row items-center justify-between gap-3"
+                    >
+                      <View className="flex-row items-center gap-3 flex-1">
+                        <View className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 items-center justify-center">
+                          <Text className="text-purple-300 font-black text-sm">
+                            {friend.referred_username?.charAt(0).toUpperCase() || 'J'}
                           </Text>
-                          {friend.bonus_awarded ? (
-                            <View className="bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded mt-0.5">
-                              <Text className="text-[10px] text-emerald-400 font-bold uppercase">
-                                +200 Pts ✅
-                              </Text>
-                            </View>
-                          ) : (
-                            <Text className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">
-                              Pendiente
-                            </Text>
-                          )}
+                        </View>
+                        <View className="flex-1">
+                          <Text
+                            numberOfLines={1}
+                            className="text-xs font-bold text-white"
+                          >
+                            @{friend.referred_username}
+                          </Text>
                         </View>
                       </View>
-                    );
-                  })}
+
+                      <View className="items-end">
+                        {friend.bonus_awarded ? (
+                          <View className="bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded mt-0.5">
+                            <Text className="text-[10px] text-emerald-400 font-bold uppercase">
+                              +200 Pts ✅
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">
+                            Pendiente
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ))}
                 </View>
               )}
             </View>

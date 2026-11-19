@@ -6,7 +6,7 @@ export function TermsOfService() {
   useLayoutEffect(() => {
     updateSEO({
       title: 'Términos de Servicio — KASINO21 | Juego de Cartas Online',
-      description: 'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios, propiedad intelectual y política de publicidad.',
+      description: 'Lee los Términos de Servicio de KASINO21. Reglas del juego, moneda virtual sin valor monetario, conducta de usuarios y propiedad intelectual.',
       canonical: 'https://kasino21.com/terms',
     });
     return () => resetSEO();
@@ -141,19 +141,7 @@ export function TermsOfService() {
           </ul>
         </ToSSection>
 
-        <ToSSection icon="📢" number="6" title="Anuncios y Monetización">
-          <p>
-            Para mantener KASINO21 gratuito, mostramos anuncios proporcionados por <strong className="text-white">Adsterra</strong>.
-          </p>
-          <ul className="mt-3">
-            <li>Podemos usar cookies para personalizar anuncios y analizar el tráfico.</li>
-            <li>Los anuncios son proporcionados por terceros; no somos responsables del contenido de sitios externos enlazados en los anuncios.</li>
-            <li>Ciertas funciones del juego (p. ej., anuncios recompensados) pueden requerir que veas un anuncio completo para recibir moneda virtual o bonificaciones.</li>
-            <li>Aceptas no usar bloqueadores de anuncios o scripts que interfieran con la entrega de anuncios en el Servicio.</li>
-          </ul>
-        </ToSSection>
-
-        <ToSSection icon="©️" number="7" title="Propiedad Intelectual">
+        <ToSSection icon="©️" number="6" title="Propiedad Intelectual">
           <p>
             Todo el contenido de KASINO21 — incluyendo, entre otros, el código fuente del juego, el diseño visual,
             los gráficos, el logotipo, el nombre "KASINO21", las mecánicas del juego de cartas, los efectos de sonido,
@@ -166,7 +154,7 @@ export function TermsOfService() {
           </p>
         </ToSSection>
 
-        <ToSSection icon="🚨" number="8" title="Exención de Garantías">
+        <ToSSection icon="🚨" number="7" title="Exención de Garantías">
           <p>
             KASINO21 se proporciona <strong className="text-white">"tal cual"</strong> y <strong className="text-white">"según disponibilidad"</strong> sin
             garantías de ningún tipo, ya sean expresas o implícitas. No garantizamos que:
@@ -178,7 +166,7 @@ export function TermsOfService() {
           </ul>
         </ToSSection>
 
-        <ToSSection icon="🛡️" number="9" title="Limitación de Responsabilidad">
+        <ToSSection icon="🛡️" number="8" title="Limitación de Responsabilidad">
           <p>
             En la máxima medida permitida por la ley aplicable, KASINO21 y sus creadores no serán responsables por
             daños indirectos, incidentales, especiales, consecuentes o punitivos, incluyendo, entre otros:
@@ -190,7 +178,7 @@ export function TermsOfService() {
           </ul>
         </ToSSection>
 
-        <ToSSection icon="🔄" number="10" title="Terminación">
+        <ToSSection icon="🔄" number="9" title="Terminación">
           <p>
             Nos reservamos el derecho de suspender o cerrar tu cuenta en cualquier momento, con o sin previo aviso,
             por violaciones de estos Términos o por cualquier otro motivo a nuestra entera discreción.
@@ -201,7 +189,7 @@ export function TermsOfService() {
           </p>
         </ToSSection>
 
-        <ToSSection icon="📝" number="11" title="Cambios a los Términos">
+        <ToSSection icon="📝" number="10" title="Cambios a los Términos">
           <p>
             Nos reservamos el derecho de modificar estos Términos en cualquier momento. Cuando realicemos cambios
             importantes, actualizaremos la fecha de "Última actualización" arriba. El uso continuado de KASINO21
@@ -209,7 +197,7 @@ export function TermsOfService() {
           </p>
         </ToSSection>
 
-        <ToSSection icon="✉️" number="12" title="Contacto">
+        <ToSSection icon="✉️" number="11" title="Contacto">
           <p>Si tienes preguntas sobre estos Términos de Servicio, contáctanos:</p>
           <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4">
             <div className="w-12 h-12 bg-casino-gold/10 border border-casino-gold/20 rounded-xl flex items-center justify-center text-2xl shrink-0">

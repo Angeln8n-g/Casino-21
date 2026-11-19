@@ -50,10 +50,6 @@ export function MatchCompletedScreen({
     window.dispatchEvent(new CustomEvent('profile_updated'));
     window.dispatchEvent(new CustomEvent('coins_updated'));
     window.dispatchEvent(new CustomEvent('elo_updated'));
-    
-    import('../AdManager').then(({ showInterstitialAd }) => {
-      showInterstitialAd();
-    });
   }, []);
 
   const isPlayerWinner = (playerId: string): boolean => {

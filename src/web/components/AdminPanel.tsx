@@ -4,7 +4,6 @@ import { supabase } from '../services/supabase';
 import { TournamentBracket, TournamentMatch } from './TournamentBracket';
 import { StoreAdmin } from './StoreAdmin';
 import { QuestManager } from './QuestManager';
-import { AdManagerAdmin } from './AdManagerAdmin';
 import { AudioAdmin } from './AudioAdmin';
 import { PendingPrizesAdmin } from './admin/PendingPrizesAdmin';
 import { ChampionshipAdmin } from './admin/ChampionshipAdmin';
@@ -100,7 +99,7 @@ const DEFAULT_RULES_TEMPLATE =
 export function AdminPanel() {
   const { startUrlLoop, stopLoop } = useAudio();
   const [activeTab, setActiveTab] = useState<
-    'events' | 'store' | 'quests' | 'ads' | 'audio' | 'prizes' | 'championship'
+    'events' | 'store' | 'quests' | 'audio' | 'prizes' | 'championship'
   >('events');
 
   const [events, setEvents] = useState<AdminEventData[]>([]);
@@ -572,15 +571,6 @@ export function AdminPanel() {
               }`}
             >
               Misiones
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('ads')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                activeTab === 'ads' ? 'bg-amber-500/30 text-amber-200' : 'text-white/75 hover:text-white'
-              }`}
-            >
-              Anuncios
             </button>
             <button
               type="button"
@@ -1772,8 +1762,6 @@ export function AdminPanel() {
           <StoreAdmin />
         ) : activeTab === 'quests' ? (
           <QuestManager />
-        ) : activeTab === 'ads' ? (
-          <AdManagerAdmin />
         ) : activeTab === 'audio' ? (
           <AudioAdmin />
         ) : CASH_PRIZES_ENABLED && activeTab === 'championship' ? (

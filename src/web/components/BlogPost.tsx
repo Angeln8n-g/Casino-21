@@ -2,7 +2,6 @@ import React, { useLayoutEffect } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { getBlogPostBySlug, getRelatedPosts } from '../data/blog-posts';
-import AdBanner from './AdBanner';
 
 export function BlogPost() {
   const slug = window.location.pathname.replace('/blog/', '');
@@ -126,8 +125,6 @@ export function BlogPost() {
                 JUGAR AHORA
               </a>
             </div>
-
-            <AdBanner />
 
             {/* Related Posts */}
             {related.length > 0 && (

@@ -15,7 +15,6 @@ import {
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useAudio } from '../../hooks/useAudio';
@@ -174,11 +173,6 @@ export default function Store() {
   const [prevCoins, setPrevCoins] = useState(profile?.coins || 0);
   const [coinAnim, setCoinAnim] = useState(false);
 
-  // Ad Views Limit state
-  const [adViewsCount, setAdViewsCount] = useState<number>(0);
-  const [showLimitReachedAnimation, setShowLimitReachedAnimation] = useState<boolean>(false);
-  const [isAdChecking, setIsAdChecking] = useState<boolean>(false);
-
   // Player Font Preference
   const [preferredFont, setPreferredFont] = useState<ThemeFontKey | null>(null);
 
@@ -193,50 +187,8 @@ export default function Store() {
     };
   }, []);
 
-  const loadAdCountFromLocalStorage = async () => {
-    if (!user) return;
-    try {
-      const cached = await AsyncStorage.getItem(`ad_views_daily_${user.id}`);
-      if (cached) {
-        const { date, count } = JSON.parse(cached);
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (date === todayStr) {
-          setAdViewsCount(count);
-          return;
-        }
-      }
-    } catch (e) {
-      console.error('Error reading storage for ads:', e);
-    }
-    setAdViewsCount(0);
-  };
-
-  const fetchAdCount = async () => {
-    if (!user) return;
-    setIsAdChecking(true);
-    try {
-      const { data, error } = await supabase.rpc('get_daily_rewarded_ad_count');
-      if (!error && typeof data === 'number') {
-        setAdViewsCount(data);
-        const todayStr = new Date().toISOString().split('T')[0];
-        await AsyncStorage.setItem(
-          `ad_views_daily_${user.id}`,
-          JSON.stringify({ date: todayStr, count: data })
-        );
-      } else {
-        await loadAdCountFromLocalStorage();
-      }
-    } catch (e) {
-      console.error('Error fetching ad count:', e);
-      await loadAdCountFromLocalStorage();
-    } finally {
-      setIsAdChecking(false);
-    }
-  };
-
   useEffect(() => {
     fetchStoreData();
-    fetchAdCount();
   }, [user]);
 
   useEffect(() => {
@@ -275,72 +227,6 @@ export default function Store() {
       console.error('Error fetching store:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleRewardedAd = async () => {
-    if (adViewsCount >= 3) {
-      setShowLimitReachedAnimation(true);
-      playSfx('victory');
-      return;
-    }
-    if (!user) return;
-    setIsAdChecking(true);
-    try {
-      const { data, error } = await supabase.rpc('claim_rewarded_ad_coins', {
-        p_reward_amount: 50,
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        const nextCount = adViewsCount + 1;
-        setAdViewsCount(nextCount);
-        const todayStr = new Date().toISOString().split('T')[0];
-        await AsyncStorage.setItem(
-          `ad_views_daily_${user.id}`,
-          JSON.stringify({ date: todayStr, count: nextCount })
-        );
-
-        appEvents.emit('coins_updated');
-        if (refetchProfile) await refetchProfile();
-        playSfx('victory');
-        triggerHaptic('success');
-
-        if (nextCount >= 3) {
-          setShowLimitReachedAnimation(true);
-        } else {
-          Alert.alert('¡Recompensa obtenida!', 'Has recibido +50 🪙 por ver el anuncio.');
-        }
-      } else {
-        if (data?.error === 'DAILY_LIMIT_REACHED') {
-          setAdViewsCount(3);
-          const todayStr = new Date().toISOString().split('T')[0];
-          await AsyncStorage.setItem(
-            `ad_views_daily_${user.id}`,
-            JSON.stringify({ date: todayStr, count: 3 })
-          );
-          setShowLimitReachedAnimation(true);
-          playSfx('victory');
-          return;
-        }
-        const errMsg =
-          data?.error === 'ON_COOLDOWN'
-            ? 'Debes esperar un momento antes de ver otro anuncio y reclamar más monedas.'
-            : data?.error === 'DAILY_LIMIT_REACHED'
-            ? 'Ya has visto el límite máximo de 3 anuncios por hoy.'
-            : `Error al reclamar monedas: ${data?.error || 'Desconocido'}`;
-        Alert.alert('Aviso', errMsg);
-        playSfx('error');
-        triggerHaptic('error');
-      }
-    } catch (e) {
-      console.error('Error rewarding player:', e);
-      Alert.alert('Error', 'Error de conexión al reclamar tu recompensa.');
-      playSfx('error');
-      triggerHaptic('error');
-    } finally {
-      setIsAdChecking(false);
     }
   };
 
@@ -614,28 +500,6 @@ export default function Store() {
         </View>
 
         <View className="flex-row flex-wrap items-center gap-2.5 w-full">
-          {/* View Sponsored Message Button */}
-          <Pressable
-            disabled={isAdChecking}
-            onPress={handleRewardedAd}
-            className={`rounded-full px-3.5 py-2.5 items-center justify-center border flex-1 ${
-              adViewsCount >= 3
-                ? 'bg-zinc-800/40 border-zinc-700/50'
-                : 'bg-[#3b82f6]/20 border-[#3b82f6]/50 active:bg-[#3b82f6]/30'
-            }`}
-          >
-            <Text
-              numberOfLines={1}
-              className={`text-xs font-bold ${
-                adViewsCount >= 3 ? 'text-[#A1A1AA]' : 'text-[#60a5fa]'
-              }`}
-            >
-              {adViewsCount >= 3
-                ? 'Anuncios Agotados (3/3)'
-                : `Ver Anuncio (${adViewsCount}/3, quedan ${3 - adViewsCount})`}
-            </Text>
-          </Pressable>
-
           {/* Wallet */}
           <View className="bg-[#1A1815] border border-[#FACC15]/30 rounded-full px-4 py-2.5 items-center justify-center shadow-xl">
             <View className="flex-row items-center justify-center gap-1.5">
@@ -1097,40 +961,6 @@ export default function Store() {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Limit Reached Animation Modal (idéntico a Store.tsx Web) */}
-      <Modal
-        visible={showLimitReachedAnimation}
-        transparent
-        animationType="fade"
-        statusBarTranslucent={true}
-        onRequestClose={() => setShowLimitReachedAnimation(false)}
-      >
-        <View className="flex-1 bg-black/80 items-center justify-center p-5">
-          <View className="bg-[#1A1815] border border-yellow-500/30 rounded-3xl p-7 max-w-sm w-full items-center shadow-2xl">
-            <View className="relative mb-5 justify-center items-center h-24 w-24 rounded-full bg-yellow-500/10 border border-yellow-500/20">
-              <Text className="text-5xl">🎬</Text>
-            </View>
-
-            <Text className="text-2xl font-black text-white mb-3 text-center">
-              ¡Anuncios Agotados!
-            </Text>
-
-            <Text className="text-gray-300 text-xs mb-6 leading-relaxed text-center">
-              Has completado el límite máximo de{' '}
-              <Text className="text-yellow-400 font-bold">3 anuncios diarios</Text>.{'\n'}
-              ¡Muchas gracias por apoyar el juego! Vuelve mañana para seguir obteniendo monedas gratis.
-            </Text>
-
-            <Pressable
-              onPress={() => setShowLimitReachedAnimation(false)}
-              className="w-full bg-amber-500 active:bg-amber-400 py-3.5 rounded-xl items-center"
-            >
-              <Text className="text-black font-black text-sm uppercase">Entendido</Text>
-            </Pressable>
           </View>
         </View>
       </Modal>

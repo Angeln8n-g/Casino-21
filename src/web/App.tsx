@@ -9,7 +9,6 @@ import { triggerHaptic } from './utils/haptics';
 import { loadThemes } from './themes/themeRegistry';
 import { socketService } from './services/socket';
 import { supabase } from './services/supabase';
-import { getCookieConsent } from './components/CookieConsent';
 // ── Lazy-loaded components (code splitting) ───────────────────────────────────
 // These components are NOT needed on initial page load. By lazy-loading them,
 // the main JS bundle shrinks dramatically and the critical path speeds up.
@@ -28,7 +27,6 @@ const Blog = lazy(() => import('./components/Blog').then(m => ({ default: m.Blog
 const BlogPost = lazy(() => import('./components/BlogPost').then(m => ({ default: m.BlogPost })));
 const Landing = lazy(() => import('../landing/Landing').then(m => ({ default: m.default })));
 import { CookieConsent } from './components/CookieConsent';
-import { ChampionshipToast } from './components/championship/ChampionshipToast';
 
 // Minimal loading fallback matching the app's existing design
 function LoadingFallback() {
@@ -223,26 +221,8 @@ function AppContent() {
   );
 }
 
-// ─── Wrapper for public pages that need ad initialization ─────────────────────
-// Pages like /como-jugar, /faq, /blog are rendered via early returns in App(),
-// so the main useEffect that initialises ads never runs. This wrapper component
-// provides its own ad init + CookieConsent overlay for those routes.
+// ─── Wrapper for public pages (FAQ, Blog, Cómo Jugar) ────────────────────────
 function PublicAdPage({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    const init = async () => {
-      const { initializeAds } = await import('./components/AdManager');
-      initializeAds();
-    };
-    init();
-
-    const handleConsentChange = async () => {
-      const { reinitializeAds } = await import('./components/AdManager');
-      reinitializeAds();
-    };
-    window.addEventListener('cookie_consent_changed', handleConsentChange);
-    return () => window.removeEventListener('cookie_consent_changed', handleConsentChange);
-  }, []);
-
   return (
     <MotionConfig reducedMotion="user">
       <Suspense fallback={<LoadingFallback />}>
@@ -287,22 +267,6 @@ export default function App() {
     };
   }, []);
 
-  // ── AdManager init (persists across all routes) ───────────────────────
-  useEffect(() => {
-    const init = async () => {
-      const { initializeAds } = await import('./components/AdManager');
-      initializeAds();
-    };
-    init();
-
-    const handleConsentChange = async () => {
-      const { reinitializeAds } = await import('./components/AdManager');
-      reinitializeAds();
-    };
-    window.addEventListener('cookie_consent_changed', handleConsentChange);
-    return () => window.removeEventListener('cookie_consent_changed', handleConsentChange);
-  }, []);
-
   return (
     <MotionConfig reducedMotion="user">
       <AuthProvider>
@@ -319,7 +283,6 @@ export default function App() {
                 </Suspense>
               </div>
               <CookieConsent />
-              <ChampionshipToast />
             </MusicProvider>
           </GameProvider>
         </AudioProvider>

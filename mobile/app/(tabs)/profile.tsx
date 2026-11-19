@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,6 @@ import {
   Check,
   X,
   UserX,
-  Clapperboard,
   Settings,
   Volume2,
   VolumeX,
@@ -87,15 +86,6 @@ export default function ProfileScreen() {
   const [usernameError, setUsernameError] = useState('');
   const [isSavingUsername, setIsSavingUsername] = useState(false);
 
-  // Championship Stats
-  const [championshipData, setChampionshipData] = useState<{
-    points: number;
-    rank: number | null;
-    adsToday: number;
-    dailyCap: number;
-    isQualified: boolean;
-  } | null>(null);
-
   // Modal de baja GDPR
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -104,53 +94,6 @@ export default function ProfileScreen() {
       setNewUsername(profile.username);
     }
   }, [profile?.username]);
-
-  // ── Fetch Championship Data ─────────────────────────────────
-  const fetchChampionshipStats = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('id, daily_ad_cap')
-        .eq('is_championship', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (eventData) {
-        const { data: partData } = await supabase
-          .from('championship_participants')
-          .select('points, ads_today, is_qualified')
-          .eq('event_id', eventData.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (partData) {
-          const { count } = await supabase
-            .from('championship_participants')
-            .select('id', { count: 'exact', head: true })
-            .eq('event_id', eventData.id)
-            .gt('points', partData.points || 0);
-
-          const userRank = count !== null ? count + 1 : null;
-
-          setChampionshipData({
-            points: partData.points || 0,
-            rank: userRank,
-            adsToday: partData.ads_today || 0,
-            dailyCap: eventData.daily_ad_cap || 300,
-            isQualified: userRank ? userRank <= 32 : false,
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching championship stats in mobile:', err);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    fetchChampionshipStats();
-  }, [fetchChampionshipStats]);
 
   // ── Guardar Username ────────────────────────────────────────
   const handleSaveUsername = async () => {
@@ -194,45 +137,6 @@ export default function ProfileScreen() {
       setUsernameError(err.message || 'Error de conexión');
     } finally {
       setIsSavingUsername(false);
-    }
-  };
-
-  // ── Sumar Anuncio Championship ─────────────────────────────
-  const handleRecordChampionshipAd = async () => {
-    if (!user) return;
-    try {
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('id')
-        .eq('is_championship', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (eventData?.id) {
-        const { data, error } = await supabase.rpc('record_championship_ad_activity', {
-          p_user_id: user.id,
-          p_event_id: eventData.id,
-          p_type: 'view',
-        });
-
-        if (error) {
-          Alert.alert('Aviso', error.message);
-        } else if (data?.success === false) {
-          Alert.alert(
-            'Límite Diario',
-            data.error === 'DAILY_CAP_REACHED'
-              ? 'Has alcanzado el tope diario de 300 anuncios.'
-              : `Error: ${data.error}`
-          );
-        } else {
-          triggerHaptic('success');
-          await fetchChampionshipStats();
-          Alert.alert('¡Punto añadido!', 'Has sumado +1 punto al pozo del Championship.');
-        }
-      }
-    } catch (e: any) {
-      console.error('Error recording ad activity:', e);
     }
   };
 
@@ -440,67 +344,7 @@ export default function ProfileScreen() {
               Participa en torneos semanales para desbloquear tus primeros trofeos.
             </Text>
           )}
-
-          {championshipData?.isQualified && (
-            <View className="flex-row items-center gap-1.5 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-xl">
-              <Text className="text-base">👑</Text>
-              <View>
-                <Text className="text-[10px] font-black text-purple-400">Top 32 Finalista</Text>
-                <Text className="text-[8px] text-slate-400 font-mono">Championship</Text>
-              </View>
-            </View>
-          )}
         </View>
-      </View>
-
-      {/* ── Kasino21 Championship Widget ─────────────────────── */}
-      <View className="bg-gradient-to-br from-amber-950/40 via-yellow-950/20 to-slate-900 border border-amber-500/40 p-4 rounded-3xl mb-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-1.5">
-            <Trophy color="#fbbf24" size={16} />
-            <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
-              Kasino21 Championship
-            </Text>
-          </View>
-          {championshipData?.isQualified && (
-            <View className="bg-amber-400 px-2 py-0.5 rounded">
-              <Text className="text-black font-black text-[9px] uppercase">Top 32 Clasificado</Text>
-            </View>
-          )}
-        </View>
-
-        <View className="flex-row justify-between gap-2 mb-3">
-          <View className="flex-1 bg-black/40 border border-white/5 p-2 rounded-xl items-center">
-            <Text className="text-[9px] text-slate-400 font-bold uppercase">Puntos Pozo</Text>
-            <Text className="text-amber-400 font-black text-sm">
-              {championshipData ? `${championshipData.points} pts` : '0 pts'}
-            </Text>
-          </View>
-
-          <View className="flex-1 bg-black/40 border border-white/5 p-2 rounded-xl items-center">
-            <Text className="text-[9px] text-slate-400 font-bold uppercase">Posición</Text>
-            <Text className="text-white font-black text-sm">
-              {championshipData?.rank ? `#${championshipData.rank}` : 'Sin Rango'}
-            </Text>
-          </View>
-
-          <View className="flex-1 bg-black/40 border border-white/5 p-2 rounded-xl items-center">
-            <Text className="text-[9px] text-slate-400 font-bold uppercase">Ads Hoy</Text>
-            <Text className="text-emerald-400 font-black text-sm">
-              {championshipData ? `${championshipData.adsToday}/${championshipData.dailyCap}` : '0/300'}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={handleRecordChampionshipAd}
-          className="bg-amber-500/20 border border-amber-500/40 py-2.5 rounded-2xl items-center flex-row justify-center gap-1.5 active:bg-amber-500/30"
-        >
-          <Clapperboard color="#fbbf24" size={14} />
-          <Text className="text-amber-400 font-bold text-xs uppercase tracking-wider">
-            Sumar Anuncio (+1 Pt & Pozo)
-          </Text>
-        </Pressable>
       </View>
 
       {/* ── Historial de Partidas Oficiales ──────────────────── */}

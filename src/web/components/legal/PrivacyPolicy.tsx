@@ -6,7 +6,7 @@ export function PrivacyPolicy() {
   useLayoutEffect(() => {
     updateSEO({
       title: 'Política de Privacidad — KASINO21 | Juego de Cartas Online',
-      description: 'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, Adsterra, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
+      description: 'Conoce cómo KASINO21 protege tu privacidad. Información sobre cookies, analíticas y tus derechos GDPR/CCPA como usuario del juego de cartas online.',
       canonical: 'https://kasino21.com/privacy',
     });
     return () => resetSEO();
@@ -72,9 +72,6 @@ export function PrivacyPolicy() {
             <li>
               <strong>Datos analíticos:</strong> Estadísticas de uso anónimas a través de Google Analytics (p. ej., duración de la sesión, páginas visitadas, tipo de dispositivo). Estos datos no pueden identificarte personalmente.
             </li>
-            <li>
-              <strong>Datos publicitarios:</strong> Adsterra puede recopilar datos mediante cookies y tecnologías similares para mostrar anuncios relevantes. Consulta la Sección 4 para más detalles.
-            </li>
           </ul>
           <p className="text-sm text-gray-500 italic mt-2">
             No recopilamos <strong className="text-gray-400">ninguna</strong> información de pago, dinero real ni datos personales sensibles. Todas las monedas y objetos del juego no tienen valor monetario.
@@ -83,7 +80,7 @@ export function PrivacyPolicy() {
 
         <Section icon="🍪" title="2. Cookies y Tecnologías de Seguimiento">
           <p>Utilizamos cookies y tecnologías similares para los siguientes fines:</p>
-          <div className="grid md:grid-cols-3 gap-4 mt-4">
+          <div className="grid md:grid-cols-2 gap-4 mt-4">
             <CookieCard
               type="Esenciales"
               color="emerald"
@@ -94,12 +91,6 @@ export function PrivacyPolicy() {
               type="Analíticas"
               color="blue"
               items={['Seguimiento anónimo de visitas a páginas', 'Estadísticas de uso de funciones', 'Monitoreo de rendimiento']}
-              canDisable={true}
-            />
-            <CookieCard
-              type="Publicitarias"
-              color="amber"
-              items={['Personalización de Adsterra', 'Control de frecuencia de anuncios', 'Entrega de anuncios basada en intereses']}
               canDisable={true}
             />
           </div>
@@ -115,7 +106,6 @@ export function PrivacyPolicy() {
             <li>Guardar y mostrar tu progreso, rango y logros en el juego</li>
             <li>Facilitar el emparejamiento multijugador y las sesiones de juego en tiempo real</li>
             <li>Analizar patrones de uso para mejorar la experiencia de juego</li>
-            <li>Mostrar anuncios relevantes a través de Adsterra</li>
             <li>Enviar correos transaccionales (p. ej., restablecimiento de contraseña) — sin correos de marketing</li>
           </ul>
           <p className="mt-3 text-sm text-gray-500 italic">
@@ -126,11 +116,6 @@ export function PrivacyPolicy() {
         <Section icon="🤝" title="4. Servicios de Terceros">
           <p>KASINO21 utiliza los siguientes servicios de terceros, cada uno con sus propias políticas de privacidad:</p>
           <div className="space-y-3 mt-4">
-            <ThirdPartyRow
-              name="Adsterra"
-              purpose="Publicidad contextual para mantener el juego gratuito"
-              url="https://adsterra.com/privacy-policy/"
-            />
             <ThirdPartyRow
               name="Google Analytics"
               purpose="Analíticas de uso anónimas para mejorar el juego"
@@ -177,7 +162,6 @@ export function PrivacyPolicy() {
               { right: 'Supresión', desc: 'Solicitar la eliminación de tu cuenta y datos' },
               { right: 'Portabilidad', desc: 'Recibir tus datos en un formato portátil' },
               { right: 'Oposición', desc: 'Oponearte a ciertas actividades de tratamiento de datos' },
-              { right: 'Exclusión', desc: 'Excluirte de la personalización publicitaria' },
             ].map(({ right, desc }) => (
               <div key={right} className="flex items-start gap-3 bg-white/5 rounded-xl p-3 border border-white/5">
                 <span className="text-casino-gold font-black text-xs mt-0.5">✓</span>

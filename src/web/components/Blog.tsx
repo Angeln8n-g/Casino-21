@@ -2,7 +2,6 @@ import React, { useLayoutEffect, useState } from 'react';
 import { LogoK21 } from './LogoK21';
 import { updateSEO, resetSEO, injectJSONLD, removeJSONLD } from '../utils/seo';
 import { blogPosts, getBlogCategories, getPostsByCategory } from '../data/blog-posts';
-import AdBanner from './AdBanner';
 
 const CATEGORIES = ['Todos', ...getBlogCategories()];
 
@@ -127,8 +126,6 @@ export function Blog() {
           ))}
         </div>
       </div>
-
-      <AdBanner />
 
       {/* Articles Grid */}
       <main className="max-w-6xl mx-auto px-6 pb-16">

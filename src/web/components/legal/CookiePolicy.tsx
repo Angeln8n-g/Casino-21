@@ -6,7 +6,7 @@ export function CookiePolicy() {
   useLayoutEffect(() => {
     updateSEO({
       title: 'Política de Cookies — KASINO21 | Juego de Cartas Online',
-      description: 'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales, analíticas de Google Analytics y publicitarias de Adsterra. Cumplimiento GDPR/ePrivacy.',
+      description: 'Información completa sobre las cookies que utiliza KASINO21: cookies esenciales y analíticas de Google Analytics. Cumplimiento GDPR/ePrivacy.',
       canonical: 'https://kasino21.com/cookies',
     });
     return () => resetSEO();
@@ -49,7 +49,7 @@ export function CookiePolicy() {
           </h1>
           <p className="text-gray-400 text-base max-w-2xl leading-relaxed">
             Esta Política de Cookies explica cómo KASINO21 utiliza cookies y tecnologías de seguimiento similares,
-            requerida por la ley de la UE (GDPR/Directiva ePrivacy) para sitios que usan Adsterra.
+            requerida por la ley de la UE (GDPR/Directiva ePrivacy).
           </p>
           <p className="text-[11px] text-gray-600 mt-4 font-mono">
             Última actualización: 11 de mayo de 2026 · Requerido para cumplimiento UE
@@ -100,23 +100,13 @@ export function CookiePolicy() {
                 { name: '_gid', provider: 'Google Analytics', purpose: 'Distingue usuarios en un período de 24 horas', duration: '24 horas' },
               ]}
             />
-
-            <CookieTable
-              category="Publicitarias (Adsterra)"
-              color="amber"
-              required={false}
-              description="Adsterra coloca cookies para mostrar anuncios relevantes que ayudan a financiar KASINO21 como juego gratuito. Estas cookies pueden recopilar datos sobre tus hábitos de navegación en otros sitios."
-              cookies={[
-                { name: 'adsterra_uid / ast_session', provider: 'Adsterra', purpose: 'Control de frecuencia de anuncios y segmentación básica', duration: '30 días' },
-              ]}
-            />
           </div>
         </CookieSection>
 
         <CookieSection icon="⚙️" title="Cómo Controlar las Cookies">
           <p>Tienes varias opciones para gestionar las cookies. Ten en cuenta que restringir las cookies puede afectar tu experiencia de juego:</p>
 
-          <div className="grid md:grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-1 gap-4 mt-6">
             <ControlCard
               icon="🌐"
               title="Configuración del Navegador"
@@ -128,16 +118,6 @@ export function CookiePolicy() {
                 { label: 'Edge', url: 'https://support.microsoft.com/topic/microsoft-edge-browsing-data-and-privacy' },
               ]}
             />
-            <ControlCard
-              icon="🎯"
-              title="Personalización de Anuncios"
-              description="Exclúyete de la publicidad personalizada de Adsterra o gestiona tu configuración de anuncios:"
-              links={[
-                { label: 'Privacidad de Adsterra', url: 'https://adsterra.com/privacy-policy/' },
-                { label: 'Tus Opciones Online (UE)', url: 'https://www.youronlinechoices.com' },
-                { label: 'Exclusión NAI (EE. UU.)', url: 'https://optout.networkadvertising.org' },
-              ]}
-            />
           </div>
 
           <div className="mt-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5">
@@ -147,30 +127,12 @@ export function CookiePolicy() {
                 <p className="text-sm font-bold text-amber-400 mb-1">Importante: Funcionalidad del Juego</p>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Deshabilitar las <strong className="text-white">cookies esenciales</strong> impedirá que inicies sesión y juegues a KASINO21.
-                  Deshabilitar las <strong className="text-white">cookies analíticas o publicitarias</strong> solo afecta al seguimiento y a la
-                  personalización de anuncios — el juego seguirá funcionando, aunque podrías ver anuncios menos relevantes.
+                  Deshabilitar las <strong className="text-white">cookies analíticas</strong> solo afecta a las estadísticas anónimas de uso —
+                  el juego seguirá funcionando con total normalidad.
                 </p>
               </div>
             </div>
           </div>
-        </CookieSection>
-
-        <CookieSection icon="🔗" title="Cookies de Publicidad">
-          <p>
-            KASINO21 utiliza Adsterra para mostrar anuncios. Adsterra utiliza cookies para servir anuncios relevantes
-            que ayudan a financiar KASINO21 como juego gratuito.
-          </p>
-          <p className="text-gray-400 text-sm mt-2">
-            Puedes optar por no recibir publicidad personalizada visitando{' '}
-            <a
-              href="https://adsterra.com/privacy-policy/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-yellow-400 hover:underline"
-            >
-              la política de privacidad de Adsterra
-            </a>.
-          </p>
         </CookieSection>
 
         <CookieSection icon="🔄" title="Cambios a Esta Política">
